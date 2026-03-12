@@ -1,0 +1,218 @@
+/* Expedition Page Styles */
+.expedition-status-bar {
+    display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.expedition-status-item {
+    flex: 1; min-width: 140px; background: var(--bg-secondary); border-radius: 12px; padding: 12px 16px;
+    box-shadow: var(--shadow-sm);
+}
+.expedition-status-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.expedition-status-value { font-size: 20px; font-weight: 700; color: var(--color-mars); }
+.expedition-status-value.green { color: var(--color-success); }
+.expedition-status-value.purple { color: var(--color-sepolia); }
+
+/* Tabs */
+.expedition-tabs {
+    display: flex; gap: 0; background: var(--bg-secondary); border-radius: 12px; padding: 4px; margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+}
+.expedition-tab {
+    flex: 1; padding: 12px 16px; border: none; background: transparent; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--text-secondary); border-radius: 8px; transition: all 0.2s;
+}
+.expedition-tab:hover { background: var(--bg-tertiary); }
+.expedition-tab.active { background: var(--color-mars); color: white; }
+.expedition-tab .tab-count {
+    display: inline-block; background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 10px;
+    font-size: 12px; margin-left: 6px;
+}
+.expedition-tab.active .tab-count { background: rgba(255,255,255,0.3); }
+
+/* Sort Controls */
+.expedition-controls {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    margin-bottom: 16px; flex-wrap: wrap;
+}
+.sort-select {
+    padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px;
+    background: var(--bg-secondary); color: var(--text-primary); cursor: pointer;
+}
+
+/* Expedition Grid */
+.expedition-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;
+}
+.exp-card {
+    background: var(--bg-secondary); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-sm);
+    border: 2px solid transparent; transition: all 0.2s; position: relative;
+}
+.exp-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.exp-card.discovered { border-color: var(--color-success); background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.1) 0%, var(--bg-secondary) 100%); }
+.exp-card.insufficient { opacity: 0.6; }
+.exp-card.insufficient .btn-orange { background: var(--neutral-400); cursor: not-allowed; }
+
+.exp-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
+.exp-card-name { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.exp-card-type { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.exp-card-type.discovered { color: var(--color-success); font-weight: 600; }
+.exp-card-cost { text-align: right; }
+.exp-card-cost-value { font-size: 22px; font-weight: 700; color: var(--color-mars); }
+.exp-card-cost-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+
+.exp-card-metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+    background: var(--bg-tertiary); border-radius: 8px; padding: 10px;
+}
+.exp-metric { text-align: center; }
+.exp-metric-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.exp-metric-value.highlight { color: var(--color-success); }
+.exp-metric-label { font-size: 10px; color: var(--text-muted); }
+
+.exp-card-actions { display: flex; gap: 8px; }
+.exp-card-actions .btn { flex: 1; font-size: 12px; padding: 10px 12px; }
+.btn-orange { background: var(--gradient-mars); color: white; border: none; }
+.btn-orange:hover { background: linear-gradient(135deg, var(--color-mars-light) 0%, var(--color-mars) 100%); }
+.btn-orange:disabled { background: var(--neutral-400); cursor: not-allowed; }
+
+/* History card (completed expedition) */
+.exp-card.completed { border-color: var(--border-color); cursor: pointer; }
+.exp-card.completed:hover { border-color: var(--color-purple); }
+.exp-card.completed .exp-card-cost-value { color: var(--color-success); }
+.exp-card.completed .visit-badge { background: var(--color-purple); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-left: 8px; }
+
+/* DARK MODE OVERRIDES */
+[data-theme="dark"] .expedition-tab.active { background: var(--color-mars); color: white; }
+[data-theme="dark"] .exp-card.insufficient .btn-orange { background: var(--neutral-600); color: var(--text-muted); }
+
+/* Map Container - Responsive height */
+#mars-map {
+    height: min(800px, calc(100vh - 280px));
+    min-height: 350px;
+    border-radius: 12px;
+    margin-top: 12px;
+}
+
+/* Large desktop: Allow taller maps */
+@media (min-width: 1400px) and (min-height: 900px) {
+    #mars-map {
+        height: min(1000px, calc(100vh - 280px));
+    }
+}
+
+/* Active Expedition Banner */
+.active-expedition-banner {
+    background: var(--gradient-mars); color: white;
+    border-radius: 12px; padding: 16px; margin-bottom: 20px;
+}
+.active-expedition-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.active-expedition-name { font-size: 18px; font-weight: 700; }
+.active-expedition-timer { font-size: 24px; font-weight: 700; font-family: monospace; }
+.active-expedition-progress { background: rgba(255,255,255,0.2); border-radius: 6px; height: 8px; overflow: hidden; }
+.active-expedition-progress-fill { background: white; height: 100%; transition: width 0.5s; }
+.expedition-complete { transition: transform 0.15s, box-shadow 0.15s; }
+.expedition-complete:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+/* Discovery Log Compact */
+.discovery-log-compact {
+    background: rgba(var(--color-success-rgb), 0.1); border-radius: 8px; padding: 12px; margin-top: 12px;
+    font-size: 12px; color: var(--color-success);
+}
+
+/* Mars Conditions Panel (compact version) */
+.mars-conditions-panel {
+    background: var(--gradient-mars);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    color: white;
+}
+.conditions-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.condition-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: help;
+}
+.condition-icon { font-size: 16px; }
+.condition-label {
+    font-size: 11px;
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.condition-value {
+    font-size: 14px;
+    font-weight: 700;
+}
+.conditions-help {
+    margin-left: auto;
+    font-size: 13px;
+    opacity: 0.7;
+    cursor: help;
+}
+
+/* Ledger Styles */
+.expedition-ledger-list { display: flex; flex-direction: column; gap: 12px; }
+.ledger-entry {
+    background: var(--bg-secondary); border-radius: 12px; padding: 16px; box-shadow: var(--shadow-sm);
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+    transition: transform 0.15s, box-shadow 0.15s; cursor: pointer;
+}
+.ledger-entry:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.ledger-destination { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.ledger-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.ledger-stats {
+    display: flex; gap: 16px; font-size: 13px; text-align: center;
+}
+.ledger-stat-value { font-weight: 700; font-size: 16px; }
+.ledger-stat-value.green { color: var(--color-success); }
+.ledger-stat-value.orange { color: var(--color-mars); }
+.ledger-stat-value.purple { color: var(--color-sepolia); }
+.ledger-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+
+/* Dark mode ledger entry background */
+[data-theme="dark"] .ledger-entry { background: var(--bg-card); }
+
+/* Pulsing rover marker on map - Mars orange */
+.rover-marker {
+    width: 16px; height: 16px; background: var(--color-mars); border-radius: 50%;
+    border: 3px solid white; box-shadow: 0 0 0 rgba(236, 116, 39, 0.6);
+    animation: pulse-rover 2s infinite;
+}
+@keyframes pulse-rover {
+    0% { box-shadow: 0 0 0 0 rgba(236, 116, 39, 0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(236, 116, 39, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(236, 116, 39, 0); }
+}
+
+/* Route line animation */
+.route-line { stroke-dasharray: 10, 5; animation: dash 30s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -1000; } }
+
+/* Vehicle mini-cards */
+.colony-mini-card {
+    background: rgba(255,255,255,0.08);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    transition: all 0.2s;
+}
+.colony-mini-card.active { border-left: 3px solid var(--color-success); }
+.colony-mini-card.selected {
+    border: 2px solid var(--color-mars);
+    background: rgba(236, 116, 39, 0.15);
+    box-shadow: 0 0 8px rgba(236, 116, 39, 0.3);
+}
+.colony-mini-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+}

@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}Captain's Log - {{ commander.name if commander else 'Unknown' }} | Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'captains_log';
+        {% if commander %}
+        chat.dataset.pageContext = "Viewing Captain {{ commander.name }}'s Log page. This is a public profile page showing the captain's transmissions and stats. {% if expedition_stats %}Expeditions: {{ expedition_stats.total }}.{% endif %} {% if discovery_stats %}Discoveries: {{ discovery_stats.total }}{% if discovery_stats.legendary %}, including {{ discovery_stats.legendary }} legendary{% endif %}.{% endif %} {{ quote_count }} transmissions recorded. Visitors can chat with this captain's AI persona.";
+        {% else %}
+        chat.dataset.pageContext = 'Captain not found. This log page does not exist or the captain profile is unavailable.';
+        {% endif %}
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto p-20" style="max-width: 700px;">
+
+    {% if commander %}
+    <!-- Captain Header -->
+    <div class="dashboard-card text-center mb-24" style="padding: 32px 24px;">
+        {% if commander.image_url %}
+        <img src="{{ commander.image_url }}" alt="{{ commander.name }}" id="captain-avatar"
+             class="rounded-full mb-16" style="width: 120px; height: 120px; object-fit: cover; border: 4px solid var(--color-mars); box-shadow: 0 4px 20px rgba(var(--color-mars-rgb), 0.3);">
+        {% else %}
+        <div id="captain-avatar" class="rounded-full items-center justify-center mb-16" style="width: 120px; height: 120px; display: inline-flex; background: rgba(var(--color-mars-rgb), 0.3); border: 4px solid var(--color-mars);">
+            <img src="{{ icons.user_profile }}" alt="Captain" style="width: 64px; height: 64px;">
+        </div>
+        {% endif %}
+        <h1 class="text-primary m-0 mb-8 text-4xl">Captain {{ commander.name }}'s Log</h1>
+        <p class="text-muted m-0 text-base">
+            {{ quote_count }} transmission{{ 's' if quote_count != 1 else '' }} from Mars
+        </p>
+
+        <!-- Stats summary -->
+        {% if expedition_stats or discovery_stats %}
+        <div class="flex justify-center mt-20" style="gap: 32px; padding-top: 20px; border-top: 1px solid var(--border-default);">
+            {% if expedition_stats.total %}
+            <div class="text-center">
+                <div class="text-4xl text-mars font-bold">{{ expedition_stats.total }}</div>
+                <div class="text-muted uppercase tracking-wide" style="font-size: 11px;">Expeditions</div>
+            </div>
+            {% endif %}
+            {% if discovery_stats.total %}
+            <div class="text-center">
+                <div class="text-4xl text-sepolia font-bold">{{ discovery_stats.total }}</div>
+                <div class="text-muted uppercase tracking-wide" style="font-size: 11px;">Discoveries</div>
+            </div>
+            {% endif %}
+            {% if discovery_stats.legendary %}
+            <div class="text-center">
+                <div class="text-4xl text-mars font-bold">{{ discovery_stats.legendary }}</div>
+                <div class="text-muted uppercase tracking-wide" style="font-size: 11px;">Legendary</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Chat with Captain -->
+    <div id="captain-chat" class="dashboard-card p-0 mb-24" style="overflow: hidden;">
+        <!-- Chat Header -->
+        <div class="flex items-center gap-10 bg-mars" style="padding: 14px 20px;">
+            <img src="{{ icons.chat_bubble }}" alt="" style="width: 22px; height: 22px;">
+            <span class="text-white font-semibold text-md">Chat with Captain {{ commander.name }}</span>
+            <span class="ml-auto text-light-secondary" style="font-size: 11px;">Live from Mars</span>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="p-20 bg-tertiary" style="min-height: 140px; max-height: 400px; overflow-y: auto;">
+            <div id="chat-placeholder" class="text-center text-muted px-16" style="font-size: 13px; padding-top: 32px; padding-bottom: 32px;">
+                <img src="{{ icons.signal_transmission }}" alt="" class="mb-12" style="width: 48px; height: 48px;">
+                <p class="m-0 text-secondary">The captain is between missions but has a moment to chat.</p>
+                <p class="mt-8 m-0 text-sm text-muted">Say hello!</p>
+            </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="flex gap-12 bg-secondary py-16" style="padding-left: 20px; padding-right: 20px; border-top: 1px solid var(--border-default);">
+            <input type="text" id="chat-input" placeholder="Say something to Captain {{ commander.name }}..."
+                   class="flex-1 bg-tertiary border rounded p-12 text-primary text-base" style="outline: none;"
+                   onkeypress="if(event.key==='Enter') sendChatMessage()">
+            <button onclick="sendChatMessage()" id="chat-send-btn"
+                    class="bg-mars border-none rounded text-white font-semibold cursor-pointer text-base" style="padding: 12px 24px;">
+                Send
+            </button>
+        </div>
+    </div>
+
+    <!-- Quote Timeline -->
+    {% if quotes %}
+    <div class="dashboard-card p-24">
+        <h3 class="text-mars text-sm uppercase tracking-wider m-0 mb-20">Previous Transmissions</h3>
+        <div style="border-left: 3px solid var(--color-mars); padding-left: 24px; margin-left: 8px;">
+            {% for quote in quotes %}
+            <div class="mb-24" style="position: relative;">
+                <!-- Timeline dot -->
+                <div class="rounded-full" style="position: absolute; left: -32px; top: 8px; width: 14px; height: 14px; background: var(--color-mars); border: 3px solid var(--bg-secondary); box-shadow: 0 0 0 2px var(--color-mars);"></div>
+
+                <!-- Quote card -->
+                <div class="bg-tertiary rounded-lg p-16">
+                    <div class="text-base text-primary leading-relaxed italic">
+                        "{{ quote.quote }}"
+                    </div>
+                    <div class="mt-12 flex justify-between items-center">
+                        <span class="text-sm text-muted">
+                            {{ quote.created_at.strftime('%b %d, %Y') if quote.created_at else 'Unknown date' }}
+                        </span>
+                        {% if quote.context_data and quote.context_data.destination %}
+                        <span class="text-mars rounded-lg flex items-center gap-4" style="font-size: 11px; background: rgba(var(--color-mars-rgb), 0.1); padding: 4px 10px;">
+                            <img src="{{ icons.location_pin }}" alt="" style="width: 14px; height: 14px;"> {{ quote.context_data.destination }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if quote_count > quotes|length %}
+        <div class="text-center text-muted mt-8" style="font-size: 13px;">
+            Showing {{ quotes|length }} of {{ quote_count }} transmissions
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <div class="dashboard-card text-center" style="padding: 48px 24px;">
+        <img src="{{ icons.signal_transmission }}" alt="" class="mb-16" style="width: 64px; height: 64px;">
+        <p class="text-secondary m-0 text-md">No transmissions recorded yet.</p>
+        <p class="text-muted mt-8" style="font-size: 13px;">Captain {{ commander.name }}'s log awaits the first entry.</p>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- No captain found -->
+    <div class="dashboard-card text-center" style="padding: 64px 24px;">
+        <img src="{{ icons.telescope }}" alt="" class="mb-16" style="width: 64px; height: 64px;">
+        <h2 class="text-primary m-0 mb-8">Captain Not Found</h2>
+        <p class="text-muted">This captain's log doesn't exist or hasn't been created yet.</p>
+    </div>
+    {% endif %}
+
+    <!-- CTA -->
+    <div class="text-center" style="margin-top: 32px;">
+        <p class="text-muted mb-16" style="font-size: 13px;">
+            Start your own Mars expedition
+        </p>
+        <a href="/" class="btn bg-mars text-white no-underline rounded font-semibold text-md" style="display: inline-block; padding: 14px 32px;">
+            Become a Pilgrim
+        </a>
+    </div>
+</div>
+
+<script>
+// Captain Chat functionality
+const userId = {{ user_id }};
+const captainName = "{{ commander.name if commander else 'Captain' }}";
+let conversationHistory = [];
+
+function addMessage(role, content) {
+    const placeholder = document.getElementById('chat-placeholder');
+    if (placeholder) placeholder.remove();
+
+    const messagesDiv = document.getElementById('chat-messages');
+    const msgDiv = document.createElement('div');
+    msgDiv.style.cssText = 'margin-bottom: 12px; display: flex; gap: 10px;';
+
+    if (role === 'user') {
+        msgDiv.innerHTML = `
+            <div style="margin-left: auto; max-width: 80%;">
+                <div style="background: var(--color-primary); border-radius: 12px 12px 4px 12px; padding: 10px 14px; color: white; font-size: 14px;">
+                    ${escapeHtml(content)}
+                </div>
+                <div style="text-align: right; font-size: 10px; color: var(--text-muted); margin-top: 4px;">You</div>
+            </div>
+        `;
+    } else {
+        msgDiv.innerHTML = `
+            <div style="max-width: 80%;">
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: 12px 12px 12px 4px; padding: 10px 14px; color: var(--text-primary); font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); line-height: 1.5;">
+                    ${parseMarkdown(content)}
+                </div>
+                <div style="font-size: 10px; color: var(--color-mars); margin-top: 4px;">Captain ${escapeHtml(captainName)}</div>
+            </div>
+        `;
+    }
+
+    messagesDiv.appendChild(msgDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function addTypingIndicator() {
+    const messagesDiv = document.getElementById('chat-messages');
+    const indicator = document.createElement('div');
+    indicator.id = 'typing-indicator';
+    indicator.style.cssText = 'margin-bottom: 12px;';
+    indicator.innerHTML = `
+        <div style="max-width: 80%;">
+            <div style="background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: 12px 12px 12px 4px; padding: 10px 14px; color: var(--text-muted); font-size: 14px;">
+                <span class="typing-dots">Captain is typing...</span>
+            </div>
+        </div>
+    `;
+    messagesDiv.appendChild(indicator);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) indicator.remove();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function parseMarkdown(text) {
+    // Simple markdown parser for chat messages
+    let html = escapeHtml(text);
+    // Bold: **text** or __text__
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    // Italics: *text* or _text_ (but not inside words)
+    html = html.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+    html = html.replace(/(?<!\w)_([^_]+?)_(?!\w)/g, '<em>$1</em>');
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+    return html;
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Disable input while sending
+    input.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
+
+    // Add user message
+    addMessage('user', message);
+    input.value = '';
+
+    // Add to history
+    conversationHistory.push({ role: 'user', content: message });
+
+    // Show typing indicator
+    addTypingIndicator();
+
+    try {
+        const response = await fetch('/api/captains-log/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: userId,
+                message: message,
+                conversation_history: conversationHistory
+            })
+        });
+
+        const data = await response.json();
+        removeTypingIndicator();
+
+        if (data.success && data.response) {
+            addMessage('assistant', data.response);
+            conversationHistory.push({ role: 'assistant', content: data.response });
+        } else {
+            // In-lore error messages
+            const busyMessages = [
+                "Sorry, I'm needed on the bridge. Can we talk later?",
+                "*static* ...signal interference from the dust storm. Try again?",
+                "Hold that thought - expedition team needs me. Back in a moment.",
+                "Communications relay is acting up. The Martian atmosphere does that sometimes."
+            ];
+            const errorMsg = busyMessages[Math.floor(Math.random() * busyMessages.length)];
+            addMessage('assistant', errorMsg);
+        }
+    } catch (err) {
+        removeTypingIndicator();
+        addMessage('assistant', '*static crackle* ...lost you there for a second. Dust storm interference. Try again?');
+        console.error('Chat error:', err);
+    }
+
+    // Re-enable input
+    input.disabled = false;
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send';
+    input.focus();
+}
+
+// Add some CSS for styling
+const style = document.createElement('style');
+style.textContent = `
+    #chat-input:focus {
+        border-color: var(--color-mars);
+        background: var(--bg-secondary);
+    }
+    #chat-send-btn:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+    #chat-send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .typing-dots {
+        opacity: 0.7;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

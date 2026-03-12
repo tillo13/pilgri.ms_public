@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Crew - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        {% if user %}
+        chat.dataset.page = 'crew';
+        // First-time tutorial for authenticated users
+        if (!localStorage.getItem('ariaTutorial_crew')) {
+            chat.dataset.greeting = "This is your **crew manifest**.\n\nYour **captain** leads expeditions—their stats affect discovery chances and costs. Your **scientist** extracts shards from discoveries.\n\n**Trail Missions:** While your vehicles are deployed, send crew on quick surveys to build trails. Trails speed up future expeditions to the same destinations (up to 3× speed!).\n\nTap your captain's portrait to see full details.";
+        }
+        {% if has_commander %}
+        chat.dataset.pageContext = 'Authenticated user on Crew page. Has commander with stats: Leadership {{ commander_stats.leadership if commander_stats else "?" }}, Strategy {{ commander_stats.strategy if commander_stats else "?" }}, Exploration {{ commander_stats.exploration if commander_stats else "?" }}, Logistics {{ commander_stats.logistics if commander_stats else "?" }}, Charisma {{ commander_stats.charisma if commander_stats else "?" }}. {% if scientist %}Has scientist: {{ scientist.name }} ({{ scientist.specialty }} specialist).{% else %}No scientist assigned yet.{% endif %} Total commander versions: {{ all_commanders|length if all_commanders else 1 }}.';
+        {% else %}
+        chat.dataset.pageContext = 'Authenticated user on Crew page but has no commander yet. Needs to create or upload a captain image.';
+        {% endif %}
+        {% else %}
+        {% if has_character %}
+        // New user has selected a captain - use different page ID to reset conversation
+        chat.dataset.page = 'crew_selected';
+        chat.dataset.greeting = "Excellent choice, Captain.\n\nYour crew awaits your command.\n\nThe stats you see are unique to your captain—they affect expeditions and can be upgraded later. This is just the beginning!\n\nClick **Continue to Step 3** to accept your mission.";
+        chat.dataset.pageContext = 'NEW USER on Step 2 of 3 (Captain page). They have SELECTED a captain with {{ stats.values()|sum }} total power. {% if scientist %}Their scientist is {{ scientist.name }} ({{ scientist.specialty }}).{% endif %} They have {{ "%.1f"|format(preview_balance) }} shards. They are READY to proceed! Help them understand their captain stats mean, what the scientist does, and encourage them to click "Continue to Step 3" to accept their mission. This is almost the finish line!';
+        {% else %}
+        // New user needs to select a captain
+        chat.dataset.page = 'crew_selecting';
+        chat.dataset.greeting = "**Step 2**: Select your captain.\n\nScroll down and **tap a portrait** to choose.\n\nEach captain has unique stats (Leadership, Strategy, Exploration, Logistics, Charisma) that guide your expeditions. You can upgrade these later—this is just the start!";
+        chat.dataset.pageContext = 'NEW USER on Step 2 of 3 (Captain page). They have NOT selected a captain yet! They need to TAP on one of the captain portraits in the grid below to select them. Each captain has different stats (Leadership, Strategy, Exploration, Logistics, Charisma) that affect gameplay. Help them understand what stats do: Leadership reduces costs, Strategy speeds discoveries, Exploration finds better items, Logistics improves efficiency, Charisma boosts extraction. They have {{ "%.1f"|format(preview_balance) }} shards ready. Tell them to scroll down and tap a captain to select them!';
+        {% endif %}
+        {% endif %}
+    }
+
+    {% if user %}
+    // Auto-open ARIA tutorial for first-time authenticated users
+    setTimeout(function() {
+        if (!localStorage.getItem('ariaTutorial_crew')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaTutorial_crew', 'true');
+            }
+        }
+    }, 1500);
+    {% else %}
+    // Auto-open ARIA for new anonymous users on crew page
+    setTimeout(function() {
+        {% if has_character %}
+        // Captain selected - always auto-open to congratulate them
+        const orb = document.getElementById('aria-orb');
+        if (orb && !orb.classList.contains('active')) {
+            orb.click();
+        }
+        {% else %}
+        // No captain yet - only auto-open once
+        if (!localStorage.getItem('ariaAutoOpenedCrew')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaAutoOpenedCrew', 'true');
+            }
+        }
+        {% endif %}
+    }, 1500);
+    {% endif %}
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/crew.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+{% if base_coords %}
+<script>window.baseCoords = { latitude: {{ base_coords.latitude }}, longitude: {{ base_coords.longitude }} };</script>
+{% endif %}
+<script src="/static/js/arrival.js?v={{ static_v }}"></script>
+<script src="/static/js/crew-missions.js?v={{ static_v }}" defer></script>
+<script src="/static/js/crew-notifications.js?v={{ static_v }}" defer></script>
+<script src="/static/js/crew-map.js?v={{ static_v }}" defer></script>
+<script src="/static/js/crew.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+
+{% if not user %}
+{% include "crew/_anonymous.html" %}
+
+{% else %}
+<!-- AUTHENTICATED USER: Crew Management with Tabs -->
+
+<!-- Hero Section -->
+<div class="hero-section relative flex flex-col justify-center rounded-lg overflow-hidden" style="margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 120px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="Crew" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <h1 class="hero-title mb-0" style="font-size: 24px;">Crew Command</h1>
+    </div>
+</div>
+
+{% if has_commander %}
+
+<!-- Crew Tabs Navigation -->
+<div class="crew-tabs">
+    <button class="crew-tab active" data-tab="trails" onclick="switchCrewTab('trails')" title="Build trails to speed up future expeditions">
+        <img src="{{ icons.tab_map }}" alt="" class="crew-tab-icon" style="border-radius: 6px;">
+        <span class="crew-tab-label">Trails</span>
+    </button>
+    <button class="crew-tab" data-tab="captain" onclick="switchCrewTab('captain')" title="View and upgrade your captain's stats">
+        <img src="{{ character_url if character_url else '/static/img/placeholder.png' }}" alt="" class="crew-tab-icon" style="border: 2px solid var(--color-success);">
+        <span class="crew-tab-label">Captain</span>
+    </button>
+    <button class="crew-tab" data-tab="scientist" onclick="switchCrewTab('scientist')" title="Your scientist extracts shards from discoveries">
+        {% if scientist %}
+        <img src="{{ scientist.image_url }}" alt="" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
+        {% else %}
+        <img src="{{ icons.microscope_lab }}" alt="" class="crew-tab-icon" style="border-radius: 6px;">
+        {% endif %}
+        <span class="crew-tab-label">Scientist</span>
+    </button>
+    <button class="crew-tab" data-tab="aria" onclick="switchCrewTab('aria')" title="ARIA - Colony Companion">
+        <img src="{{ icons.aria_avatar }}" alt="ARIA" class="crew-tab-icon" style="border: 2px solid #a855f7;">
+        <span class="crew-tab-label">ARIA</span>
+    </button>
+</div>
+
+<!-- Tab Descriptions -->
+<div id="tab-description" class="text-xs opacity-70 mb-12 p-8" style="background: var(--bg-secondary); border-radius: 8px; text-align: center;">
+    <span id="tab-desc-trails"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> <strong>Trails:</strong> Send crew on short missions to build trails. Trails speed up future expeditions to the same destinations (up to 3× faster)!</span>
+    <span id="tab-desc-captain" style="display: none;"><img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon-sm"> <strong>Captain:</strong> Your expedition leader. Stats affect discovery chances, costs, and efficiency. Upgrade via the Xenobiology Lab.</span>
+    <span id="tab-desc-scientist" style="display: none;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> <strong>Scientist:</strong> Extracts Sepolia shards from your discoveries. Higher skill = faster extraction and bonus yields.</span>
+    <span id="tab-desc-aria" style="display: none;"><img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> <strong>ARIA:</strong> Found waiting on Mars when the first Pilgrims arrived. She doesn't remember why.</span>
+</div>
+
+{% include "crew/_tab_trails.html" %}
+{% include "crew/_tab_captain.html" %}
+{% include "crew/_tab_scientist.html" %}
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB: ARIA -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-aria" class="crew-tab-content" style="display: none;">
+
+<div class="dashboard-card relative overflow-hidden p-20 mb-16">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2">
+        <div class="text-center mb-16">
+            <div class="text-xs uppercase tracking-wide mb-8" style="color: #a855f7;">Colony Companion</div>
+            <div class="flex justify-center">
+                <img src="{{ icons.aria_avatar }}" alt="ARIA" class="rounded-lg cursor-pointer" style="max-width: 200px; max-height: 200px; border: 3px solid #a855f7; box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);">
+            </div>
+            <h2 class="text-xl font-bold mt-12 mb-4">ARIA</h2>
+            <div class="text-sm" style="color: #a855f7;">Your guide to the Sepolia mysteries</div>
+        </div>
+
+        <!-- ARIA Stats (Mysterious/Unknown) -->
+        <div class="commander-stats-panel">
+            <div class="stat-pill">
+                <div class="stat-pill-header"><span class="stat-name">Origin</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
+                <div class="stat-desc" style="opacity: 0.4;">Data corrupted</div>
+            </div>
+            <div class="stat-pill">
+                <div class="stat-pill-header"><span class="stat-name">Memory</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
+                <div class="stat-desc" style="opacity: 0.4;">Files won't parse</div>
+            </div>
+            <div class="stat-pill">
+                <div class="stat-pill-header"><span class="stat-name">Purpose</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
+                <div class="stat-desc" style="opacity: 0.4;">Waiting for something</div>
+            </div>
+            <div class="stat-pill">
+                <div class="stat-pill-header"><span class="stat-name">Age</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
+                <div class="stat-desc" style="opacity: 0.4;">A very long time</div>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="mt-16 pt-16" style="border-top: 1px solid var(--border-default);">
+            <div class="text-xs opacity-60 mb-8">Status</div>
+            <div id="aria-tab-status" class="text-sm mb-4">
+                <span style="color: var(--color-success);">● Ready</span>
+            </div>
+            <div class="text-xs opacity-50">Click the floating orb anytime to chat with ARIA.</div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center">
+    <button class="btn" style="background: linear-gradient(135deg, #a855f7, var(--color-sepolia)); color: white;" onclick="switchCrewTab('trails')">
+        Build Trail (Trails Tab) →
+    </button>
+</div>
+
+</div><!-- End tab-aria -->
+
+{% include "crew/_chart_trail_modal.html" %}
+
+{% else %}
+<div class="story-panel">
+    <p class="story-text">Create a new captain for your colony. Upload a photo or generate a random captain.</p>
+</div>
+<div class="upload-area">
+    <div class="button-row">
+        <button class="btn" onclick="document.getElementById('cameraInput').click()">Take Photo</button>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">Upload Image</button>
+        <button class="btn btn-green" onclick="useDefaultImage()">Random Captain</button>
+    </div>
+</div>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+{% endif %}
+
+
+{% endif %}
+{% endblock %}

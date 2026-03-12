@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}Changelog{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/changelog.css?v={{ static_v }}">
+{% endblock %}
+
+{% block aria_page_context %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chat = document.getElementById('aria-chat');
+        if (chat) {
+            chat.dataset.page = 'changelog';
+            chat.dataset.pageContext = 'Captain is viewing the Changelog page showing version history. Latest: v2.1 (Feb 7) - Depot UX, ARIA intelligence, 15+ bug fixes. Previous: v2.0.3 (Feb 6) - Signal & Expeditions; v2.0.2 (Feb 5) - EVA Suit simplification; v2.0.1 (Feb 4) - Depot redesign; v2.0 (Feb 3) - Economy Redesign; v1.5 (Jan 2026) - Codebase refactor; v1.0 (Oct 2025) - Initial launch.';
+        }
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+    <h2 style="color: var(--color-sepolia); margin-bottom: 4px;">Changelog</h2>
+    <p class="text-sm text-muted mb-16">What's new in Pilgrims</p>
+
+    <!-- v2.1 — Feb 7, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.1</span>
+            <span class="changelog-date">Feb 7, 2026 · 8:50 AM</span>
+        </div>
+        <h3 class="changelog-title">Depot & QoL Improvements</h3>
+        <p class="changelog-summary">Richer upgrade info, smarter ARIA, and a pile of fixes across the colony.</p>
+
+        <div class="changelog-section">
+            <h4>Depot Upgrades</h4>
+            <ul>
+                <li><strong>Richer Depot Cards</strong> — Cards now show all effect stats (night generation, expedition slots, discovery bonuses, generation multipliers)</li>
+                <li><strong>Full Upgrade Path Modal</strong> — Every level now displays its effects, not just name/cost/build time</li>
+                <li><strong>Habitat Module</strong> — Expedition capacity now properly scales with Habitat level (1-6 slots)</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>ARIA Intelligence</h4>
+            <ul>
+                <li><strong>Research Page</strong> — ARIA now knows your SV balance, branch levels, and active research</li>
+                <li><strong>Colony Page</strong> — ARIA now knows your infrastructure, vehicles, and build queue</li>
+                <li><strong>Base HQ</strong> — ARIA now knows your active expeditions, crew missions, and generation rates</li>
+                <li><strong>Depot Page</strong> — ARIA now knows your build queue capacity and infrastructure levels</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Bug Fixes</h4>
+            <ul>
+                <li><strong>Research Times</strong> — Lab page now shows full precision (days, hours, and minutes)</li>
+                <li><strong>Map Centering</strong> — Crew/Trails map now centers on your base, not Andy's Town</li>
+                <li><strong>Briefing Persistence</strong> — Dismissed briefings stay dismissed until new activity arrives</li>
+                <li><strong>Legacy Migration</strong> — Old shop purchases automatically convert to the new upgrade system</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.0.3 — Feb 6, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.0.3</span>
+            <span class="changelog-date">Feb 6, 2026 · 7:50 AM</span>
+        </div>
+        <h3 class="changelog-title">Signal & Expeditions</h3>
+        <p class="changelog-summary">Signal brainstorm page, expedition signal system, colony page fixes.</p>
+
+        <div class="changelog-section">
+            <h4>Changes</h4>
+            <ul>
+                <li><strong>Signal Brainstorm Page</strong> — New page for exploring The Signal storyline</li>
+                <li><strong>Expedition Signals</strong> — Signals re-integrated into expedition system</li>
+                <li><strong>Colony Page Fix</strong> — Fixed layout and rendering issues on colony page</li>
+                <li><strong>Lab Page Cleanup</strong> — Cleaned up research/lab interface</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.0.2 — Feb 5, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.0.2</span>
+            <span class="changelog-date">Feb 5, 2026 · 7:05 AM</span>
+        </div>
+        <h3 class="changelog-title">EVA Suit & ARIA Improvements</h3>
+        <p class="changelog-summary">Simplified EVA Suit, depot build queue visibility, and ARIA anti-hallucination.</p>
+
+        <div class="changelog-section">
+            <h4>Changes</h4>
+            <ul>
+                <li><strong>EVA Suit Simplified</strong> — Now boosts exploration stat only (+1% per level, up to +10% at Lv10)</li>
+                <li><strong>Depot Build Queue</strong> — Active builds now show names and live countdowns in header</li>
+                <li><strong>Depot Stats Display</strong> — Added stat previews and unlock reasons to depot cards</li>
+                <li><strong>ARIA Anti-Hallucination</strong> — ARIA no longer invents data she doesn't have; added clear history button</li>
+                <li><strong>ARIA Scientist Context</strong> — ARIA now aware of scientist assignments and stats</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.0.1 — Feb 4, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.0.1</span>
+            <span class="changelog-date">Feb 4, 2026 · 4:53 PM</span>
+        </div>
+        <h3 class="changelog-title">Depot Full-Stack Redesign</h3>
+        <p class="changelog-summary">Depot completely rebuilt with upgrade paths, infrastructure, live build timers, and activity filters.</p>
+
+        <div class="changelog-section">
+            <h4>Features</h4>
+            <ul>
+                <li><strong>Depot Redesign</strong> — Full-stack rebuild with upgrade cards, modals, and progression paths</li>
+                <li><strong>Infrastructure in Depot</strong> — All 13 buildings now upgradeable through the depot</li>
+                <li><strong>Live Build Timers</strong> — Countdown timers on building buttons with cache-busting</li>
+                <li><strong>Activity Filters</strong> — Colony activity feed now filterable by event type</li>
+                <li><strong>Changelog Page</strong> — Added this page, accessible from profile dropdown</li>
+                <li><strong>Simplified Menu</strong> — Cleaner user dropdown navigation</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Bug Fixes</h4>
+            <ul>
+                <li><strong>DB Deadlock</strong> — Fixed database connection pool deadlock during concurrent upgrades</li>
+                <li><strong>Tech Research Conflict</strong> — Added unique index to prevent duplicate research entries</li>
+                <li><strong>Depot Countdown</strong> — Fixed duplicate JS variable causing timer issues</li>
+                <li><strong>Colony Images</strong> — Fixed image rendering for upgrades on colony page</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.0 — Feb 3, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.0</span>
+            <span class="changelog-date">Feb 3, 2026 · 7:25 AM</span>
+        </div>
+        <h3 class="changelog-title">Economy Redesign</h3>
+        <p class="changelog-summary">Complete overhaul of progression systems with balanced 10-level upgrades across all categories.</p>
+
+        <div class="changelog-section">
+            <h4>New Systems</h4>
+            <ul>
+                <li><strong>10-Level Depot Upgrades</strong> — 11 upgrade paths with 10 levels each (110 total upgrades)</li>
+                <li><strong>10-Level Tech Tree</strong> — 4 research branches with 10 levels each (40 total techs)</li>
+                <li><strong>10-Level Infrastructure</strong> — 13 buildings with 10 levels each (130 total structures)</li>
+                <li><strong>Prerequisite Gating</strong> — Advanced buildings unlock when earlier buildings reach certain levels</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Pricing & Balance</h4>
+            <ul>
+                <li><strong>1.12x Multiplier</strong> — All upgrades use industry-standard 1.12x cost scaling per level</li>
+                <li><strong>14-Day Build Cap</strong> — Maximum build time capped at 14 days for any upgrade</li>
+                <li><strong>3-7 Day Payoff</strong> — Income-generating upgrades pay for themselves in 3-7 days</li>
+                <li><strong>Sepolia Shards Everywhere</strong> — Unified currency naming across all UI</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Endgame Buildings</h4>
+            <ul>
+                <li><strong>Regolith Forge</strong> — Unlocks at Refinery Lv7, generates 50-257 shards/hr</li>
+                <li><strong>Resonance Chamber</strong> — Unlocks at Forge Lv5, generates 75-386 shards/hr</li>
+                <li><strong>Thermal Vent Tap</strong> — Unlocks at Resonance Lv5, generates 100-515 shards/hr</li>
+                <li><strong>Monolith Antenna</strong> — Unlocks at Thermal Lv5, generates 125-643 shards/hr</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Bug Fixes</h4>
+            <ul>
+                <li>Fixed tech research database conflict when upgrading</li>
+                <li>Fixed blockchain reward validation for tech completions</li>
+                <li>Wired life_support_cost_mult effect to expeditions</li>
+                <li>Fixed trail system routing and connectivity</li>
+                <li>Major codebase refactor — reduced file bloat</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v1.5 — January 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v1.5</span>
+            <span class="changelog-date">January 2026</span>
+        </div>
+        <h3 class="changelog-title">Codebase Refactor</h3>
+        <p class="changelog-summary">Full-stack refactoring from monolithic files into small, focused modules.</p>
+
+        <div class="changelog-section">
+            <h4>Changes</h4>
+            <ul>
+                <li>Templates split from 2000+ line files to under 300 lines each</li>
+                <li>CSS extracted to external files (core.css + per-page styles)</li>
+                <li>JavaScript extracted to external files with PAGE_DATA bridge</li>
+                <li>Python utilities modularized into focused files under 1000 lines</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v1.0 — December 2025 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v1.0</span>
+            <span class="changelog-date">October 2025</span>
+        </div>
+        <h3 class="changelog-title">Initial Launch</h3>
+        <p class="changelog-summary">Pilgrims launches with core gameplay loop.</p>
+
+        <div class="changelog-section">
+            <h4>Features</h4>
+            <ul>
+                <li>Expedition system with destinations across Mars</li>
+                <li>Discovery collection and analysis</li>
+                <li>Crew management with Captain, Scientist, and ARIA</li>
+                <li>Trail network construction</li>
+                <li>Infrastructure building</li>
+                <li>Blockchain-backed Sepolia shard economy</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

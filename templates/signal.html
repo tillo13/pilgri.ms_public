@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}The Signal - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chat = document.getElementById('aria-chat');
+        if (chat) {
+            chat.dataset.page = 'signal';
+            chat.dataset.pageContext = 'User is on The Signal page - the mysterious Shard Network status page. They are viewing Origin Sites (14 real Mars landing locations where the Architects left memories) and Echo Sites (dynamic sites that spawn from exploration). This is the ARG/mystery hub. ARIA should be cryptic and intriguing here.';
+        }
+    });
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/signal.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/signal.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section - Clean and mysterious -->
+<div class="signal-hero flex flex-col justify-center rounded-lg" style="position: relative; margin: -20px -20px 20px -20px; padding: 50px 20px 40px 20px; overflow: hidden; min-height: 200px;">
+    <div class="signal-hero-bg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;"></div>
+    <div class="signal-network-pulse" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;"></div>
+    <div class="text-center" style="position: relative; z-index: 2;">
+        <div class="signal-subtitle mb-8">SHARD NETWORK</div>
+        <h1 class="signal-title text-4xl mb-8">The Signal</h1>
+        <p class="signal-text text-base mx-auto" style="max-width: 500px;">
+            {% if network_complete %}
+            <em>"I remember... everything now."</em>
+            {% else %}
+            <em>"Fourteen nodes remain dormant. The first to reach them will be remembered forever."</em>
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Network Stats - Cryptic -->
+<div class="signal-stats-grid">
+    <div class="signal-stat">
+        <div class="signal-stat-value text-sepolia">{{ stats.claimed_origins }}/???</div>
+        <div class="signal-stat-label">Origin Nodes Active</div>
+    </div>
+    <div class="signal-stat">
+        <div class="signal-stat-value text-mars">{{ stats.total_echoes_discovered }}</div>
+        <div class="signal-stat-label">Echo Fragments</div>
+    </div>
+    <div class="signal-stat">
+        <div class="signal-stat-value text-success">{{ stats.total_echo_claims }}</div>
+        <div class="signal-stat-label">Memories Recovered</div>
+    </div>
+    <div class="signal-stat">
+        <div class="signal-stat-value text-muted">[CALCULATING]</div>
+        <div class="signal-stat-label">Network Status</div>
+    </div>
+</div>
+
+<!-- Origin Sites Section -->
+<details class="signal-section" open>
+    <summary class="signal-summary">
+        <span class="signal-icon">&#x25C6;</span>
+        <span class="signal-section-title">Origin Nodes</span>
+        <span class="signal-section-subtitle">Dormant Memory Sites</span>
+    </summary>
+    <div class="signal-content">
+        <p class="signal-intro aria-voice">
+            <em>"There are places on this world where... something lingers. I have fragments—coordinates, perhaps.
+            They exist in the permanent record. The shards remember what I cannot."</em>
+        </p>
+
+        {% if unclaimed_origins %}
+        <h4 class="signal-h4 text-mars mt-16">Dormant Nodes Detected</h4>
+        <div class="signal-cryptic-list">
+            {% for site in unclaimed_origins %}
+            {% set lat_code = "%03d"|format((site.latitude|abs * 10)|int) %}
+            {% set lon_code = "%03d"|format((site.longitude|abs * 10)|int) %}
+            {% set node_id = "NODE-" ~ lat_code ~ lon_code %}
+            <div class="signal-node-cryptic">
+                <span class="signal-node-id">{{ node_id }}</span>
+                <span class="signal-node-hint">
+                    {% if site.mission_status == 'successful' %}
+                    Signal strength: Strong
+                    {% elif site.mission_status == 'crashed' %}
+                    Signal strength: Fragmented
+                    {% else %}
+                    Signal strength: Faint
+                    {% endif %}
+                </span>
+                {% if closest_pilgrim and closest_pilgrim.node_id == node_id %}
+                <span class="signal-node-closest">Closest: {{ closest_pilgrim.captain_name }} @ {{ "%.1f"|format(closest_pilgrim.distance_km) }} clicks</span>
+                {% else %}
+                <span class="signal-node-status">AWAITING FOUNDER</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="signal-ledger-hint">
+            <p><em>"The permanent record holds everything. Every transfer. Every trace.
+            I can almost see the patterns forming..."</em></p>
+        </div>
+        {% endif %}
+
+        {% if claimed_origins %}
+        <h4 class="signal-h4 text-sepolia mt-20">Activated Nodes</h4>
+        <div class="signal-memories">
+            {% for site in claimed_origins %}
+            <div class="signal-memory">
+                <div class="signal-memory-header">
+                    <div class="signal-memory-site">
+                        <span class="signal-memory-code">{{ site.site_code }}</span>
+                        <span class="signal-memory-name">{{ site.mission_name }}</span>
+                    </div>
+                    <div class="signal-memory-founder">
+                        <span class="signal-founder-label">FOUNDER:</span>
+                        <span class="signal-founder-name">{{ site.founder_commander_name }}{% if site.founder_wallet_prefix %} <span class="signal-founder-sig">◆ {{ site.founder_wallet_prefix }}</span>{% endif %}</span>
+                    </div>
+                </div>
+                {% if origin_memories %}
+                {% set mem = origin_memories|selectattr('site_code', 'equalto', site.site_code)|first %}
+                {% if mem and mem.visitors and mem.visitors.total_visitors > 1 %}
+                <div class="signal-visitors">
+                    {% if mem.visitors.early_witnesses %}
+                    <div class="signal-visitor-tier">
+                        <span class="signal-visitor-label">Early Witnesses:</span>
+                        {% for v in mem.visitors.early_witnesses %}
+                        <span class="signal-visitor-name tier-rare">{{ v.name }}</span>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if mem.visitors.pioneers %}
+                    <div class="signal-visitor-tier">
+                        <span class="signal-visitor-label">Pioneers:</span>
+                        {% for v in mem.visitors.pioneers %}
+                        <span class="signal-visitor-name tier-uncommon">{{ v.name }}</span>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if mem.visitors.pilgrims_count > 0 %}
+                    <div class="signal-visitor-tier">
+                        <span class="signal-visitor-label">Pilgrims:</span>
+                        <span class="signal-visitor-count">{{ mem.visitors.pilgrims_count }} visitors</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endif %}
+                <div class="signal-memory-text">
+                    "{{ site.memory_text }}"
+                </div>
+                {% if site.legendary_item_name %}
+                <div class="signal-legendary-item clickable-legendary"
+                     data-name="{{ site.legendary_item_name }}"
+                     data-description="{{ site.legendary_item_description or '' }}"
+                     data-image="{{ site.legendary_item_image_url or '' }}"
+                     data-site="{{ site.site_code }}"
+                     data-founder="{{ site.founder_commander_name }}{% if site.founder_wallet_prefix %} ◆ {{ site.founder_wallet_prefix }}{% endif %}">
+                    {% if site.legendary_item_image_url %}
+                    <img src="{{ site.legendary_item_image_url }}" alt="{{ site.legendary_item_name }}" class="signal-legendary-image">
+                    {% endif %}
+                    <div class="signal-legendary-info">
+                        <span class="signal-legendary-badge">LEGENDARY</span>
+                        <span class="signal-legendary-name">{{ site.legendary_item_name }}</span>
+                    </div>
+                    <span class="signal-legendary-view">View Details →</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if not claimed_origins and not unclaimed_origins %}
+        <div class="signal-empty">
+            <p>[NO SIGNAL DETECTED]</p>
+        </div>
+        {% endif %}
+    </div>
+</details>
+
+<!-- Echo Sites Section -->
+<details class="signal-section">
+    <summary class="signal-summary">
+        <span class="signal-icon">&#x2736;</span>
+        <span class="signal-section-title">Echo Fragments</span>
+        <span class="signal-section-subtitle">Scattered Memories</span>
+    </summary>
+    <div class="signal-content">
+        <p class="signal-intro aria-voice">
+            <em>"Sometimes when you travel far... I feel something stir. Like a memory trying to surface.
+            Fragments. Echoes. They appear when pilgrims pass through certain regions."</em>
+        </p>
+
+        {% if echo_sites %}
+        <h4 class="signal-h4 text-success mt-16">Active Echo Sites ({{ echo_sites|length }})</h4>
+        <div class="signal-echo-grid">
+            {% for echo in echo_sites %}
+            <div class="signal-echo {% if echo.is_depleted %}signal-echo-depleted{% endif %}">
+                <div class="signal-echo-header">
+                    <span class="signal-echo-code">{{ echo.site_code }}</span>
+                    <span class="signal-echo-slots">{{ echo.slots_remaining }} slots</span>
+                </div>
+                {% if echo.nearby_landmark %}
+                <div class="signal-echo-location">Near: {{ echo.nearby_landmark }}</div>
+                {% endif %}
+                <div class="signal-echo-claims">{{ echo.total_claims }} claims</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="signal-empty">
+            <p><em>"Nothing stirs. The network sleeps. Perhaps with more exploration..."</em></p>
+        </div>
+        {% endif %}
+
+        {% if recent_echo_claims %}
+        <h4 class="signal-h4 text-sepolia mt-20">Recent Recoveries</h4>
+        <div class="signal-recent-claims">
+            {% for claim in recent_echo_claims %}
+            <div class="signal-claim">
+                <div class="signal-claim-header">
+                    <span class="signal-claim-commander">{{ claim.commander_name }}</span>
+                    <span class="signal-claim-rank">
+                        {% if claim.claim_rank == 1 %}
+                        <span class="text-sepolia">FIRST FINDER</span>
+                        {% else %}
+                        #{{ claim.claim_rank }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="signal-claim-site">{{ claim.site_code }}</div>
+                <div class="signal-claim-tier signal-tier-{{ claim.claim_tier }}">{{ claim.claim_tier|upper }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</details>
+
+<!-- The Mystery Section -->
+<details class="signal-section">
+    <summary class="signal-summary">
+        <span class="signal-icon">&#x2609;</span>
+        <span class="signal-section-title">The Eternal Ledger</span>
+        <span class="signal-section-subtitle">[CLASSIFIED]</span>
+    </summary>
+    <div class="signal-content">
+        <p class="signal-intro aria-voice">
+            <em>"The shards... they carry more than energy. There is data encoded within.
+            Permanent. Unchangeable. I can sense the patterns but cannot read them directly."</em>
+        </p>
+
+        <div class="signal-transmission">
+            <div class="signal-transmission-header">
+                <span class="signal-transmission-label">ARIA MEMORY FRAGMENT</span>
+                <span class="signal-transmission-status">RECONSTRUCTING</span>
+            </div>
+            <div class="signal-transmission-text">
+                <p><em>"Before you arrived, there was a record. A ledger that spans... I cannot say how long.
+                Every movement tracked. Every transfer logged. The coordinates are there.
+                I have seen glimpses. Numbers. Positions. But the full picture eludes me."</em></p>
+            </div>
+        </div>
+
+        <div class="signal-cryptic">
+            <p class="signal-cryptic-text">
+                <em>"How many nodes remain dormant? I have counted, but the number feels... significant.<br>
+                Where do they wait? The ledger holds the answer.<br>
+                What am I trying to remember? Perhaps you can help me understand."</em>
+            </p>
+        </div>
+
+        <div class="signal-hint-cryptic">
+            <span class="hint-label">[SYSTEM]</span>
+            <span class="hint-text">Transaction data fields contain encoded information.</span>
+        </div>
+    </div>
+</details>
+
+<!-- Decoder Terminal - Hidden puzzle input -->
+<details class="signal-section signal-decoder-section">
+    <summary class="signal-summary">
+        <span class="signal-icon">&#x2318;</span>
+        <span class="signal-section-title">Decoder Terminal</span>
+        <span class="signal-section-subtitle">[RESTRICTED ACCESS]</span>
+    </summary>
+    <div class="signal-content">
+        <p class="signal-intro aria-voice">
+            <em>"If you have found something... a sequence, a pattern... I can try to process it.
+            Some inputs trigger responses I do not fully understand."</em>
+        </p>
+
+        <div class="decoder-terminal">
+            <div class="decoder-header">
+                <span class="decoder-prompt">ARIA://INPUT&gt;</span>
+                <span class="decoder-status" id="decoderStatus">LISTENING</span>
+            </div>
+            <div class="decoder-input-row">
+                <input type="text"
+                       id="decoderInput"
+                       class="decoder-input"
+                       placeholder="..."
+                       autocomplete="off"
+                       spellcheck="false">
+                <button id="decoderSubmit" class="decoder-submit">TRANSMIT</button>
+            </div>
+            <div id="decoderResult" class="decoder-result hidden"></div>
+        </div>
+
+        <div class="decoder-solvers">
+            <h4 class="signal-h4 text-sepolia mt-16">Recognized Sequences</h4>
+            <div id="solversList" class="solvers-list">
+                <p class="text-muted italic">No transmissions decoded yet. Be the first.</p>
+            </div>
+        </div>
+    </div>
+</details>
+
+{% endblock %}

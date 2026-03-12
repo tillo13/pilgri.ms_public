@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Signal System — Brainstorm{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+<link rel="stylesheet" href="/static/css/brainstorm-signal.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_PAGE_KEY = 'signal';
+window.BRAINSTORM_CONFIG = {
+    apiEndpoint: '/api/brainstorm/signal-chat',
+    context: `You are PilgrimBot, helping brainstorm the Signal / ARG system for Pilgrims, a Mars colony game.
+
+=== SIGNAL SYSTEM CONTEXT ===
+
+The Signal system is a blockchain easter egg layer: every Sepolia transaction carries a cryptic Mars mission message in its hex-encoded input data. 208 messages across 10 real Mars missions. Players who inspect Etherscan discover a hidden narrative.
+
+=== THE 3 LOST SIGNAL SITES ===
+
+14 Origin Sites exist (real Mars landing locations). 11 are claimable by proximity. 3 are "Lost Signals" — Mars-3, Beagle-2, Schiaparelli — missions that never transmitted usable data, so they have no blockchain messages and can't be found through the normal detective path.
+
+=== THREE-ACT UNLOCK DESIGN ===
+
+Act 1 (First Voice): First origin site founder's tx hash unlocks Mars-3
+Act 2 (Last Voice): Last of 11 origin sites founder's tx hash unlocks Schiaparelli (all 11 must be claimed first)
+Act 3 (ARIA Remembers Him): Give ARIA both tx hashes in chat. She tells the story of Beagle 2 — the lander she watched for 12 years, intact but unable to call home. She generates the final unlock code. Tearjerker moment.
+
+=== KEY FILES ===
+- signal_utils.py: decode_lost_signal_site(), decode_signal_transaction(), get_signal_page_data()
+- sepolia_utils.py: fetch_and_decode_transaction()
+- expeditions-origin.js: map popup for origin sites
+- docs/signal.md: full design doc (this page renders it)
+
+Help brainstorm ideas, poke holes in the design, suggest implementation details, or explore narrative possibilities.`
+};
+</script>
+<script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-active">Secret</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Signal System Brainstorm</h1>
+        <p style="color: var(--text-muted); font-size: 14px; margin: 0;">
+            Mars Mission Messages, Blockchain Easter Eggs, Lost Signal Unlock Design
+            <br><em>Source: docs/signal.md</em>
+        </p>
+    </div>
+
+    {% for section in sections %}
+    <div class="section">
+        <div class="section-title">{{ section.title }}</div>
+        <div class="signal-body">{{ section.body|safe }}</div>
+    </div>
+    {% endfor %}
+
+    <!-- PilgrimBot Chat Widget -->
+    <div class="chat-widget" id="brainstorm-chat">
+        <div class="chat-header">
+            <div class="chat-header-icon">🧠</div>
+            <div class="chat-header-text">
+                <h3>Brainstorm with PilgrimBot</h3>
+                <p>Ask about the Signal system, Lost Sites, or ARIA's story</p>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-avatar">🧠</div>
+                <div class="chat-bubble">
+                    I have full context on the Signal system — the 208 blockchain messages, the 3 Lost Signal sites,
+                    and the Three-Act unlock design. Ask me anything or throw ideas at me.
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-suggestions">
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How would Act 3 work technically?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What if a player finds all 11 first?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What should the reward be?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How do we hint without spoiling?</span>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask a question or share an idea..." rows="1"
+                onkeydown="handleKeyDown(event)"></textarea>
+            <button class="chat-send" id="chat-send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

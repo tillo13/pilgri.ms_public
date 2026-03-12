@@ -1,0 +1,916 @@
+{% extends "base.html" %}
+{% block title %}SV Economy Brainstorm — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_PAGE_KEY = 'sv-economy';
+window.BRAINSTORM_CONFIG = {
+    apiEndpoint: '/api/brainstorm/sv-economy-chat',
+    context: `You are PilgrimBot, helping brainstorm the Science Value (SV) economy for Pilgrims, a Mars colony game.
+
+=== THE PROBLEM ===
+Luke (QA) reports: "No way to get science value. Researched last tech 2 weeks ago. Only accumulated ~300 SV. Next tech costs 20k."
+His Research Station Lv1 generates 1 SV/hour = 24/day. At that rate, 20k SV = 833 days. The economy is broken for mid-game.
+
+=== CURRENT SV SOURCES ===
+1. Research Station passive: 1-14 SV/hr (Lv1-10)
+2. Regolith Forge passive: 3-9 SV/hr (Lv1-10, unlocks at Refinery Lv7)
+3. Discovery base_scientific_value: permanent SV from claimed items (~50-200 per item)
+4. Extraction bonus: 15% of shard payout as bonus SV (Shard It All)
+
+=== TECH COSTS ===
+Tier 1: 5,000 SV | Tier 2: 12,000 SV | Tier 3: 25,000-50,000 SV
+Per branch level scales 1.12x. Full branch Level 1 = ~59,000 SV.
+
+=== DESIGN PHILOSOPHY ===
+"Building/upgrading takes weeks to months, not hours/days" — progression should feel meaningful but not impossible.
+
+Help brainstorm solutions. Challenge ideas. Propose specific numbers.`
+};
+</script>
+<script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- Header -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-active">Brainstorm</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">SV Economy Rebalance</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Science Value generation is too slow for mid/late-game tech costs — February 2026</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">Luke can't afford techs. Let's fix the economy without breaking early-game pacing.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PLAN SUMMARY (non-.section — preserves existing comment thread indices) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="brainstorm-summary" style="border: 2px solid var(--color-success); border-radius: var(--radius-lg); padding: 24px; margin: 20px 0; background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.06), transparent);">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+            <span class="status-badge status-active">Plan Ready</span>
+            <span style="color: var(--color-success); font-weight: 700; font-size: 18px;">Based on Your Feedback — Here's What We're Building</span>
+        </div>
+        <p style="color: var(--text-secondary); margin: 0 0 20px 0;">Luke's March 7th comments reviewed. Below is the 5-pillar plan. Four open questions are at the <strong>bottom of this page</strong> — add your notes there before we start coding.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Pillar</th>
+                    <th>What Changes</th>
+                    <th>Key Numbers</th>
+                    <th>Complexity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>1</strong></td>
+                    <td><strong>Boost Research Station passive</strong></td>
+                    <td>~6× rate increase across all 10 levels</td>
+                    <td>Lv1: 1→5 SV/hr (120/day) · Lv10: 14→90 SV/hr (2,160/day)</td>
+                    <td>Easy — one config change</td>
+                </tr>
+                <tr>
+                    <td><strong>2</strong></td>
+                    <td><strong>Expedition direct SV on return</strong></td>
+                    <td>Add SV grant when expedition completes</td>
+                    <td>Short: 100–200 SV · Medium: 200–500 · Long: 500–1,000 · Epic: 1,000–2,000</td>
+                    <td>Easy — ~10 lines</td>
+                </tr>
+                <tr>
+                    <td><strong>3</strong></td>
+                    <td><strong>Extraction bonus 15% → 50%</strong></td>
+                    <td>Change one constant in code</td>
+                    <td>Shard 1,000 shards of items → +500 SV bonus (was +150)</td>
+                    <td>Trivial — one number</td>
+                </tr>
+                <tr>
+                    <td><strong>4</strong></td>
+                    <td><strong>Collection milestones (NEW)</strong></td>
+                    <td>Dr. Bo tracks item counts, awards SV at thresholds</td>
+                    <td>10 items = 250 SV · 25 = 500 · 100 = 2,000 · 250 = 5,000 · 500 = 10,000</td>
+                    <td>Medium — new feature</td>
+                </tr>
+                <tr>
+                    <td><strong>5</strong></td>
+                    <td><strong>Trail building grants small SV</strong></td>
+                    <td>5 SV per km of trail built</td>
+                    <td>200km trail = 1,000 SV total · small but connected to science</td>
+                    <td>Easy — ~5 lines</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="mockup-box" style="margin-top: 20px; border-color: var(--color-success);">
+            <div class="mockup-header" style="background: rgba(var(--color-success-rgb), 0.1);">Projected Daily SV — Post-Fix</div>
+            <div class="mockup-content">
+                <table class="comparison-table" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>Player Type</th>
+                            <th>RS Level</th>
+                            <th>Expeditions</th>
+                            <th>Sharding</th>
+                            <th>Daily SV</th>
+                            <th>Tier 1 (5k SV) in</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Passive only</td>
+                            <td>Lv1</td>
+                            <td>0/day</td>
+                            <td>none</td>
+                            <td>120</td>
+                            <td>42 days</td>
+                        </tr>
+                        <tr>
+                            <td>Casual</td>
+                            <td>Lv1</td>
+                            <td>1/day</td>
+                            <td>occasional</td>
+                            <td>~445</td>
+                            <td>~11 days</td>
+                        </tr>
+                        <tr>
+                            <td>Active</td>
+                            <td>Lv3</td>
+                            <td>2/day</td>
+                            <td>regular</td>
+                            <td>~988</td>
+                            <td>~5 days</td>
+                        </tr>
+                        <tr style="background: rgba(var(--color-success-rgb), 0.05);">
+                            <td><strong>Hardcore</strong></td>
+                            <td>Lv1</td>
+                            <td>4 short/day</td>
+                            <td>regular + milestones</td>
+                            <td><strong>~1,720+</strong></td>
+                            <td><strong>~3 days</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="summary-box" style="margin-top: 16px;">
+            <strong>Key insight:</strong> Discovery SV (from expedition finds you claim) is <strong>PERMANENT</strong> and does NOT decrease when you shard items. Your 27,808 SV stays in your pool — sharding gives you an additional bonus on top.
+        </div>
+
+        <div style="margin-top: 16px; padding: 12px 16px; background: rgba(var(--color-danger-rgb, 239,68,68), 0.06); border-left: 3px solid var(--color-danger, #ef4444); border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+            <strong style="color: var(--color-danger, #ef4444);">NOT doing:</strong>
+            <span style="color: var(--text-secondary); margin-left: 8px;">Lowering tech costs · Making expeditions the primary SV driver · Requiring sharding for SV</span>
+            <span style="color: var(--text-muted); display: block; margin-top: 4px; font-size: 13px;">All per your feedback: "game is funner if other mechanics make SV reachable" / "expeditions take too long mid game" / "don't like having to shard all your stuff"</span>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- THE PROBLEM -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-danger, #ef4444);">
+        <div class="section-title" style="color: var(--color-danger, #ef4444);">The Problem: Luke's Math</div>
+
+        <div class="quote-box">
+            "No way to get science value. I researched my last tech 2 weeks ago. In that time, I've accumulated like 300 SV. Next tech costs 20k."
+            <div class="attribution">— Luke, Feb 25 2026</div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Luke's Current SV Income</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Research Station Level</span>
+                    <span class="mockup-value">Lv1 (Workbench)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Passive SV Rate</span>
+                    <span class="mockup-value">1.0 SV/hour = 24 SV/day</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">SV earned in 2 weeks</span>
+                    <span class="mockup-value">~336 SV (matches his report of ~300)</span>
+                </div>
+                <div class="mockup-row" style="border-top: 2px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                    <span class="mockup-label"><strong>Next tech cost</strong></span>
+                    <span class="mockup-value" style="color: var(--color-danger, #ef4444);"><strong>20,000 SV</strong></span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label"><strong>Time to afford at current rate</strong></span>
+                    <span class="mockup-value" style="color: var(--color-danger, #ef4444);"><strong>833 days (2.3 years)</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <p>Even at <strong>max level</strong> (Research Station Lv10 + Regolith Forge Lv10 = 23 SV/hr), a 20k tech takes <strong>36 days</strong> of pure passive generation. Tier 3 techs (25k-50k) take 45-90 days.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- CURRENT SV ECONOMY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Current SV Economy (4 Sources)</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>How It Works</th>
+                    <th>Rate</th>
+                    <th>Problem</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Research Station</strong></td>
+                    <td>Passive generation, collect like solar panels</td>
+                    <td>1-14 SV/hr (Lv1-10)</td>
+                    <td>Glacial at low levels</td>
+                </tr>
+                <tr>
+                    <td><strong>Regolith Forge</strong></td>
+                    <td>Passive generation (shards + SV)</td>
+                    <td>3-9 SV/hr (Lv1-10)</td>
+                    <td>Requires Refinery Lv7 to unlock</td>
+                </tr>
+                <tr>
+                    <td><strong>Discovery Knowledge</strong></td>
+                    <td>Claimed items add base_scientific_value permanently</td>
+                    <td>~50-200 SV per item</td>
+                    <td>One-time per discovery, finite pool</td>
+                </tr>
+                <tr>
+                    <td><strong>Extraction Bonus</strong></td>
+                    <td>Shard It All gives 15% of shard value as SV</td>
+                    <td>~150 SV per 1000 shards extracted</td>
+                    <td>Tiny relative to tech costs</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <strong>The core issue:</strong> The system was designed assuming players actively do expeditions (earning discovery SV), but passive generation alone can't sustain tech progression. Once you've claimed your discoveries, SV income drops to a trickle.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPTION A: BOOST PASSIVE SV RATES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Option A: Boost Passive SV Rates</div>
+
+        <p><strong>The simplest fix.</strong> Increase Research Station SV/hour at all levels so passive generation actually matters. Currently the gap between Lv1 (1/hr) and what you need is absurd.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Level</th>
+                    <th>Current SV/hr</th>
+                    <th>Proposed SV/hr</th>
+                    <th>Daily SV</th>
+                    <th>Days to 20k</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Lv1 (Workbench)</td>
+                    <td>1.0</td>
+                    <td><strong>5.0</strong></td>
+                    <td>120</td>
+                    <td>167 days</td>
+                </tr>
+                <tr>
+                    <td>Lv2 (Basic Lab)</td>
+                    <td>1.5</td>
+                    <td><strong>8.0</strong></td>
+                    <td>192</td>
+                    <td>104 days</td>
+                </tr>
+                <tr>
+                    <td>Lv3 (Analysis Station)</td>
+                    <td>2.0</td>
+                    <td><strong>12.0</strong></td>
+                    <td>288</td>
+                    <td>69 days</td>
+                </tr>
+                <tr>
+                    <td>Lv5 (Science Complex)</td>
+                    <td>4.0</td>
+                    <td><strong>25.0</strong></td>
+                    <td>600</td>
+                    <td>33 days</td>
+                </tr>
+                <tr>
+                    <td>Lv7 (Deep Research)</td>
+                    <td>7.0</td>
+                    <td><strong>45.0</strong></td>
+                    <td>1,080</td>
+                    <td>19 days</td>
+                </tr>
+                <tr>
+                    <td>Lv10 (Ancient Studies)</td>
+                    <td>14.0</td>
+                    <td><strong>80.0</strong></td>
+                    <td>1,920</td>
+                    <td>10 days</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="answer-box">
+            <div class="answer-label">✓ Luke's Answer (March 7)</div>
+            "I think passive needs to be boosted for sure." Target: Tier 1 = 1–2 days, Tier 2 = 5–6 days, Tier 3 = 7–10 days. Level 10 Tier 3 max = ~1 month. → <strong>Implementing: proposed rates above (Lv1: 5 SV/hr, Lv10: 90 SV/hr)</strong>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does ~2 months for a Tier 2 tech at Lv1 feel right? Or should Lv1 be faster?</li>
+                <li>Should upgrading Research Station be THE priority move, or should SV come from gameplay?</li>
+                <li>At Lv10 earning 80 SV/hr, you'd afford a 50k tech in ~26 days. Too fast? Too slow?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPTION B: EXPEDITIONS GRANT SV DIRECTLY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Option B: Expeditions Grant SV Directly</div>
+
+        <p><strong>Make exploration the primary SV driver.</strong> Every expedition returns SV based on distance traveled, rewarding active play. This ties into the core loop: explore more, research more.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">Send Expedition</div>
+                    <div class="flow-box-sub">Pick a landmark</div>
+                </div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box highlight">
+                    <div class="flow-box-title">Expedition Returns</div>
+                    <div class="flow-box-sub">Discoveries + SV reward</div>
+                </div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box success">
+                    <div class="flow-box-title">Spend SV on Research</div>
+                    <div class="flow-box-sub">Tech tree progression</div>
+                </div>
+            </div>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Expedition Distance</th>
+                    <th>SV Reward</th>
+                    <th>Expeditions for 20k SV</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Short (&lt;100 km)</td>
+                    <td>200 SV</td>
+                    <td>100 expeditions</td>
+                </tr>
+                <tr>
+                    <td>Medium (100-500 km)</td>
+                    <td>500-1,500 SV</td>
+                    <td>13-40 expeditions</td>
+                </tr>
+                <tr>
+                    <td>Long (500-1500 km)</td>
+                    <td>1,500-4,000 SV</td>
+                    <td>5-13 expeditions</td>
+                </tr>
+                <tr>
+                    <td>Epic (1500+ km)</td>
+                    <td>4,000-8,000 SV</td>
+                    <td>3-5 expeditions</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="quote-box">
+            "This gives Dr Bo something to do. He can research things based on items found and/or their science value."
+            <div class="attribution">— Luke, Tech Tree Brainstorm</div>
+        </div>
+
+        <div class="answer-box">
+            <div class="answer-label">✓ Luke's Answer (March 7)</div>
+            "Def don't think Expeditions should be primary driver, but should offer <em>some</em> SV. Dr Bo needs to be incorporated into examining what we find on Expeditions. 200 sounds about right for short, 8000 is too much, even for Epic. Maybe 200–2000 Max?" → <strong>Implementing: 100–200 SV short, up to 1,000–2,000 SV epic. Framed as Dr. Bo analyzing field data.</strong>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should SV come from the expedition itself (distance-based) or only from the discoveries you find?</li>
+                <li>Should longer expeditions give proportionally MORE SV (rewarding patience)?</li>
+                <li>Does this feel like "Dr. Bo analyzing data from the field" or should it be a separate mechanic?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPTION C: INCREASE EXTRACTION SV BONUS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Option C: Increase Extraction SV Bonus</div>
+
+        <p><strong>Make Shard It All the SV engine.</strong> Currently extraction gives 15% of shard value as SV. If we bump that significantly, every extraction becomes meaningful for research.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Extraction Bonus Rate</th>
+                    <th>SV per 1,000 Shards Extracted</th>
+                    <th>Extractions for 20k SV</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>15% (current)</td>
+                    <td>150 SV</td>
+                    <td>134 extractions</td>
+                </tr>
+                <tr>
+                    <td><strong>50%</strong></td>
+                    <td>500 SV</td>
+                    <td>40 extractions</td>
+                </tr>
+                <tr>
+                    <td><strong>100%</strong></td>
+                    <td>1,000 SV</td>
+                    <td>20 extractions</td>
+                </tr>
+                <tr>
+                    <td><strong>200%</strong></td>
+                    <td>2,000 SV</td>
+                    <td>10 extractions</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>At <strong>100%</strong>, every shard you extract is also 1 SV. Extract 20,000 shards worth of discoveries = 20,000 SV. Clean and intuitive: <em>"Your scientist learns as much as they extract."</em></p>
+
+        <div class="answer-box">
+            <div class="answer-label">✓ Luke's Answer (March 7)</div>
+            "I think you should also get <em>some</em> SV for Sharding, but i don't like the mechanic of HAVING to shard all your stuff just to get science." → <strong>Implementing: bumping rate from 15% to 50%. Sharding is rewarding but never required. See Q3 at bottom for bug clarification.</strong>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does 1:1 (100%) feel right? "For every shard extracted, your scientist gains 1 SV of knowledge."</li>
+                <li>Should rare/legendary discoveries give even MORE SV bonus (like 200-300%)?</li>
+                <li>Does this make Shard It All feel too powerful, or is that the point?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPTION D: LOWER TECH COSTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Option D: Lower Tech Costs</div>
+
+        <p><strong>Maybe the problem isn't income — it's the prices.</strong> Current costs were set speculatively. If we cut them, the existing SV economy might work fine.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Tier</th>
+                    <th>Current Cost</th>
+                    <th>Reduced Cost (÷5)</th>
+                    <th>Days at 24 SV/day (Lv1)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Tier 1</td>
+                    <td>5,000 SV</td>
+                    <td><strong>1,000 SV</strong></td>
+                    <td>42 days</td>
+                </tr>
+                <tr>
+                    <td>Tier 2</td>
+                    <td>12,000 SV</td>
+                    <td><strong>2,500 SV</strong></td>
+                    <td>104 days</td>
+                </tr>
+                <tr>
+                    <td>Tier 3</td>
+                    <td>25,000-50,000 SV</td>
+                    <td><strong>5,000-10,000 SV</strong></td>
+                    <td>208-417 days</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>Even at ÷5, Tier 3 is still 200+ days at Lv1 passive. This alone probably doesn't solve it — but combined with other options it could work.</p>
+
+        <div class="answer-box answer-no">
+            <div class="answer-label">✗ Luke's Answer (March 7)</div>
+            "I think we can tweak the mechanics to make the costs work....and adjust here if need be. I think the game is funner if there are other mechanics that make SV reachable rather than just making them lower overall." → <strong>NOT implementing cost reductions. Adding SV sources instead.</strong>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Do the current tech costs feel "aspirational" or just impossible?</li>
+                <li>Should early techs (Tier 1) be almost free so you get hooked, then costs ramp up hard?</li>
+                <li>What if Tier 1 = 500 SV, Tier 2 = 3,000 SV, Tier 3 = 15,000 SV?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPTION E: SV FROM TRAIL BUILDING -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Option E: SV From Trail Building</div>
+
+        <p><strong>Trails are science too.</strong> Building trail segments across Mars requires surveying terrain, mapping routes, testing soil. Each km built could grant SV.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>SV per km built</th>
+                    <th>SV for a 200km trail</th>
+                    <th>Trails for 20k SV</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>5 SV/km</td>
+                    <td>1,000 SV</td>
+                    <td>20 trails</td>
+                </tr>
+                <tr>
+                    <td>10 SV/km</td>
+                    <td>2,000 SV</td>
+                    <td>10 trails</td>
+                </tr>
+                <tr>
+                    <td>25 SV/km</td>
+                    <td>5,000 SV</td>
+                    <td>4 trails</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>This rewards the "explorer" playstyle and ties into the Exploration tech branch naturally. Build trails &rarr; earn SV &rarr; research Exploration techs &rarr; explore further.</p>
+
+        <div class="answer-box">
+            <div class="answer-label">✓ Luke's Answer (March 7)</div>
+            "I like this idea, as it gives more 'value' to trail building, but it should be small. There also isn't really a 'payoff' yet for the crew XP, so i can't really comment on 'replacing' that in the current game state." → <strong>Implementing: small amount (5 SV/km). See Q2 at bottom for rate discussion.</strong>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does trail building feel like it should generate scientific data?</li>
+                <li>Should this replace km-based crew XP, or stack on top of it?</li>
+                <li>What about SV bonuses for completing a trail (connecting two landmarks)?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPTION F: SCIENTIST EXPERIMENTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Option F: Scientist Experiments (Active SV Generation)</div>
+
+        <p><strong>Let the scientist DO science.</strong> Queue up experiments that consume discoveries (or shards) and produce SV over time. Like a mini research project between tech researches.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">Pick Experiment</div>
+                    <div class="flow-box-sub">Uses 3 common items</div>
+                </div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box highlight">
+                    <div class="flow-box-title">Scientist Analyzes</div>
+                    <div class="flow-box-sub">4-12 hours</div>
+                </div>
+                <span class="flow-arrow">&rarr;</span>
+                <div class="flow-box success">
+                    <div class="flow-box-title">SV Generated</div>
+                    <div class="flow-box-sub">500-2,000 SV</div>
+                </div>
+            </div>
+        </div>
+
+        <p>This gives players something to DO with surplus discoveries besides sharding them. Common items become research fuel instead of just low-value extraction targets.</p>
+
+        <div class="answer-box">
+            <div class="answer-label">✓ Luke's Answer (March 7)</div>
+            "I like this a lot...I will keep pounding the pavement for giving the Scientist more to do...maybe incorporating that into the above idea of achievements. ie: 'you have now collected 100 machine slabs and 100 hill spores, you can now do Hill Spore Experiment, which gives you 1000 SV upon completion'" → <strong>Implementing: Collection milestone system (Pillar 4). Dr. Bo tracks item counts and awards SV at thresholds. See Q1 at bottom for item-specific vs category decision.</strong>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does "feed discoveries to scientist for SV" feel like a natural extension?</li>
+                <li>Should experiments require specific item types (geological + biological = hybrid SV)?</li>
+                <li>Should the Xenobiology Lab (already exists) be repurposed for this?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- RECOMMENDED COMBO -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-success); background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.05), transparent);">
+        <div class="section-title" style="color: var(--color-success);">Recommended: Combine A + C (Quick Win)</div>
+
+        <p>The fastest fix that doesn't require new features:</p>
+
+        <ol>
+            <li><strong>Boost Research Station rates 5x</strong> (Option A) — Makes upgrading the station feel impactful and gives meaningful passive SV at all levels</li>
+            <li><strong>Increase extraction bonus to 100%</strong> (Option C) — Every shard extracted = 1 SV. Shard It All becomes a dual-purpose button that drives both economies</li>
+        </ol>
+
+        <div class="mockup-box" style="border-color: var(--color-success);">
+            <div class="mockup-header" style="background: rgba(var(--color-success-rgb), 0.1);">Luke's Economy After Fix (Research Station Lv1)</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Passive SV</span>
+                    <span class="mockup-value" style="color: var(--color-success);">5 SV/hr = 120/day (was 24/day)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Extraction bonus (if he shards 500 shards/day)</span>
+                    <span class="mockup-value" style="color: var(--color-success);">+500 SV/day (was +75/day)</span>
+                </div>
+                <div class="mockup-row" style="border-top: 2px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                    <span class="mockup-label"><strong>Combined daily SV</strong></span>
+                    <span class="mockup-value" style="color: var(--color-success);"><strong>~620 SV/day</strong></span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label"><strong>Time to afford 20k tech</strong></span>
+                    <span class="mockup-value" style="color: var(--color-success);"><strong>~32 days (was 833 days)</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <p>32 days = ~1 month for a mid-tier tech. Fits the "weeks to months" philosophy. And upgrading Research Station to Lv3+ would bring that down to 2-3 weeks.</p>
+
+        <div class="question-box">
+            <h4>Final Call — Luke Decides</h4>
+            <ul>
+                <li>Which options do you want? Pick one, pick a combo, or propose something else entirely.</li>
+                <li>What feels like the RIGHT pace for researching a tech? 1 week? 2 weeks? 1 month?</li>
+                <li>Should SV come from passive generation, active gameplay (expeditions/extractions), or both?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TECH COST REFERENCE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section">
+        <div class="section-title">Reference: All Tech Costs</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th>Tier 1 (×2 techs)</th>
+                    <th>Tier 2 (×2 techs)</th>
+                    <th>Tier 3 (×1 tech)</th>
+                    <th>Branch Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Exploration</strong></td>
+                    <td>5,000 each</td>
+                    <td>12,000 each</td>
+                    <td>25,000</td>
+                    <td>59,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Vehicles</strong></td>
+                    <td>5,000 each</td>
+                    <td>12,000 each</td>
+                    <td>30,000</td>
+                    <td>64,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Power</strong></td>
+                    <td>5,000 each</td>
+                    <td>12,000 each</td>
+                    <td>35,000</td>
+                    <td>69,000</td>
+                </tr>
+                <tr>
+                    <td><strong>Extraction</strong></td>
+                    <td>5,000 each</td>
+                    <td>12,000 each</td>
+                    <td>50,000</td>
+                    <td>84,000</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4"><strong>All branches Level 1</strong></td>
+                    <td><strong>276,000 SV</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <p style="color: var(--text-secondary); font-size: 13px;">Costs scale 1.12× per branch level. Level 2 costs are 12% higher, Level 3 is 25% higher, etc. Scientist specialty gives 20% cost reduction in their primary branch.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- OPEN QUESTIONS — NEED LUKE'S SIGN-OFF BEFORE CODING -->
+    <!-- Sections 15-18: fresh comment threads, existing 0-14 preserved -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-mars, #f97316); background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.05), transparent);">
+        <div class="section-title" style="color: var(--color-mars, #f97316);">Q1 — Collection Milestones: Item-Specific or Category?</div>
+
+        <p>Pillar 4 (collection milestones) is the feature you were most excited about. We need your call on one design decision before we build it.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Option A: Item-Specific</th>
+                    <th>Option B: Category-Based</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Example</strong></td>
+                    <td>"Collect 100 Machined Slabs → +2,000 SV"</td>
+                    <td>"Collect 100 geological items → +2,000 SV"</td>
+                </tr>
+                <tr>
+                    <td><strong>Your exact words</strong></td>
+                    <td>✓ This is what you said</td>
+                    <td>Looser interpretation</td>
+                </tr>
+                <tr>
+                    <td><strong>Feel</strong></td>
+                    <td>More personal, specific to your finds — "Dr. Bo is an expert in Machined Slabs"</td>
+                    <td>Easier to progress — any 100 geological items count</td>
+                </tr>
+                <tr>
+                    <td><strong>Risk</strong></td>
+                    <td>RNG-dependent — some players find lots of one type, others don't</td>
+                    <td>Less flavorful; "100 random rocks" feels less satisfying</td>
+                </tr>
+                <tr>
+                    <td><strong>Hybrid option</strong></td>
+                    <td colspan="2">Both: item-specific milestones for single items AND category milestones — double the rewards, more to chase</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-mars, #f97316); background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.05), transparent);">
+        <div class="section-title" style="color: var(--color-mars, #f97316);">Q2 — Trail SV Rate: Per-Km or Per-Trail Completed?</div>
+
+        <p>You said trail SV should be "small." Two options for how to structure it:</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Option A: Per Km Built</th>
+                    <th>Option B: Flat Bonus Per Completed Trail</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Rate</strong></td>
+                    <td>5 SV per km built</td>
+                    <td>500 SV when you finish connecting a trail (any length)</td>
+                </tr>
+                <tr>
+                    <td><strong>A 200km trail gives</strong></td>
+                    <td>1,000 SV total (spread out over build time)</td>
+                    <td>500 SV (one-time on completion)</td>
+                </tr>
+                <tr>
+                    <td><strong>Feel</strong></td>
+                    <td>Steady trickle — every build session earns a little</td>
+                    <td>Reward for finishing — incentivizes completing trails</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-mars, #f97316); background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.05), transparent);">
+        <div class="section-title" style="color: var(--color-mars, #f97316);">Q3 — "Shard It All" Bug: Close It or Keep as Bug?</div>
+
+        <p>There's a P1 bug in the tracker: <em>"Shard It All gives BOTH shards AND Science Value."</em> The way it's written implies giving both is wrong behavior.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">The Situation</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Current behavior</span>
+                    <span class="mockup-value">Shard It All → gives shards + 15% of shard value as bonus SV</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Your March 7 feedback</span>
+                    <span class="mockup-value">"I think you should also get <em>some</em> SV for Sharding" → giving both seems correct</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Proposed resolution</span>
+                    <span class="mockup-value">Close bug as "working as intended" · bump rate from 15% to 50% so the SV is actually noticeable</span>
+                </div>
+            </div>
+        </div>
+
+        <p>Or did you mean the current behavior IS a bug — i.e., sharding should give ONLY shards, no SV at all? Your comment suggests you want both, just not as a requirement. Clarify and we'll update the tracker.</p>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-mars, #f97316); background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.05), transparent);">
+        <div class="section-title" style="color: var(--color-mars, #f97316);">Q4 — Passive Floor: Is 120 SV/day Enough?</div>
+
+        <p>After the fix, Research Station Lv1 generates 5 SV/hr = <strong>120 SV/day</strong>. This is the absolute floor for a player who does zero active play.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Daily SV</th>
+                    <th>Tier 1 Tech (5,000 SV) in</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Lv1 passive only (proposed)</td>
+                    <td>120</td>
+                    <td>42 days</td>
+                    <td>Total floor — zero active play</td>
+                </tr>
+                <tr>
+                    <td>Lv3 passive only</td>
+                    <td>288</td>
+                    <td>17 days</td>
+                    <td>Once you upgrade station a bit</td>
+                </tr>
+                <tr>
+                    <td>Lv5 passive only</td>
+                    <td>600</td>
+                    <td>8 days</td>
+                    <td>Mid-game station</td>
+                </tr>
+                <tr>
+                    <td>Lv10 passive only</td>
+                    <td>2,160</td>
+                    <td>2.3 days</td>
+                    <td>Max station, no other actions</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>The intent is that passive alone is NOT sufficient — it's a floor that keeps you feeling forward progress, while active play (expeditions, milestones, sharding) is what actually drives tech tree progression. Does 42 days for the absolute laziest player feel right, or too punishing?</p>
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget" id="chatWidget">
+        <div class="chat-header">
+            <div class="chat-header-icon">SV</div>
+            <div class="chat-header-text">
+                <h3>PilgrimBot — SV Economy</h3>
+                <p>Brainstorm SV balance, propose numbers, challenge assumptions</p>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-suggestions">
+            <button class="chat-suggestion" onclick="sendSuggestion(this)">What if SV scaled with scientist level?</button>
+            <button class="chat-suggestion" onclick="sendSuggestion(this)">Compare to Civilization tech pacing</button>
+            <button class="chat-suggestion" onclick="sendSuggestion(this)">Should rare items give 10x SV?</button>
+            <button class="chat-suggestion" onclick="sendSuggestion(this)">What about daily SV quests?</button>
+        </div>
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chatInput" placeholder="Ask about SV economy, propose ideas..." rows="1"></textarea>
+            <button class="chat-send" id="chatSend" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

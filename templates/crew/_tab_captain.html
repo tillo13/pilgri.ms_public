@@ -1,0 +1,198 @@
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB: CAPTAIN -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-captain" class="crew-tab-content" style="display: none;">
+
+<div class="dashboard-card relative overflow-hidden p-20 mb-16">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2">
+        <div class="text-center mb-16">
+            <div class="text-xs text-success uppercase tracking-wide mb-8">Active Captain</div>
+            <!-- Image/Video Toggle -->
+            <div class="flex gap-6 justify-center mb-12">
+                <button class="btn text-sm" id="imageTabButton2" onclick="showCaptainImage()" style="background: var(--color-primary); color: white; padding: 6px 12px;">Image</button>
+                <button class="btn text-sm" id="videoTabButton2" onclick="showCaptainVideo()" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 6px 12px;">Video</button>
+            </div>
+            <div id="captainImageTab" class="flex justify-center">
+                <img src="{{ character_url }}" alt="Captain" onclick="showImageModal(this.src)"
+                     class="rounded-lg cursor-pointer" style="max-width: 200px; max-height: 200px; border: 3px solid var(--color-success);">
+            </div>
+            <div id="captainVideoTab" class="flex justify-center" style="display: none;">
+                {% if character_video_url %}
+                <video autoplay muted loop playsinline class="rounded-lg" style="max-width: 200px; max-height: 200px; border: 3px solid var(--color-primary);">
+                    <source src="{{ character_video_url }}" type="video/mp4">
+                </video>
+                {% else %}
+                <div class="text-sm opacity-50 p-20">No video available</div>
+                {% endif %}
+            </div>
+            <!-- Editable Captain Name -->
+            <div class="captain-name-wrapper" style="margin-top: 12px;">
+                <div id="captainNameDisplay" class="flex items-center justify-center gap-8">
+                    <h2 class="text-xl font-bold m-0" id="captainNameText">{% if commander.commander_name %}{{ commander.commander_name }}{% else %}Captain{% endif %}</h2>
+                    <button onclick="editCaptainName()" class="btn-icon" style="background: none; border: none; cursor: pointer; opacity: 0.6; padding: 4px;" title="Edit name">
+                        <img src="{{ icons.edit_pencil }}" alt="Edit" style="width: 16px; height: 16px;">
+                    </button>
+                </div>
+                <div id="captainNameEdit" style="display: none;" class="flex items-center justify-center gap-8 mt-8">
+                    <input type="text" id="captainNameInput" value="{{ commander.commander_name if commander and commander.commander_name else '' }}" maxlength="30" placeholder="Captain name" style="background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: 6px; padding: 8px 12px; color: var(--text-primary); font-size: 16px; width: 180px; text-align: center;">
+                    <button onclick="saveCaptainName()" class="btn btn-small" style="background: var(--color-success); color: white;">Save</button>
+                    <button onclick="cancelCaptainEdit()" class="btn btn-small" style="background: var(--bg-tertiary);">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Captain Stats (Base + EVA Suit % + Research) -->
+        {% if commander_stats %}
+        {% set sb = stat_bonuses if stat_bonuses else {} %}
+        <div class="commander-stats-panel">
+            {# Leadership #}
+            {% set suit_pct = commander_stats.leadership_suit_pct|default(0) %}
+            {% set suit_pts = commander_stats.leadership_suit_bonus|default(0) %}
+            {% set research_pts = sb.leadership|default(0) %}
+            {% set total = commander_stats.leadership + research_pts %}
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Leadership</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--gradient-primary);"></div></div>
+                <div class="stat-desc">Reduces costs, +10% rare discovery at 50+</div>
+            </div>
+            {# Strategy #}
+            {% set suit_pct = commander_stats.strategy_suit_pct|default(0) %}
+            {% set suit_pts = commander_stats.strategy_suit_bonus|default(0) %}
+            {% set research_pts = sb.strategy|default(0) %}
+            {% set total = commander_stats.strategy + research_pts %}
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Strategy</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--gradient-success);"></div></div>
+                <div class="stat-desc">Faster expedition discovery phase</div>
+            </div>
+            {# Exploration #}
+            {% set suit_pct = commander_stats.exploration_suit_pct|default(0) %}
+            {% set suit_pts = commander_stats.exploration_suit_bonus|default(0) %}
+            {% set research_pts = sb.exploration|default(0) %}
+            {% set total = commander_stats.exploration + research_pts %}
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Exploration</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--color-mars);"></div></div>
+                <div class="stat-desc">+{{ total }}% discovery value</div>
+            </div>
+            {# Logistics #}
+            {% set suit_pct = commander_stats.logistics_suit_pct|default(0) %}
+            {% set suit_pts = commander_stats.logistics_suit_bonus|default(0) %}
+            {% set research_pts = sb.logistics|default(0) %}
+            {% set total = commander_stats.logistics + research_pts %}
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Logistics</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--color-sepolia);"></div></div>
+                <div class="stat-desc">×{{ "%.2f"|format(1 + total / 100) }} expedition speed</div>
+            </div>
+            {# Charisma #}
+            {% set suit_pct = commander_stats.charisma_suit_pct|default(0) %}
+            {% set suit_pts = commander_stats.charisma_suit_bonus|default(0) %}
+            {% set research_pts = sb.charisma|default(0) %}
+            {% set total = commander_stats.charisma + research_pts %}
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Charisma</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--color-danger);"></div></div>
+                <div class="stat-desc">-{{ (total / 5)|int }}% extraction costs</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Trail Mission XP -->
+        <div class="mt-16 pt-16" style="border-top: 1px solid var(--border-default);">
+            <div class="text-xs opacity-60 mb-8">Trail Survey Experience</div>
+            <div class="flex justify-between text-xs mb-4">
+                <span>Logistics XP from surveys</span>
+                <span id="captain-tab-xp">0</span>
+            </div>
+            <div style="background: var(--bg-primary); height: 8px; border-radius: 4px; overflow: hidden;">
+                <div id="captain-tab-xp-bar" style="background: var(--color-success); height: 100%; width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <div class="text-xs opacity-50 mt-4">XP earned from trail survey missions</div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center">
+    <a href="/depot" class="btn" style="background: var(--bg-tertiary); border: 1px solid var(--border-default);">Upgrade Stats in Depot →</a>
+</div>
+
+<!-- Captain Versions Gallery -->
+{% set all_images = all_commanders|selectattr('image_url')|list %}
+{% if all_images and all_images|length > 1 %}
+<details class="dashboard-card mt-20" open>
+    <summary class="cursor-pointer text-lg font-semibold"><img src="{{ icons.camera }}" alt="" style="width: 20px; height: 20px; vertical-align: middle;"> All Captain Versions ({{ all_images|length }})</summary>
+    <p class="help-text mt-12 mb-12">Every version of your captain. The active one (green border) is used for all missions.</p>
+    <div class="grid gap-16 mt-16" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+        {% for asset in all_images %}
+        <div class="commander-card {{ 'active-commander' if asset.is_active }} rounded-lg overflow-hidden shadow bg-card" style="{{ 'border: 3px solid var(--color-success);' if asset.is_active else '' }}">
+            <div class="relative">
+                <img src="{{ asset.image_url }}" alt="Captain Version" onclick="showImageModal('{{ asset.image_url }}')" loading="lazy"
+                     class="w-full aspect-square bg-secondary cursor-pointer" style="height: auto; object-fit: contain;">
+                {% if asset.is_active %}<div class="absolute text-xs font-semibold rounded text-white" style="top: 8px; right: 8px; background: var(--color-success); padding: 4px 8px;">✓ ACTIVE</div>{% endif %}
+            </div>
+            <div class="p-12">
+                <div class="flex justify-between text-xs text-muted mb-8">
+                    <span>{{ asset.created_at.strftime('%m/%d %H:%M') }}</span>
+                    <span>{% if asset.asset_type == 'character_image' %}{% if asset.is_original %}Original{% else %}Created{% endif %}{% elif asset.asset_type == 'edited_image' %}Modified{% if asset.edit_number %} #{{ asset.edit_number }}{% endif %}{% endif %}</span>
+                </div>
+                {% if asset.prompt_used %}<div class="text-xs text-secondary mb-8 leading-tight">{{ asset.prompt_used[:60] }}{% if asset.prompt_used|length > 60 %}...{% endif %}</div>{% endif %}
+                <div class="commander-card-actions">
+                    {% if not asset.is_active %}
+                    <button class="btn-set-active" onclick="setActiveCommander({{ asset.id }}, event)">Set Active</button>
+                    {% else %}
+                    <button class="btn-active" disabled>✓ Active</button>
+                    {% endif %}
+                    <button class="btn-delete" onclick="deleteAsset({{ asset.id }}, '{{ asset.asset_type }}', event)">×</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}
+
+{% set all_videos = all_commanders|selectattr('video_url')|list %}
+{% if all_videos and all_videos|length > 0 %}
+<details class="dashboard-card mt-16" {% if all_videos|length == 1 %}open{% endif %}>
+    <summary class="cursor-pointer text-lg font-semibold"><img src="{{ icons.video_film }}" alt="" style="width: 20px; height: 20px; vertical-align: middle;"> Captain Videos ({{ all_videos|length }})</summary>
+    <p class="help-text mt-12 mb-12">Animated mission briefings generated from your captain images.</p>
+    <div class="grid gap-16 mt-16" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+        {% for asset in all_videos %}
+        <div class="bg-card rounded-lg overflow-hidden shadow">
+            <div class="relative cursor-pointer" onclick="openVideoModal('{{ asset.video_url }}')">
+                <video src="{{ asset.video_url }}" muted loop preload="metadata" onmouseover="this.play()" onmouseout="this.pause(); this.currentTime=0;"
+                       class="w-full" style="height: auto; display: block;"></video>
+                <div class="absolute inset-0 flex items-center justify-center transition" style="background: rgba(0,0,0,0.2); opacity: 0;"
+                     onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">
+                    <div class="flex items-center justify-center rounded-full" style="width: 50px; height: 50px; background: rgba(255,255,255,0.9);"><img src="{{ icons.play_button }}" alt="" style="width: 28px; height: 28px;"></div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center p-12">
+                <span class="text-xs text-muted">{{ asset.created_at.strftime('%m/%d %H:%M') }}</span>
+                <button class="btn btn-red btn-small text-xs" onclick="deleteAsset({{ asset.id }}, '{{ asset.asset_type }}', event)">Remove</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}
+
+</div><!-- End tab-captain -->

@@ -1,0 +1,262 @@
+<!-- ANONYMOUS USER: Step 2 - Captain Selection -->
+
+<!-- Step Navigation at top -->
+<div class="flex justify-center gap-8 mb-16">
+    <a href="/" class="no-underline">
+        <div class="step-indicator step-complete">
+            <div class="step-number">✓</div>
+            <span class="step-label">Mine</span>
+        </div>
+    </a>
+    <div class="step-indicator step-active">
+        <div class="step-number">2</div>
+        <span class="step-label">Captain</span>
+    </div>
+    {% if has_character %}
+    <a href="/arrival/deploy" class="no-underline">
+        <div class="step-indicator step-inactive text-mars" style="border-color: rgba(var(--color-mars-rgb), 0.4); background: rgba(var(--color-mars-rgb), 0.15);">
+            <div class="step-number" style="background: rgba(var(--color-mars-rgb), 0.3); color: var(--color-mars);">3</div>
+            <span class="step-label text-mars">Accept</span>
+        </div>
+    </a>
+    {% else %}
+    <div class="step-indicator step-inactive">
+        <div class="step-number">3</div>
+        <span class="step-label">Accept</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- TOP CTA - When captain selected, show deploy button at top -->
+{% if has_character %}
+<!-- Success CTA - Captain selected, proceed to next step -->
+<a href="/arrival/deploy" class="cta-banner cta-banner-success no-underline" style="margin: 0 -20px 16px -20px;">
+    <div class="cta-banner-content">
+        <span class="cta-banner-icon" style="animation: none;">✓</span>
+        <span class="cta-banner-text">Continue to Step 3</span>
+        <span class="cta-banner-arrow">→</span>
+    </div>
+    <div class="cta-banner-hint">Accept your mission and land on Mars</div>
+</a>
+{% else %}
+<!-- CTA Button Banner - points to action -->
+<a href="#captain-selection" class="cta-banner cta-banner-pulse no-underline" style="margin: 0 -20px 16px -20px;">
+    <div class="cta-banner-content">
+        <img src="{{ icons.point_down }}" alt="" class="cta-banner-icon" style="width: 24px; height: 24px;">
+        <span class="cta-banner-text">Select Your Captain</span>
+    </div>
+    <div class="cta-banner-hint">Tap to scroll to captain selection</div>
+</a>
+{% endif %}
+
+<!-- Hero Section with Background Image -->
+<div class="hero-section relative flex flex-col justify-center rounded-lg overflow-hidden" style="margin: 0 -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 160px;">
+    <!-- Background Image -->
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/banner_step2_crew_1767634751_banner.png" alt="Crew Selection" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <!-- Gradient Overlay for readability -->
+    <div class="hero-overlay"></div>
+    <!-- Text Content -->
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Year 2157 • Mars Orbit</div>
+        <h1 class="hero-title mb-0" style="font-size: 26px;">Choose Your Captain</h1>
+    </div>
+</div>
+
+<!-- The Journey Lore Box -->
+<div class="dashboard-card card-dark text-white mb-20">
+    <div class="p-16">
+        <div class="section-label mb-12"><img src="{{ icons.rocket_launch }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> First Pilgrimage • Based on Real Science</div>
+        <p class="text-base leading-relaxed m-0 mb-12 opacity-90">
+            NASA's Perseverance made the 7-month trip in 2020. Now, 137 years of progress in shielding and life support make human travel possible—but radiation still limits each ship to <strong class="text-mars">two people</strong>.
+        </p>
+        <p class="text-sm leading-normal m-0 opacity-80 italic" style="border-left: 3px solid var(--color-sepolia); padding-left: 12px;">
+            You are the first. Humanity's smallest colony. Probes found ancient crystals in the Martian soil—older than civilization. Your mission: find out why.
+        </p>
+    </div>
+</div>
+
+<!-- Shards + Scientist reminder -->
+<div class="dashboard-card flex items-center justify-between flex-wrap gap-12 bg-sepolia text-white p-16" style="padding: 16px 20px;">
+    <div class="flex items-center gap-12">
+        <img src="{{ icons.shard_gem }}" alt="" style="width: 40px; height: 40px;">
+        <div>
+            <div class="text-xs uppercase tracking-wide opacity-80">Your Cache</div>
+            <div class="text-3xl font-bold">{{ "%.1f"|format(preview_balance) }} <span class="text-base opacity-90">Shards</span></div>
+        </div>
+    </div>
+    {% if scientist %}
+    <div class="flex items-center gap-10">
+        <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" class="rounded-full" style="width: 44px; height: 44px; object-fit: cover; border: 2px solid rgba(255,255,255,0.5);">
+        <div>
+            <div class="text-xs uppercase tracking-wide opacity-80">Your Scientist</div>
+            <div class="text-base font-semibold">{{ scientist.name }}</div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="text-right text-sm opacity-80">
+        Step 2 of 3
+    </div>
+</div>
+
+{% if has_character %}
+<!-- Your Crew - Captain & Scientist side by side -->
+<div class="dashboard-card relative overflow-hidden p-20">
+    <!-- Ship Interior Background -->
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <div class="absolute inset-0 w-full h-full z-1" style="background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.7) 100%);"></div>
+
+    <!-- Content -->
+    <div class="relative z-2">
+        <div class="text-xs text-success uppercase tracking-wide mb-16 text-center font-semibold" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">✓ Your Crew is Ready</div>
+
+        <!-- Two-person crew display -->
+        <div class="flex justify-center items-start gap-24 flex-wrap mb-20">
+            <!-- Captain -->
+            <div class="text-center" style="flex: 0 0 auto; max-width: 160px;">
+                <img src="{{ character_url }}" alt="Your Captain" class="crew-portrait rounded-xl cursor-pointer transition" onclick="showFullImage('{{ character_url }}', 'Your Captain')" style="max-width: 160px; max-height: 200px; width: auto; height: auto; object-fit: contain; border: 4px solid var(--color-success); box-shadow: 0 8px 32px rgba(153,92,50,0.3);">
+                <div class="mt-10">
+                    <div class="text-xs text-success uppercase tracking-wide font-semibold" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">Captain</div>
+                    <div class="text-lg font-bold text-primary" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">{{ stats.values()|sum }} Power</div>
+                </div>
+            </div>
+
+            <!-- Scientist -->
+            {% if scientist %}
+            <div class="text-center" style="flex: 0 0 auto; max-width: 160px;">
+                <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" class="crew-portrait rounded-xl cursor-pointer transition" onclick="showFullImage('{{ scientist.image_url }}', '{{ scientist.name }}')" style="max-width: 160px; max-height: 200px; width: auto; height: auto; object-fit: contain; border: 4px solid var(--color-sepolia); box-shadow: 0 8px 32px rgba(143,95,82,0.3);">
+                <div class="mt-10">
+                    <div class="text-xs text-sepolia uppercase tracking-wide font-semibold" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">Scientist</div>
+                    <div class="text-lg font-bold text-primary" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">{{ scientist.name }}</div>
+                    <div class="text-xs text-secondary font-medium" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">{{ scientist.specialty }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Captain Stats breakdown -->
+        <div class="bg-secondary rounded-lg p-12">
+            <div class="text-xs text-muted uppercase tracking-wide mb-8 text-center">Captain Stats</div>
+            <div class="grid gap-8" style="grid-template-columns: repeat(5, 1fr);">
+                <div class="text-center">
+                    <div class="text-xl font-bold" style="color: var(--color-primary);">{{ stats.leadership }}</div>
+                    <div class="text-xs text-muted uppercase" style="font-size: 9px;">Lead</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xl font-bold text-success">{{ stats.strategy }}</div>
+                    <div class="text-xs text-muted uppercase" style="font-size: 9px;">Strat</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xl font-bold text-mars">{{ stats.exploration }}</div>
+                    <div class="text-xs text-muted uppercase" style="font-size: 9px;">Expl</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xl font-bold text-sepolia">{{ stats.logistics }}</div>
+                    <div class="text-xs text-muted uppercase" style="font-size: 9px;">Logs</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xl font-bold text-danger">{{ stats.charisma }}</div>
+                    <div class="text-xs text-muted uppercase" style="font-size: 9px;">Char</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full Image Modal -->
+<div id="crewImageModal" class="flex justify-center items-center" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999;" onclick="this.style.display='none'">
+    <div class="relative" style="max-width: 90vw; max-height: 90vh;">
+        <img id="crewModalImage" src="" alt="" class="rounded-lg shadow-lg" style="max-width: 100%; max-height: 90vh;">
+        <div id="crewModalTitle" class="text-center text-white mt-12 text-lg font-semibold"></div>
+        <div class="text-center text-sm mt-4 text-light-muted">Click anywhere to close</div>
+    </div>
+</div>
+
+
+<!-- Story continuation -->
+<div class="dashboard-card card-dark text-white">
+    <div class="p-12">
+        <div class="text-xs text-success uppercase tracking-wider mb-16">✓ Crew Locked In</div>
+        <p class="text-lg leading-relaxed mb-16 opacity-90">
+            Seven months asleep. And now—<strong class="text-mars">Mars</strong>. {% if scientist %}<strong class="text-sepolia">{{ scientist.name }}</strong> is checking the landing systems.{% endif %} <strong class="text-success">{{ "%.1f"|format(preview_balance) }} Sepolia Shards</strong> are secured in cargo.
+        </p>
+        <p class="text-md leading-relaxed mb-0 opacity-80 italic" style="border-left: 3px solid var(--color-success); padding-left: 12px;">
+            "Landing site confirmed. The scans show... structures. Ancient ones. This changes everything."
+        </p>
+    </div>
+</div>
+
+<div class="text-center mt-20 mb-20">
+    <a href="/arrival/deploy" class="btn btn-large text-white font-bold bg-success" style="padding: 18px 40px; font-size: 18px; box-shadow: 0 4px 20px rgba(var(--color-success-rgb), 0.4);">Continue to Step 3 →</a>
+    <div class="text-sm text-muted mt-8">Next: Accept your mission</div>
+</div>
+
+<div class="dashboard-card">
+    <div class="text-sm text-secondary mb-12 text-center">Or choose a different captain:</div>
+    <div class="grid gap-8" style="grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));">
+        {% for leader in all_leaders %}
+        <div onclick="selectLeader('{{ leader.id }}')" class="text-center cursor-pointer transition" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <img src="{{ leader.image_url }}" alt="{{ leader.name }}" loading="lazy" class="w-full aspect-square rounded" style="object-fit: cover; border: 2px solid {% if character_url == leader.image_url %}var(--color-success){% else %}var(--border-default){% endif %};">
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
+<!-- No captain yet - show story + selection grid -->
+<div class="dashboard-card card-dark text-white">
+    <div class="p-12">
+        <div class="section-label mb-16"><img src="{{ icons.warning_alert }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Captain Required</div>
+        <p class="text-lg leading-relaxed mb-16 opacity-90">
+            Mars landing protocol requires a designated <strong class="text-sepolia">Colony Captain</strong>. The shuttle's archive contains profiles of veterans who've trained for exactly this moment.
+        </p>
+        <p class="text-md leading-relaxed mb-0 opacity-80 italic" style="border-left: 3px solid var(--color-mars); padding-left: 12px;">
+            "Each captain brings unique strengths. Choose the one whose abilities match your vision for the colony."
+        </p>
+    </div>
+</div>
+
+<!-- What Stats Mean -->
+<div class="dashboard-card bg-secondary">
+    <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-primary);">Captain Abilities</div>
+    <div class="grid grid-2 gap-10 text-sm">
+        <div class="flex gap-8 items-start">
+            <img src="{{ icons.crown_leadership }}" alt="" style="width: 20px; height: 20px;">
+            <div><strong style="color: var(--color-primary);">Leadership</strong><br><span class="text-secondary">Reduces costs, increases rare finds</span></div>
+        </div>
+        <div class="flex gap-8 items-start">
+            <img src="{{ icons.target_strategy }}" alt="" style="width: 20px; height: 20px;">
+            <div><strong class="text-success">Strategy</strong><br><span class="text-secondary">Faster discoveries, terrain mastery</span></div>
+        </div>
+        <div class="flex gap-8 items-start">
+            <img src="{{ icons.compass_exploration }}" alt="" style="width: 20px; height: 20px;">
+            <div><strong class="text-mars">Exploration</strong><br><span class="text-secondary">Better finds, exceptional artifacts</span></div>
+        </div>
+        <div class="flex gap-8 items-start">
+            <img src="{{ icons.stat_logistics }}" alt="" style="width: 20px; height: 20px;">
+            <div><strong class="text-sepolia">Logistics</strong><br><span class="text-secondary">Faster missions, supply savings</span></div>
+        </div>
+        <div class="flex gap-8 items-start justify-center" style="grid-column: span 2;">
+            <img src="{{ icons.sparkle_charisma }}" alt="" style="width: 20px; height: 20px;">
+            <div><strong class="text-danger">Charisma</strong><br><span class="text-secondary">Extraction bonus, legendary chance</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Captain Selection Grid -->
+<div id="captain-selection" class="dashboard-card captain-selection-card">
+    <div class="captain-grid">
+        {% for leader in all_leaders %}
+        <div class="captain-card {% if loop.first %}captain-card-highlight{% endif %}" onclick="selectLeader('{{ leader.id }}')">
+            <img src="{{ leader.image_url }}" alt="{{ leader.name }}" loading="lazy" class="captain-card-img">
+            <div class="captain-card-name">{{ leader.name }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Return option for existing users -->
+<div class="text-center mt-24 pt-20 border" style="border-color: rgba(255,255,255,0.1); border-width: 1px 0 0 0;">
+    <p class="text-sm text-light-tertiary mb-12">Already have a colony on Mars?</p>
+    <a href="/login" class="btn text-white" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 10px 24px;">Return to Mars →</a>
+</div>
+{% endif %}

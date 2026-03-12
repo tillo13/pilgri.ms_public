@@ -1,0 +1,710 @@
+{% extends "base.html" %}
+{% block title %}Expeditions - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'expeditions';
+        {% if just_completed_expedition %}
+        // Expedition just completed on page load - ARIA announces it!
+        chat.dataset.greeting = "**Expedition complete!**\n\nYour team returned from {{ just_completed_expedition.destination }}.\n\n{{ just_completed_expedition.discovery_message }}\n\nYou earned **{{ just_completed_expedition.sepolia_earned }}** shards.\n\nReady for another? Check the destinations below.";
+        chat.dataset.pageContext = 'User just completed expedition to {{ just_completed_expedition.destination }}. They can now launch a new expedition. Encourage them to pick a new destination from the list. Total completed: {{ expedition_count|default(0) }}.';
+        // Auto-open ARIA to announce completion
+        setTimeout(function() {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !document.getElementById('aria-chat').classList.contains('open')) {
+                orb.click();
+            }
+        }, 500);
+        {% elif active_expeditions and active_expeditions|length > 0 %}
+        // Tutorial persists until they've completed their first expedition
+        {% if expedition_count|default(0) == 0 %}
+        chat.dataset.greeting = "This is the **Mars Map**—real NASA locations from InSight and Perseverance missions.\n\nYou have an **expedition in progress**! When it returns, you'll find discoveries.\n\nWatch the timer and check back when it's complete.";
+        {% endif %}
+        chat.dataset.pageContext = 'Active expedition to {{ active_expeditions[0].destination_name }}. Total expeditions completed: {{ expedition_count|default(0) }}.';
+        {% else %}
+        // Tutorial persists until they've completed their first expedition
+        {% if expedition_count|default(0) == 0 %}
+        chat.dataset.greeting = "This is the **Mars Map**—real NASA locations from InSight and Perseverance missions.\n\nTo launch an expedition:\n1. **Tap a destination** (green = discovered, brown = new)\n2. Review the cost and travel time\n3. Click **Launch**\n\nStart with somewhere **close** to save shards. Discoveries are waiting!";
+        {% endif %}
+        chat.dataset.pageContext = 'No active expedition. Commander can launch a new one. Total completed: {{ expedition_count|default(0) }}.';
+        {% endif %}
+    }
+
+    {% if user %}
+    // Auto-open once, but greeting persists until they've completed first expedition
+    {% if not just_completed_expedition and expedition_count|default(0) == 0 %}
+    setTimeout(function() {
+        if (!localStorage.getItem('ariaTutorial_expeditions')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaTutorial_expeditions', 'true');
+            }
+        }
+    }, 1500);
+    {% endif %}
+    {% endif %}
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="/static/css/expeditions.css?v={{ static_v }}">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+<script src="/static/js/expeditions.js?v={{ static_v }}" defer></script>
+<script src="/static/js/expeditions-origin.js?v={{ static_v }}" defer></script>
+<script src="/static/js/expeditions-tracking.js?v={{ static_v }}" defer></script>
+<script src="/static/js/expeditions-launch.js?v={{ static_v }}" defer></script>
+<script src="/static/js/expeditions-rewards.js?v={{ static_v }}" defer></script>
+<script src="/static/js/expeditions-page.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+
+{% if not user %}
+<h1>Mars Expeditions</h1>
+<!-- ANONYMOUS USER -->
+<div class="dashboard-card card-dark text-center p-24">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt="Expeditions" class="mb-20" style="width: 80px; height: 80px; filter: drop-shadow(0 4px 12px rgba(var(--color-mars-rgb), 0.4));">
+    <h2 class="text-white mb-12">The Red Frontier</h2>
+    <p class="text-lg leading-relaxed opacity-90 mb-24 max-w-500 mx-auto">
+        Ancient craters hold secrets older than humanity. Towering volcanoes guard forgotten relics. The Martian winds whisper of treasures buried beneath rust-colored sands—waiting for those brave enough to seek them.
+    </p>
+    <div class="flex gap-16 justify-center flex-wrap">
+        <a href="/" class="btn btn-large bg-success text-white font-bold" style="padding: 16px 32px;">Begin Your Journey</a>
+        <a href="/login" class="btn btn-large text-white" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 16px 32px;">Return to Mars</a>
+    </div>
+    <p class="text-sm opacity-50 mt-20">Already established a colony? Sign in to continue your pilgrimage.</p>
+</div>
+
+{% else %}
+<!-- AUTHENTICATED USER: Full Expeditions -->
+
+<!-- Hero Section -->
+<div class="hero-section relative rounded-lg overflow-hidden flex flex-col justify-center" style="margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 140px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/hero_expeditions_1767643013_hero.png" alt="Expeditions" fetchpriority="high" class="absolute inset-0 w-full h-full z-0 opacity-50" style="object-fit: cover;">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Explore the Red Planet</div>
+        <h1 class="hero-title text-white m-0 text-4xl" style="text-shadow: 0 3px 20px rgba(0,0,0,0.7);">Mars Expeditions</h1>
+    </div>
+</div>
+
+<!-- Main Tab Navigation: Map / Vehicles / Signal -->
+<div class="expedition-tabs">
+    <button class="expedition-tab active" data-tab="map" onclick="switchMainTab('map')">
+        <img src="{{ icons.tab_map }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Map
+    </button>
+    <button class="expedition-tab" data-tab="vehicles" onclick="switchMainTab('vehicles')">
+        <img src="{{ icons.vehicle_speed }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Fleet{% if active_expeditions and active_expeditions|length > 0 %}<span style="background: var(--color-mars); color: white; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 6px;">{{ active_expeditions|length }}</span>{% endif %}
+    </button>
+    <button class="expedition-tab" data-tab="signal" onclick="switchMainTab('signal')">
+        <img src="{{ icons.signal_transmission }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Signal
+    </button>
+</div>
+
+<!-- ==================== MAP TAB ==================== -->
+<div id="main-tab-map" class="main-tab-content">
+
+{% set undiscovered = landmarks|rejectattr('is_discovered')|list %}
+{% set discovered = landmarks|selectattr('is_discovered')|list %}
+
+<!-- Compact Status Bar -->
+<div class="expedition-status-bar">
+    <div class="expedition-status-item">
+        <div class="expedition-status-label">Base Location</div>
+        <div class="expedition-status-value purple">{{ "%.2f"|format(drop_coords.latitude) }}°, {{ "%.2f"|format(drop_coords.longitude) }}°</div>
+    </div>
+    <div class="expedition-status-item">
+        <div class="expedition-status-label">Places Explored</div>
+        <div class="expedition-status-value green">{{ discovered|length }}</div>
+    </div>
+    <div class="expedition-status-item">
+        <div class="expedition-status-label">Unexplored Nearby</div>
+        <div class="expedition-status-value">{{ undiscovered|length }}</div>
+    </div>
+</div>
+
+<!-- Infrastructure Bonuses -->
+{% if expedition_bonuses and (expedition_bonuses.expedition_range_mult > 1.0 or expedition_bonuses.legendary_chance_bonus > 0 or expedition_bonuses.discovery_chance_bonus > 0) %}
+<div class="rounded-lg px-16 py-12 mb-16" style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.15) 0%, rgba(var(--color-sepolia-rgb), 0.08) 100%); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div class="section-label text-sepolia font-bold tracking-wide" style="font-size: 11px;">ACTIVE BONUSES</div>
+        <a href="/colony?tab=assets" style="font-size: 11px; color: var(--text-muted); text-decoration: none;">View all in Colony &rarr;</a>
+    </div>
+    <div class="flex gap-16 flex-wrap text-base text-primary">
+        {% if expedition_bonuses.expedition_range_mult > 1.0 %}
+        <a href="/colony?tab=assets&highlight=launch_pad" class="bonus-item-link" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(var(--color-success-rgb), 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='var(--color-success)'" onmouseout="this.style.borderColor='transparent'">
+            <img src="{{ icons.rocket_launch }}" alt="" style="width: 20px; height: 20px;">
+            <span style="color: var(--text-primary);">Launch Pad</span>
+            <span class="text-success font-bold">+{{ ((expedition_bonuses.expedition_range_mult - 1) * 100)|int }}%</span>
+        </a>
+        {% endif %}
+        {% if expedition_bonuses.legendary_chance_bonus > 0 %}
+        <a href="/colony?tab=assets&highlight=space_elevator" class="bonus-item-link" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(var(--color-mars-rgb), 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='var(--color-mars)'" onmouseout="this.style.borderColor='transparent'">
+            <img src="{{ icons.tower_structures }}" alt="" style="width: 20px; height: 20px;">
+            <span style="color: var(--text-primary);">Space Elevator</span>
+            <span class="text-mars font-bold">+{{ (expedition_bonuses.legendary_chance_bonus * 100)|int }}%</span>
+        </a>
+        {% endif %}
+        {% if expedition_bonuses.discovery_chance_bonus > 0 %}
+        <a href="/colony?tab=assets&highlight=comms_array" class="bonus-item-link" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(var(--color-sepolia-rgb), 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='var(--color-sepolia)'" onmouseout="this.style.borderColor='transparent'">
+            <img src="{{ icons.signal_transmission }}" alt="" style="width: 20px; height: 20px;">
+            <span style="color: var(--text-primary);">Comms Array</span>
+            <span class="text-sepolia font-bold">+{{ (expedition_bonuses.discovery_chance_bonus * 100)|int }}%</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Mars Map (Compact) -->
+<details class="dashboard-card" style="margin-bottom: 20px;" open>
+    <summary style="cursor: pointer; font-size: 16px; font-weight: 600;"><img src="{{ icons.tab_map }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> Mars Surface Map</summary>
+    <!-- Map Legend -->
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 0 0; padding: 10px 12px; background: var(--bg-tertiary); border-radius: 8px; font-size: 12px;">
+        <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #fbbf24; border: 2px solid #fde047;"></span> Your Base</span>
+        <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; border: 2px solid #f87171;"></span> Unexplored</span>
+        <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; border: 2px solid #60a5fa;"></span> Visited</span>
+        {% if active_expeditions and active_expeditions|length > 0 %}
+        <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--color-mars); border: 2px solid white;"></span> Vehicle</span>
+        <span style="color: var(--color-mars);">━━ Route</span>
+        {% endif %}
+        <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #fbbf24; border: 2px solid #f59e0b;"></span> Origin Site</span>
+    </div>
+    <div id="mars-map"></div>
+</details>
+
+<!-- Tab Navigation -->
+<div class="expedition-tabs">
+    <button class="expedition-tab active" data-tab="new" onclick="switchExpeditionTab('new')">
+        New Destinations<span class="tab-count">{{ undiscovered|length }}</span>
+    </button>
+    <button class="expedition-tab" data-tab="ledger" onclick="switchExpeditionTab('ledger'); loadExpeditionHistory();">
+        History<span class="tab-count" id="ledger-count">{{ expedition_count|default('--') }}</span>
+    </button>
+</div>
+
+<!-- Sort Controls -->
+<div class="expedition-controls">
+    <div style="font-size: 13px; color: var(--text-primary);">
+        {% if active_expeditions and active_expeditions|length >= (max_concurrent_expeditions|default(1)) %}
+        <span style="color: var(--color-mars); font-weight: 600;"><img src="{{ icons.warning_alert }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> All {{ max_concurrent_expeditions|default(1) }} expedition slot{% if max_concurrent_expeditions|default(1) > 1 %}s{% endif %} in use</span>
+        {% elif active_expeditions and active_expeditions|length > 0 %}
+        <span style="color: var(--color-success); font-weight: 600;">✓ {{ (max_concurrent_expeditions|default(1)) - active_expeditions|length }} slot{% if (max_concurrent_expeditions|default(1)) - active_expeditions|length > 1 %}s{% endif %} available</span>
+        {% else %}
+        <span><strong>Logistics</strong> = faster travel • <strong>Exploration</strong> = better rewards <a href="#" onclick="event.preventDefault(); showExpeditionCostHelp();" style="color: var(--color-sepolia); font-size: 11px; margin-left: 4px;">(?)</a></span>
+        {% endif %}
+    </div>
+    <select id="expeditionSort" class="sort-select" onchange="sortExpeditions(this.value)">
+        <option value="distance-asc">Distance: Nearest</option>
+        <option value="distance-desc">Distance: Farthest</option>
+        <option value="cost-asc">Cost: Lowest</option>
+        <option value="cost-desc">Cost: Highest</option>
+    </select>
+</div>
+
+<!-- NEW DESTINATIONS Tab -->
+<div id="tab-new" class="expedition-tab-content">
+    {% if undiscovered|length == 0 %}
+    <div class="dashboard-card" style="text-align: center; padding: 40px;">
+        <img src="{{ icons.rocket_launch }}" alt="" style="width: 48px; height: 48px; margin-bottom: 16px;">
+        <h3>Keep Exploring!</h3>
+        <p style="color: var(--text-secondary);">Visit locations in the Visited tab to unlock new destinations nearby. Each expedition expands your reach across Mars!</p>
+    </div>
+    {% else %}
+    <div class="expedition-grid" id="newExpeditionsGrid">
+        {% for landmark in undiscovered[:6] %}
+        <div class="exp-card"
+             data-expedition-index="{{ loop.index0 }}"
+             data-distance="{{ landmark.distance_km }}"
+             data-landmark-index="{{ landmarks.index(landmark) }}"
+             data-slots-full="{% if active_expeditions and active_expeditions|length >= (max_concurrent_expeditions|default(1)) %}true{% else %}false{% endif %}">
+            <div class="exp-card-header">
+                <div>
+                    <div class="exp-card-name">{{ landmark.name }}</div>
+                    <div class="exp-card-type">{{ landmark.type }}</div>
+                </div>
+                <div class="exp-card-cost">
+                    <div class="exp-card-cost-value expedition-total-cost">--</div>
+                    <div class="exp-card-cost-label">Shards</div>
+                </div>
+            </div>
+            <div class="exp-card-metrics">
+                <div class="exp-metric">
+                    <div class="exp-metric-value">{{ landmark.distance_km }}</div>
+                    <div class="exp-metric-label">km</div>
+                </div>
+                <div class="exp-metric">
+                    <div class="exp-metric-value highlight expedition-travel-time">--</div>
+                    <div class="exp-metric-label">days</div>
+                </div>
+                <div class="exp-metric">
+                    <div class="exp-metric-value highlight expedition-speed-mult">--×</div>
+                    <div class="exp-metric-label">speed</div>
+                </div>
+            </div>
+            <div class="exp-card-actions">
+                {% if active_expeditions and active_expeditions|length >= (max_concurrent_expeditions|default(1)) %}
+                <button class="btn btn-secondary expedition-launch-btn" disabled style="background: var(--neutral-400); color: var(--text-muted); cursor: not-allowed;">
+                    Slots Full
+                </button>
+                {% else %}
+                <button class="btn btn-orange expedition-launch-btn">
+                    Plan Expedition
+                </button>
+                {% endif %}
+                <button class="btn btn-secondary expedition-show-map" title="Show on map"><img src="{{ icons.location_pin }}" alt="" style="width: 14px; height: 14px;"></button>
+            </div>
+            <details style="margin-top: 12px;">
+                <summary style="cursor: pointer; font-size: 11px; color: var(--text-muted);">Cost breakdown <span onclick="event.stopPropagation(); showExpeditionCostHelp();" style="color: var(--color-sepolia); cursor: help;" title="What do these costs mean?">(?)</span></summary>
+                <div class="expedition-cost-breakdown" style="margin-top: 8px; font-size: 11px; color: var(--text-secondary);">Loading...</div>
+            </details>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- HISTORY Tab (formerly Ledger + Visited) -->
+<div id="tab-ledger" class="expedition-tab-content" style="display: none;">
+    <div id="ledger-loading" class="dashboard-card" style="text-align: center; padding: 40px;">
+        <img src="{{ icons.processing_hourglass }}" alt="" style="width: 24px; height: 24px; margin-bottom: 12px;">
+        <p style="color: var(--text-secondary);">Loading expedition history...</p>
+    </div>
+    <div id="ledger-empty" class="dashboard-card" style="text-align: center; padding: 40px; display: none;">
+        <img src="{{ icons.empty_expeditions }}" alt="" style="width: 48px; height: 48px; margin-bottom: 16px;">
+        <h3>No Expeditions Yet</h3>
+        <p style="color: var(--text-secondary);">Complete your first expedition to see it recorded in your ledger.</p>
+    </div>
+    <div id="ledger-content" style="display: none;">
+        <div id="ledger-list" class="expedition-grid"></div>
+        <div id="ledger-pagination" style="text-align: center; margin-top: 16px;"></div>
+    </div>
+</div>
+
+<!-- Hidden data for JS -->
+<script id="map-data" type="application/json">{{ landmarks_json|safe }}</script>
+<script id="base-coords" type="application/json">{"latitude": {{ base_lat }}, "longitude": {{ base_lon }}}</script>
+<script>window.maxConcurrentExpeditions = {{ max_concurrent_expeditions|default(1) }};window.activeExpeditionCount = {{ active_expeditions|length if active_expeditions else 0 }};</script>
+<script type="application/json" id="expeditionPageData">
+{
+    "icons": {
+        "calendar_date": "{{ icons.calendar_date }}",
+        "location_pin": "{{ icons.location_pin }}",
+        "stopwatch_duration": "{{ icons.stopwatch_duration }}",
+        "mountain_type": "{{ icons.mountain_type }}",
+        "env_sun_power": "{{ icons.env_sun_power }}",
+        "link_chain": "{{ icons.link_chain }}"
+    }
+}
+</script>
+
+</div><!-- END MAP TAB -->
+
+<!-- ==================== VEHICLES TAB ==================== -->
+<div id="main-tab-vehicles" class="main-tab-content" style="display: none;">
+
+    <!-- Active Expedition Banners (MOVED from Map tab) -->
+    {% if active_expeditions and active_expeditions|length > 0 %}
+    <div style="margin-bottom: 20px;">
+        {% if active_expeditions|length > 1 %}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--color-mars);"><img src="{{ icons.rocket_launch }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> {{ active_expeditions|length }} Active Expeditions</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ active_expeditions|length }}/{{ max_concurrent_expeditions|default(1) }} slots used</div>
+        </div>
+        {% endif %}
+        {% for expedition in active_expeditions %}
+        <div class="active-expedition-banner{% if expedition.status == 'complete' %} expedition-complete{% endif %}" data-expedition-id="{{ expedition.id }}" data-arrives-at="{{ expedition.arrives_at.isoformat() }}Z" data-return-arrives-at="{{ expedition.return_arrives_at.isoformat() if expedition.return_arrives_at else expedition.arrives_at.isoformat() }}Z" data-dest-lat="{{ expedition.destination_lat }}" data-dest-lon="{{ expedition.destination_lon }}" data-departed-at="{{ expedition.departed_at.isoformat() }}Z" data-status="{{ expedition.status }}" data-unclaimed="{{ expedition.unclaimed_count|default(0) }}" data-vehicle-type="{{ expedition.vehicle_type|default('rover') }}" data-cargo="{{ expedition.cargo_capacity|default(5) }}"{% if expedition.status == 'complete' %} onclick="showExpeditionRewardsSummary({{ expedition.id }})" style="cursor: pointer;"{% endif %}>
+            <div class="active-expedition-header">
+                <div>
+                    {% if expedition.status == 'complete' %}
+                    <div class="active-expedition-name"><img src="{{ icons.rocket_launch }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> Returned: {{ expedition.destination_name }} <a href="{{ expedition.destination_link }}" target="_blank" rel="noopener" style="font-size: 12px; font-weight: 400; opacity: 0.85;" onclick="event.stopPropagation()">(NASA Site Research)</a></div>
+                    {% elif expedition.status == 'recalled' %}
+                    <div class="active-expedition-name expedition-phase-label"><img src="{{ icons.rocket_launch }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> <span class="phase-text">Returning</span>: {{ expedition.destination_name }} <span style="font-size: 11px; opacity: 0.7;">(recalled)</span></div>
+                    {% else %}
+                    <div class="active-expedition-name expedition-phase-label"><img src="{{ icons.rocket_launch }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> <span class="phase-text">En Route</span>: {{ expedition.destination_name }} <a href="{{ expedition.destination_link }}" target="_blank" rel="noopener" style="font-size: 12px; font-weight: 400; opacity: 0.85;">(NASA Site Research)</a></div>
+                    {% endif %}
+                    <div style="font-size: 13px; opacity: 0.9;">{{ expedition.vehicle_type|default('rover')|capitalize }} • {{ expedition.destination_type }} • {{ (expedition.distance_km * 2)|round(1) }} km</div>
+                </div>
+                <div style="text-align: right;">
+                    {% if expedition.status == 'complete' %}
+                    <div class="active-expedition-timer expedition-timer" style="color: var(--color-success);">RETURNED!</div>
+                    <div style="font-size: 11px; opacity: 0.8;">{{ expedition.unclaimed_count|default(0) }} unclaimed</div>
+                    {% else %}
+                    <div class="active-expedition-timer expedition-timer">Calculating...</div>
+                    <div style="font-size: 11px; opacity: 0.8;">remaining</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="active-expedition-progress">
+                <div class="active-expedition-progress-fill discovery-progress-fill" style="width: {% if expedition.status == 'complete' %}100{% else %}0{% endif %}%;"></div>
+            </div>
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 12px;">
+                    {% if expedition.status == 'complete' %}
+                    <span class="discovery-status">{{ expedition.unclaimed_count|default(0) }} items found</span> •
+                    <span class="distance-progress">{{ expedition.distance_km }}</span> / {{ expedition.distance_km }} km
+                    {% else %}
+                    <span class="discovery-status">Scanning...</span> •
+                    <span class="distance-progress">0</span> / {{ expedition.distance_km }} km
+                    {% endif %}
+                </div>
+                {% if expedition.status == 'traveling' %}
+                <button class="recall-btn btn" style="background: rgba(255,255,255,0.15); color: white; font-size: 12px; padding: 6px 12px; border: 1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation(); recallExpedition({{ expedition.id }}, this)">Recall {{ expedition.vehicle_type|default('rover')|capitalize }}</button>
+                {% endif %}
+                <button class="claim-all-expedition-btn btn" style="background: white; color: var(--color-mars-dark); font-size: 12px; padding: 6px 12px;{% if expedition.status != 'complete' %} display: none;{% endif %}" onclick="event.stopPropagation(); claimAllExpeditionDiscoveries({{ expedition.id }}, event)">Claim {{ expedition.unclaimed_count|default(0) }} Items</button>
+            </div>
+            <div class="discoveries-container" style="display: none; margin-top: 12px;"></div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="dashboard-card" style="margin-bottom: 16px;">
+        <h3 style="margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+            <img src="{{ icons.vehicle_speed }}" alt="" style="width: 24px; height: 24px;">
+            Your Fleet
+        </h3>
+        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+            Vehicles are your expedition workhorses. Each has unique stats for speed, cargo capacity, and discovery rates.
+        </p>
+
+        {% if owned_vehicles|length > 0 %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+            {% for vehicle in owned_vehicles %}
+            {% set ns = namespace(expedition=None) %}
+            {% for exp in active_expeditions if exp.vehicle_type == vehicle.vehicle_type and exp.status in ('traveling', 'recalled') %}
+                {% set ns.expedition = exp %}
+            {% endfor %}
+            {% set vehicle_expedition = ns.expedition %}
+            <div class="dashboard-card vehicle-card {% if vehicle_expedition %}vehicle-on-mission{% endif %}"
+                 style="background: {% if vehicle_expedition %}linear-gradient(135deg, rgba(181,112,64,0.15), var(--bg-tertiary)){% else %}var(--bg-tertiary){% endif %}; padding: 16px; border: 1px solid {% if vehicle_expedition %}var(--color-mars){% else %}transparent{% endif %}; cursor: pointer;"
+                 data-vehicle-type="{{ vehicle.vehicle_type }}"
+                 data-vehicle-name="{{ vehicle.name }}"
+                 data-vehicle-level="{{ vehicle.level }}"
+                 data-vehicle-cargo="{{ vehicle.cargo }}"
+                 data-vehicle-speed="{{ vehicle.speed_mult }}"
+                 data-vehicle-image="{{ vehicle.image_url or '' }}"
+                 data-vehicle-discovery="{{ vehicle.discovery_bonus }}"
+                 data-vehicle-rare="{{ vehicle.rare_bonus }}"
+                 data-vehicle-legendary="{{ vehicle.legendary_bonus }}"
+                 data-vehicle-max-range="{{ vehicle.max_range_km }}"
+                 data-vehicle-base-range="{{ vehicle.base_range_km }}"
+                 data-vehicle-base-speed="{{ vehicle.base_speed }}"
+                 data-vehicle-effective-range="{{ vehicle.effective_range_km }}"
+                 data-range-mult="{{ range_mult }}"
+                 data-discovery-count="{{ discovery_count }}"
+                 {% if vehicle_expedition %}data-expedition-id="{{ vehicle_expedition.id }}"
+                 data-exp-dest="{{ vehicle_expedition.destination_name }}"
+                 data-exp-dest-type="{{ vehicle_expedition.destination_type }}"
+                 data-exp-distance="{{ vehicle_expedition.distance_km }}"
+                 data-exp-status="{{ vehicle_expedition.status }}"
+                 data-exp-arrives-at="{{ vehicle_expedition.arrives_at.isoformat() }}Z"
+                 data-exp-return-at="{{ vehicle_expedition.return_arrives_at.isoformat() if vehicle_expedition.return_arrives_at else vehicle_expedition.arrives_at.isoformat() }}Z"
+                 data-exp-departed-at="{{ vehicle_expedition.departed_at.isoformat() }}Z"{% endif %}
+                 onclick="showVehicleDetail(this)">
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    {% if vehicle.image_url %}
+                    <img src="{{ vehicle.image_url }}" alt="{{ vehicle.name }}" style="width: 56px; height: 56px; border-radius: 8px; object-fit: cover; flex-shrink: 0;">
+                    {% else %}
+                    <div style="width: 56px; height: 56px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">
+                        {% if vehicle.vehicle_type == 'drone' %}<img src="{{ icons.vehicle_drone }}" alt="" class="inline-icon-xl">{% elif vehicle.vehicle_type == 'buggy' %}<img src="{{ icons.vehicle_buggy }}" alt="" class="inline-icon-xl">{% else %}<img src="{{ icons.vehicle_rover }}" alt="" class="inline-icon-xl">{% endif %}
+                    </div>
+                    {% endif %}
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <div style="font-weight: 700; font-size: 15px;">{{ vehicle.name }}</div>
+                            {% if vehicle_expedition %}
+                            <span style="font-size: 10px; padding: 2px 6px; background: var(--color-mars); color: white; border-radius: 4px; font-weight: 600;">ON MISSION</span>
+                            {% else %}
+                            <span style="font-size: 10px; padding: 2px 6px; background: var(--color-success); color: white; border-radius: 4px; font-weight: 600;">AVAILABLE</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Lv{{ vehicle.level }} • {{ vehicle.cargo }} cargo{% if vehicle.speed_mult > 1.0 %} • {{ vehicle.speed_mult }}× speed{% endif %}</div>
+
+                        {% if vehicle_expedition %}
+                        <!-- Simple destination indicator (full details in orange banners above) -->
+                        <div style="font-size: 11px; color: var(--color-mars); margin-top: 4px;">
+                            → {{ vehicle_expedition.destination_name }} ({{ vehicle_expedition.distance_km }} km)
+                        </div>
+                        {% else %}
+                        <!-- Stats badges -->
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
+                            {% if vehicle.discovery_bonus > 0 %}<span class="effect-badge" style="font-size: 10px; padding: 2px 6px;">+{{ (vehicle.discovery_bonus * 100)|int }}% find</span>{% endif %}
+                            {% if vehicle.rare_bonus > 0 %}<span class="effect-badge" style="font-size: 10px; padding: 2px 6px; background: rgba(96,165,250,0.15); color: #60a5fa;">+{{ (vehicle.rare_bonus * 100)|int }}% rare</span>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <img src="{{ icons.vehicle_speed }}" alt="" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 12px;">
+            <p>No vehicles yet. Visit the Depot to purchase your first rover!</p>
+            <a href="/depot" class="btn btn-orange" style="margin-top: 12px;">Visit Depot</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-card">
+        <h3 style="margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+            <img src="{{ icons.upgrade_arrow }}" alt="" style="width: 24px; height: 24px;">
+            Upgrade Your Vehicles
+        </h3>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+            Higher level vehicles have more cargo capacity and faster travel times. Upgrades are available in your Colony.
+        </p>
+        <a href="/colony?tab=assets" class="btn btn-secondary">View in Colony →</a>
+    </div>
+</div>
+
+<!-- ==================== SIGNAL TAB ==================== -->
+<div id="main-tab-signal" class="main-tab-content" style="display: none;">
+    <!-- Signal Hero -->
+    <div class="signal-hero flex flex-col justify-center rounded-lg" style="position: relative; padding: 40px 20px 30px 20px; overflow: hidden; min-height: 180px; margin-bottom: 20px;">
+        <div class="signal-hero-bg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, rgba(10, 10, 20, 0.95) 0%, rgba(20, 15, 30, 0.9) 50%, rgba(30, 20, 40, 0.95) 100%);"></div>
+        <div class="signal-network-pulse" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background: radial-gradient(ellipse at center, rgba(var(--color-sepolia-rgb), 0.15) 0%, transparent 50%); animation: pulse 4s ease-in-out infinite;"></div>
+        <div class="text-center" style="position: relative; z-index: 2;">
+            <div style="font-size: 10px; letter-spacing: 3px; color: var(--color-sepolia); text-transform: uppercase; margin-bottom: 8px;">SHARD NETWORK</div>
+            <h2 style="font-family: var(--font-mono); font-weight: 600; color: var(--text-primary); text-shadow: 0 0 20px rgba(var(--color-sepolia-rgb), 0.3); margin: 0 0 8px 0; font-size: 28px;">The Signal</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; max-width: 500px; margin: 0 auto;">
+                <em>"Fourteen nodes remain dormant. The first to reach them will be remembered forever."</em>
+            </p>
+        </div>
+    </div>
+
+    <!-- Signal Stats -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+        <div class="dashboard-card" style="text-align: center; padding: 16px;">
+            <div style="font-size: 24px; font-weight: 700; font-family: var(--font-mono); color: var(--color-sepolia);">{{ signal_stats.stats.claimed_origins|default(0) }}/{{ signal_stats.stats.total_origins|default(14) }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 4px;">Origin Nodes Active</div>
+        </div>
+        <div class="dashboard-card" style="text-align: center; padding: 16px;">
+            <div style="font-size: 24px; font-weight: 700; font-family: var(--font-mono); color: var(--color-mars);">{{ signal_stats.stats.total_echoes_discovered|default(0) }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 4px;">Echo Fragments</div>
+        </div>
+        <div class="dashboard-card" style="text-align: center; padding: 16px;">
+            <div style="font-size: 24px; font-weight: 700; font-family: var(--font-mono); color: var(--color-success);">{{ signal_stats.stats.total_echo_claims|default(0) }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 4px;">Memories Recovered</div>
+        </div>
+        <div class="dashboard-card" style="text-align: center; padding: 16px;">
+            <div style="font-size: 24px; font-weight: 700; font-family: var(--font-mono); color: var(--text-muted);">{{ signal_stats.stats.reconstruction_percent|default(0) }}%</div>
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 4px;">Network Restored</div>
+        </div>
+    </div>
+
+    <!-- Origin Sites Section -->
+    <details class="dashboard-card" open style="margin-bottom: 16px;">
+        <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--color-sepolia);">◆</span>
+            Origin Nodes
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">Dormant Memory Sites</span>
+        </summary>
+        <div style="margin-top: 16px;">
+            <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
+                "There are places on this world where... something lingers. I have fragments—coordinates, perhaps.
+                They exist in the permanent record. The shards remember what I cannot."
+            </p>
+
+            {% if signal_stats.unclaimed_origins %}
+            <h4 style="font-size: 13px; color: var(--color-mars); margin: 16px 0 12px 0; font-weight: 600;">Dormant Nodes Detected ({{ signal_stats.unclaimed_origins|length }})</h4>
+            <div style="display: grid; gap: 8px;">
+                {% for site in signal_stats.unclaimed_origins %}
+                {% set lat_code = "%03d"|format((site.latitude|abs * 10)|int) %}
+                {% set lon_code = "%03d"|format((site.longitude|abs * 10)|int) %}
+                {% set node_id = "NODE-" ~ lat_code ~ lon_code %}
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-family: var(--font-mono); color: var(--color-sepolia); font-weight: 600;">{{ node_id }}</span>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">
+                            {% if site.mission_status == 'successful' %}Signal: Strong
+                            {% elif site.mission_status == 'crashed' %}Signal: Fragmented
+                            {% else %}Signal: Faint{% endif %}
+                        </span>
+                    </div>
+                    <span style="font-size: 10px; color: var(--color-mars); font-weight: 600; text-transform: uppercase;">AWAITING FOUNDER</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if signal_stats.claimed_origins %}
+            <h4 style="font-size: 13px; color: var(--color-sepolia); margin: 20px 0 12px 0; font-weight: 600;">Activated Nodes ({{ signal_stats.claimed_origins|length }})</h4>
+            <div style="display: grid; gap: 12px;">
+                {% for site in signal_stats.claimed_origins %}
+                <div style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1) 0%, var(--bg-tertiary) 100%); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3); border-radius: 8px; padding: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <span style="font-family: var(--font-mono); color: var(--color-sepolia); font-weight: 600;">{{ site.site_code }}</span>
+                            <span style="font-size: 13px; color: var(--text-primary); margin-left: 8px;">{{ site.mission_name }}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">FOUNDER:</span>
+                            <div style="font-size: 12px; color: var(--color-success); font-weight: 600;">{{ site.founder_commander_name }}{% if site.founder_wallet_prefix %} <span style="color: var(--color-sepolia);">◆ {{ site.founder_wallet_prefix }}</span>{% endif %}</div>
+                        </div>
+                    </div>
+                    {% if site.memory_text %}
+                    <div style="background: rgba(0, 0, 0, 0.2); border-radius: 6px; padding: 12px; font-style: italic; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                        "{{ site.memory_text }}"
+                    </div>
+                    {% endif %}
+                    {% if site.legendary_item_name %}
+                    <div style="margin-top: 12px; background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.15), rgba(var(--color-sepolia-rgb), 0.1)); border: 1px solid rgba(var(--color-mars-rgb), 0.3); border-radius: 6px; padding: 10px 12px; display: flex; align-items: center; gap: 10px;">
+                        {% if site.legendary_item_image_url %}<img src="{{ site.legendary_item_image_url }}" alt="" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover;">{% endif %}
+                        <div style="flex: 1;">
+                            <span style="font-size: 9px; color: var(--color-mars); text-transform: uppercase; font-weight: 700;">LEGENDARY</span>
+                            <div style="font-size: 13px; color: var(--text-primary); font-weight: 600;">{{ site.legendary_item_name }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if not signal_stats.claimed_origins and not signal_stats.unclaimed_origins %}
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">[NO SIGNAL DETECTED]</div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- Echo Sites Section -->
+    <details class="dashboard-card" style="margin-bottom: 16px;">
+        <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--color-mars);">✶</span>
+            Echo Fragments
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">Scattered Memories</span>
+        </summary>
+        <div style="margin-top: 16px;">
+            <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
+                "Sometimes when you travel far... I feel something stir. Like a memory trying to surface.
+                Fragments. Echoes. They appear when pilgrims pass through certain regions."
+            </p>
+
+            {% if signal_stats.echo_sites %}
+            <h4 style="font-size: 13px; color: var(--color-success); margin: 16px 0 12px 0; font-weight: 600;">Active Echo Sites ({{ signal_stats.echo_sites|length }})</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                {% for echo in signal_stats.echo_sites %}
+                <div style="background: var(--bg-tertiary); border: 1px solid {% if echo.is_depleted %}var(--border-default){% else %}rgba(var(--color-success-rgb), 0.3){% endif %}; border-radius: 8px; padding: 12px; {% if echo.is_depleted %}opacity: 0.6;{% endif %}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--color-sepolia);">{{ echo.site_code }}</span>
+                        <span style="font-size: 10px; color: var(--color-success);">{{ echo.slots_remaining }} slots</span>
+                    </div>
+                    {% if echo.nearby_landmark %}<div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Near: {{ echo.nearby_landmark }}</div>{% endif %}
+                    <div style="font-size: 10px; color: var(--text-secondary);">{{ echo.total_claims }} claims</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">"Nothing stirs. The network sleeps. Perhaps with more exploration..."</div>
+            {% endif %}
+
+            {% if signal_stats.recent_echo_claims %}
+            <h4 style="font-size: 13px; color: var(--color-sepolia); margin: 20px 0 12px 0; font-weight: 600;">Recent Recoveries</h4>
+            <div style="display: grid; gap: 8px;">
+                {% for claim in signal_stats.recent_echo_claims %}
+                <div style="background: var(--bg-tertiary); border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 13px; color: var(--text-primary); font-weight: 500;">{{ claim.commander_name }}</span>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">{{ claim.site_code }}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        {% if claim.claim_rank == 1 %}
+                        <span style="font-size: 10px; color: var(--color-sepolia); font-weight: 700;">FIRST FINDER</span>
+                        {% else %}
+                        <span style="font-size: 10px; color: var(--text-muted);">#{{ claim.claim_rank }}</span>
+                        {% endif %}
+                        <div style="font-size: 9px; color: {% if claim.claim_tier == 'legendary' %}var(--color-mars){% elif claim.claim_tier == 'rare' %}var(--color-sepolia){% elif claim.claim_tier == 'uncommon' %}var(--color-success){% else %}var(--text-muted){% endif %}; text-transform: uppercase;">{{ claim.claim_tier }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </details>
+
+    <!-- Decoder Terminal -->
+    <details class="dashboard-card" open style="margin-bottom: 16px;">
+        <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--color-sepolia);">⌘</span>
+            Decoder Terminal
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">[RESTRICTED ACCESS]</span>
+        </summary>
+        <div style="margin-top: 16px;">
+            <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
+                "If you have found something... a sequence, a pattern... I can try to process it.
+                Some inputs trigger responses I do not fully understand."
+            </p>
+
+            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3); border-radius: var(--radius-md); padding: 16px; font-family: var(--font-mono);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 11px;">
+                    <span style="color: var(--color-sepolia);">ARIA://INPUT&gt;</span>
+                    <span id="signalDecoderStatus" style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">LISTENING</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="signalDecoderInput" placeholder="..." autocomplete="off" spellcheck="false"
+                           style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;">
+                    <button id="signalDecoderSubmit" onclick="submitSignalDecoder()" style="background: rgba(var(--color-sepolia-rgb), 0.2); border: 1px solid var(--color-sepolia); border-radius: var(--radius-sm); padding: 10px 16px; color: var(--color-sepolia); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; cursor: pointer;">TRANSMIT</button>
+                </div>
+                <div id="signalDecoderResult" style="display: none; margin-top: 12px; padding: 12px; border-radius: var(--radius-sm);"></div>
+            </div>
+        </div>
+    </details>
+
+    <!-- The Mystery -->
+    <details class="dashboard-card" style="margin-bottom: 16px;">
+        <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--color-sepolia);">☉</span>
+            The Eternal Ledger
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">[CLASSIFIED]</span>
+        </summary>
+        <div style="margin-top: 16px;">
+            <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
+                "The shards... they carry more than energy. There is data encoded within.
+                Permanent. Unchangeable. I can sense the patterns but cannot read them directly."
+            </p>
+
+            <div style="background: var(--bg-tertiary); border: 1px solid rgba(var(--color-sepolia-rgb), 0.2); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 9px; letter-spacing: 1px; color: var(--text-muted);">ARIA MEMORY FRAGMENT</span>
+                    <span style="font-size: 9px; letter-spacing: 1px; color: var(--color-success); animation: blink 2s ease-in-out infinite;">RECONSTRUCTING</span>
+                </div>
+                <p style="font-style: italic; font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin: 0;">
+                    "Before you arrived, there was a record. A ledger that spans... I cannot say how long.
+                    Every movement tracked. Every transfer logged. The coordinates are there.
+                    I have seen glimpses. Numbers. Positions. But the full picture eludes me."
+                </p>
+            </div>
+
+            <div style="background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.1) 0%, rgba(var(--color-sepolia-rgb), 0.1) 100%); border: 1px solid rgba(var(--color-mars-rgb), 0.2); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                <p style="font-style: italic; font-size: 13px; color: var(--text-secondary); margin: 0;">
+                    "How many nodes remain dormant? I have counted, but the number feels... significant.<br>
+                    Where do they wait? The ledger holds the answer.<br>
+                    What am I trying to remember? Perhaps you can help me understand."
+                </p>
+            </div>
+
+            <div style="margin-top: 16px; padding: 12px 16px; background: rgba(var(--color-success-rgb), 0.1); border: 1px dashed rgba(var(--color-success-rgb), 0.3); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 11px;">
+                <span style="color: var(--color-success); font-weight: 600; margin-right: 8px;">[SYSTEM]</span>
+                <span style="color: var(--text-secondary);">Transaction data fields contain encoded information.</span>
+            </div>
+        </div>
+    </details>
+
+    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+        <p style="font-size: 13px; margin: 0;">
+            <em>Origin Sites appear on the Mars Map when you explore nearby.<br>
+            The first to reach a dormant node becomes its Founder—forever.</em>
+        </p>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

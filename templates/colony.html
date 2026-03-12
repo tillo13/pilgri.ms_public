@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+{% block title %}Colony - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'colony';
+        {% if user %}
+        // First-time tutorial for authenticated users
+        if (!localStorage.getItem('ariaTutorial_colony')) {
+            chat.dataset.greeting = "This is your **inventory**—everything you own on Mars.\n\n**Discoveries** – Items found on expeditions. Tap to extract shards.\n**Equipment** – Gear you've purchased.\n**Assets** – Infrastructure and buildings.\n**Lab** – Research and upgrades.\n\nYour scientist extracts more shards from rare discoveries!";
+        }
+        let colCtx = 'User on Colony page. Tabs: Discoveries, Equipment, Assets, Lab, Activity. ';
+        {% if active_infrastructure and active_infrastructure|length > 0 %}
+        colCtx += 'INFRASTRUCTURE ({{ active_infrastructure|length }} buildings): ';
+        {% for s in active_infrastructure %}colCtx += '{{ s.name }} Lv{{ s.level|default(1) }}{% if not loop.last %}, {% endif %}';{% endfor %}
+        colCtx += '. ';
+        {% endif %}
+        {% if building_infrastructure and building_infrastructure|length > 0 %}
+        colCtx += 'BUILDING: ';
+        {% for b in building_infrastructure %}colCtx += '{{ b.name }} (ready {{ b.ready_at_str }}){% if not loop.last %}, {% endif %}';{% endfor %}
+        colCtx += '. ';
+        {% endif %}
+        {% if owned_vehicles and owned_vehicles|length > 0 %}
+        colCtx += 'VEHICLES: ';
+        {% for v in owned_vehicles %}colCtx += '{{ v.vehicle_type }} Lv{{ v.level|default(1) }}{% if v.on_expedition %} (on expedition to {{ v.expedition_destination }}){% endif %}{% if not loop.last %}, {% endif %}';{% endfor %}
+        colCtx += '. ';
+        {% endif %}
+        colCtx += 'Discoveries tab shows unclaimed expedition finds. Equipment tab shows owned gear. Assets tab shows infrastructure + vehicles. Lab tab links to /research.';
+        chat.dataset.pageContext = colCtx;
+        {% else %}
+        chat.dataset.pageContext = 'Anonymous visitor on Colony page. Cannot view colony assets without signing in. Prompt them to begin their journey or sign in.';
+        {% endif %}
+    }
+
+    {% if user %}
+    // Auto-open ARIA tutorial for first-time authenticated users
+    setTimeout(function() {
+        if (!localStorage.getItem('ariaTutorial_colony')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaTutorial_colony', 'true');
+            }
+        }
+    }, 1500);
+    {% endif %}
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/colony.css?v={{ static_v }}">
+{% endblock %}
+
+{% block content %}
+
+{% if not user %}
+<h1>Colony</h1>
+<!-- ANONYMOUS USER -->
+<div class="dashboard-card card-dark text-center" style="padding: 40px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Colony" class="mb-20" style="width: 80px; height: 80px; filter: drop-shadow(0 4px 12px rgba(var(--color-mars-rgb), 0.4));">
+    <h2 class="text-white mb-12">Your Mars Colony</h2>
+    <p class="text-lg leading-relaxed opacity-90 mb-24 mx-auto max-w-500">
+        Every discovery you make, every structure you build, every vehicle in your fleet - this is where your colony lives. Track your progress and see everything you've built on Mars.
+    </p>
+    <div class="flex gap-16 justify-center flex-wrap">
+        <a href="/" class="btn btn-large text-white font-bold" style="background: var(--gradient-success); padding: 16px 32px;">Begin Your Journey</a>
+        <a href="/login" class="btn btn-large text-white" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 16px 32px;">Return to Mars</a>
+    </div>
+    <p class="text-sm opacity-50 mt-20">Already established a colony? Sign in to continue your pilgrimage.</p>
+</div>
+
+{% else %}
+<!-- AUTHENTICATED USER: Full Colony View -->
+
+<!-- Hero Section -->
+<div class="hero-section relative rounded-lg overflow-hidden flex flex-col justify-center" style="margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 140px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/hero_inventory_1767643020_hero.png" alt="Colony" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0 object-cover">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Your Assets & Discoveries</div>
+        <h1 class="hero-title text-white mb-0" style="text-shadow: 0 3px 20px rgba(0,0,0,0.7); font-size: 26px;">Colony</h1>
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="colony-tabs">
+    <button class="colony-tab active" data-tab="discoveries" onclick="switchColonyTab('discoveries')">
+        <img src="{{ icons.tab_map }}" alt="" class="colony-tab-icon" style="width: 18px; height: 18px;">
+        <span class="colony-tab-label">Discoveries</span>
+    </button>
+    <button class="colony-tab" data-tab="equipment" onclick="switchColonyTab('equipment')">
+        <img src="{{ icons.tab_tools }}" alt="" class="colony-tab-icon" style="width: 18px; height: 18px;">
+        <span class="colony-tab-label">Equipment</span>
+    </button>
+    <button class="colony-tab" data-tab="assets" onclick="switchColonyTab('assets')">
+        <img src="{{ icons.construction_crane }}" alt="" class="colony-tab-icon" style="width: 18px; height: 18px;">
+        <span class="colony-tab-label">Assets</span>
+    </button>
+    <button class="colony-tab" data-tab="lab" onclick="switchColonyTab('lab')">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="" class="colony-tab-icon" style="width: 18px; height: 18px;">
+        <span class="colony-tab-label">Lab</span>
+    </button>
+    <button class="colony-tab" data-tab="activity" onclick="switchColonyTab('activity')">
+        <span class="colony-tab-icon" style="font-size: 16px;">&#9776;</span>
+        <span class="colony-tab-label">Activity</span>
+    </button>
+</div>
+
+<!-- DISCOVERIES Tab -->
+<div id="tab-discoveries" class="colony-tab-content">
+    <!-- ARIA Bonds Section -->
+    <div id="ariaBondsSection" style="display: none; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="color: #06b6d4; font-size: 16px;">&#9889;</span>
+            <h3 style="color: var(--text-primary); font-size: 14px; font-weight: 600; margin: 0;">ARIA BONDS</h3>
+            <span style="color: var(--text-muted); font-size: 11px;">Entangled Crystal Fragments</span>
+        </div>
+        <div id="ariaBondsGrid" class="colony-grid" style="margin-bottom: 16px;"></div>
+    </div>
+
+    <!-- Shard It All Banner -->
+    <div id="shardItAllBanner" class="shard-it-all-banner" style="display: none;">
+        <button class="btn shard-it-all-btn" onclick="showShardItAllModal()">
+            <img src="{{ icons.shard_gem }}" alt="" style="width: 16px; height: 16px; margin-right: 6px;"> Shard It All!
+        </button>
+        <div class="shard-banner-meta">
+            <div class="shard-banner-quote" id="shardBannerQuote"></div>
+            <div class="shard-banner-info">
+                <span id="shardableCount">0</span> specimens &bull; <span id="shardableValue">0</span> shards
+            </div>
+        </div>
+    </div>
+
+    <div class="colony-controls">
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all" onclick="filterDiscoveries('all')">All</button>
+            <button class="filter-btn" data-filter="legendary" onclick="filterDiscoveries('legendary')"><img src="{{ icons.rarity_legendary }}" alt="" style="width: 14px; height: 14px;"> Legendary</button>
+            <button class="filter-btn" data-filter="rare" onclick="filterDiscoveries('rare')"><img src="{{ icons.rarity_rare }}" alt="" style="width: 14px; height: 14px;"> Rare</button>
+            <button class="filter-btn" data-filter="uncommon" onclick="filterDiscoveries('uncommon')"><img src="{{ icons.rarity_uncommon }}" alt="" style="width: 14px; height: 14px;"> Uncommon</button>
+            <button class="filter-btn" data-filter="common" onclick="filterDiscoveries('common')"><img src="{{ icons.rarity_common }}" alt="" style="width: 14px; height: 14px;"> Common</button>
+        </div>
+        <select class="sort-select" id="discoverySort" onchange="sortDiscoveries(this.value)">
+            <option value="rarity-desc">Rarity: Best First</option>
+            <option value="rarity-asc">Rarity: Common First</option>
+            <option value="value-desc">Value: High to Low</option>
+            <option value="value-asc">Value: Low to High</option>
+            <option value="weight-desc">Weight: Heaviest</option>
+            <option value="weight-asc">Weight: Lightest</option>
+            <option value="distance-desc">Distance: Farthest</option>
+            <option value="recent">Most Recent</option>
+            <option value="oldest">Oldest First</option>
+        </select>
+    </div>
+    <div id="discoveriesGrid" class="colony-grid">
+        <div class="empty-state">
+            <img src="{{ icons.box_package }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+            <div class="empty-state-text">Loading discoveries...</div>
+        </div>
+    </div>
+</div>
+
+<!-- EQUIPMENT Tab -->
+<div id="tab-equipment" class="colony-tab-content" style="display: none;">
+    <div class="colony-controls">
+        <div class="text-base text-secondary">Equipment upgrades improve expedition performance</div>
+        <a href="/depot" class="btn btn-purple btn-small">Shop More</a>
+    </div>
+    <div id="equipmentGrid" class="colony-grid">
+        <div class="empty-state">
+            <img src="{{ icons.tab_tools }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+            <div class="empty-state-text">Loading equipment...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ASSETS Tab -->
+<div id="tab-assets" class="colony-tab-content" style="display: none;">
+    <div class="colony-controls">
+        <div class="text-base text-secondary">Your infrastructure, vehicles, and construction progress</div>
+        <a href="/depot" class="btn btn-purple btn-small">Build More</a>
+    </div>
+
+    <!-- Base Overview Summary -->
+    {% set total_hourly_income = namespace(value=0) %}
+    {% for building in active_infrastructure|default([]) %}
+        {% if building.generates_resource == 'sepolia' and building.generation_rate %}
+            {% set total_hourly_income.value = total_hourly_income.value + building.generation_rate %}
+        {% endif %}
+    {% endfor %}
+    {% set total_building = (building_infrastructure|default([])|length) + (building_equipment|default([])|length) %}
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-default);">
+        <div style="text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--color-warning);">+{{ "%.0f"|format(total_hourly_income.value) }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Shards/hr</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--color-success);">{{ active_infrastructure|default([])|length }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Active</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--color-primary);">{{ owned_vehicles|default([])|length }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Vehicles</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 22px; font-weight: 700; color: var(--color-mars);">{{ total_building }}</div>
+            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Building</div>
+        </div>
+    </div>
+
+    <!-- Under Construction Section -->
+    {% set total_building = (building_infrastructure|default([])|length) + (building_equipment|default([])|length) %}
+    {% if total_building > 0 %}
+    <div class="assets-section-header">
+        <img src="{{ icons.hammer_building }}" alt="" style="width: 16px; height: 16px;">
+        <span class="assets-section-title">Under Construction</span>
+        <span class="assets-section-count">{{ total_building }} building</span>
+    </div>
+    <div class="colony-grid" id="buildingGrid">
+        {% for building in building_infrastructure|default([]) %}
+        <div class="asset-card building clickable"
+             onclick="showInfrastructureModal(this)"
+             data-seconds-remaining="{{ building.seconds_remaining }}"
+             data-name="{{ building.name }}"
+             data-type="{{ building.structure_type }}"
+             data-description="{{ building.description|e }}"
+             data-image="{{ building.image_url or '' }}"
+             data-icon="{{ building.icon|default('') }}"
+             data-tier="{{ building.tier }}"
+             data-category="{{ building.category }}"
+             data-effect="{{ building.effect or '' }}"
+             data-effect-value="{{ building.effect_value if building.effect_value is not none else '' }}"
+             data-generates="{{ building.generates_resource or '' }}"
+             data-rate="{{ building.generation_rate }}"
+             data-total-generated="0"
+             data-cost="{{ building.cost_display|default(0) }}"
+             data-created="{{ building.created_at_str|default('Unknown') }}"
+             data-ready="{{ building.ready_at_str|default('') }}"
+             data-ready-iso="{{ building.ready_at_iso|default('') }}"
+             data-build-time-total="{{ building.build_time_total|default(0) }}"
+             data-requirements="{{ building.requirements|join(', ') if building.requirements else '' }}"
+             data-tx-hash="{{ building.tx_hash|default('') }}"
+             data-status="building">
+            {% if building.image_url %}
+            <img src="{{ building.image_url }}" alt="{{ building.name }}" class="asset-card-image" loading="lazy" style="opacity: 0.7;">
+            {% else %}
+            <div class="asset-card-image" style="display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--color-mars);">&#128736;</div>
+            {% endif %}
+            <div class="asset-card-content">
+                <div class="asset-card-header">
+                    <span class="asset-card-name">{{ building.name }}</span>
+                    <span class="asset-card-status building">Building</span>
+                </div>
+                <div class="asset-card-stats">
+                    <div class="asset-card-stat">
+                        <span>&#9200;</span>
+                        <span class="asset-card-stat-value building-timer">
+                            {% set remaining = building.seconds_remaining %}
+                            {% if remaining > 86400 %}{{ (remaining / 86400)|round(1) }}d
+                            {% elif remaining > 3600 %}{{ (remaining / 3600)|round(1) }}h
+                            {% else %}{{ (remaining / 60)|round(0) }}m{% endif %}
+                        </span>
+                    </div>
+                    {% if building.generation_rate > 0 %}
+                    <div class="asset-card-stat">
+                        <span>&#9889;</span>
+                        <span class="asset-card-stat-value">+{{ "%.1f"|format(building.generation_rate) }}/hr</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% for item in building_equipment|default([]) %}
+        <div class="asset-card building clickable"
+             onclick="showBuildingEquipmentModal(this)"
+             data-seconds-remaining="{{ item.seconds_remaining }}"
+             data-name="{{ item.name }}"
+             data-icon="{{ item.icon }}"
+             data-image="{{ item.image_url or '' }}"
+             data-description="{{ item.description|e }}"
+             data-category="{{ item.category }}"
+             data-cost="{{ item.cost }}"
+             data-ready-at="{{ item.ready_at_str }}"
+             data-ready-iso="{{ item.ready_at_iso|default('') }}"
+             data-purchased-at="{{ item.purchased_at_str|default('') }}"
+             data-build-time-total="{{ item.build_time_total|default(0) }}"
+             data-requirements="{{ item.requirements|join(', ') if item.requirements else '' }}"
+             data-max-owned="{{ item.max_owned|default(1) }}"
+             data-discovery-bonus="{{ item.discovery_chance_bonus|default(0) }}"
+             data-rare-bonus="{{ item.rare_chance_bonus|default(0) }}"
+             data-legendary-bonus="{{ item.legendary_chance_bonus|default(0) }}"
+             data-speed-mult="{{ item.expedition_speed_mult|default(0) }}"
+             data-cargo-slots="{{ item.cargo_slots|default(0) }}"
+             data-fuel-mult="{{ item.fuel_cost_mult|default(0) }}"
+             data-tx-hash="{{ item.tx_hash|default('') }}">
+            {% if item.image_url %}
+            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="asset-card-image" loading="lazy" style="opacity: 0.7;">
+            {% else %}
+            <div class="asset-card-image" style="display: flex; align-items: center; justify-content: center; font-size: 32px;">{{ item.icon }}</div>
+            {% endif %}
+            <div class="asset-card-content">
+                <div class="asset-card-header">
+                    <span class="asset-card-name">{{ item.name }}</span>
+                    <span class="asset-card-status building">Building</span>
+                </div>
+                <div class="asset-card-stats">
+                    <div class="asset-card-stat">
+                        <span>&#9200;</span>
+                        <span class="asset-card-stat-value building-timer">
+                            {% set remaining = item.seconds_remaining %}
+                            {% if remaining > 86400 %}{{ (remaining / 86400)|round(1) }}d
+                            {% elif remaining > 3600 %}{{ (remaining / 3600)|round(1) }}h
+                            {% else %}{{ (remaining / 60)|round(0) }}m{% endif %}
+                        </span>
+                    </div>
+                    <div class="asset-card-stat">
+                        <span>{{ item.category }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Active Infrastructure Section -->
+    {% if active_infrastructure and active_infrastructure|length > 0 %}
+    <div class="assets-section-header">
+        <img src="{{ icons.env_sun_power }}" alt="" style="width: 16px; height: 16px;">
+        <span class="assets-section-title">Infrastructure</span>
+        <span class="assets-section-count">{{ active_infrastructure|length }} active</span>
+    </div>
+    <div class="colony-grid">
+        {% for building in active_infrastructure %}
+        <div class="asset-card active clickable"
+             onclick="showInfrastructureModal(this)"
+             data-name="{{ building.name }}"
+             data-type="{{ building.structure_type }}"
+             data-description="{{ building.description|e }}"
+             data-image="{{ building.image_url or '' }}"
+             data-icon="{{ building.icon|default('') }}"
+             data-tier="{{ building.tier }}"
+             data-level="{{ building.level|default(1) }}"
+             data-max-level="{{ building.max_level|default(10) }}"
+             data-level-name="{{ building.level_name|default('Level 1') }}"
+             data-is-upgrading="{{ 'true' if building.is_upgrading else 'false' }}"
+             data-upgrade-status="{{ building.upgrade_status|tojson|e if building.upgrade_status else '{}' }}"
+             data-next-level-cost="{{ building.next_level_cost|default(0) }}"
+             data-next-level-name="{{ building.next_level_name|default('') }}"
+             data-next-build-time-days="{{ building.next_build_time_days|default(0) }}"
+             data-category="{{ building.category }}"
+             data-effect="{{ building.effect or '' }}"
+             data-effect-value="{{ building.effect_value if building.effect_value is not none else '' }}"
+             data-generates="{{ building.generates_resource or '' }}"
+             data-rate="{{ building.generation_rate }}"
+             data-total-generated="{{ building.total_generated }}"
+             data-cost="{{ building.cost_display }}"
+             data-created="{{ building.created_at_str|default('Unknown') }}"
+             data-completed="{{ building.completed_at_str|default('') }}"
+             data-time-owned="{{ building.time_owned_str|default('') }}"
+             data-time-active="{{ building.time_active_str|default('') }}"
+             data-build-time-total="{{ building.build_time_total|default(0) }}"
+             data-requirements="{{ building.requirements|join(', ') if building.requirements else '' }}"
+             data-tx-hash="{{ building.tx_hash|default('') }}"
+             data-status="active">
+            {% if building.image_url %}
+            <img src="{{ building.image_url }}" alt="{{ building.name }}" class="asset-card-image" loading="lazy">
+            {% else %}
+            <div class="asset-card-image" style="display: flex; align-items: center; justify-content: center; font-size: 32px; color: var(--color-success);">&#9889;</div>
+            {% endif %}
+            <div class="asset-card-content">
+                <div class="asset-card-header">
+                    <span class="asset-card-name">{{ building.name }}</span>
+                    {% if building.is_upgrading %}
+                    <span class="asset-card-status building">Upgrading</span>
+                    {% else %}
+                    <span class="asset-card-status active">Lv{{ building.level|default(1) }}</span>
+                    {% endif %}
+                </div>
+                <div class="asset-card-stats">
+                    {% if building.generates_resource == 'sepolia' and building.generation_rate > 0 %}
+                    <div class="asset-card-stat">
+                        <span>&#9889;</span>
+                        <span class="asset-card-stat-value">+{{ "%.1f"|format(building.generation_rate) }}/hr</span>
+                    </div>
+                    {% endif %}
+                    {% if building.effect %}
+                    <div class="asset-card-stat">
+                        <span>
+                            {% if building.effect == 'night_generation' %}Night Shards
+                            {% elif building.effect == 'discovery_value_mult' %}+{{ ((building.effect_value - 1) * 100)|int }}% Value
+                            {% elif building.effect == 'discovery_chance_bonus' %}+{{ (building.effect_value * 100)|int }}% Discovery
+                            {% elif building.effect == 'fuel_cost_mult' %}-{{ ((1 - building.effect_value) * 100)|int }}% Cost
+                            {% elif building.effect == 'research_enabled' %}Research
+                            {% else %}{{ building.effect|replace('_', ' ')|title }}{% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if not building.is_max_level and building.level|default(1) < building.max_level|default(10) %}
+                    <a href="/depot?upgrade=infrastructure:{{ building.structure_type }}"
+                       class="asset-card-stat upgrade-link"
+                       style="color: var(--color-accent); text-decoration: none;"
+                       onclick="event.stopPropagation()">
+                        <span>&#x21E7; Upgrade</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% elif total_building == 0 %}
+    <div class="colony-grid">
+        <div class="empty-state">
+            <img src="{{ icons.construction_crane }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+            <div class="empty-state-text">No infrastructure yet</div>
+            <a href="/depot" class="btn btn-purple">Build Your First Structure</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Vehicles Section -->
+    {% if owned_vehicles and owned_vehicles|length > 0 %}
+    <div class="assets-section-header">
+        <img src="{{ icons.rocket_launch }}" alt="" style="width: 16px; height: 16px;">
+        <span class="assets-section-title">Vehicles</span>
+        <span class="assets-section-count">{{ owned_vehicles|length }} owned</span>
+    </div>
+    <div class="colony-grid">
+        {% for vehicle in owned_vehicles %}
+        <div class="asset-card active clickable"
+             onclick="showVehicleModal(this)"
+             data-name="{{ vehicle.name }}"
+             data-type="{{ vehicle.vehicle_type }}"
+             data-level="{{ vehicle.level }}"
+             data-max-level="{{ vehicle.max_level|default(4) }}"
+             data-image="{{ vehicle.image_url or '' }}"
+             data-cargo="{{ vehicle.cargo|default(0) }}"
+             data-speed-mult="{{ vehicle.speed_mult|default(1.0) }}"
+             data-discovery-bonus="{{ vehicle.discovery_bonus|default(0) }}"
+             data-rare-bonus="{{ vehicle.rare_bonus|default(0) }}"
+             data-legendary-bonus="{{ vehicle.legendary_bonus|default(0) }}"
+             data-fuel-mult="{{ vehicle.fuel_cost_mult|default(1.0) }}"
+             data-max-range="{{ vehicle.max_range_km|default(0) }}"
+             data-base-range="{{ vehicle.base_range_km|default(0) }}"
+             data-base-speed="{{ vehicle.base_speed|default(1.0) }}"
+             data-effective-range="{{ vehicle.effective_range_km|default(0) }}"
+             data-range-mult="{{ range_mult|default(1.0) }}"
+             data-discovery-count="{{ discovery_count|default(0) }}"
+             data-cost-paid="{{ vehicle.cost_paid|default(0) }}"
+             data-description="{{ vehicle.description|default('')|e }}"
+             data-acquired="{{ vehicle.acquired_at_str|default('Starting equipment') }}"
+             data-tx-hash="{{ vehicle.tx_hash|default('') }}"
+             data-next-level="{{ vehicle.next_level|default('') }}"
+             data-next-level-name="{{ vehicle.next_level_name|default('') }}"
+             data-next-level-cost="{{ vehicle.next_level_cost|default(0) }}"
+             data-next-level-cargo="{{ vehicle.next_level_cargo|default(0) }}"
+             data-next-level-speed="{{ vehicle.next_level_speed|default(0) }}"
+             data-next-level-build-days="{{ vehicle.next_level_build_days|default(0) }}"
+             data-on-expedition="{{ vehicle.on_expedition|default(false)|lower }}"
+             data-expedition-id="{{ vehicle.expedition_id|default('') }}"
+             data-expedition-destination="{{ vehicle.expedition_destination|default('') }}"
+             data-expedition-distance="{{ vehicle.expedition_distance_km|default(0) }}"
+             data-expedition-status="{{ vehicle.expedition_status|default('') }}"
+             data-expedition-departed="{{ vehicle.expedition_departed_at_iso|default('') }}"
+             data-expedition-arrives="{{ vehicle.expedition_arrives_at_iso|default('') }}"
+             data-expedition-returns-iso="{{ vehicle.expedition_returns_at_iso|default('') }}"
+             data-expedition-returns="{{ vehicle.expedition_returns_at_str|default('') }}">
+            {% if vehicle.image_url %}
+            <img src="{{ vehicle.image_url }}" alt="{{ vehicle.name }}" class="asset-card-image" loading="lazy">
+            {% else %}
+            <div class="asset-card-image" style="display: flex; align-items: center; justify-content: center; font-size: 32px;">&#128663;</div>
+            {% endif %}
+            <div class="asset-card-content">
+                <div class="asset-card-header">
+                    <span class="asset-card-name">{{ vehicle.name }}</span>
+                    {% if vehicle.on_expedition %}
+                    <span class="asset-card-status building">On Expedition</span>
+                    {% else %}
+                    <span class="asset-card-status active">Lv{{ vehicle.level }}</span>
+                    {% endif %}
+                </div>
+                <div class="asset-card-stats">
+                    {% if vehicle.cargo %}
+                    <div class="asset-card-stat">
+                        <span>Cargo:</span>
+                        <span class="asset-card-stat-value">{{ vehicle.cargo }}</span>
+                    </div>
+                    {% endif %}
+                    {% if vehicle.expedition_speed_mult and vehicle.expedition_speed_mult != 1.0 %}
+                    <div class="asset-card-stat">
+                        <span>Speed:</span>
+                        <span class="asset-card-stat-value">+{{ ((vehicle.expedition_speed_mult - 1) * 100)|int }}%</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- LAB Tab -->
+<div id="tab-lab" class="colony-tab-content" style="display: none;">
+    <div id="labContent">
+        <div class="empty-state"><div class="empty-state-text">Loading lab status...</div></div>
+    </div>
+</div>
+
+<!-- ACTIVITY Tab -->
+<div id="tab-activity" class="colony-tab-content" style="display: none;">
+    <div class="filter-row" style="margin-bottom: 12px;">
+        <button class="filter-btn active" data-filter="all" onclick="filterActivity('all')">All</button>
+        <button class="filter-btn" data-filter="expedition" onclick="filterActivity('expedition')">Expeditions</button>
+        <button class="filter-btn" data-filter="purchase" onclick="filterActivity('purchase')">Purchases</button>
+        <button class="filter-btn" data-filter="upgrade" onclick="filterActivity('upgrade')">Upgrades</button>
+        <button class="filter-btn" data-filter="research" onclick="filterActivity('research')">Research</button>
+        <button class="filter-btn" data-filter="discovery" onclick="filterActivity('discovery')">Discoveries</button>
+        <button class="filter-btn" data-filter="trail" onclick="filterActivity('trail')">Trails</button>
+        <button class="filter-btn" data-filter="media" onclick="filterActivity('media')">Media</button>
+        <button class="filter-btn" data-filter="income" onclick="filterActivity('income')">Income</button>
+    </div>
+    <div id="activityList" style="display: flex; flex-direction: column; gap: 2px;">
+        <div class="empty-state"><div class="empty-state-text">Loading activity...</div></div>
+    </div>
+</div>
+
+<!-- Activity Detail Modal -->
+
+<!-- Colony page data bridge (Jinja2 → JS) -->
+<script type="application/json" id="colonyPageData">
+{
+    "icons": {
+        "rarity_legendary": "{{ icons.rarity_legendary }}",
+        "rarity_rare": "{{ icons.rarity_rare }}",
+        "rarity_uncommon": "{{ icons.rarity_uncommon }}",
+        "rarity_common": "{{ icons.rarity_common }}",
+        "empty_discoveries": "{{ icons.empty_discoveries }}",
+        "empty_equipment": "{{ icons.empty_equipment }}",
+        "tab_map": "{{ icons.tab_map }}",
+        "tab_tools": "{{ icons.tab_tools }}",
+        "warning_alert": "{{ icons.warning_alert }}",
+        "shard_gem": "{{ icons.shard_gem }}",
+        "location_pin": "{{ icons.location_pin }}",
+        "calendar_date": "{{ icons.calendar_date }}",
+        "box_package": "{{ icons.box_package }}"
+    },
+    "trailIcon": "{{ icons.tab_map }}",
+    "ariaBonds": {{ (aria_bonds or []) | tojson }},
+    "welcomeBack": {{ (welcome_back or {}) | tojson }}
+}
+</script>
+<script src="/static/js/colony.js?v={{ static_v }}" defer></script>
+<script src="/static/js/discovery_utils.js?v={{ static_v }}" defer></script>
+<script src="/static/js/colony-discoveries.js?v={{ static_v }}" defer></script>
+<script src="/static/js/colony-modals.js?v={{ static_v }}" defer></script>
+{% endif %}
+{% endblock %}

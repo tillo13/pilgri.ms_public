@@ -1,0 +1,922 @@
+/* Signal Page Styles */
+
+/* Signal Hero */
+.signal-hero-bg {
+    background: linear-gradient(135deg,
+        rgba(10, 10, 20, 0.95) 0%,
+        rgba(20, 15, 30, 0.9) 50%,
+        rgba(30, 20, 40, 0.95) 100%);
+}
+
+.signal-network-pulse {
+    background: radial-gradient(ellipse at center,
+        rgba(var(--color-sepolia-rgb), 0.15) 0%,
+        transparent 50%);
+    animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.signal-subtitle {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--color-sepolia);
+    text-transform: uppercase;
+}
+
+.signal-title {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-shadow: 0 0 20px rgba(var(--color-sepolia-rgb), 0.3);
+}
+
+.signal-text {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Stats Grid */
+.signal-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.signal-stat {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    text-align: center;
+}
+
+.signal-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
+
+.signal-stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Section Styling */
+.signal-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.signal-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    cursor: pointer;
+    background: var(--bg-tertiary);
+    transition: background 0.2s;
+    list-style: none;
+}
+
+.signal-summary::-webkit-details-marker {
+    display: none;
+}
+
+.signal-summary::after {
+    content: "\25B8";
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+}
+
+details[open] .signal-summary::after {
+    transform: rotate(90deg);
+}
+
+.signal-icon {
+    font-size: 18px;
+    color: var(--color-sepolia);
+}
+
+.signal-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.signal-section-subtitle {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.signal-content {
+    padding: 20px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.signal-intro {
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.signal-h4 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+/* Origin Sites Grid */
+.signal-sites-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.signal-site {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+}
+
+.signal-site-unclaimed {
+    border-color: rgba(var(--color-mars-rgb), 0.3);
+}
+
+.signal-site-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.signal-site-code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-sepolia);
+}
+
+.signal-site-year {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.signal-site-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.signal-site-status {
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.signal-site-coords {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.signal-site-unclaimed-badge {
+    background: rgba(var(--color-mars-rgb), 0.15);
+    border: 1px solid rgba(var(--color-mars-rgb), 0.3);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    text-align: center;
+}
+
+.signal-site-unclaimed-badge span {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--color-mars);
+}
+
+/* Memories */
+.signal-memories {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.signal-memory {
+    background: var(--bg-tertiary);
+    border: 1px solid rgba(var(--color-sepolia-rgb), 0.2);
+    border-radius: var(--radius-md);
+    padding: 16px;
+}
+
+.signal-memory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.signal-memory-site {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.signal-memory-code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-sepolia);
+}
+
+.signal-memory-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.signal-memory-founder {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.signal-founder-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+}
+
+.signal-founder-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-sepolia);
+}
+
+.signal-founder-sig {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 4px;
+}
+
+/* Visitor Rankings */
+.signal-visitors {
+    margin: 12px 0;
+    padding: 10px 12px;
+    background: rgba(var(--color-sepolia-rgb), 0.05);
+    border-radius: var(--radius-sm);
+    border-left: 2px solid rgba(var(--color-sepolia-rgb), 0.3);
+}
+
+.signal-visitor-tier {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.signal-visitor-tier:last-child {
+    margin-bottom: 0;
+}
+
+.signal-visitor-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    min-width: 100px;
+}
+
+.signal-visitor-name {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.signal-visitor-name.tier-rare {
+    color: var(--color-mars);
+}
+
+.signal-visitor-name.tier-uncommon {
+    color: var(--color-success);
+}
+
+.signal-visitor-count {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.signal-memory-text {
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    padding-left: 12px;
+    border-left: 2px solid rgba(var(--color-sepolia-rgb), 0.3);
+}
+
+/* Legendary Items */
+.signal-legendary-item {
+    margin-top: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.signal-legendary-item.clickable-legendary {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.signal-legendary-item.clickable-legendary:hover {
+    border-color: rgba(251, 191, 36, 0.6);
+    box-shadow: 0 4px 20px rgba(251, 191, 36, 0.2);
+    transform: translateY(-2px);
+}
+
+.signal-legendary-image {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-sm);
+    object-fit: cover;
+    border: 2px solid rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+}
+
+.signal-legendary-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.signal-legendary-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    width: fit-content;
+}
+
+.signal-legendary-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fbbf24;
+}
+
+.signal-legendary-view {
+    font-size: 11px;
+    color: #fbbf24;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.signal-legendary-item.clickable-legendary:hover .signal-legendary-view {
+    opacity: 1;
+}
+
+/* Echo Sites */
+.signal-echo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.signal-echo {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px;
+}
+
+.signal-echo-depleted {
+    opacity: 0.5;
+}
+
+.signal-echo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.signal-echo-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-success);
+}
+
+.signal-echo-slots {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.signal-echo-location {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.signal-echo-claims {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* Recent Claims */
+.signal-recent-claims {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.signal-claim {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.signal-claim-header {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.signal-claim-commander {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.signal-claim-rank {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.signal-claim-site {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.signal-claim-tier {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.signal-tier-legendary {
+    background: rgba(var(--color-sepolia-rgb), 0.2);
+    color: var(--color-sepolia);
+}
+
+.signal-tier-rare {
+    background: rgba(var(--color-mars-rgb), 0.2);
+    color: var(--color-mars);
+}
+
+.signal-tier-uncommon {
+    background: rgba(var(--color-success-rgb), 0.2);
+    color: var(--color-success);
+}
+
+.signal-tier-common {
+    background: rgba(var(--text-muted-rgb, 128, 128, 128), 0.2);
+    color: var(--text-muted);
+}
+
+/* Transmission Log */
+.signal-transmission {
+    background: var(--bg-tertiary);
+    border: 1px solid rgba(var(--color-sepolia-rgb), 0.2);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.signal-transmission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.signal-transmission-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+}
+
+.signal-transmission-status {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--color-success);
+    animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.signal-transmission-text {
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.signal-transmission-text p {
+    margin: 0;
+}
+
+.signal-hint {
+    background: rgba(var(--color-success-rgb), 0.1);
+    border: 1px solid rgba(var(--color-success-rgb), 0.2);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    margin: 16px 0;
+}
+
+.signal-hint strong {
+    display: block;
+    font-size: 12px;
+    color: var(--color-success);
+    margin-bottom: 8px;
+}
+
+.signal-hint ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.signal-cryptic {
+    background: linear-gradient(135deg,
+        rgba(var(--color-mars-rgb), 0.1) 0%,
+        rgba(var(--color-sepolia-rgb), 0.1) 100%);
+    border: 1px solid rgba(var(--color-mars-rgb), 0.2);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 16px;
+    text-align: center;
+}
+
+.signal-cryptic-text {
+    font-style: italic;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Cryptic Node List */
+.signal-cryptic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.signal-node-cryptic {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.signal-node-id {
+    color: var(--color-mars);
+    font-weight: 600;
+    min-width: 70px;
+}
+
+.signal-node-hint {
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.signal-node-status {
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+}
+
+.signal-node-closest {
+    color: var(--color-sepolia);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.signal-ledger-hint {
+    margin-top: 20px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1) 0%, rgba(var(--color-mars-rgb), 0.05) 100%);
+    border: 1px solid rgba(var(--color-sepolia-rgb), 0.2);
+    border-radius: var(--radius-md);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.signal-ledger-hint p {
+    margin: 0;
+}
+
+.signal-hint-cryptic {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: rgba(var(--color-success-rgb), 0.1);
+    border: 1px dashed rgba(var(--color-success-rgb), 0.3);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: 11px;
+}
+
+.signal-hint-cryptic .hint-label {
+    color: var(--color-success);
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.signal-hint-cryptic .hint-text {
+    color: var(--text-secondary);
+}
+
+.signal-empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Decoder Terminal */
+.signal-decoder-section {
+    border-color: rgba(var(--color-sepolia-rgb), 0.3);
+}
+
+.decoder-terminal {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    font-family: var(--font-mono);
+}
+
+.decoder-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 11px;
+}
+
+.decoder-prompt {
+    color: var(--color-sepolia);
+}
+
+.decoder-status {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.decoder-status.processing {
+    color: var(--color-warning);
+    animation: blink 0.5s ease-in-out infinite;
+}
+
+.decoder-status.success {
+    color: var(--color-success);
+}
+
+.decoder-status.error {
+    color: var(--color-mars);
+}
+
+.decoder-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.decoder-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.decoder-input:focus {
+    outline: none;
+    border-color: var(--color-sepolia);
+}
+
+.decoder-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.decoder-submit {
+    background: rgba(var(--color-sepolia-rgb), 0.2);
+    border: 1px solid var(--color-sepolia);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    color: var(--color-sepolia);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.decoder-submit:hover:not(:disabled) {
+    background: rgba(var(--color-sepolia-rgb), 0.3);
+}
+
+.decoder-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.decoder-auth-warning {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.decoder-result {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+}
+
+.decoder-result.hidden {
+    display: none;
+}
+
+.decode-success {
+    background: rgba(var(--color-success-rgb), 0.1);
+    border: 1px solid rgba(var(--color-success-rgb), 0.3);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+}
+
+.decode-success-title {
+    color: var(--color-success);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.decode-reward {
+    color: var(--color-sepolia);
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.decode-error {
+    background: rgba(var(--color-mars-rgb), 0.1);
+    border: 1px solid rgba(var(--color-mars-rgb), 0.3);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    color: var(--color-mars);
+}
+
+.solvers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.solver-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+}
+
+.solver-name {
+    color: var(--color-sepolia);
+    font-weight: 600;
+}
+
+.solver-puzzle {
+    color: var(--text-secondary);
+    flex: 1;
+}
+
+.solver-date {
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+/* ARIA Voice Styling */
+.aria-voice {
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+.aria-voice em {
+    color: var(--text-primary);
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .signal-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .signal-sites-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .signal-memory-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .signal-memory-founder {
+        align-items: flex-start;
+    }
+}
+
+/* Light mode fixes */
+:root:not([data-theme="dark"]) .decoder-terminal {
+    background: var(--bg-tertiary);
+    border-color: var(--border-strong);
+}
+
+:root:not([data-theme="dark"]) .decoder-input {
+    background: var(--bg-secondary);
+    border-color: var(--border-default);
+    color: var(--text-primary);
+}
+
+:root:not([data-theme="dark"]) .decoder-input::placeholder {
+    color: var(--text-muted);
+}
+
+:root:not([data-theme="dark"]) .signal-hero-bg {
+    background: linear-gradient(135deg,
+        rgba(45, 35, 30, 0.95) 0%,
+        rgba(35, 28, 25, 0.92) 50%,
+        rgba(50, 35, 35, 0.95) 100%);
+}
+
+:root:not([data-theme="dark"]) .signal-title,
+:root:not([data-theme="dark"]) .signal-text {
+    color: #f5f0ea;
+}
+
+/* Legendary Item Modal — now uses MarsModal with theme: 'legendary' in signal.js */

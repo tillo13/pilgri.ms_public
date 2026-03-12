@@ -1,0 +1,37 @@
+cron:
+# ARIA cron jobs - VALIDATED AND WORKING (Jan 2026)
+# Deploy with: gcloud app deploy cron.yaml --project=galactica-character-game
+
+# BLOCKCHAIN BALANCE SYNC - Updates all user wallet balances from blockchain
+# This allows page loads to use cached DB balances instead of hitting blockchain
+- description: "Sync blockchain balances to DB"
+  url: /api/cron/sync_balances
+  schedule: every 1 hours
+  timezone: America/Los_Angeles
+  target: default
+
+# ARIA PHOTO JOURNAL - Daily snapshot generation at 6am PST
+# Creates 1 personalized image per ACTIVE user (~$0.20/user/day)
+# Only generates for users active in last 48h + not already got one today
+- description: "Generate daily ARIA Photo Journal snapshots"
+  url: /api/cron/generate_snapshots
+  schedule: every day 06:00
+  timezone: America/Los_Angeles
+  target: default
+
+# QA BOT - Automated player that exercises game systems to catch regressions
+# Plays as Trustable CC (user 250). Files P2 bugs to Google Sheet on errors.
+- description: "QA Bot automated gameplay session"
+  url: /api/cron/qa_bot
+  schedule: every 30 minutes
+  timezone: America/Los_Angeles
+  target: default
+
+# DISABLED FOR NOW - re-enable when ready for weekly FOMO emails
+# See PARKING_LOT.md for future plans
+#
+# - description: "ARIA weekly FOMO email"
+#   url: /api/cron/aria_test_email
+#   schedule: every monday 09:00
+#   timezone: America/Los_Angeles
+#   target: default

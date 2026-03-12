@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Action Result - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'action_result';
+        chat.dataset.pageContext = 'User is viewing an action result page (from an email action link). They just completed an action like claiming shards or launching an expedition via email.';
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto text-center" style="max-width: 600px; padding: 40px 20px;">
+    {% if success %}
+        {% if result and result.processing %}
+        {# Processing in background - show friendly "on it" message #}
+        <img src="{{ icons.activity_expedition }}" alt="Processing" class="mb-20" style="width: 72px; height: 72px;">
+        <h1 class="m-0 mb-16 text-white">On It!</h1>
+        {% else %}
+        <img src="{{ icons.success_check }}" alt="Success" class="mb-20" style="width: 72px; height: 72px;">
+        <h1 class="m-0 mb-16 text-success">Success!</h1>
+        {% endif %}
+    {% else %}
+    <img src="{{ icons.error_x }}" alt="Error" class="mb-20" style="width: 72px; height: 72px;">
+    <h1 class="m-0 mb-16 text-danger">Action Failed</h1>
+    {% endif %}
+
+    <p class="text-xl mb-32 text-light">{{ message }}</p>
+
+    {% if success and result %}
+    <div class="rounded-xl p-24 mb-32" style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+        {% if result.processing and result.action == 'claim_sepolia' %}
+        {# Background processing message for Sepolia claim #}
+        <div class="font-bold text-white" style="font-size: 42px;">{{ "{:,.1f}".format(result.amount) }} Shards</div>
+        <div class="text-lg mt-8 text-light-secondary">Being harvested from your infrastructure</div>
+        <div class="mt-20 p-16 rounded-lg" style="background: rgba(255,255,255,0.1);">
+            <div class="text-base flex items-center justify-center gap-8" style="color: rgba(255,255,255,0.9);">
+                <img src="{{ icons.processing_hourglass }}" alt="" style="width: 20px; height: 20px;"> Your base is collecting your shards now!
+            </div>
+        </div>
+
+        {% elif result.action == 'claim_discoveries' and result.count > 0 %}
+        <div class="font-bold text-success" style="font-size: 42px;">{{ result.count }} discoveries</div>
+        <div class="text-lg mt-8 text-light-secondary">Worth <span class="text-success font-semibold">{{ "{:,.1f}".format(result.total_value) }}</span> Sepolia Shards</div>
+
+        {% if result.discoveries and result.discoveries|length > 0 %}
+        <div class="mt-24 pt-8" style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+            <div class="text-sm uppercase tracking-wide mb-16 text-light-tertiary">Your Finds</div>
+            <div class="flex flex-wrap gap-12 justify-center">
+                {% for discovery in result.discoveries %}
+                <div class="rounded-lg p-12 text-center" style="background: rgba(255,255,255,0.1); width: 150px; border: 2px solid {% if discovery.rarity == 'legendary' %}var(--color-legendary){% elif discovery.rarity == 'rare' %}var(--color-rare){% elif discovery.rarity == 'uncommon' %}var(--color-uncommon){% else %}rgba(255,255,255,0.3){% endif %};">
+                    {% if discovery.image_url %}
+                    <img src="{{ discovery.image_url }}" alt="{{ discovery.item_name }}" class="rounded mb-8" style="width: 60px; height: 60px; object-fit: cover;">
+                    {% else %}
+                    <div class="rounded flex items-center justify-center mb-8 mx-auto" style="width: 60px; height: 60px; background: rgba(255,255,255,0.2);">
+                        <img src="{% if discovery.rarity == 'legendary' %}{{ icons.rarity_legendary }}{% elif discovery.rarity == 'rare' %}{{ icons.rarity_rare }}{% elif discovery.rarity == 'uncommon' %}{{ icons.rarity_uncommon }}{% else %}{{ icons.rarity_common }}{% endif %}" alt="{{ discovery.rarity }}" style="width: 32px; height: 32px;">
+                    </div>
+                    {% endif %}
+                    <div class="font-semibold mb-4 truncate" style="font-size: 13px; color: {% if discovery.rarity == 'legendary' %}var(--color-legendary){% elif discovery.rarity == 'rare' %}var(--color-rare-light){% elif discovery.rarity == 'uncommon' %}var(--color-uncommon-light){% else %}rgba(255,255,255,0.9){% endif %};">{{ discovery.item_name }}</div>
+                    <div class="text-light-tertiary" style="font-size: 11px; text-transform: capitalize;">{{ discovery.rarity }}</div>
+                    <div class="text-sm text-success mt-4 font-semibold">+{{ "{:,.1f}".format(discovery.enhanced_value) }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if result.count > result.discoveries|length %}
+            <div class="mt-12 text-light-tertiary" style="font-size: 13px;">+ {{ result.count - result.discoveries|length }} more discoveries</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% elif result.action == 'claim_sepolia' and result.amount > 0 %}
+        <div class="font-bold text-success" style="font-size: 42px;">+{{ "{:,.1f}".format(result.amount) }} Shards</div>
+        <div class="text-lg mt-8 text-light-secondary">Harvested from your infrastructure</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="flex gap-16 justify-center flex-wrap">
+        <a href="/" class="btn btn-purple" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">Go to Home</a>
+        {% if success and result %}
+            {% if result.action == 'claim_discoveries' %}
+        <a href="/expeditions" class="btn btn-secondary" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">View Expeditions</a>
+            {% elif result.action == 'claim_sepolia' %}
+        <a href="/depot" class="btn btn-secondary" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">View Depot</a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

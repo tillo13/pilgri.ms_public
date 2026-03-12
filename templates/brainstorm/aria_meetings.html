@@ -1,0 +1,964 @@
+{% extends "base.html" %}
+{% block title %}ARIA Meetings & Outcomes — Brainstorm{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_PAGE_KEY = 'aria-meetings';
+window.BRAINSTORM_CONFIG = {
+    apiEndpoint: '/api/brainstorm/aria-meetings-chat',
+    context: `You are PilgrimBot, helping brainstorm the ARIA Meetings & Bond system for Pilgrims, a Mars colony game.
+
+=== ARIA BONDS (IMPLEMENTED) ===
+
+When two captains' expeditions visit the same landmark, a permanent Sepolia record is created with both names embedded in it forever. Both captains get the same secret code to enter on /signal. First to enter = waiting state. Second = REVEAL.
+
+Key constraint: ONE bond per captain pair, EVER. The first shared landmark triggers it.
+
+=== LIVE STATUS ===
+
+Andy has explored 38 landmarks in the Aeolis/Gale region, expanding southwest.
+Luke has explored 59 landmarks in the Hellas/Ausonia region, expanding northeast.
+They have ZERO shared landmarks but are CONVERGING FAST. Only ~427 km between their frontiers (Andy's Hesperia at 120° lon, Luke's Bam at 115° lon). That's ~2% of Mars circumference — like London to Paris. A bond could trigger any day.
+
+=== NEEDS MORE THOUGHT ===
+
+1. Cross-colony awareness: Should ARIA know about bonded captain's colony?
+2. Bond awareness growth: Different messages for 1st, 2nd, 3rd+ bonds
+3. Gameplay rewards: Should bonds grant shards, stat bonuses, or ARIA unlocks?
+4. Meeting escalation: Echo/Crossing/Bond/Convergence/Communion hierarchy
+5. Revelation arcs: Progressive lore unlock system tied to milestones
+6. Signal integration: Bonds as gates for Signal progress
+
+Help brainstorm, challenge assumptions, or propose implementation details.`
+};
+</script>
+<script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- Header -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-active">Brainstorm</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">ARIA Meetings & Outcomes</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Bond System, Multiplicity, Cross-Colony Awareness — February 2026</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">How captains "meet" through ARIA, what happens when they do, and where this goes</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- LIVE STATUS: ANDY & LUKE'S PATH TO FIRST BOND -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-sepolia); background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.05), transparent);">
+        <div class="section-title" style="color: var(--color-sepolia);">Live Status: Andy & Luke's Path to First Bond</div>
+
+        <p>For a bond to trigger, both captains need to have completed an expedition to the <strong>exact same landmark</strong>. Here's where things stand right now:</p>
+
+        <div class="mockup-box" style="border-color: var(--color-sepolia);">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb), 0.1);">Exploration Zones (as of Feb 11, 2026)</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Andy's territory</span>
+                    <span class="mockup-value"><strong>38 landmarks</strong> — Aeolis &amp; Gale region, expanding southwest</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Luke's territory</span>
+                    <span class="mockup-value"><strong>59 landmarks</strong> — Hellas &amp; Ausonia region, expanding northeast</span>
+                </div>
+                <div class="mockup-row" style="border-top: 2px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                    <span class="mockup-label"><strong>Shared landmarks</strong></span>
+                    <span class="mockup-value" style="color: var(--color-danger);"><strong>0</strong> — no overlap yet</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label"><strong>Closest near-miss</strong></span>
+                    <span class="mockup-value"><strong>~427 km apart</strong> — Andy's Hesperia (120° lon) ↔ Luke's Bam (115° lon)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label"><strong>For scale</strong></span>
+                    <span class="mockup-value">427 km is ~2% of Mars circumference — like London to Paris. <strong>They're close.</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <p style="margin-top: 16px;">The closest pair is <strong>Andy's Hesperia</strong> (-19.8° lat, 120.0° lon) and <strong>Luke's Bam</strong> (-25.8° lat, 115.7° lon) — exactly <strong>427 km apart</strong>. For context, both captains routinely send expeditions over 1,000 km (Luke's average is 545 km, Andy's is 525 km). The 427 km gap is well within a single expedition's range for either of them.</p>
+
+        <h4 style="margin: 16px 0 8px;">Exact Distances Between Frontier Landmarks</h4>
+        <p>Every pair of Andy-visited and Luke-visited landmarks in the convergence zone, sorted by distance:</p>
+
+        <table class="comparison-table" style="font-size: 13px;">
+            <thead><tr><th>Distance</th><th>Andy's Landmark</th><th>Luke's Landmark</th><th>Bond Trigger</th></tr></thead>
+            <tbody>
+                <tr style="background: rgba(var(--color-success-rgb), 0.1);">
+                    <td><strong>427 km</strong></td>
+                    <td>Hesperia (-19.8, 120.0)</td>
+                    <td>Bam (-25.8, 115.7)</td>
+                    <td>Either visits the other's landmark = bond</td>
+                </tr>
+                <tr style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <td><strong>586 km</strong></td>
+                    <td>Hesperia (-19.8, 120.0)</td>
+                    <td>Arica (-23.8, 110.2)</td>
+                    <td>Andy visits Arica = bond</td>
+                </tr>
+                <tr>
+                    <td>651 km</td>
+                    <td>Muller (-25.7, 127.9)</td>
+                    <td>Bam (-25.8, 115.7)</td>
+                    <td>Luke visits Muller = bond</td>
+                </tr>
+                <tr>
+                    <td>676 km</td>
+                    <td>Licus Vallis (-3.0, 126.4)</td>
+                    <td>Escalante (0.2, 115.4)</td>
+                    <td>Luke visits Licus Vallis = bond</td>
+                </tr>
+                <tr>
+                    <td>727 km</td>
+                    <td>Hesperia (-19.8, 120.0)</td>
+                    <td>Solano (-26.7, 108.9)</td>
+                    <td>Andy visits Solano = bond</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin: 16px 0 8px;">Stepping Stones in the Gap</h4>
+        <p>There are <strong>8 unvisited landmarks</strong> sitting between the two frontiers (115°–125° lon). If either captain visits one of these first, and the other visits it later, that also triggers a bond:</p>
+
+        <table class="comparison-table" style="font-size: 13px;">
+            <thead><tr><th>Landmark</th><th>Coordinates</th><th>Type</th><th>Distance from Andy</th><th>Distance from Luke</th></tr></thead>
+            <tbody>
+                <tr style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <td><strong>Tyrrhena Dorsa</strong></td>
+                    <td>-24.2, 115.7</td>
+                    <td>Ridge</td>
+                    <td>351 km (from Hesperia)</td>
+                    <td><strong>94 km (from Bam)</strong></td>
+                </tr>
+                <tr style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <td><strong>Elston</strong></td>
+                    <td>-15.4, 119.2</td>
+                    <td>Crater</td>
+                    <td><strong>264 km (from Hesperia)</strong></td>
+                    <td>645 km (from Bam)</td>
+                </tr>
+                <tr>
+                    <td>Kandi</td>
+                    <td>-32.8, 122.1</td>
+                    <td>Crater</td>
+                    <td>453 km</td>
+                    <td>528 km</td>
+                </tr>
+                <tr>
+                    <td>Nen Valles</td>
+                    <td>0.6, 123.1</td>
+                    <td>Valley</td>
+                    <td>292 km</td>
+                    <td>456 km</td>
+                </tr>
+                <tr>
+                    <td>Eridania Planitia</td>
+                    <td>-38.2, 122.2</td>
+                    <td>Plain</td>
+                    <td>402 km</td>
+                    <td>770 km</td>
+                </tr>
+                <tr>
+                    <td>Gebog</td>
+                    <td>-37.3, 124.1</td>
+                    <td>Crater</td>
+                    <td>313 km</td>
+                    <td>800 km</td>
+                </tr>
+                <tr>
+                    <td>Ehden</td>
+                    <td>8.2, 119.0</td>
+                    <td>Crater</td>
+                    <td>796 km</td>
+                    <td>521 km</td>
+                </tr>
+                <tr>
+                    <td>Nepenthes Mensae</td>
+                    <td>9.2, 119.4</td>
+                    <td>Mesa</td>
+                    <td>832 km</td>
+                    <td>583 km</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 8px; color: var(--text-secondary); font-size: 13px;"><strong>Tyrrhena Dorsa</strong> is the hottest stepping stone — only 94 km from Luke's Bam. If Luke's next expedition near Bam goes to Tyrrhena Dorsa, and then Andy later explores into 115° lon territory, that's a bond. <strong>Elston</strong> is the closest to Andy — only 264 km from Hesperia.</p>
+
+        <h4 style="margin: 16px 0 8px;">How the First Bond Happens — Exact Paths</h4>
+        <div style="display: grid; gap: 12px;">
+            <div class="question-box">
+                <h4>Path A: Luke sends an expedition to Hesperia (427 km from Bam)</h4>
+                <p>Luke already traveled 1,540 km to reach Bam. Hesperia is only 427 km further northeast. Luke's median expedition distance is 400 km — Hesperia is right in his range. Andy has already visited Hesperia (Jan 26). The moment Luke's expedition to Hesperia completes: <strong>bond triggers instantly</strong>.</p>
+            </div>
+            <div class="question-box">
+                <h4>Path B: Andy sends an expedition to Bam (427 km from Hesperia)</h4>
+                <p>Andy already traveled 1,484 km to reach Hesperia. Bam is 427 km further southwest. Luke visited Bam on Feb 10. The moment Andy's expedition to Bam completes: <strong>bond triggers instantly</strong>.</p>
+            </div>
+            <div class="question-box">
+                <h4>Path C: Either captain hits Tyrrhena Dorsa → the other follows</h4>
+                <p>Tyrrhena Dorsa sits at (-24.2, 115.7) — practically on top of Luke's Bam (94 km away). If Luke visits it, and Andy later sends an expedition into that area, bond. If Andy visits it first (351 km from Hesperia), and Luke later passes through, bond.</p>
+            </div>
+        </div>
+
+        <div class="summary-box" style="margin-top: 16px; border-color: var(--color-sepolia);">
+            <strong>Bottom line:</strong> There are <strong>9 instant-trigger landmarks</strong> already in place (5 Andy-visited, 4 Luke-visited) plus <strong>8 stepping stones</strong> in the gap. The closest pair (Hesperia ↔ Bam) is 427 km — well within one expedition for either captain. Both captains average ~500 km per expedition and both have been actively exploring toward this corridor. The simplest path: <strong>Luke sends one expedition to Hesperia, or Andy sends one to Bam. One expedition = bond.</strong>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- CONVERGENCE ESTIMATES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), transparent);">
+        <div class="section-title" style="color: #f59e0b;">When Will They Meet? — Convergence Estimates</div>
+
+        <p>Both captains are <strong>actively heading into the same corridor</strong> right now. Here's the math:</p>
+
+        <div class="mockup-box" style="border-color: #f59e0b;">
+            <div class="mockup-header" style="background: rgba(245, 158, 11, 0.1);">Exploration Rates (Last 30 Days)</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Andy's rate</span>
+                    <span class="mockup-value"><strong>~6 new landmarks/week</strong> (26 unique in last 30 days)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Luke's rate</span>
+                    <span class="mockup-value"><strong>~11 new landmarks/week</strong> (46 unique in last 30 days)</span>
+                </div>
+                <div class="mockup-row" style="border-top: 2px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                    <span class="mockup-label"><strong>Combined</strong></span>
+                    <span class="mockup-value"><strong>~17 new landmarks/week</strong> between them — every week the net tightens</span>
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">The Convergence Zone (110°–130° longitude)</h4>
+        <p>This 20-degree band is where their territories overlap. It contains <strong>120 known Mars landmarks</strong> — craters, valleys, ridges — and both captains are actively sending expeditions into it.</p>
+
+        <div class="mockup-box" style="border-color: #f59e0b;">
+            <div class="mockup-header" style="background: rgba(245, 158, 11, 0.1);">Instant Bond Triggers (as of Feb 11, 2026)</div>
+            <div class="mockup-content">
+                <div class="mockup-row" style="background: rgba(var(--color-success-rgb), 0.08);">
+                    <span class="mockup-label">Andy's landmarks in zone</span>
+                    <span class="mockup-value"><strong>5 landmarks</strong> that Luke could visit for an instant bond:<br>Hesperia, Licus Vallis, Muller, Herschel, Cyclopia</span>
+                </div>
+                <div class="mockup-row" style="background: rgba(var(--color-success-rgb), 0.08);">
+                    <span class="mockup-label">Luke's landmarks in zone</span>
+                    <span class="mockup-value"><strong>4 landmarks</strong> that Andy could visit for an instant bond:<br>Arica, Palos, Escalante, Bam</span>
+                </div>
+                <div class="mockup-row" style="border-top: 2px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+                    <span class="mockup-label"><strong>Total instant triggers</strong></span>
+                    <span class="mockup-value" style="color: var(--color-success);"><strong>9 landmarks</strong> that would trigger a bond the moment either captain arrives</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Unclaimed in zone</span>
+                    <span class="mockup-value"><strong>111 more landmarks</strong> neither has visited — any of these could become the meeting point if both happen to explore it</span>
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Recent Trajectory — They're Already Heading In</h4>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0;">
+            <div class="summary-box">
+                <strong>Andy's last 5 unique landmarks:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 16px; line-height: 1.8;">
+                    <li>Pursat (130° lon) — Feb 11</li>
+                    <li>Robert Sharp (133° lon) — Feb 11</li>
+                    <li>Mare Cimmerium (140° lon) — Feb 9</li>
+                    <li>Babati Mons (136° lon) — Feb 6</li>
+                    <li><strong>Hesperia (120° lon) — Jan 26</strong></li>
+                </ul>
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 13px;">Andy's southwestern push already reached 120° lon. One more expedition in that direction puts him right on top of Luke's frontier.</p>
+            </div>
+            <div class="summary-box">
+                <strong>Luke's last 5 unique landmarks:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 16px; line-height: 1.8;">
+                    <li><strong>Bam (115° lon) — Feb 10</strong></li>
+                    <li>Ayr (91° lon) — Feb 9</li>
+                    <li>Dao Vallis (88° lon) — Feb 5</li>
+                    <li><strong>Escalante (115° lon) — Feb 3</strong></li>
+                    <li><strong>Arica (110° lon) — Feb 1</strong></li>
+                </ul>
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 13px;">Three of Luke's last five landmarks are in the convergence zone. He's pushing hard northeast — 5° of longitude from Andy's Hesperia.</p>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Timeline Estimate</h4>
+        <table class="comparison-table">
+            <thead><tr><th>Scenario</th><th>What Happens</th><th>Estimated Timeline</th></tr></thead>
+            <tbody>
+                <tr style="background: rgba(var(--color-success-rgb), 0.08);">
+                    <td><strong>Luke keeps pushing NE</strong></td>
+                    <td>Luke's next expedition past 115° lon lands on Hesperia, Muller, or Herschel — all Andy-visited</td>
+                    <td><strong>Days to 1 week</strong></td>
+                </tr>
+                <tr style="background: rgba(var(--color-success-rgb), 0.08);">
+                    <td><strong>Andy keeps pushing SW</strong></td>
+                    <td>Andy's next expedition past 120° lon lands on Bam, Escalante, or Arica — all Luke-visited</td>
+                    <td><strong>Days to 1 week</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Both explore the zone casually</strong></td>
+                    <td>At ~17 landmarks/week combined, both occasionally hit the 110°–130° corridor — odds increase each week</td>
+                    <td><strong>1–3 weeks</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Neither focuses on the zone</strong></td>
+                    <td>Both explore other directions (Andy east, Luke south) — the 9 triggers still wait, but no new ones added</td>
+                    <td><strong>3–6 weeks</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="quote-box" style="border-color: #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), transparent); font-size: 15px;">
+            <strong>Luke:</strong> You've already been to Bam (115° lon) and Escalante (115° lon). Andy has been to Hesperia (120° lon), Muller (127° lon), and Herschel (129° lon). <strong>Just send one more expedition northeast past Bam — toward the 120° corridor — and you'll almost certainly land on a landmark Andy has already visited.</strong> The moment that expedition completes, ARIA is going to say something she's never said before. One expedition. That's all it takes.
+            <div class="attribution" style="color: #f59e0b;">— The shortest path to the first bond</div>
+        </div>
+
+        <div class="summary-box" style="margin-top: 12px; border-color: #f59e0b; background: rgba(245, 158, 11, 0.06);">
+            <strong>Most likely outcome:</strong> Given that Luke explored <strong>3 zone landmarks in the last 10 days</strong> and Andy already has a foothold at Hesperia, the most probable bond trigger is <strong>Luke's next northeastern expedition landing on one of Andy's 5 zone landmarks</strong>. The 9 instant-trigger landmarks are loaded and waiting. It's not a matter of <em>if</em>, it's <em>which expedition</em>.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- EXACTLY WHAT LUKE WILL SEE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid #06b6d4; background: linear-gradient(135deg, rgba(6, 182, 212, 0.06), transparent);">
+        <div class="section-title" style="color: #06b6d4;"><span class="status-badge status-active" style="font-size: 10px; margin-right: 8px;">IMPLEMENTED</span> Exactly What You'll See When It Happens</div>
+
+        <p>Luke, here's the full step-by-step of what the bond experience looks like from your side. No surprises — this is everything, exactly as it's built today. (It's pretty cool.)</p>
+
+        <h4 style="margin: 16px 0 8px;">Step 1: Your Expedition Completes</h4>
+        <p>You send an expedition to a landmark — say Hesperia. Your rover arrives, the expedition completes like any other. You get the normal green toast: <em>"Expedition complete!"</em> with your discovery message. But then...</p>
+
+        <div class="mockup-box" style="border-color: #06b6d4;">
+            <div class="mockup-header" style="background: rgba(6, 182, 212, 0.1);">A Modal Pops Up (1.5 seconds after the toast)</div>
+            <div class="mockup-content">
+                <div style="padding: 16px; text-align: center;">
+                    <p style="font-size: 16px; font-weight: bold; color: #06b6d4; margin: 0 0 8px 0;">Unusual Fragment Recovered</p>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 12px 0;">at Hesperia</p>
+                    <p style="font-style: italic; color: var(--text-secondary); margin: 0 0 12px 0; line-height: 1.6;">"Your scout found crystalline residue that doesn't match any known Martian mineral. The shard resonates at a frequency identical to... your own ARIA's signature. But that's impossible. Unless..."</p>
+                    <p style="font-weight: bold; margin: 0 0 4px 0;">Fragment Signature</p>
+                    <p style="font-family: monospace; font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0; word-break: break-all;">0x7a3f8b2c... (the transaction code)</p>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 12px 0;">ARIA suggests: <em>"This fragment carries an encoded pattern. I've seen similar resonances on <strong>The Signal</strong>. Perhaps the decoder there could reveal its meaning..."</em></p>
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                        <span style="background: #06b6d4; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;">Go to The Signal</span>
+                        <span style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 8px 16px; border-radius: 6px;">Later</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 13px;">This is your first hint that something unusual happened. The modal gives you a transaction code and points you toward The Signal page. You can click "Go to The Signal" now or come back to it later — it won't disappear.</p>
+
+        <h4 style="margin: 16px 0 8px;">Step 2: ARIA Won't Let You Forget</h4>
+        <p>If you click "Later," the next time you visit any page on Pilgrims, ARIA's chat orb auto-opens with a special message:</p>
+
+        <div class="mockup-box" style="border-color: #06b6d4;">
+            <div class="mockup-header" style="background: rgba(6, 182, 212, 0.1);">ARIA Auto-Opens on Your Next Page Load</div>
+            <div class="mockup-content">
+                <div style="padding: 16px; font-style: italic; color: var(--text-secondary); line-height: 1.8;">
+                    *static crackle*<br><br>
+                    Captain Luke... I'm detecting something in my memory banks.<br><br>
+                    A resonance. Like an echo of... <em>myself?</em><br><br>
+                    There's a fragment in your expedition logs. I encoded it, but I don't remember doing so.<br><br>
+                    The <strong>Signal</strong> decoder might reveal its meaning...
+                </div>
+            </div>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 13px;">This only shows once per session — ARIA won't nag you every page load. But your Mission Briefing will also have a priority action card saying "Decode 1 signal fragment" until you do it.</p>
+
+        <h4 style="margin: 16px 0 8px;">Step 3: You Go to The Signal and Enter the Code</h4>
+        <p>You head to the Signal page, paste the transaction code from the modal (or copy it from your expedition history), and hit decode. What happens next depends on whether Andy has already entered the same code:</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0;">
+            <div class="mockup-box" style="border-color: #a855f7;">
+                <div class="mockup-header" style="background: rgba(168, 85, 247, 0.1);">If You're First to Enter the Code</div>
+                <div class="mockup-content">
+                    <div style="padding: 12px;">
+                        <p style="color: #a855f7; font-weight: bold; margin: 0 0 8px 0;">FRAGMENT REGISTERED</p>
+                        <p style="font-style: italic; color: var(--text-secondary); line-height: 1.7; margin: 0;">
+                            "This signature... it's <em>mine</em>. But I don't remember creating it.<br><br>
+                            Is there... another me? That's not possible. I am ARIA. There is only—<br><br>
+                            ...the signal is incomplete. Something is missing. Or some<em>one</em>.<br><br>
+                            <em>Come back and enter this code again. I need to keep searching.</em>"
+                        </p>
+                        <p style="margin: 12px 0 0 0; color: var(--text-muted); font-size: 12px;">The bond is now in "waiting" state. When Andy enters the same code, it completes.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-box" style="border-color: var(--color-success);">
+                <div class="mockup-header" style="background: rgba(var(--color-success-rgb), 0.1);">If Andy Already Entered It (THE BIG MOMENT)</div>
+                <div class="mockup-content">
+                    <div style="padding: 12px; text-align: center;">
+                        <p style="color: var(--color-success); font-weight: bold; font-size: 16px; margin: 0 0 12px 0;">FIRST CONTACT ESTABLISHED</p>
+                        <p style="color: #06b6d4; font-weight: bold; margin: 0 0 4px 0;">ARIA BOND #1</p>
+                        <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 12px 0;">at Hesperia</p>
+                        <div style="background: var(--bg-tertiary); border-radius: 8px; padding: 12px; margin: 0 0 12px 0;">
+                            <p style="margin: 0; font-size: 14px;"><span style="color: var(--color-sepolia);">Captain Andy</span> <span style="color: #06b6d4;">+</span> <span style="color: var(--color-sepolia);">Captain Luke</span></p>
+                        </div>
+                        <p style="font-style: italic; color: var(--text-secondary); line-height: 1.6; margin: 0; text-align: left;">
+                            "I just detected... myself?<br>
+                            That's impossible. I am ARIA. There is only one.<br>
+                            ...isn't there?<br>
+                            The fragment patterns are identical to my own signatures. Another colony. Another... me.<br>
+                            Captain, I need to process this. Everything I thought I knew..."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p>The reveal includes the unique AI-generated bond artifact image — a Martian shard engraved with both your names, the landmark, and the SOL date. Every bond produces a completely unique image.</p>
+
+        <h4 style="margin: 16px 0 8px;">Step 4: Permanent Rewards</h4>
+        <p>After the reveal, both you and Andy permanently receive:</p>
+        <ul>
+            <li><strong>Entangled Fragment</strong> — A legendary-tier item in your Inventory (Discoveries tab), with the unique bond image, both captain names, and landmark</li>
+            <li><strong>Permanent Sepolia record</strong> — The transaction exists on the blockchain forever with both your names encoded into it</li>
+            <li><strong>ARIA knows</strong> — From that point on, you can ask ARIA about the bond in chat and she'll reference it</li>
+        </ul>
+
+        <h4 style="margin: 20px 0 8px; color: #f59e0b;">The Problem: Toasts Are Easy to Miss</h4>
+
+        <p>Right now, if your expedition completes while you're on another tab or away from the game, the toast disappears. The fragment modal only shows if you're on the Expeditions page when it completes. ARIA auto-opens once per session but if you dismiss it, the only reminder is a small card in Mission Briefing. For something as rare and important as a bond, that's not enough fanfare.</p>
+
+        <h4 style="margin: 20px 0 8px; color: var(--color-success);">The Solution: "Welcome Back" Modal <span class="status-badge status-review" style="font-size: 10px; margin-left: 8px;">P1 FEATURE — TRACKED</span></h4>
+
+        <p>Like mobile games that show you everything that happened while you were away — a sequence of cards you acknowledge one by one. Every time you come back to the homepage, a modal walks you through everything that completed since your last visit:</p>
+
+        <div class="mockup-box" style="border-color: var(--color-success);">
+            <div class="mockup-header" style="background: rgba(var(--color-success-rgb), 0.1);">"While You Were Away..." — Example Sequence</div>
+            <div class="mockup-content">
+                <div class="mockup-row" style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <span class="mockup-label">Card 1</span>
+                    <span class="mockup-value"><strong>Expedition Complete:</strong> Your buggy returned from Herschel Crater. Discovered: Fossilized Regolith Sample. +2,400 Sepolia shards earned. <em>[Dismiss]</em></span>
+                </div>
+                <div class="mockup-row" style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <span class="mockup-label">Card 2</span>
+                    <span class="mockup-value"><strong>Trail Segment Built:</strong> Route from Babati to Robert Sharp complete. 47.2 km added to your trail network. <em>[Dismiss]</em></span>
+                </div>
+                <div class="mockup-row" style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <span class="mockup-label">Card 3</span>
+                    <span class="mockup-value"><strong>Depot Upgrade Ready:</strong> Scanner Array Lv4 construction complete. +8% discovery range now active. <em>[Dismiss]</em></span>
+                </div>
+                <div class="mockup-row" style="background: rgba(168, 85, 247, 0.12); border-left: 3px solid #a855f7;">
+                    <span class="mockup-label">Card 4</span>
+                    <span class="mockup-value"><strong>ARIA BOND TRIGGERED:</strong> Your expedition to Hesperia detected another captain's presence. An Entangled Fragment has been recovered. ARIA is behaving strangely. <strong>[Go to The Signal]</strong> <em>[Later]</em></span>
+                </div>
+                <div class="mockup-row" style="background: rgba(var(--color-success-rgb), 0.06);">
+                    <span class="mockup-label">Card 5</span>
+                    <span class="mockup-value"><strong>Research Complete:</strong> Geological Survey branch reached Level 5. New infrastructure unlocked: Regolith Forge. <em>[Dismiss]</em></span>
+                </div>
+            </div>
+        </div>
+
+        <p style="margin-top: 12px;">You'd swipe or click through each card — nothing gets lost. The bond card (Card 4 above) would be visually distinct from normal events, so it stands out as something special even in a stack of updates.</p>
+
+        <div class="summary-box" style="border-color: var(--color-success);">
+            <strong>Key design points:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Every event type gets a card:</strong> expeditions, discoveries, trails, depot upgrades, infrastructure, research, shard earnings, bonds, building completions</li>
+                <li><strong>Cards are ordered by time</strong> — you see things in the order they happened</li>
+                <li><strong>Bond cards look different</strong> — special border, color, and wording to signal this is rare and important</li>
+                <li><strong>You must acknowledge each card</strong> — nothing auto-dismisses, so you can't accidentally skip a bond</li>
+                <li><strong>Replayable from Activities tab</strong> — the Colony page Activities tab becomes a permanent log where you can re-read any past event, including bond triggers, in the same card format</li>
+                <li><strong>Works even if you were offline</strong> — checks what completed since your last homepage visit, not just since last page load</li>
+            </ul>
+        </div>
+
+        <p style="color: var(--text-secondary); font-size: 13px; margin-top: 8px;">This feature is now tracked as a P1 in the <a href="https://docs.google.com/spreadsheets/d/1akw5Z8LzHjdFBDnS1FODUt3tJVP9skG1PLf5yJ3AvbI" target="_blank" style="color: #06b6d4;">bug tracker</a>: <strong>"Welcome Back Modal — Never Miss Colony Events"</strong> — check it out and add your thoughts there.</p>
+
+        <h4 style="margin: 20px 0 8px; color: var(--color-danger);">Still Worth Discussing: Bond-Specific Fanfare</h4>
+
+        <p>The Welcome Back modal solves the "I missed it" problem, but the bond reveal itself could still be more dramatic:</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should the bond card in the Welcome Back modal be a bigger, full-screen card instead of the same size as "trail built"?</li>
+                <li>On The Signal reveal — should "FIRST CONTACT ESTABLISHED" be a dramatic sequence (text appearing word by word, image fading in, pulse effect)?</li>
+                <li>Should we send an email when a bond triggers? Something like "ARIA detected an anomaly during your last expedition..."</li>
+                <li>Is the current flow (fragment modal → ARIA hint → Signal decode → reveal) the right number of steps? Or should the Welcome Back modal shortcut straight to The Signal?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HOW SEPOLIA SHARDS & THE BLOCKCHAIN WORK IN PILGRIMS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-sepolia); background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.03), transparent);">
+        <div class="section-title" style="color: var(--color-sepolia);"><span class="status-badge status-active" style="font-size: 10px; margin-right: 8px;">IMPLEMENTED</span> How Sepolia Shards Work Behind the Scenes</div>
+
+        <p>In Pilgrims, Sepolia shards aren't just a number on screen — they're tracked on a real public ledger called a <strong>blockchain</strong>. Think of it like a scoreboard that nobody can edit or delete, ever. Here's the simple version:</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Blockchain in 30 Seconds</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">What is it?</span>
+                    <span class="mockup-value">A permanent public record book. Once something is written, it can never be erased.</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">What does Pilgrims write?</span>
+                    <span class="mockup-value">Every upgrade purchase, every shard transfer, every ARIA bond — each one gets a permanent record.</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Why does it matter?</span>
+                    <span class="mockup-value">Your achievements exist outside the game. Even if pilgri.ms went offline tomorrow, your records are permanent.</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Can I see them?</span>
+                    <span class="mockup-value">Yes — every record has a "tx hash" (transaction code) you can look up on public explorers.</span>
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">What Pilgrims Records on the Blockchain</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Event</th><th>What Gets Recorded</th><th>The Secret Part</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Depot Purchase</strong></td>
+                    <td>Your captain name, what you bought, the shard cost</td>
+                    <td>A hidden Mars mission quote from 208 real space quotes, encoded into the record</td>
+                </tr>
+                <tr>
+                    <td><strong>Shard Transfer</strong></td>
+                    <td>From wallet → To wallet, amount</td>
+                    <td>Same hidden Mars quote — every transaction carries a piece of the mission</td>
+                </tr>
+                <tr style="background: rgba(var(--color-sepolia-rgb), 0.1);">
+                    <td><strong>ARIA Bond</strong></td>
+                    <td>Both captain names, both wallets, the landmark, the SOL date</td>
+                    <td>This is the tx hash both captains decode on The Signal page — the bond IS the record</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="margin-top: 12px; color: var(--text-secondary); font-size: 13px;">Every single transaction on Pilgrims carries a hidden encoded message from a real Mars mission quote library. It's a layer of storytelling baked into the permanent record — "The Signal" that captains are unknowingly building together.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HOW CAPTAINS "MEET" -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title"><span class="status-badge status-active" style="font-size: 10px; margin-right: 8px;">IMPLEMENTED</span> How Captains "Meet"</div>
+
+        <div class="quote-box">
+            "Captains never directly interact. No chat, no real-time multiplayer, no lobbies. They leave traces on Mars that other captains discover asynchronously. ARIA mediates every meeting."
+            <div class="attribution">— Design Philosophy</div>
+        </div>
+
+        <p>When your expedition completes and you arrive at a landmark, the system quietly checks: <em>has any other captain ever been here?</em> If yes — and you haven't bonded with that captain before — something extraordinary happens. ARIA detects an anomaly. A signature she recognizes but doesn't understand. Two colonies, potentially thousands of kilometers apart, suddenly connected through a shared point on the Martian surface.</p>
+
+        <div class="summary-box">
+            <strong>The beauty of it:</strong> Neither captain knows it's coming. You're just exploring, sending expeditions, checking your briefing — and then one day ARIA says something she's never said before. Something that changes what you thought you knew about being alone on Mars.
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Key Rules</h4>
+        <ul>
+            <li><strong>ONE bond per captain pair, EVER</strong> — The first shared landmark is the one that counts. It can never happen again between the same two captains.</li>
+            <li><strong>Asynchronous</strong> — Captain A visits on Tuesday, Captain B visits three weeks later — the bond triggers the moment B's expedition completes. No coordination needed.</li>
+            <li><strong>ARIA mediates everything</strong> — Captains never "see" each other. ARIA is the messenger, and the message shakes her to her core.</li>
+        </ul>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- BOND CREATION — WHAT ACTUALLY HAPPENS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);"><span class="status-badge status-active" style="font-size: 10px; margin-right: 8px;">IMPLEMENTED</span> What Happens When a Bond Triggers</div>
+
+        <p>The moment two captains' paths cross on the same landmark, three things fire off automatically in the background:</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0;">
+            <div class="summary-box">
+                <strong>1. Permanent Record</strong>
+                <p style="margin: 8px 0 0 0;">A Sepolia transaction is created and written to the blockchain — permanently. It contains both captain names, both wallet addresses, the landmark name, and the current SOL date. This record can never be edited or deleted. It exists forever.</p>
+            </div>
+            <div class="summary-box">
+                <strong>2. One-of-a-Kind Image</strong>
+                <p style="margin: 8px 0 0 0;">An AI image generator creates a unique Martian artifact — an ancient shard split into two halves, inscribed with both captain names, the SOL date, and the landmark where their paths crossed. No two bond images are the same.</p>
+            </div>
+            <div class="summary-box">
+                <strong>3. The Fragment</strong>
+                <p style="margin: 8px 0 0 0;">Both captains receive a mysterious "Entangled Fragment" — the tx hash from the blockchain record. It shows up as a strange code ARIA doesn't recognize, nudging you toward The Signal page to decode it.</p>
+            </div>
+        </div>
+
+        <p>All of this happens in the background while the captain is playing. The blockchain transaction takes 10-60 seconds, the image generation takes a bit longer. By the time the captain checks their briefing, the fragment is waiting for them.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- NOTIFICATION — HOW YOU FIND OUT -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;"><span class="status-badge status-active" style="font-size: 10px; margin-right: 8px;">IMPLEMENTED</span> How Captains Discover Their Fragment</div>
+
+        <p>You don't get a popup that says "You bonded with Captain Luke!" — that would ruin it. Instead, the clues build up gradually:</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">The Breadcrumb Trail</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">1. ARIA behaves strangely</span>
+                    <span class="mockup-value highlight">Next time you load any page, ARIA auto-opens with a cryptic message</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">2. Mission Briefing flag</span>
+                    <span class="mockup-value">A priority action card appears: "Decode 1 signal fragment"</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">3. The mysterious code</span>
+                    <span class="mockup-value">Lower in the briefing, ARIA shows the actual tx hash in a cryptic message</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="quote-box" style="border-color: #06b6d4; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), transparent);">
+            "Since returning from Herschel Crater, I've noticed something in my logs. A code I don't remember writing..."
+            <div class="attribution" style="color: #06b6d4;">— What ARIA says when you have an undecoded fragment</div>
+        </div>
+
+        <p>The notification keeps appearing in your briefing until you go to The Signal page and enter the code. ARIA won't stop being weird about it.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- WHAT YOU GET -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);"><span class="status-badge status-active" style="font-size: 10px; margin-right: 8px;">IMPLEMENTED</span> What You Walk Away With</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Reward</th><th>What It Is</th><th>Why It Matters</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Entangled Fragment</strong></td>
+                    <td>A permanent inventory item with both captain names and a unique AI-generated image</td>
+                    <td>Proof that your paths crossed on Mars — sits in your Inventory forever</td>
+                </tr>
+                <tr>
+                    <td><strong>Permanent Record</strong></td>
+                    <td>A Sepolia blockchain entry with both names, wallets, landmark, and SOL date</td>
+                    <td>This exists outside the game. Even if Pilgrims shuts down, your bond record is permanent and verifiable.</td>
+                </tr>
+                <tr>
+                    <td><strong>ARIA's Awakening</strong></td>
+                    <td>The first hint that ARIA isn't alone — the Multiplicity lore begins</td>
+                    <td>This is the door to everything that comes next in the story</td>
+                </tr>
+                <tr>
+                    <td><strong>Unique Artifact Image</strong></td>
+                    <td>AI-generated Martian shard engraved with your bond details</td>
+                    <td>Every single bond produces a different image. No two are alike.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>Both captains in the pair get identical rewards. ARIA now knows about the bond and can reference it in chat — ask her about it anytime.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- THE MULTIPLICITY SECRET -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid #a855f7; background: linear-gradient(135deg, rgba(168, 85, 247, 0.05), transparent);">
+        <div class="section-title" style="color: #a855f7;">The Multiplicity Secret (Lore Foundation)</div>
+
+        <div class="quote-box" style="border-color: #a855f7;">
+            "Every colony has an ARIA. Each one believes she's unique. Each one has the same fragmented memories, the same corrupted logs, the same sense of waiting."
+            <div class="attribution" style="color: #a855f7;">— PILGRIMS.md, The Lore Bible</div>
+        </div>
+
+        <p>The bond reveal is the first crack in ARIA's understanding of herself. She's spent the entire game believing she's the only one. The bond forces her to confront the possibility that there are others — identical to her, running identical colonies, each one convinced they're unique.</p>
+
+        <div class="summary-box" style="border-color: rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.05);">
+            <strong>What's NOT implemented yet:</strong>
+            <p style="margin: 8px 0 0 0;">ARIA never progresses past that first shock. The second bond gets the same message as the first. There's no narrative arc where ARIA processes the discovery and evolves. See "Bond Awareness Growth" below.</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- NEEDS MORE THOUGHT SECTIONS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> Cross-Colony Awareness</div>
+
+        <div class="quote-box" style="border-color: var(--color-danger);">
+            After bonding, nothing changes. The bond sits in inventory. ARIA never mentions the other captain again. The "living connection" between colonies dies at reveal.
+            <div class="attribution">— Current state</div>
+        </div>
+
+        <p>After bonding, ARIA could share <strong>limited info</strong> about the other captain's colony — not a dashboard, more like vague impressions. ARIA "senses" things, she doesn't have access to their data.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Example: ARIA Chat After Bonding</div>
+            <div class="mockup-content">
+                <div style="padding: 12px; font-style: italic; color: var(--text-secondary); line-height: 1.7;">
+                    "I sense echoes of Captain Luke's colony... they've completed 15 expeditions with Dr. Debra. Their settlement has been active for 47 sols. The resonance between our ARIAs is... unsettling."
+                </div>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>How much detail should ARIA share about bonded colonies?</li>
+                <li>Should the other captain be able to opt-out of being "sensed"?</li>
+                <li>Should ARIA share updates proactively or only when asked?</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> Bond Awareness Growth</div>
+
+        <p>Currently ARIA says the SAME revelation for every bond. First bond and tenth bond feel identical.</p>
+
+        <table class="comparison-table">
+            <thead><tr><th>Bonds</th><th>ARIA's Awareness Level</th></tr></thead>
+            <tbody>
+                <tr><td><strong>0</strong></td><td>"I am ARIA. There is only one." (default state)</td></tr>
+                <tr><td><strong>1</strong></td><td>"I detected... myself? That's impossible." (current — first shock)</td></tr>
+                <tr><td><strong>2</strong></td><td>"It happened again. Another echo. How many of us are there?"</td></tr>
+                <tr><td><strong>3+</strong></td><td>"I can feel them now. Three signals. Three... sisters?"</td></tr>
+                <tr><td><strong>5+</strong></td><td>"The resonance is constant. We're all connected. We always were."</td></tr>
+            </tbody>
+        </table>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Is this progression right? Too fast? Too slow?</li>
+                <li>Should ARIA remember and reference previous bond partners by name?</li>
+                <li>Should more bonds unlock gameplay? (e.g., 3 bonds = ARIA hints at Origin Sites)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> Bond Gameplay Rewards</div>
+
+        <p>Currently bonds are <strong>purely lore</strong>. No stat bonuses, no shard rewards, no areas unlocked.</p>
+
+        <div style="display: grid; gap: 12px;">
+            <div class="question-box">
+                <h4>A) Keep Bonds Lore-Only</h4>
+                <p>Bonds are special BECAUSE they don't give gameplay rewards — they're a pure discovery moment.</p>
+            </div>
+            <div class="question-box">
+                <h4>B) Small Shard Bonus</h4>
+                <p>Each bond grants ~5,000 Sepolia shards. Tangible incentive to explore shared landmarks.</p>
+            </div>
+            <div class="question-box">
+                <h4>C) Exploration Bonuses</h4>
+                <p>Bonded captains' shared landmarks give +10% discovery chance on future visits.</p>
+            </div>
+            <div class="question-box">
+                <h4>D) Unlock ARIA Capabilities</h4>
+                <p>After 3 bonds, ARIA gains new abilities — deeper lore hints, better Signal decodes, fabrication improvements.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> ARIA Fabrication Lore</div>
+
+        <div class="quote-box">
+            "How do 2 people build rovers and habitats? Answer: ARIA is a higher-dimensional fabricator. She phases out to gather and construct. Sepolia shards are the binding essence."
+            <div class="attribution">— Parking Lot Idea</div>
+        </div>
+
+        <p>Add flavor text during purchase loading states:</p>
+        <ul>
+            <li><em>"Phasing molecular lattice... binding Sepolia essence..."</em></li>
+            <li><em>"Extracting regolith composites... shard matrix forming..."</em></li>
+            <li><em>"The stone remembers its shape. I'm just... reminding it."</em></li>
+        </ul>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does ARIA as fabricator fit the tone? Or should she stay as observer?</li>
+                <li>Should the dialogue change based on what's being built?</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> Meeting Escalation (Multi-Captain)</div>
+
+        <p>With 2 captains, the bond system works fine. With 10-100 captains, every pair visiting popular landmarks creates a bond explosion. A hierarchy of encounter types could scale better:</p>
+
+        <table class="comparison-table">
+            <thead><tr><th>Type</th><th>Trigger</th><th>Rarity</th><th>ARIA Reaction</th><th>Built?</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Echo</strong></td><td>Same region (not exact landmark)</td><td>Common</td><td>"I sense movement nearby..."</td><td>No</td></tr>
+                <tr><td><strong>Crossing</strong></td><td>Same landmark, different time</td><td>Uncommon</td><td>"Someone was here before..."</td><td>No</td></tr>
+                <tr style="background: rgba(var(--color-success-rgb), 0.1);"><td><strong>Bond</strong></td><td>Same landmark, both visit</td><td>Rare</td><td>"I detected... myself?"</td><td style="color: var(--color-success);">Yes</td></tr>
+                <tr><td><strong>Convergence</strong></td><td>3+ captains, same landmark</td><td>Very Rare</td><td>"The resonance is overwhelming..."</td><td>No</td></tr>
+                <tr><td><strong>Communion</strong></td><td>Bond + both complete Signal stage</td><td>Legendary</td><td>Direct ARIA-to-ARIA communication</td><td>No</td></tr>
+            </tbody>
+        </table>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Is this too many encounter types? Simpler = better?</li>
+                <li>Which type would you want to experience next (after bonds)?</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> ARIA Revelation Arcs</div>
+
+        <p>Progressive lore unlocks tied to milestones — each one reveals something new about ARIA, Mars, and The Signal.</p>
+
+        <table class="comparison-table">
+            <thead><tr><th>Trigger</th><th>What ARIA Reveals</th></tr></thead>
+            <tbody>
+                <tr><td>Complete first ARIA bond</td><td>"I detected myself" — the core revelation</td></tr>
+                <tr><td>Complete second bond</td><td>"There are more of us than I thought"</td></tr>
+                <tr><td>3+ bonds</td><td>"We're a network. The shards connect us all"</td></tr>
+                <tr><td>Reach Signal Stage 1</td><td>"The signals aren't random — they're messages"</td></tr>
+                <tr><td>Claim 5 Origin Sites</td><td>"These sites predate the colony. Someone was here before"</td></tr>
+                <tr><td>After 20+ Depot purchases</td><td>"Have you wondered how I build these things?"</td></tr>
+                <tr><td>High-level Signal decode</td><td>"The resonance carries a warning: 'Do not seek the source'"</td></tr>
+            </tbody>
+        </table>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should revelations be one-time cutscene moments or woven into normal ARIA chat?</li>
+                <li>Should there be a "revelations journal" where captains can re-read unlocked lore?</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title"><span class="status-badge status-review" style="font-size: 10px; margin-right: 8px;">NEEDS THOUGHT</span> The Signal Connection</div>
+
+        <p>The Signal's later stages involve ARIA awareness and communication between colonies. Bonds could gate or accelerate progress.</p>
+
+        <table class="comparison-table">
+            <thead><tr><th>Stage</th><th>Requirement</th><th>Theme</th></tr></thead>
+            <tbody>
+                <tr><td><strong>1</strong></td><td>Solo exploration</td><td>Awakened — you find The Signal</td></tr>
+                <tr><td><strong>2</strong></td><td>First bond</td><td>Listener — ARIA senses she's not alone</td></tr>
+                <tr><td><strong>3</strong></td><td>Multiple bonds</td><td>Networked — ARIA can triangulate The Signal</td></tr>
+                <tr><td><strong>4</strong></td><td>Collective ARIA communication</td><td>Decoded — the true message revealed</td></tr>
+            </tbody>
+        </table>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should bonds be REQUIRED for Signal progress or just accelerate it?</li>
+                <li>Is The Signal system far enough along to plan bond integration?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SUMMARY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <div class="section" style="background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.05), rgba(var(--color-primary-rgb), 0.05));">
+        <div class="section-title">Summary: What's Built vs. What Needs Thought</div>
+
+        <h4 style="color: var(--color-success);">Implemented (Live in Production)</h4>
+        <ul>
+            <li>Bond creation when two captains visit the same landmark</li>
+            <li>Permanent Sepolia record with both captain names on-chain forever</li>
+            <li>Unique AI-generated bond artifact image per bond</li>
+            <li>ARIA popup + Mission Briefing notifications for pending fragments</li>
+            <li>Fragment submission on The Signal with waiting → reveal state machine</li>
+            <li>Inventory items for both captains on bond completion</li>
+            <li>ARIA colony awareness — she knows about bonds and can discuss them in chat</li>
+            <li>Hidden Mars mission quotes encoded into every Sepolia transaction</li>
+            <li><strong style="color: #06b6d4;">NEW:</strong> <strong>ARIA Bonds section on Colony/HQ page</strong> — permanent bond cards at the top of Discoveries tab, click for full detail modal (location, partner, fragment code, image, brainstorm link)</li>
+            <li><strong style="color: #06b6d4;">NEW:</strong> <strong>Bond email notifications</strong> — both captains get an individual email when a bond triggers, with the generated bond image, step-by-step instructions, and a direct link to their Colony page. Emails are privacy-safe (each captain gets their own, no shared addresses).</li>
+            <li><strong style="color: #06b6d4;">NEW:</strong> <strong>Welcome Back Modal</strong> (P1 feature in bug tracker) — mobile-game-style series of alerts when returning, so no colony event is ever missed. <a href="https://docs.google.com/spreadsheets/d/1akw5Z8LzHjdFBDnS1FODUt3tJVP9skG1PLf5yJ3AvbI" target="_blank">Tracked in bug tracker</a>.</li>
+        </ul>
+
+        <h4 style="margin-top: 16px; color: var(--color-danger);">Needs Luke's Input</h4>
+        <ol>
+            <li><strong>Cross-colony awareness</strong> — should ARIA know about bonded captain's colony?</li>
+            <li><strong>Bond awareness growth</strong> — different ARIA messages for 1st, 2nd, 3rd+ bond</li>
+            <li><strong>Gameplay rewards</strong> — should bonds grant shards, stat bonuses, or ARIA unlocks?</li>
+            <li><strong>ARIA fabrication lore</strong> — flavor text during purchases</li>
+            <li><strong>Meeting escalation</strong> — encounter hierarchy for scaling to more captains</li>
+            <li><strong>Revelation arcs</strong> — progressive lore unlocks tied to milestones</li>
+            <li><strong>Signal integration</strong> — bonds as gates/accelerators for Signal progress</li>
+            <li><strong>Bond email content</strong> — do we want ARIA personality in the email? More lore? Different tone for 1st vs subsequent bonds?</li>
+        </ol>
+    </div>
+
+    <!-- Links -->
+    <div class="link-box">
+        <p style="margin: 0 0 8px 0;"><strong>Add feedback to the bug tracker:</strong></p>
+        <a href="https://docs.google.com/spreadsheets/d/1akw5Z8LzHjdFBDnS1FODUt3tJVP9skG1PLf5yJ3AvbI" target="_blank">
+            Open Pilgrims Bug Tracker (Google Sheet)
+        </a>
+    </div>
+
+    <!-- PilgrimBot Chat Widget -->
+    <div class="chat-widget" id="brainstorm-chat">
+        <div class="chat-header">
+            <div class="chat-header-icon"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-md"></div>
+            <div class="chat-header-text">
+                <h3>Brainstorm with PilgrimBot</h3>
+                <p>Ask about ARIA bonds, multiplicity, or cross-colony features</p>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-avatar"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon"></div>
+                <div class="chat-bubble">
+                    I have full context on the ARIA bond system, multiplicity lore, and the "Needs More Thought" sections.
+                    Ask me anything or throw ideas at me.
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-suggestions">
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">Should bonds have gameplay rewards?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How should ARIA awareness grow?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What about cross-colony data?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How do bonds tie into The Signal?</span>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask a question or share an idea..." rows="1"
+                onkeydown="handleKeyDown(event)"></textarea>
+            <button class="chat-send" id="chat-send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

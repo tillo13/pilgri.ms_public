@@ -1,0 +1,208 @@
+/* Colony Page Styles */
+.colony-status-bar {
+    display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.colony-status-item {
+    flex: 1; min-width: 100px; background: var(--bg-card); border-radius: 12px; padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15); border: 1px solid var(--border-default);
+}
+.colony-status-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.colony-status-value { font-size: 20px; font-weight: 700; color: var(--text-primary); }
+.colony-status-value.green { color: var(--color-success); }
+.colony-status-value.gold { color: var(--color-mars); }
+.colony-status-value.orange { color: var(--color-mars); }
+
+/* Tabs */
+.colony-tabs {
+    display: flex; gap: 0; background: var(--bg-primary); border-radius: 12px; padding: 4px; margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.colony-tab {
+    flex: 1; padding: 12px 16px; border: none; background: transparent; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--text-secondary); border-radius: 8px; transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.colony-tab:hover { background: var(--bg-tertiary); }
+.colony-tab.active { background: var(--color-primary); color: white; }
+.colony-tab-icon { font-size: 20px; }
+.colony-tab-label { font-size: 12px; }
+
+/* Filter Controls */
+.colony-controls {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    margin-bottom: 16px; flex-wrap: wrap;
+}
+.filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-btn {
+    padding: 8px 14px; border: 1px solid var(--border-default); border-radius: 6px; font-size: 13px;
+    background: var(--bg-primary); color: var(--text-primary); cursor: pointer; transition: all 0.2s;
+}
+.filter-btn:hover { border-color: var(--color-primary); }
+.filter-btn.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.sort-select {
+    padding: 8px 12px; border: 1px solid var(--border-default); border-radius: 8px; font-size: 13px;
+    background: var(--bg-primary); color: var(--text-primary); cursor: pointer;
+}
+
+/* Grid */
+.colony-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+}
+
+/* Discovery Card */
+.inv-card {
+    background: var(--bg-primary); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 2px solid transparent; transition: all 0.2s; cursor: pointer;
+}
+.inv-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
+.inv-card.rarity-legendary { border-color: var(--color-mars); background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.08) 0%, var(--bg-primary) 100%); }
+.inv-card.rarity-rare { border-color: var(--color-sepolia); background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.08) 0%, var(--bg-primary) 100%); }
+.inv-card.rarity-uncommon { border-color: var(--color-success); background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.08) 0%, var(--bg-primary) 100%); }
+
+.inv-card-image {
+    width: 100%; height: 140px; object-fit: cover; background: var(--gradient-sepolia);
+    display: flex; align-items: center; justify-content: center; font-size: 48px; color: rgba(255,255,255,0.5);
+}
+.inv-card-content { padding: 14px; }
+.inv-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+.inv-card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.inv-card-qty { font-size: 12px; color: var(--color-primary); font-weight: 600; }
+.inv-card-type { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; }
+.inv-card-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px;
+    background: var(--bg-secondary); border-radius: 6px; margin-bottom: 8px;
+}
+.inv-stat { text-align: center; }
+.inv-stat-value { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.inv-stat-label { font-size: 9px; color: var(--text-secondary); text-transform: uppercase; font-weight: 500; }
+.inv-card-meta { font-size: 11px; color: var(--text-secondary); }
+.inv-card-value { font-weight: 700; font-size: 16px; }
+.inv-card-value.rarity-legendary { color: var(--color-mars); }
+.inv-card-value.rarity-rare { color: var(--color-sepolia); }
+.inv-card-value.rarity-uncommon { color: var(--color-success); }
+.inv-card-value.rarity-common { color: var(--text-muted); }
+.inv-card-desc { font-size: 11px; color: var(--text-secondary); margin: 8px 0; line-height: 1.4; }
+.inv-card-details { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-light); }
+.inv-card-details-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
+.inv-card-expedition { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.rarity-badge-compact { font-size: 9px; padding: 2px 6px; border-radius: 4px; }
+.inv-item-type { margin-left: 6px; }
+.inv-item-qty { margin-left: 6px; color: var(--color-primary); font-weight: 600; }
+
+/* Equipment Card */
+.equip-card {
+    background: linear-gradient(135deg, var(--neutral-900) 0%, var(--neutral-800) 100%); color: white;
+    border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.equip-card-icon {
+    width: 100%; height: 100px; display: flex; align-items: center; justify-content: center;
+    font-size: 56px; background: rgba(255,255,255,0.05);
+}
+.equip-card-content { padding: 14px; }
+.equip-card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.equip-card-cat { font-size: 11px; color: var(--color-sepolia); text-transform: uppercase; margin-bottom: 8px; }
+.equip-card-desc { font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 10px; line-height: 1.4; }
+.equip-card-effects { font-size: 11px; color: var(--color-success); }
+.equip-building { border: 2px solid var(--color-mars); position: relative; }
+.equip-building-badge {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--color-mars); color: white;
+    padding: 4px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+}
+.equip-build-time { font-size: 12px; color: var(--color-mars); font-weight: 600; margin-bottom: 8px; }
+.equip-card-acquired { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: var(--text-muted); }
+.equip-bonuses-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+
+/* Asset Card (Infrastructure/Vehicles) */
+.asset-card {
+    background: var(--bg-primary); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid var(--border-default);
+    transition: all 0.2s;
+}
+.asset-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
+.asset-card.clickable { cursor: pointer; }
+.asset-card.building { border-color: var(--color-mars); }
+.asset-card.active { border-color: var(--color-success); }
+.asset-card-image {
+    width: 100%; height: 120px; object-fit: cover;
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+}
+.asset-card-content { padding: 14px; }
+.asset-card-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+.asset-card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.asset-card-status {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
+}
+.asset-card-status.active { background: rgba(var(--color-success-rgb), 0.15); color: var(--color-success); }
+.asset-card-status.building { background: rgba(var(--color-mars-rgb), 0.15); color: var(--color-mars); }
+.asset-card-stats {
+    display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); margin-top: 8px;
+}
+.asset-card-stat { display: flex; align-items: center; gap: 4px; }
+.asset-card-stat-value { font-weight: 600; color: var(--text-primary); }
+.upgrade-link:hover { color: var(--color-sepolia) !important; text-decoration: underline !important; }
+
+/* Section Headers */
+.assets-section-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px; margin-top: 20px;
+}
+.assets-section-header:first-child { margin-top: 0; }
+.assets-section-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.assets-section-count {
+    font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary);
+    padding: 2px 8px; border-radius: 10px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center; padding: 40px 20px; background: var(--bg-primary); border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); grid-column: 1 / -1;
+}
+.empty-state-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+.empty-state-text { font-size: 16px; color: var(--text-secondary); margin-bottom: 16px; }
+.empty-state .btn { margin-top: 16px; }
+
+/* Shard It All Banner */
+.shard-it-all-banner {
+    display: flex; flex-direction: column; align-items: stretch;
+    background: linear-gradient(135deg, var(--neutral-900) 0%, var(--neutral-800) 100%);
+    border: 1px solid var(--color-sepolia); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+}
+.shard-it-all-btn {
+    background: var(--gradient-mars) !important;
+    color: white !important; font-weight: 600; font-size: 14px;
+    padding: 10px 16px; border: none; border-radius: 6px; width: 100%;
+}
+.shard-it-all-btn:hover { transform: scale(1.01); }
+.shard-banner-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);
+}
+.shard-banner-quote {
+    color: var(--color-mars); font-style: italic; font-size: 11px; line-height: 1.3; flex: 1;
+    opacity: 0.9; max-width: 70%;
+}
+.shard-banner-info { color: rgba(255,255,255,0.5); font-size: 11px; white-space: nowrap; }
+.shard-modal-quote { color: var(--color-mars); font-style: italic; line-height: 1.6; }
+.shard-modal-warning { margin-top: 12px; color: var(--color-mars); font-size: 12px; }
+.object-cover { object-fit: cover; }
+
+/* Colony-specific mobile tweaks (layout overflow handled globally in core.css) */
+@media (max-width: 768px) {
+    .colony-status-bar { gap: 8px; }
+    .colony-status-value { font-size: 16px; }
+    .colony-tab { padding: 10px 8px; font-size: 12px; }
+    .colony-tab-icon { font-size: 16px; }
+    .colony-tab-label { font-size: 10px; }
+    .colony-grid { gap: 10px; }
+    .filter-btn { padding: 6px 10px; font-size: 12px; }
+    .inv-card-image { height: 100px; }
+    .equip-card-icon { height: 80px; font-size: 40px; }
+    .asset-card-image { height: 90px; }
+    .shard-it-all-banner { padding: 10px; }
+    .shard-banner-quote { max-width: 60%; font-size: 10px; }
+}
+@media (max-width: 380px) {
+    .colony-tab { padding: 8px 4px; }
+}

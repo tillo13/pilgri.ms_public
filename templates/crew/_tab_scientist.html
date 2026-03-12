@@ -1,0 +1,143 @@
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB: SCIENTIST -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-scientist" class="crew-tab-content" style="display: none;">
+
+{% if scientist %}
+<!-- Scientist Identity Card -->
+<div class="dashboard-card relative overflow-hidden p-20 mb-16">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2">
+        <div class="text-center mb-16">
+            <div class="text-xs text-sepolia uppercase tracking-wide mb-8">Colony Scientist</div>
+            <div class="flex justify-center">
+                <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" onclick="showImageModal('{{ scientist.image_url }}')"
+                     class="rounded-lg cursor-pointer" style="max-width: 200px; max-height: 200px; border: 3px solid var(--color-sepolia);">
+            </div>
+            <h2 class="text-xl font-bold mt-12 mb-4">{{ scientist.name }}</h2>
+            <div class="text-sm text-sepolia">{{ scientist.specialty }} Specialist</div>
+        </div>
+
+        <!-- Research Activity Panel -->
+        {% if scientist_research and scientist_research.sv_rate > 0 %}
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.2); border-radius: 12px; position: relative; overflow: hidden;">
+            <div class="sci-sweep-bar"></div>
+            <!-- Status line -->
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; position: relative;">
+                <div class="sci-pulse-dot"></div>
+                <span style="font-size: 11px; color: var(--color-success); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Active Research</span>
+            </div>
+            <div style="font-size: 11px; opacity: 0.45; margin-bottom: 14px;">{{ scientist.name }} is analyzing samples at the Research Station, generating Science Value (SV) over time.</div>
+            <!-- SV generation metrics -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; position: relative;">
+                <div style="text-align: center;">
+                    <div id="sci-sv-rate" style="font-size: 22px; font-weight: 700; color: var(--color-success); animation: sciFloat 3s ease-in-out infinite;">
+                        {{ scientist_research.sv_rate }}
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.5px;">SV / hour</div>
+                    <div style="font-size: 9px; opacity: 0.3; margin-top: 2px;">Generation rate</div>
+                </div>
+                <div style="text-align: center;">
+                    <div id="sci-sv-accumulated" style="font-size: 22px; font-weight: 700; color: white;"
+                         data-base="{{ scientist_research.sv_accumulated }}" data-rate="{{ scientist_research.sv_rate }}">
+                        {{ scientist_research.sv_accumulated }}
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.5px;">Pending</div>
+                    <div style="font-size: 9px; opacity: 0.3; margin-top: 2px;">Awaiting recording</div>
+                </div>
+                <div style="text-align: center;">
+                    <div id="sci-sv-total" style="font-size: 22px; font-weight: 700; color: rgba(255,255,255,0.7);">
+                        {{ scientist_research.sv_available }}
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.5px;">Recorded SV</div>
+                    <div style="font-size: 9px; opacity: 0.3; margin-top: 2px;">Available for tech</div>
+                </div>
+            </div>
+            <!-- Live micro-increment display -->
+            <div style="text-align: center; margin-top: 8px; height: 16px;">
+                <span id="sci-micro-tick" style="font-size: 10px; color: var(--color-success); opacity: 0; transition: opacity 0.3s; font-family: monospace;"></span>
+            </div>
+            <!-- Record SV button -->
+            <div id="sci-harvest-row" style="margin-top: 4px; padding-top: 12px; border-top: 1px solid rgba(74,222,128,0.15); display: flex; align-items: center; justify-content: space-between; {% if scientist_research.sv_accumulated < 1 %}opacity: 0.4;{% endif %}">
+                <div>
+                    <span style="font-size: 12px; color: rgba(255,255,255,0.6);">+<span id="sci-harvest-val">{{ scientist_research.sv_accumulated }}</span> SV pending</span>
+                    <div style="font-size: 9px; opacity: 0.3; margin-top: 2px;">Record to use for tech research</div>
+                </div>
+                <button id="record-sv-btn" onclick="recordSV()" {% if scientist_research.sv_accumulated < 1 %}disabled{% endif %}
+                    style="background: var(--color-success); color: #000; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Record SV
+                </button>
+            </div>
+            <!-- Trail Analysis XP (integrated) -->
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(74,222,128,0.15); position: relative;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">Trail Analysis XP</span>
+                    <span id="scientist-tab-xp" style="font-size: 12px; font-weight: 600; color: var(--color-sepolia);">0</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.06); height: 6px; border-radius: 3px; overflow: hidden;">
+                    <div id="scientist-tab-xp-bar" style="background: var(--color-sepolia); height: 100%; width: 0%; transition: width 0.6s ease; border-radius: 3px; box-shadow: 0 0 6px var(--color-sepolia);"></div>
+                </div>
+                <div style="font-size: 9px; opacity: 0.35; margin-top: 4px;">Navigation XP from trail missions</div>
+            </div>
+            <!-- Floating data particles -->
+            <div class="sci-data-particle" style="right: 12px; top: 20%; animation-delay: 0s;">+SV</div>
+            <div class="sci-data-particle" style="right: 24px; top: 50%; animation-delay: 1.3s;">0x</div>
+            <div class="sci-data-particle" style="right: 8px; top: 70%; animation-delay: 2.6s;">+SV</div>
+        </div>
+        {% else %}
+        <!-- No research station - show XP standalone -->
+        <div style="margin-bottom: 20px; padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-default); border-radius: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <div style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.3);"></div>
+                <span style="font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px;">Research Inactive</span>
+            </div>
+            <div style="font-size: 12px; opacity: 0.5; margin-bottom: 12px;">Build a Research Station to enable passive Science Value generation</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 11px; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.5px;">Trail Analysis XP</span>
+                <span id="scientist-tab-xp" style="font-size: 12px; font-weight: 600; color: var(--color-sepolia);">0</span>
+            </div>
+            <div style="background: rgba(255,255,255,0.06); height: 6px; border-radius: 3px; overflow: hidden;">
+                <div id="scientist-tab-xp-bar" style="background: var(--color-sepolia); height: 100%; width: 0%; transition: width 0.6s ease; border-radius: 3px;"></div>
+            </div>
+            <div style="font-size: 9px; opacity: 0.35; margin-top: 4px;">Navigation XP from trail missions</div>
+        </div>
+        {% endif %}
+
+        <!-- Scientist Stats as Rings -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+            {% set stats = [
+                ('Nav', scientist.stats.navigation if scientist.stats else 0, 'var(--color-sepolia)', '×' ~ "%.1f"|format(1 + (scientist.stats.navigation if scientist.stats else 0) / 150) ~ ' trail speed'),
+                ('Anl', scientist.stats.analysis if scientist.stats else 0, 'var(--color-success)', '+' ~ ((scientist.stats.analysis if scientist.stats else 0) / 2)|int ~ '% disc value'),
+                ('Geo', scientist.stats.geology if scientist.stats else 0, 'var(--color-mars)', '+' ~ (scientist.stats.geology if scientist.stats else 0) ~ '% minerals'),
+                ('Eng', scientist.stats.engineering if scientist.stats else 0, 'var(--color-primary)', '+' ~ ((scientist.stats.engineering if scientist.stats else 0) / 25)|int ~ ' cargo')
+            ] %}
+            {% for label, val, color, desc in stats %}
+            <div style="text-align: center;">
+                <div class="sci-stat-ring" style="margin: 0 auto 6px;">
+                    <svg width="56" height="56" viewBox="0 0 56 56">
+                        <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
+                        <circle cx="28" cy="28" r="24" fill="none" stroke="{{ color }}" stroke-width="4"
+                                stroke-dasharray="{{ (val / 50 * 150.8)|round(1) }} 150.8"
+                                stroke-linecap="round" style="filter: drop-shadow(0 0 4px {{ color }});"/>
+                    </svg>
+                    <div class="ring-label" style="color: {{ color }};">{{ val }}</div>
+                </div>
+                <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">{{ label }}</div>
+                <div style="font-size: 9px; opacity: 0.4; margin-top: 2px;">{{ desc }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="dashboard-card text-center p-20">
+    <div class="text-4xl mb-12"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-xl"></div>
+    <h3 class="text-lg m-0 mb-8">No Scientist Assigned</h3>
+    <p class="text-sm opacity-70 m-0">Complete more expeditions to recruit a colony scientist.</p>
+</div>
+{% endif %}
+
+<!-- Live SV ticker + Record SV action -->
+
+</div><!-- End tab-scientist -->

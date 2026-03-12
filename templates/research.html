@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% block title %}Lab - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'research';
+        {% if user %}
+        {% if not has_research_station %}
+        chat.dataset.greeting = "This is the **Lab** — your tech tree.\n\nTo begin research, you'll need a **Research Station** from the Depot.\n\nEach branch unlocks powerful colony bonuses!";
+        {% endif %}
+        let ctx = 'User on Lab/Research page. ';
+        ctx += 'Scientific Value (SV): {{ research_points|default(0) }}. ';
+        {% if not has_research_station %}
+        ctx += 'NO RESEARCH STATION - cannot research yet (needs to build one in Depot). ';
+        {% endif %}
+        {% if scientist %}
+        ctx += 'Scientist: {{ scientist.name|default("Unknown") }}. ';
+        {% if primary_branch %}ctx += 'Primary branch: {{ primary_branch }}. ';{% endif %}
+        {% endif %}
+        {% if active_research %}
+        ctx += 'ACTIVELY RESEARCHING: {{ active_research.tech_name|default("unknown") }} ({{ active_research.branch|default("") }}) — {{ (active_research.remaining_seconds / 3600)|round(1) }}h remaining. ';
+        {% endif %}
+        {% if branches %}
+        let branchInfo = [];
+        {% for key, branch in branches.items() %}
+        branchInfo.push('{{ branch.name|default(key) }}: Lv{{ branch.current_level|default(0) }}/10');
+        {% endfor %}
+        ctx += 'BRANCH LEVELS: ' + branchInfo.join(', ') + '. ';
+        {% endif %}
+        ctx += '4 branches: Exploration (expedition bonuses), Engineering (build/craft bonuses), Biology (discovery value), Signal (ARIA/communication). Each has 10 levels costing SV.';
+        chat.dataset.pageContext = ctx;
+        {% else %}
+        chat.dataset.pageContext = 'Anonymous visitor on Research page. Cannot view tech tree without signing in.';
+        {% endif %}
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.research-locked { text-align: center; padding: 60px 20px; }
+.research-locked h2 { font-size: 20px; margin-bottom: 12px; }
+.research-locked p { color: var(--text-secondary); margin-bottom: 20px; }
+
+.research-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--bg-card); border-radius: var(--radius-lg); margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.sp-display { font-size: 18px; font-weight: 700; color: var(--color-sepolia); }
+.scientist-badge { display: flex; align-items: center; gap: 10px; }
+.scientist-badge img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.scientist-badge .sci-info { font-size: 12px; }
+.scientist-badge .sci-name { font-weight: 600; font-size: 14px; }
+
+.active-bar { background: var(--bg-card); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px; border-left: 4px solid var(--color-sepolia); position: relative; overflow: hidden; }
+.active-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(168, 85, 247, 0.08); transition: width 1s linear; }
+.active-bar-content { position: relative; display: flex; justify-content: space-between; align-items: center; }
+.active-bar-name { font-weight: 600; font-size: 14px; }
+.active-bar-timer { font-size: 13px; color: var(--color-sepolia); font-weight: 600; font-family: monospace; }
+
+.branch-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.branch-tab { flex: 1; min-width: 70px; padding: 10px 8px; text-align: center; background: var(--bg-card); border-radius: var(--radius-md); cursor: pointer; transition: all var(--tr); border: 2px solid transparent; font-size: 12px; }
+.branch-tab:hover { border-color: var(--color-sepolia); }
+.branch-tab.active { border-color: var(--color-sepolia); background: rgba(168, 85, 247, 0.1); }
+.branch-tab .branch-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+.branch-tab .branch-icon-img { width: 28px; height: 28px; display: block; margin: 0 auto 4px; border-radius: var(--radius-sm); object-fit: cover; }
+.branch-tab .branch-name { font-weight: 600; }
+.branch-tab .branch-bonus { font-size: 10px; color: var(--color-sepolia); margin-top: 2px; }
+.branch-tab .branch-progress { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.tier-section { margin-bottom: 20px; }
+.tier-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; padding-left: 4px; font-weight: 600; }
+.tech-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+
+.tech-card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px; cursor: pointer; transition: all var(--tr); border: 2px solid transparent; position: relative; }
+.tech-card:hover { border-color: rgba(168, 85, 247, 0.3); transform: translateY(-1px); }
+.tech-card.status-completed { border-color: rgba(168, 85, 247, 0.4); }
+.tech-card.status-completed::after { content: ''; position: absolute; top: 10px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--color-sepolia); }
+.tech-card.status-researching { border-color: rgba(168, 85, 247, 0.6); animation: pulse-border 2s infinite; }
+.tech-card.status-locked { opacity: 0.5; }
+.tech-card.status-locked:hover { transform: none; }
+.tech-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.tech-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4; }
+.tech-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+.tech-cost { color: var(--color-sepolia); font-weight: 600; }
+.tech-time { color: var(--text-muted); }
+.tech-effects { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.tech-effect { font-size: 11px; color: var(--color-sepolia); font-weight: 600; background: rgba(168, 85, 247, 0.1); padding: 3px 8px; border-radius: 4px; }
+.tech-effect-value { color: var(--color-sepolia); font-weight: 600; }
+.tech-progress-bar { margin-top: 8px; height: 4px; background: rgba(168, 85, 247, 0.15); border-radius: 2px; overflow: hidden; }
+.tech-progress-fill { height: 100%; background: var(--color-sepolia); border-radius: 2px; transition: width 1s linear; }
+.tech-lock-msg { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-style: italic; }
+
+@keyframes pulse-border { 0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.2); } 50% { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.1); } }
+
+/* Tech detail modal */
+.tech-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 5000; align-items: center; justify-content: center; padding: 20px; }
+.tech-modal-overlay.show { display: flex; }
+.tech-modal { background: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; max-width: 400px; width: 100%; max-height: 80vh; overflow-y: auto; }
+.tech-modal h3 { font-size: 18px; margin-bottom: 4px; }
+.tech-modal .modal-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5; }
+.tech-modal .modal-section { margin-bottom: 14px; }
+.tech-modal .modal-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px; }
+.tech-modal .modal-effect { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.tech-modal .modal-cost-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.tech-modal .modal-cost-row .discount { text-decoration: line-through; color: var(--text-muted); margin-right: 6px; font-size: 11px; }
+.btn-research { width: 100%; padding: 12px; background: var(--color-sepolia); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 14px; cursor: pointer; transition: all var(--tr); margin-top: 12px; }
+.btn-research:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-research:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-research.completed { background: rgba(168, 85, 247, 0.2); color: var(--color-sepolia); cursor: default; }
+.btn-cancel { width: 100%; padding: 10px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md); font-weight: 600; font-size: 13px; cursor: pointer; transition: all var(--tr); margin-top: 8px; }
+.btn-cancel:hover { background: rgba(239, 68, 68, 0.25); }
+.btn-cancel-research { padding: 6px 12px; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-md); font-weight: 600; font-size: 11px; cursor: pointer; transition: all var(--tr); white-space: nowrap; }
+.btn-cancel-research:hover { background: rgba(239, 68, 68, 0.25); }
+
+.tech-card-img { width: 100%; height: 80px; object-fit: cover; border-radius: var(--radius-md) var(--radius-md) 0 0; margin: -16px -16px 12px -16px; width: calc(100% + 32px); }
+.tech-modal-img { width: 100%; object-fit: contain; border-radius: var(--radius-md); margin-bottom: 12px; }
+.modal-divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 12px 0; }
+.modal-status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-bottom: 12px; }
+.modal-status-badge.available { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.modal-status-badge.researching { background: rgba(168, 85, 247, 0.15); color: var(--color-sepolia); }
+.modal-status-badge.completed { background: rgba(168, 85, 247, 0.25); color: var(--color-sepolia); }
+.modal-status-badge.locked { background: rgba(100, 100, 100, 0.15); color: var(--text-muted); }
+
+.research-info { margin-bottom: 16px; }
+.research-info details { background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.06); }
+.research-info summary { padding: 10px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary); list-style: none; display: flex; align-items: center; gap: 8px; }
+.research-info summary::-webkit-details-marker { display: none; }
+.research-info summary::before { content: '▸'; font-size: 11px; transition: transform 0.2s; }
+.research-info details[open] summary::before { transform: rotate(90deg); }
+.research-info .info-body { padding: 0 14px 14px; font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+.research-info .info-body h4 { font-size: 12px; font-weight: 600; color: var(--text-primary); margin: 10px 0 4px; }
+.research-info .info-body ul { margin: 4px 0; padding-left: 16px; }
+.research-info .info-body a { color: var(--color-sepolia); text-decoration: none; }
+.research-info .info-body a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+    .research-header { flex-direction: column; align-items: flex-start; }
+    .tech-grid { grid-template-columns: 1fr; }
+    .branch-tabs { gap: 4px; }
+    .branch-tab { padding: 8px 4px; font-size: 11px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not has_research_station %}
+<div class="research-locked">
+    <div style="font-size: 48px; margin-bottom: 16px;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-xl"></div>
+    <h2>Basic Research Station Required</h2>
+    <p>Build a Basic Research Station to unlock the Tech Tree.<br>Your scientist is ready to begin research.</p>
+    <a href="/depot" class="btn" style="background: var(--color-sepolia); color: white; padding: 12px 24px; border-radius: var(--radius-md); text-decoration: none; font-weight: 600;">Go to Depot</a>
+</div>
+{% else %}
+
+<!-- Header: SV + Scientist -->
+<div class="research-header">
+    <div>
+        <div class="sp-display"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon"> {{ "{:,}".format(research_points | int) }} SV</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Scientific Value (from discoveries)</div>
+    </div>
+    {% if scientist %}
+    <div class="scientist-badge">
+        <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}">
+        <div class="sci-info">
+            <div class="sci-name">{{ scientist.name }}</div>
+            <div style="color: var(--text-muted); font-size: 12px;">{{ scientist.specialty }} specialist</div>
+            {% if primary_branch %}
+            <div style="font-size: 11px; margin-top: 4px; line-height: 1.4;">
+                <span style="color: var(--color-sepolia);">{{ branches[primary_branch].icon }} {{ branches[primary_branch].name }}:</span> 25% faster, 20% cheaper
+                {% if secondary_branch %}
+                <br><span style="color: var(--text-muted);">{{ branches[secondary_branch].icon }} {{ branches[secondary_branch].name }}:</span> 15% faster
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick intro (always visible) -->
+<div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 12px; font-size: 13px; line-height: 1.6;">
+    <strong style="color: var(--color-sepolia);">Scientific Value (SV)</strong> — Earned by <em>keeping</em> discoveries in your collection. Extract items for immediate shards, or keep them to accumulate SV for research. Each discovery adds its SV to your total while you hold it.
+</div>
+
+<!-- What is this? -->
+<div class="research-info">
+    <details>
+        <summary>How the Tech Tree Works</summary>
+        <div class="info-body">
+            <h4>Earning Scientific Value</h4>
+            <p>SV comes from <strong>keeping discoveries</strong> in your collection — not from extracting them:</p>
+            <ul>
+                <li><strong>Keep items</strong> → Their SV adds to your total (shown above)</li>
+                <li><strong>Extract items</strong> → You get shards but LOSE that item's SV</li>
+            </ul>
+            <p style="color: var(--color-sepolia); font-size: 11px; margin-top: 8px;">This is the core trade-off: immediate shards vs. long-term research progress.</p>
+
+            <h4>How Research Works</h4>
+            <ul>
+                <li>Choose a tech and spend SV to begin research</li>
+                <li>Research takes real time (24h to 7 days depending on tier)</li>
+                <li>Only one research can be active at a time</li>
+                <li>Higher tiers require completing lower-tier techs first</li>
+                <li>Cancel anytime for a full SV refund</li>
+            </ul>
+
+            <h4>4 Branches</h4>
+            <ul>
+                <li><strong>Exploration</strong> — Faster expeditions, better discoveries</li>
+                <li><strong>Vehicles</strong> — Speed, cost efficiency, cargo capacity</li>
+                <li><strong>Shard Generation</strong> — Solar output, dust resistance, night collection</li>
+                <li><strong>Extraction</strong> — Higher shard yields, rare specimen bonuses</li>
+            </ul>
+
+            <h4>Scientist Bonuses</h4>
+            <p>Your scientist has a <strong>primary branch</strong> (25% faster, 20% cheaper) and may have a <strong>secondary branch</strong> (15% faster). Research in their specialty branches to maximize efficiency.</p>
+        </div>
+    </details>
+</div>
+
+<!-- Active Research Bar -->
+{% if active_research %}
+<div class="active-bar" id="activeResearchBar" data-remaining="{{ active_research.remaining_seconds }}" data-duration="{{ active_research.duration_seconds }}">
+    <div class="active-bar-fill" id="activeBarFill" style="width: {{ active_research.progress_pct }}%;"></div>
+    <div class="active-bar-content">
+        <div class="active-bar-name">Researching: {{ active_research.tech_name }}</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="active-bar-timer" id="activeTimer">--</div>
+            <button onclick="cancelResearch()" class="btn-cancel-research">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Branch Tabs -->
+<div class="branch-tabs" id="branchTabs">
+{% for branch_key, branch in branches.items() %}
+<div class="branch-tab {% if loop.first %}active{% endif %}" data-branch="{{ branch_key }}" onclick="switchBranch('{{ branch_key }}')">
+    {% if branch.icon_url %}
+    <img src="{{ branch.icon_url }}" class="branch-icon-img" alt="{{ branch.name }}">
+    {% else %}
+    <span class="branch-icon">{{ branch.icon }}</span>
+    {% endif %}
+    <span class="branch-name">{{ branch.name }}</span>
+    {% if branch.bonus %}
+    <span class="branch-bonus">{{ branch.bonus.label }}</span>
+    {% endif %}
+    <span class="branch-progress">Lv{{ branch.branch_level }} · {{ branch.completed_count }}/{{ branch.total_techs }}</span>
+</div>
+{% endfor %}
+</div>
+
+<!-- Branch Content -->
+{% for branch_key, branch in branches.items() %}
+<div class="branch-content" id="branch-{{ branch_key }}" style="{% if not loop.first %}display:none;{% endif %}">
+    <!-- Branch level header -->
+    <div style="margin-bottom: 16px; padding: 12px 16px; background: var(--bg-card); border-radius: var(--radius-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div>
+                <span style="font-weight: 600; font-size: 15px;">{{ branch.name }}</span>
+                <span style="color: var(--color-sepolia); margin-left: 8px;">Branch Level {{ branch.branch_level }}{% if branch.branch_level >= branch.max_branch_level %} (MAX){% endif %}</span>
+            </div>
+            <div style="font-size: 13px; color: var(--text-secondary);">
+                {% if branch.completed_count >= branch.total_techs %}
+                <span style="color: var(--color-sepolia);"><img src="{{ icons.checkmark_done }}" alt="" class="inline-icon-sm"> All {{ branch.total_techs }} techs complete — branch ready to level up!</span>
+                {% else %}
+                {{ branch.completed_count }}/{{ branch.total_techs }} techs complete at this level
+                {% endif %}
+            </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+            {% if branch_key == 'exploration' %}
+            <strong>Why research this:</strong> Faster expeditions, better discovery rates, dust storm immunity. Essential for finding rare and legendary items.
+            {% elif branch_key == 'vehicles' %}
+            <strong>Why research this:</strong> Increased cargo capacity, faster rovers, reduced expedition costs. Carry more discoveries per expedition.
+            {% elif branch_key == 'power' %}
+            <strong>Why research this:</strong> Higher passive shard income, night-time generation, dust resistance. More shards while you sleep.
+            {% elif branch_key == 'extraction' %}
+            <strong>Why research this:</strong> Better shard yields when selling, bonus value for rare/legendary finds. Maximize income from discoveries.
+            {% endif %}
+        </div>
+    </div>
+    {% for tier in [1, 2, 3] %}
+    {% set tier_techs = [] %}
+    {% for tk, tv in branch.techs.items() if tv.tier == tier %}
+    {% set _ = tier_techs.append((tk, tv)) %}
+    {% endfor %}
+    {% if tier_techs %}
+    <div class="tier-section">
+        <div class="tier-label">Tier {{ tier }}{% if tier == 2 %} — requires Tier 1{% elif tier == 3 %} — requires Tier 2{% endif %}</div>
+        <div class="tech-grid">
+        {% for tech_key, tech in tier_techs %}
+        <div class="tech-card status-{{ tech.status }}" onclick="showTechDetail('{{ branch_key }}', '{{ tech_key }}')">
+            {% if tech.image_url %}
+            <img src="{{ tech.image_url }}" alt="{{ tech.name }}" class="tech-card-img" loading="lazy">
+            {% endif %}
+            <div class="tech-name">{{ tech.name }}</div>
+            <div class="tech-desc">{{ tech.description }}</div>
+            {# Show main effects as highlighted stats #}
+            <div class="tech-effects">
+                {% for eff_key, eff_val in tech.effects.items() %}
+                <span class="tech-effect">
+                    {% if eff_key == 'expedition_speed_mult' %}<img src="{{ icons.speed_fast }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% speed
+                    {% elif eff_key == 'discovery_chance_bonus' %}<img src="{{ icons.magnifier_discovery }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% discovery
+                    {% elif eff_key == 'rare_chance_bonus' %}<img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% rare
+                    {% elif eff_key == 'legendary_chance_bonus' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% legendary
+                    {% elif eff_key == 'dust_storm_resistance' and eff_val >= 1.0 %}<img src="{{ icons.tornado_dust }}" alt="" class="inline-icon-sm"> Dust immune
+                    {% elif eff_key == 'fuel_cost_mult' %}<img src="{{ icons.fuel_pump }}" alt="" class="inline-icon-sm"> -{{ "%.0f"|format((1 - eff_val) * 100) }}% cost
+                    {% elif eff_key == 'cargo_capacity_mult' %}<img src="{{ icons.cargo_capacity }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% cargo
+                    {% elif eff_key == 'passive_income_mult' %}<img src="{{ icons.income_coins }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% income
+                    {% elif eff_key == 'night_generation_mult' %}<img src="{{ icons.night_moon }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% night gen
+                    {% elif eff_key == 'all_generation_mult' %}<img src="{{ icons.lightning_power }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x all gen
+                    {% elif eff_key == 'discovery_value_mult' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% value
+                    {% elif eff_key == 'extraction_bonus' %}<img src="{{ icons.pickaxe_mining }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% yield
+                    {% elif eff_key == 'rare_value_mult' %}<img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% rare value
+                    {% elif eff_key == 'legendary_value_mult' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% legendary value
+                    {% endif %}
+                </span>
+                {% endfor %}
+            </div>
+            <div class="tech-meta">
+                <span class="tech-cost">{{ "{:,}".format(tech.cost_sv | int) }} SV</span>
+                <span class="tech-time">{% set rd = tech.research_time_seconds // 86400 %}{% set rh = (tech.research_time_seconds % 86400) // 3600 %}{% set rm = (tech.research_time_seconds % 3600) // 60 %}{% if rd >= 1 %}{{ rd }}d {{ rh }}h {{ rm }}m{% elif rh >= 1 %}{{ rh }}h {{ rm }}m{% else %}{{ rm }}m{% endif %} research</span>
+            </div>
+            {% if tech.status == 'researching' %}
+            <div class="tech-progress-bar"><div class="tech-progress-fill" style="width: {{ tech.progress_pct }}%;"></div></div>
+            {% elif tech.status == 'locked' %}
+            <div class="tech-lock-msg"><img src="{{ icons.lock_closed }}" alt="" class="inline-icon-sm"> Prerequisites required</div>
+            {% elif tech.status == 'completed' %}
+            <div class="tech-lock-msg" style="color: var(--color-sepolia); font-style: normal;"><img src="{{ icons.checkmark_done }}" alt="" class="inline-icon-sm"> Researched</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endfor %}
+
+<!-- Tech Detail Modal -->
+<div class="tech-modal-overlay" id="techModalOverlay" onclick="if(event.target===this)closeTechModal()">
+    <div class="tech-modal" id="techModal"></div>
+</div>
+
+{% endif %}
+
+<script>
+// Tech data from server
+const techData = {{ tech_status | tojson }};
+techData.scientist_bonuses = {{ scientist_bonuses | tojson }};
+const researchPoints = {{ research_points | int }};
+
+function switchBranch(branchKey) {
+    document.querySelectorAll('.branch-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.branch-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('branch-' + branchKey).style.display = 'block';
+    document.querySelector(`.branch-tab[data-branch="${branchKey}"]`).classList.add('active');
+}
+
+function showTechDetail(branch, techKey) {
+    const branchData = techData.branches[branch];
+    const tech = branchData.techs[techKey];
+    const modal = document.getElementById('techModal');
+
+    // Status badge
+    const statusLabels = {available: 'Available', researching: 'In Progress', completed: 'Researched', locked: 'Locked'};
+    const statusBadge = `<span class="modal-status-badge ${tech.status}">${statusLabels[tech.status] || tech.status}</span>`;
+
+    // Image
+    const imgHtml = tech.image_url ? `<img src="${tech.image_url}" alt="${tech.name}" class="tech-modal-img">` : '';
+
+    // Effects
+    let effectsHtml = '';
+    for (const [k, v] of Object.entries(tech.effects)) {
+        effectsHtml += `<div class="modal-effect"><span>${formatEffectName(k)}</span><span class="tech-effect-value">${formatEffectValue(k, v)}</span></div>`;
+    }
+
+    // Cost with discount
+    let costHtml = '';
+    if (tech.cost_sv < tech.cost_sv_original) {
+        costHtml = `<span class="discount">${tech.cost_sv_original.toLocaleString()}</span>${tech.cost_sv.toLocaleString()} SV`;
+    } else {
+        costHtml = `${tech.cost_sv.toLocaleString()} SV`;
+    }
+
+    // Time with discount
+    let timeHtml = '';
+    if (tech.research_time_seconds < tech.research_time_original) {
+        timeHtml = `<span class="discount">${formatTime(tech.research_time_original)}</span>${formatTime(tech.research_time_seconds)}`;
+    } else {
+        timeHtml = formatTime(tech.research_time_seconds);
+    }
+
+    // Scientist bonus info for this branch
+    let bonusHtml = '';
+    const bonuses = techData.scientist_bonuses || {};
+    const branchBonus = bonuses[branch];
+    if (branchBonus) {
+        bonusHtml = `<div class="modal-section"><div class="modal-section-title">Scientist Bonus</div><div style="font-size:13px;color:var(--color-sepolia);">${branchBonus.label}</div></div>`;
+    }
+
+    // Prerequisites
+    let reqsHtml = '';
+    if (tech.requires && tech.requires.length > 0) {
+        const reqItems = tech.requires.map(r => {
+            const reqTech = branchData.techs[r];
+            const done = reqTech && reqTech.status === 'completed';
+            return `<div style="font-size:13px;color:${done ? 'var(--color-sepolia)' : 'var(--text-secondary)'};">${done ? '<img src="{{ icons.checkmark_done }}" alt="" class="inline-icon-sm">' : '○'} ${reqTech ? reqTech.name : r}</div>`;
+        });
+        reqsHtml = `<div class="modal-section"><div class="modal-section-title">Prerequisites</div>${reqItems.join('')}</div>`;
+    }
+
+    // Tier & Branch info
+    const tierLabel = `Tier ${tech.tier} · ${branchData.name} · Branch Level ${branchData.branch_level}`;
+
+    // Action buttons
+    let btnHtml = '';
+    if (tech.status === 'completed') {
+        btnHtml = '<button class="btn-research completed" disabled><img src="{{ icons.checkmark_done }}" alt="" class="inline-icon-sm"> Researched</button>';
+    } else if (tech.status === 'researching') {
+        const remaining = tech.remaining_seconds || 0;
+        const timeLeft = remaining > 86400 ? `${Math.floor(remaining/86400)}d ${Math.floor((remaining%86400)/3600)}h` : remaining > 3600 ? `${Math.floor(remaining/3600)}h ${Math.floor((remaining%3600)/60)}m` : `${Math.floor(remaining/60)}m`;
+        btnHtml = `<button class="btn-research" disabled style="opacity:0.7;">In Progress — ${timeLeft} remaining</button>`;
+        btnHtml += `<button class="btn-cancel" onclick="cancelResearch()">Cancel Research (refunds ${tech.cost_sv.toLocaleString()} SV)</button>`;
+    } else if (tech.status === 'available') {
+        const canAfford = researchPoints >= tech.cost_sv;
+        const hasActive = techData.active_research != null;
+        const disabled = !canAfford || hasActive;
+        let label = 'Begin Research';
+        if (!canAfford) label = `Need ${(tech.cost_sv - researchPoints).toLocaleString()} more SV`;
+        if (hasActive) label = 'Another research in progress';
+        btnHtml = `<button class="btn-research" ${disabled ? 'disabled' : ''} onclick="startResearch('${branch}','${techKey}')">${label}</button>`;
+    } else {
+        btnHtml = '<button class="btn-research" disabled><img src="{{ icons.lock_closed }}" alt="" class="inline-icon-sm"> Locked — Complete prerequisites</button>';
+    }
+
+    modal.innerHTML = `
+        ${imgHtml}
+        ${statusBadge}
+        <h3 style="margin-bottom:2px;">${tech.name}</h3>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">${tierLabel}</div>
+        <div class="modal-desc">${tech.description}</div>
+        <hr class="modal-divider">
+        ${reqsHtml}
+        <div class="modal-section">
+            <div class="modal-section-title">What You'll Get</div>
+            ${effectsHtml}
+        </div>
+        <hr class="modal-divider">
+        <div class="modal-section">
+            <div class="modal-section-title">Research Cost</div>
+            <div class="modal-cost-row"><span>Scientific Value</span><span>${costHtml}</span></div>
+            <div class="modal-cost-row"><span>Research Time</span><span>${timeHtml}</span></div>
+            <div class="modal-cost-row"><span>Your Balance</span><span style="color:${researchPoints >= tech.cost_sv ? 'var(--color-sepolia)' : '#ef4444'}">${researchPoints.toLocaleString()} SV</span></div>
+        </div>
+        ${bonusHtml}
+        ${btnHtml}
+    `;
+
+    document.getElementById('techModalOverlay').classList.add('show');
+}
+
+function closeTechModal() {
+    document.getElementById('techModalOverlay').classList.remove('show');
+}
+
+async function startResearch(branch, techKey) {
+    const resp = await fetch('/api/tech/research', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({branch, tech_key: techKey})
+    });
+    const data = await resp.json();
+    if (data.success) {
+        showToast(`Research started: ${data.tech_name}`, 'success', 'Research');
+        setTimeout(() => location.reload(), 1000);
+    } else {
+        showToast(data.error || 'Failed to start research', 'error');
+    }
+}
+
+async function cancelResearch() {
+    if (!confirm('Cancel current research? SV will be refunded.')) return;
+    const resp = await fetch('/api/tech/cancel', {method: 'POST', headers: {'Content-Type': 'application/json'}});
+    const data = await resp.json();
+    if (data.success) {
+        showToast(`Cancelled: ${data.tech_name}. ${data.refunded_sv.toLocaleString()} SV refunded.`, 'success', 'Research');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        showToast(data.error || 'Failed to cancel', 'error');
+    }
+}
+
+function formatEffectName(key) {
+    const names = {
+        'discovery_chance_bonus': 'Discovery chance',
+        'rare_chance_bonus': 'Rare find chance',
+        'legendary_chance_bonus': 'Legendary chance',
+        'expedition_speed_mult': 'Expedition speed',
+        'fuel_cost_mult': 'Expedition cost',
+        'cargo_slots': 'Cargo capacity',
+        'bio_discovery_value_mult': 'Bio specimen value',
+        'discovery_value_mult': 'Discovery value',
+        'extraction_bonus': 'Shard yield',
+        'passive_income_mult': 'Generation rate',
+        'night_generation_mult': 'Night generation',
+        'dust_storm_resistance': 'Dust resistance',
+        'all_generation_mult': 'All generation',
+        'all_cost_reduction': 'All costs',
+        'expedition_range_mult': 'Expedition range',
+        'rare_value_mult': 'Rare item value',
+        'legendary_value_mult': 'Legendary value',
+        'passive_income_base': 'Base generation',
+    };
+    return names[key] || key.replace(/_/g, ' ');
+}
+
+function formatEffectValue(key, value) {
+    if (key.endsWith('_mult')) {
+        const pct = Math.round((value - 1) * 100);
+        if (key.includes('cost')) return `${pct}%`;
+        return `+${pct}%`;
+    }
+    if (key.endsWith('_bonus') || key === 'dust_storm_resistance') {
+        return `+${Math.round(value * 100)}%`;
+    }
+    if (key === 'cargo_slots') return `+${value} slots`;
+    if (key === 'passive_income_base') return `+${value}/hr`;
+    return `+${value}`;
+}
+
+function formatTime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (days >= 1 && hours > 0) return `${days}d ${hours}h ${mins}m`;
+    if (days >= 1) return `${days}d ${mins}m`;
+    if (hours >= 1) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+}
+
+// Countdown timer for active research
+function updateTimer() {
+    const bar = document.getElementById('activeResearchBar');
+    if (!bar) return;
+    let remaining = parseInt(bar.dataset.remaining);
+    const duration = parseInt(bar.dataset.duration);
+    if (remaining <= 0) { location.reload(); return; }
+    remaining--;
+    bar.dataset.remaining = remaining;
+    const pct = Math.min(100, ((duration - remaining) / duration) * 100);
+    document.getElementById('activeBarFill').style.width = pct + '%';
+    const d = Math.floor(remaining / 86400);
+    const h = Math.floor((remaining % 86400) / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    let timeStr = '';
+    if (d > 0) timeStr = `${d}d ${h}h ${m}m`;
+    else if (h > 0) timeStr = `${h}h ${m}m`;
+    else timeStr = `${m}m`;
+    document.getElementById('activeTimer').textContent = timeStr;
+}
+updateTimer();
+setInterval(updateTimer, 1000);
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTechModal(); });
+</script>
+{% endblock %}

@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}ARIA's Photo Journal - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chat = document.getElementById('aria-chat');
+        if (chat) {
+            chat.dataset.page = 'aria-album';
+            chat.dataset.pageContext = 'User is viewing ARIA\'s Photo Journal - a collection of snapshots showing life at the colony with ARIA and the Captain. They may ask about specific photos or want to learn more about what ARIA has documented.';
+        }
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<div class="hero-section flex flex-col justify-center rounded-lg" style="position: relative; margin: -20px -20px 20px -20px; padding: 50px 20px 40px 20px; overflow: hidden; min-height: 180px;">
+    <div class="card-dark" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;"></div>
+    <div class="hero-stars" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;"></div>
+    <div class="text-center" style="position: relative; z-index: 2;">
+        <div class="hero-subtitle mb-8" style="color: var(--color-aria);">Colony Archives</div>
+        <h1 class="hero-title text-4xl mb-8">ARIA's Photo Journal</h1>
+        <p class="hero-text text-base mx-auto" style="max-width: 500px;">Moments captured from daily life at the colony</p>
+    </div>
+</div>
+
+{% if snapshots and snapshots|length > 0 %}
+<!-- Photo Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-bottom: 40px;">
+    {% for snapshot in snapshots %}
+    <div class="dashboard-card snapshot-card" style="padding: 0; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;"
+         data-id="{{ snapshot.id }}"
+         data-image-url="{{ snapshot.image_url }}"
+         data-caption="{{ snapshot.caption|e }}"
+         data-type="{{ snapshot.type }}"
+         data-mars-sol="{{ snapshot.mars_sol or '' }}"
+         data-created-at="{{ snapshot.created_at or '' }}"
+         onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(138,112,219,0.3)';"
+         onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+        <!-- Image - Use thumbnail for fast loading in grid -->
+        <div style="position: relative; width: 100%; padding-top: 75%; overflow: hidden;">
+            <img src="{{ snapshot.thumbnail_url }}" alt="{{ snapshot.caption|e }}" loading="lazy"
+                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
+            <div style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px;">
+                <span style="font-size: 10px; color: var(--color-aria); text-transform: uppercase; letter-spacing: 0.5px;">
+                    {% if snapshot.mars_sol %}Sol {{ snapshot.mars_sol }}{% else %}{{ snapshot.type|replace('_', ' ')|title }}{% endif %}
+                </span>
+            </div>
+        </div>
+        <!-- Caption -->
+        <div style="padding: 12px 16px; border-top: 1px solid rgba(138,112,219,0.2);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png" alt="ARIA" style="width: 24px; height: 24px; border-radius: 50%;">
+                <span style="font-size: 11px; color: var(--color-aria); font-weight: 600;">ARIA</span>
+                <span class="snapshot-local-time" data-iso="{{ snapshot.created_at or '' }}" style="font-size: 10px; color: rgba(255,255,255,0.4); margin-left: auto;"></span>
+            </div>
+            <p style="font-size: 13px; color: rgba(255,255,255,0.8); font-style: italic; line-height: 1.5; margin: 0;">
+                "{{ snapshot.caption[:100] }}{% if snapshot.caption|length > 100 %}..."{% endif %}
+            </p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="dashboard-card" style="text-align: center; padding: 60px 20px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png" alt="ARIA" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px auto; opacity: 0.7;">
+    <h2 style="color: var(--color-aria); margin-bottom: 12px;">No Photos Yet</h2>
+    <p style="color: rgba(255,255,255,0.6); max-width: 400px; margin: 0 auto 24px auto;">
+        ARIA hasn't captured any snapshots yet. Check back soon - new photos are generated daily showing life at your colony!
+    </p>
+    <a href="/home" class="btn btn-primary">Return to Colony</a>
+</div>
+{% endif %}
+
+<!-- Back Link -->
+<div style="text-align: center; margin-top: 20px;">
+    <a href="/home" style="color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px;">&larr; Back to Colony</a>
+</div>
+
+<!-- Snapshot Modal with Gallery Navigation -->
+<script>
+let snapshotGallery = [];
+let currentSnapshotIndex = 0;
+
+// Format ISO date to user's local time
+function formatLocalTime(isoString) {
+    if (!isoString) return '';
+    try {
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return '';
+        const options = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+        return date.toLocaleString(undefined, options);
+    } catch (e) {
+        return '';
+    }
+}
+
+// Collect all snapshots for gallery navigation
+document.addEventListener('DOMContentLoaded', function() {
+    // Convert all timestamps to local time
+    document.querySelectorAll('.snapshot-local-time').forEach(span => {
+        const iso = span.dataset.iso;
+        if (iso) {
+            span.textContent = formatLocalTime(iso);
+        }
+    });
+
+    document.querySelectorAll('.snapshot-card').forEach((card, index) => {
+        snapshotGallery.push({
+            id: card.dataset.id,
+            imageUrl: card.dataset.imageUrl,
+            caption: card.dataset.caption,
+            type: card.dataset.type,
+            marsSol: card.dataset.marsSol,
+            createdAt: card.dataset.createdAt
+        });
+    });
+});
+
+function openSnapshotModal(id, imageUrl, caption, type, marsSol, createdAt) {
+    // Find current index in gallery
+    currentSnapshotIndex = snapshotGallery.findIndex(s => s.id === id);
+    if (currentSnapshotIndex === -1) currentSnapshotIndex = 0;
+
+    let modal = document.getElementById('snapshot-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'snapshot-modal';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: opacity 0.3s;';
+        modal.innerHTML = `
+            <button onclick="closeSnapshotModal()" style="position: absolute; top: 20px; right: 20px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; z-index: 10001; line-height: 1;">&times;</button>
+            <button id="snapshot-delete" onclick="confirmDeleteSnapshot()" style="position: absolute; top: 20px; left: 20px; background: rgba(220,53,69,0.2); border: 1px solid rgba(220,53,69,0.5); color: #dc3545; font-size: 14px; cursor: pointer; z-index: 10001; padding: 8px 16px; border-radius: 6px; display: flex; align-items: center; gap: 6px;"><img src="{{ icons.trash_delete }}" alt="" class="inline-icon-sm"> Delete</button>
+            <button id="snapshot-prev" onclick="navigateSnapshot(-1)" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(138,112,219,0.3); border: 1px solid rgba(138,112,219,0.5); color: white; font-size: 24px; cursor: pointer; z-index: 10001; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">‹</button>
+            <button id="snapshot-next" onclick="navigateSnapshot(1)" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(138,112,219,0.3); border: 1px solid rgba(138,112,219,0.5); color: white; font-size: 24px; cursor: pointer; z-index: 10001; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">›</button>
+            <div style="max-width: 800px; width: 100%; text-align: center;">
+                <img id="snapshot-modal-image" src="" alt="" style="max-width: 100%; max-height: 60vh; border-radius: 12px; box-shadow: 0 8px 32px rgba(138,112,219,0.3);">
+                <div id="snapshot-counter" style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.4);"></div>
+                <div style="margin-top: 12px; padding: 20px; background: rgba(138,112,219,0.1); border-radius: 12px; border: 1px solid rgba(138,112,219,0.3);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png" alt="ARIA" style="width: 40px; height: 40px; border-radius: 50%;">
+                        <div style="flex: 1; text-align: left;">
+                            <div style="font-size: 12px; color: var(--color-aria); text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">ARIA</div>
+                            <div id="snapshot-modal-date" style="font-size: 11px; color: rgba(255,255,255,0.5);"></div>
+                        </div>
+                    </div>
+                    <p id="snapshot-modal-caption" style="font-size: 16px; color: white; font-style: italic; line-height: 1.6; margin: 0; text-align: left;"></p>
+                    <div id="snapshot-modal-narrative" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; text-align: left;"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeSnapshotModal();
+        });
+    }
+
+    updateSnapshotContent(id, imageUrl, caption, type, marsSol, createdAt);
+    updateNavButtons();
+
+    modal.style.display = 'flex';
+    setTimeout(() => { modal.style.opacity = '1'; }, 10);
+}
+
+function closeSnapshotModal() {
+    const modal = document.getElementById('snapshot-modal');
+    if (modal) {
+        modal.style.opacity = '0';
+        setTimeout(() => { modal.style.display = 'none'; }, 300);
+    }
+}
+
+function navigateSnapshot(direction) {
+    if (snapshotGallery.length === 0) return;
+    currentSnapshotIndex += direction;
+    if (currentSnapshotIndex < 0) currentSnapshotIndex = snapshotGallery.length - 1;
+    if (currentSnapshotIndex >= snapshotGallery.length) currentSnapshotIndex = 0;
+
+    const snap = snapshotGallery[currentSnapshotIndex];
+    updateSnapshotContent(snap.id, snap.imageUrl, snap.caption, snap.type, snap.marsSol, snap.createdAt);
+    updateNavButtons();
+}
+
+function updateNavButtons() {
+    const counter = document.getElementById('snapshot-counter');
+    if (counter && snapshotGallery.length > 1) {
+        counter.textContent = `${currentSnapshotIndex + 1} of ${snapshotGallery.length}`;
+    }
+}
+
+function updateSnapshotContent(id, imageUrl, caption, type, marsSol, createdAt) {
+    document.getElementById('snapshot-modal-image').src = imageUrl;
+    document.getElementById('snapshot-modal-caption').textContent = '"' + caption + '"';
+    document.getElementById('snapshot-modal-narrative').innerHTML = '<span style="color: rgba(255,255,255,0.4);">Loading ARIA\'s thoughts...</span>';
+    document.getElementById('snapshot-modal-narrative').style.display = 'block';
+
+    let dateStr = '';
+    if (marsSol) dateStr += 'Sol ' + marsSol;
+    const localTime = formatLocalTime(createdAt);
+    if (localTime) {
+        if (dateStr) dateStr += ' • ';
+        dateStr += localTime;
+    }
+    document.getElementById('snapshot-modal-date').textContent = dateStr || '';
+
+    fetch('/api/aria/snapshot-narrative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshot_id: id, caption: caption, type: type, image_url: imageUrl })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.narrative) {
+            document.getElementById('snapshot-modal-narrative').innerHTML = data.narrative;
+        } else {
+            document.getElementById('snapshot-modal-narrative').style.display = 'none';
+        }
+    })
+    .catch(() => {
+        document.getElementById('snapshot-modal-narrative').style.display = 'none';
+    });
+}
+
+// Keyboard navigation: Escape to close, Left/Right arrows to navigate
+document.addEventListener('keydown', function(e) {
+    const modal = document.getElementById('snapshot-modal');
+    if (!modal || modal.style.display === 'none') return;
+
+    if (e.key === 'Escape') closeSnapshotModal();
+    if (e.key === 'ArrowLeft') navigateSnapshot(-1);
+    if (e.key === 'ArrowRight') navigateSnapshot(1);
+});
+
+// Use event delegation to handle clicks on snapshot cards
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.snapshot-card');
+    if (card) {
+        const id = card.dataset.id;
+        const imageUrl = card.dataset.imageUrl;
+        const caption = card.dataset.caption;
+        const type = card.dataset.type;
+        const marsSol = card.dataset.marsSol;
+        const createdAt = card.dataset.createdAt;
+        openSnapshotModal(id, imageUrl, caption, type, marsSol, createdAt);
+    }
+});
+
+// Delete snapshot functionality
+function confirmDeleteSnapshot() {
+    if (snapshotGallery.length === 0) return;
+    const snap = snapshotGallery[currentSnapshotIndex];
+    if (confirm('Delete this photo? It will be removed from your gallery.')) {
+        deleteSnapshot(snap.id);
+    }
+}
+
+function deleteSnapshot(snapshotId) {
+    const deleteBtn = document.getElementById('snapshot-delete');
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = 'Deleting...';
+    }
+
+    fetch('/api/aria/snapshot/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshot_id: snapshotId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Remove from gallery array
+            snapshotGallery = snapshotGallery.filter(s => s.id !== snapshotId);
+
+            // Remove the card from DOM
+            const card = document.querySelector(`.snapshot-card[data-id="${snapshotId}"]`);
+            if (card) card.remove();
+
+            // Close modal or navigate to next/previous
+            if (snapshotGallery.length === 0) {
+                closeSnapshotModal();
+                // Show empty state
+                location.reload();
+            } else {
+                // Adjust index if needed
+                if (currentSnapshotIndex >= snapshotGallery.length) {
+                    currentSnapshotIndex = snapshotGallery.length - 1;
+                }
+                const nextSnap = snapshotGallery[currentSnapshotIndex];
+                updateSnapshotContent(nextSnap.id, nextSnap.imageUrl, nextSnap.caption, nextSnap.type, nextSnap.marsSol, nextSnap.createdAt);
+                updateNavButtons();
+                // Reset delete button for next photo
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<img src="{{ icons.trash_delete }}" alt="" class="inline-icon-sm"> Delete';
+                }
+            }
+
+            // Show toast
+            if (typeof showToast === 'function') {
+                showToast('Photo deleted', 'success');
+            }
+        } else {
+            alert(data.error || 'Failed to delete photo');
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '<img src="{{ icons.trash_delete }}" alt="" class="inline-icon-sm"> Delete';
+            }
+        }
+    })
+    .catch(err => {
+        alert('Error deleting photo');
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = '<img src="{{ icons.trash_delete }}" alt="" class="inline-icon-sm"> Delete';
+        }
+    });
+}
+</script>
+
+{% endblock %}

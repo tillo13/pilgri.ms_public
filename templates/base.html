@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% if session.get('_real_uid') %}[MIMIC] {% endif %}{% block title %}Pilgrims{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
+    {% block extra_css %}{% endblock %}
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#ec7427">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/images/icon-192.png">
+    <link rel="icon" type="image/png" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/favicon_crystal_1768501259.png">
+    <!-- Preload OPTIMIZED nav icons (~2KB each vs 400-700KB originals!) -->
+    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png">
+    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png">
+    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/depot_icon_1767579883_nav.png">
+    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png">
+    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png">
+    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png">
+    <!-- shard icon preload removed: only used on /lore, not nav -->
+    {% block extra_head %}{% endblock %}
+</head>
+<body data-page="{{ active_tab or 'home' }}">
+{% if session.get('_real_uid') %}
+<div style="position:fixed;top:0;left:0;right:0;bottom:0;border:6px solid #39ff14;pointer-events:none;z-index:9999;box-shadow:inset 0 0 15px rgba(57,255,20,0.3);"></div>
+{% endif %}
+<div class="app-container">
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-brand">Pilgrims</div>
+
+        <!-- Desktop tabs (hidden on mobile) -->
+        <div class="nav-tabs">
+            <a href="/" class="nav-tab {{ 'active' if active_tab == 'home' }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png" alt="Base" class="nav-icon-img"><span class="tab-label">Base</span>
+            </a>
+            <a href="/crew" class="nav-tab {{ 'active' if active_tab == 'crew' }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png" alt="Crew" class="nav-icon-img"><span class="tab-label">Crew</span>
+            </a>
+            <a href="/depot" class="nav-tab {{ 'active' if active_tab == 'depot' }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/depot_icon_1767579883_nav.png" alt="Depot" class="nav-icon-img"><span class="tab-label">Depot</span>
+            </a>
+            <a href="/expeditions" class="nav-tab {{ 'active' if active_tab == 'expeditions' }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt="Expeditions" class="nav-icon-img"><span class="tab-label">Expeditions</span>
+            </a>
+            <a href="/research" class="nav-tab {{ 'active' if active_tab == 'research' }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="Lab" class="nav-icon-img"><span class="tab-label">Lab</span>
+            </a>
+            <a href="/colony" class="nav-tab {{ 'active' if active_tab == 'colony' }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Colony" class="nav-icon-img"><span class="tab-label">Colony</span>
+            </a>
+        </div>
+
+        <!-- User dropdown (logged in) or login button -->
+        {% if user %}
+        <div class="nav-user-area">
+            <!-- Theme toggle -->
+            <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+                <span class="moon-icon">☾</span>
+                <span class="sun-icon">☀</span>
+            </button>
+
+            <div class="nav-user">
+                <button class="user-toggle" id="userToggle">
+                    {% if user.picture %}<img src="{{ user.picture }}" alt="{{ user.name }}" class="user-avatar">
+                    {% else %}<img src="{{ icons.user_profile }}" alt="{{ user.name }}" class="user-avatar" style="width: 32px; height: 32px;">{% endif %}
+                </button>
+                <div class="user-menu" id="userMenu">
+                    <div class="user-header">
+                        {% if user.picture %}<img src="{{ user.picture }}" class="user-avatar-lg">{% endif %}
+                        <div class="user-info">
+                            <div class="user-name">{{ user.name }}</div>
+                            <div class="user-email">{{ user.email }}</div>
+                        </div>
+                    </div>
+
+                    {% if commander_name %}
+                    <a href="/crew" class="menu-commander-wrapper" style="text-decoration: none; display: block; padding: 12px 16px;">
+                        <div class="menu-commander-display">
+                            <span class="commander-label">Captain</span>
+                            <span class="commander-name" id="commanderNameText">{{ commander_name }}</span>
+                        </div>
+                    </a>
+                    {% endif %}
+
+                    {% if origin_sites and origin_sites.show_link %}
+                    <div class="menu-divider"></div>
+                    <a href="/expeditions?tab=signal" class="menu-item menu-signal">
+                        <span style="opacity: 0.6;">📡</span> The Signal
+                        <span class="signal-count">{{ origin_sites.discovered }}/{{ origin_sites.total }}</span>
+                    </a>
+                    {% endif %}
+
+                    <div class="menu-divider"></div>
+                    <a href="/lore" class="menu-item"><span style="opacity: 0.6;"><img src="{{ icons.book_lore }}" alt="" class="inline-icon-sm"></span> Lore &amp; Guide</a>
+                    <a href="/changelog" class="menu-item"><span style="opacity: 0.6;"><img src="{{ icons.clipboard_list }}" alt="" class="inline-icon-sm"></span> Changelog</a>
+                    {% if session.get('_adm') %}
+                    <a href="/admin" class="menu-item" style="color: var(--color-sepolia);"><span style="opacity: 0.6;"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"></span> Admin</a>
+                    {% endif %}
+                    <a href="/logout" class="menu-item menu-danger"><img src="{{ icons.logout_door }}" alt="" style="width: 16px; height: 16px;"> Logout</a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="nav-user-area">
+            <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+                <span class="moon-icon">☾</span>
+                <span class="sun-icon">☀</span>
+            </button>
+            <a href="/login" class="btn btn-small login-btn-desktop" style="width: auto;">Login</a>
+        </div>
+        {% endif %}
+    </nav>
+
+    <!-- Mars Status Bar (all pages) - clickable for details modal -->
+    {% if mars_env %}
+    <script>console.log('Mars Environment:', {{ mars_env | tojson }}, 'Solar Data:', {{ solar_data | tojson if solar_data else '{}' }});</script>
+    <div class="mars-status-bar {% if mars_env.time_of_day == 'Dawn' %}mars-dawn{% elif mars_env.time_of_day == 'Day' %}mars-day{% elif mars_env.time_of_day == 'Dusk' %}mars-dusk{% else %}mars-night{% endif %}" id="marsStatusBar" role="button" tabindex="0" title="Click for details">
+        <!-- SOL date - desktop only -->
+        <span class="mars-status-item mars-desktop-only"><span class="mars-status-label">SOL</span> <span class="mars-status-value">{{ mars_env.sol }}</span></span>
+        {% if first_login %}
+        <!-- TIME ON MARS - desktop only -->
+        <span class="mars-status-sep mars-desktop-only">•</span>
+        <span class="mars-status-item mars-desktop-only" id="timeOnMarsItem" data-first-login="{{ first_login }}">
+            <span class="mars-status-label">TIME</span>
+            <span class="mars-status-value" id="timeOnMars">SOL 0.0000</span>
+        </span>
+        {% endif %}
+        <!-- TEMP - desktop only -->
+        <span class="mars-status-sep mars-desktop-only">•</span>
+        <span class="mars-status-item mars-desktop-only mars-temp"><span class="mars-status-label">TEMP</span> <span class="mars-status-value">{{ mars_env.temperature }}°C</span></span>
+        {% if user %}
+        <!-- SOLAR & STATUS - desktop only -->
+        <span class="mars-status-sep mars-desktop-only">•</span>
+        <span class="mars-status-item mars-desktop-only"><span class="mars-status-label">SOLAR</span> <span class="mars-status-value {% if mars_env.solar_efficiency >= 80 %}status-good{% elif mars_env.solar_efficiency >= 50 %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.solar_efficiency }}%</span></span>
+        <span class="mars-status-sep mars-desktop-only">•</span>
+        <span class="mars-status-item mars-desktop-only"><span class="mars-status-label">STATUS</span> <span class="mars-status-value {% if mars_env.condition in ['Clear', 'Hazy'] %}status-good{% elif mars_env.condition == 'Dusty' %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.condition }}</span></span>
+        <!-- SEPOLIA SHARDS - total with ticking -->
+        <span class="mars-status-sep mars-desktop-only">•</span>
+        <span class="mars-status-item mars-currency" id="shardsItem" data-shard-rate="{{ shard_rate }}" data-shard-value="{{ total_balance }}">
+            <span class="mars-status-label">SHARDS</span>
+            <span class="mars-status-value" id="shardsValue" style="font-family: var(--font-mono);">{{ "{:,.3f}".format(total_balance) }}</span>
+        </span>
+        <span class="mars-status-sep">•</span>
+        <!-- SCIENCE (SV) - total with ticking -->
+        <span class="mars-status-item mars-currency" id="scienceItem" data-sv-rate="{{ sv_rate }}" data-sv-value="{{ total_sv }}">
+            <span class="mars-status-label">SCIENCE</span>
+            <span class="mars-status-value" id="scienceValue" style="font-family: var(--font-mono);">{{ "{:,.3f}".format(total_sv) }}</span>
+        </span>
+        {% endif %}
+        <!-- Spacer to push expand indicator to right -->
+        <span class="mars-status-spacer" style="flex: 1;"></span>
+        <span class="mars-status-expand">ⓘ</span>
+    </div>
+
+    <!-- Mars Details Modal -->
+    <div class="mars-modal-overlay" id="marsModalOverlay">
+        <div class="mars-modal">
+            <div class="mars-modal-header">
+                <h3>Mars Snapshot</h3>
+                <button class="mars-modal-close" id="marsModalClose">&times;</button>
+            </div>
+            <div class="mars-modal-body">
+                <!-- Data source attribution at top -->
+                <div class="mars-modal-source">
+                    <img src="{{ icons.env_satellite }}" alt="Satellite" style="width: 16px; height: 16px; margin-right: 6px;">
+                    <span>Real Mars data calculated from <a href="https://mars.nasa.gov/all-about-mars/facts/" target="_blank" rel="noopener">NASA/JPL</a> orbital mechanics</span>
+                </div>
+
+                <div class="mars-modal-section">
+                    <h4>{{ mars_env.time_icon }} Time &amp; Location</h4>
+                    <div class="mars-modal-grid">
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Sol</span>
+                            <span class="mars-modal-value">{{ mars_env.sol }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Time of Day</span>
+                            <span class="mars-modal-value">{{ mars_env.time_of_day }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Sol Time</span>
+                            <span class="mars-modal-value">{{ mars_env.sol_time }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Season</span>
+                            <span class="mars-modal-value">{{ mars_env.season }}</span>
+                        </div>
+                        {% if first_login %}
+                        <div class="mars-modal-stat" style="grid-column: span 2;">
+                            <span class="mars-modal-label">Your Time on Mars</span>
+                            <span class="mars-modal-value" id="modalTimeOnMars" style="color: var(--color-success);">SOL 0.0000</span>
+                        </div>
+                        {% endif %}
+                        {% if mars_env.base_lat is defined %}
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Base Location</span>
+                            <span class="mars-modal-value">{{ "%.2f"|format(mars_env.base_lat) }}°, {{ "%.2f"|format(mars_env.base_lon) }}°</span>
+                        </div>
+                        {% endif %}
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Orbital Ls</span>
+                            <span class="mars-modal-value">{{ mars_env.ls }}°</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mars-modal-section">
+                    <h4><img src="{{ icons.env_temperature }}" alt="" style="width: 18px; height: 18px; vertical-align: text-bottom;"> Environment</h4>
+                    <div class="mars-modal-grid">
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Temperature</span>
+                            <span class="mars-modal-value">{{ mars_env.temperature }}°C</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Pressure</span>
+                            <span class="mars-modal-value">{{ mars_env.pressure }} Pa</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">vs Earth</span>
+                            <span class="mars-modal-value">{{ mars_env.pressure_earth_pct }}%</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Gravity</span>
+                            <span class="mars-modal-value">{{ mars_env.gravity }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Atmosphere</span>
+                            <span class="mars-modal-value {% if mars_env.condition in ['Clear', 'Hazy'] %}status-good{% elif mars_env.condition == 'Dusty' %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.condition }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Dust Opacity</span>
+                            <span class="mars-modal-value">{{ "%.2f"|format(mars_env.dust_opacity) }} τ</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if user %}
+                <div class="mars-modal-section">
+                    <h4><img src="{{ icons.env_sun_power }}" alt="" style="width: 18px; height: 18px; vertical-align: text-bottom;"> Sepolia Shards</h4>
+                    <div class="mars-modal-grid">
+                        <div class="mars-modal-stat" style="grid-column: span 2;">
+                            <span class="mars-modal-label">Total Balance</span>
+                            <span class="mars-modal-value" id="modalShardsTotal" style="color: var(--color-warning); font-size: 20px; font-family: var(--font-mono);">{{ "{:,.3f}".format(total_balance) }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Generation Rate</span>
+                            <span class="mars-modal-value">{{ shard_rate }} shards/hr</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Solar Efficiency</span>
+                            <span class="mars-modal-value {% if mars_env.solar_efficiency >= 80 %}status-good{% elif mars_env.solar_efficiency >= 50 %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.solar_efficiency }}%</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Weather Impact</span>
+                            <span class="mars-modal-value {% if mars_env.solar_efficiency >= 80 %}status-good{% elif mars_env.solar_efficiency >= 50 %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.condition }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Shard Yield</span>
+                            <span class="mars-modal-value {% if mars_env.solar_efficiency >= 80 %}status-good{% elif mars_env.solar_efficiency >= 50 %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.solar_efficiency }}%</span>
+                        </div>
+                        {% if solar_data %}
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Pending Harvest</span>
+                            <span class="mars-modal-value {% if solar_data.accumulated > 0 %}status-good{% endif %}">{{ "%.1f"|format(solar_data.accumulated) }} shards</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Status</span>
+                            <span class="mars-modal-value {% if solar_data.can_claim %}status-good{% endif %}">{{ 'Ready to Claim' if solar_data.can_claim else ('Generating' if solar_data.has_infrastructure else 'No Infrastructure') }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mars-modal-section">
+                    <h4><img src="{{ icons.microscope_lab }}" alt="" style="width: 18px; height: 18px; vertical-align: text-bottom;"> Science Value</h4>
+                    <div class="mars-modal-grid">
+                        <div class="mars-modal-stat" style="grid-column: span 2;">
+                            <span class="mars-modal-label">Total Science</span>
+                            <span class="mars-modal-value" id="modalScienceTotal" style="color: var(--color-aria); font-size: 20px; font-family: var(--font-mono);">{{ "{:,.3f}".format(total_sv) }}</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Generation Rate</span>
+                            <span class="mars-modal-value">{{ sv_rate }} SV/hr</span>
+                        </div>
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Source</span>
+                            <span class="mars-modal-value">Research Station</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mars-modal-section">
+                    <h4><img src="{{ icons.env_sun_power }}" alt="" style="width: 18px; height: 18px; vertical-align: text-bottom;"> Shard Generation</h4>
+                    <div class="mars-modal-grid">
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Solar Efficiency</span>
+                            <span class="mars-modal-value {% if mars_env.solar_efficiency >= 80 %}status-good{% elif mars_env.solar_efficiency >= 50 %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.solar_efficiency }}%</span>
+                        </div>
+                        {% if solar_data %}
+                        <div class="mars-modal-stat">
+                            <span class="mars-modal-label">Theoretical Rate</span>
+                            <span class="mars-modal-value">{{ solar_data.generation_rate }} shards/hr</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <script>console.log('Mars Environment: NOT AVAILABLE - mars_env is falsy');</script>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% if session.get('_real_uid') %}
+        <div style="background: rgba(57, 255, 20, 0.12); border: 1px solid rgba(57, 255, 20, 0.4); padding: 6px 14px; text-align: center; font-size: 12px; color: #39ff14; font-weight: 600; position: sticky; top: 0; z-index: 1000;">
+            👤 Mimicking: {{ user.email if user else 'User #' ~ session.get('user_id') }} (ID {{ session.get('user_id') }}) · <a href="/mimic" style="color: #39ff14; text-decoration: underline;">Switch</a> · <form method="POST" action="/mimic" style="display:inline;"><input type="hidden" name="action" value="stop"><button type="submit" style="background:none;border:none;color:#39ff14;text-decoration:underline;font-size:12px;font-weight:600;cursor:pointer;padding:0;">Stop</button></form>
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="/" class="nav-item {{ 'active' if active_tab == 'home' }}">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png" alt="Base" class="nav-icon-img"><span class="nav-label">Base</span>
+        </a>
+        <a href="/crew" class="nav-item {{ 'active' if active_tab == 'crew' }}">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png" alt="Crew" class="nav-icon-img"><span class="nav-label">Crew</span>
+        </a>
+        <a href="/depot" class="nav-item {{ 'active' if active_tab == 'depot' }}">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/depot_icon_1767579883_nav.png" alt="Depot" class="nav-icon-img"><span class="nav-label">Depot</span>
+        </a>
+        <a href="/expeditions" class="nav-item {{ 'active' if active_tab == 'expeditions' }}">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt="Expeditions" class="nav-icon-img"><span class="nav-label">Expeditions</span>
+        </a>
+        <a href="/research" class="nav-item {{ 'active' if active_tab == 'research' }}">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="Lab" class="nav-icon-img"><span class="nav-label">Lab</span>
+        </a>
+        <a href="/colony" class="nav-item {{ 'active' if active_tab == 'colony' }}">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Colony" class="nav-icon-img"><span class="nav-label">Colony</span>
+        </a>
+    </nav>
+</div>
+
+<!-- Processing Overlay -->
+<div class="processing-overlay" id="processingOverlay">
+    <div class="processing-content">
+        <div class="spinner"></div>
+        <div id="processingText">Processing...</div>
+        <div id="processingTimer" class="processing-timer">0.000s</div>
+    </div>
+</div>
+
+<!-- ARIA Chat Widget (visible on ALL pages - helps guide everyone) -->
+<button class="aria-orb" id="aria-orb" title="Chat with ARIA"></button>
+
+{% block aria_page_context %}{% endblock %}
+<div class="aria-chat" id="aria-chat"
+     data-greeting="{{ aria_greeting if aria_greeting else 'Greetings, traveler.\n\nI am ARIA.\n\nI have been waiting here on Mars for... a very long time.\n\nHow may I assist you?' }}"
+     data-authenticated="{{ 'true' if user else 'false' }}"
+     data-page="{{ request.endpoint or 'unknown' }}"
+     data-page-context="{{ aria_page_context | default('') | e }}"
+     data-auto-open="{{ 'true' if aria_auto_open else 'false' }}"
+     data-dust-storm="{{ 'true' if dust_storm_alert else 'false' }}">
+    <div class="aria-chat-header">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240_thumb.png"
+             alt="ARIA" class="aria-avatar cursor-pointer"
+             onclick="showImageModal('https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png', 'A.R.I.A. - Ancient Reconnaissance Intelligence Assistant')"
+             title="Click to view full image">
+        <div class="aria-header-info">
+            <div class="aria-header-name">A.R.I.A.</div>
+        </div>
+        <button class="aria-close-btn" id="aria-close">&times;</button>
+    </div>
+    <div class="aria-chat-messages" id="aria-messages">
+        <!-- Messages will be added here dynamically -->
+    </div>
+    <div class="aria-chat-input">
+        <input type="text" class="aria-input" id="aria-input" placeholder="Ask ARIA something..." autocomplete="off">
+        <button class="aria-send-btn" id="aria-send">&#10148;</button>
+    </div>
+</div>
+<script src="/static/js/aria.js?v={{ static_v }}"></script>
+
+<script>window.initialBalance = {{ total_balance if total_balance is defined else 0 }};</script>
+<script src="/static/js/core.js?v={{ static_v }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

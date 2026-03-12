@@ -1,0 +1,69 @@
+# .gcloudignore - Galactica Character Game
+# Exclude virtual environments
+venv/
+venv_*/
+venv_galactica/
+.venv/
+env/
+ENV/
+lff/
+
+# Test and development files  
+test_crew/
+test_*/
+gather_files.py
+*_project_structure.txt
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Development and Git
+.git/
+.gitignore
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation and project files
+README.md
+*.md
+gather_files.py
+*_project_structure.txt
+git_push.sh
+
+# Logs and temporary files
+*.log
+logs/
+temp/
+tmp/
+.tmp/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Testing
+test_*
+*_test.py
+tests/
+testing/
+
+# Archived/dead code
+antiquated_code/
+archive/
+
+# Backup files
+*.bak
+*copy*
+*backup*

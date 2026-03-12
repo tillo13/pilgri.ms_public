@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Inventory - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'inventory';
+        {% if user %}
+        chat.dataset.pageContext = 'Authenticated user on Inventory page. This page has 4 tabs: Discoveries (items found on expeditions, sorted by rarity), Equipment (purchased gear from depot), Caches (Sepolia shard wallets), and Activity (transaction history). {% if wallets %}User has {{ wallets|length }} wallet(s).{% endif %} Page dynamically loads discovery and equipment data via API. User can filter discoveries by rarity and bulk-extract common/uncommon items for shards.';
+        {% else %}
+        chat.dataset.pageContext = 'Anonymous visitor on Inventory page. Cannot view inventory without signing in. Prompt them to begin their journey or sign in.';
+        {% endif %}
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/inventory.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+{% if user %}
+<script type="application/json" id="inventoryPageData">
+{
+    "icons": {
+        "rarity_legendary": "{{ icons.rarity_legendary }}",
+        "rarity_rare": "{{ icons.rarity_rare }}",
+        "rarity_uncommon": "{{ icons.rarity_uncommon }}",
+        "rarity_common": "{{ icons.rarity_common }}",
+        "empty_discoveries": "{{ icons.empty_discoveries }}",
+        "empty_equipment": "{{ icons.empty_equipment }}",
+        "tab_map": "{{ icons.tab_map }}",
+        "tab_tools": "{{ icons.tab_tools }}",
+        "tab_wallet": "{{ icons.tab_wallet }}",
+        "warning_alert": "{{ icons.warning_alert }}",
+        "activity_income": "{{ icons.activity_income }}",
+        "activity_expense": "{{ icons.activity_expense }}",
+        "activity_expedition": "{{ icons.activity_expedition }}",
+        "activity_construction": "{{ icons.activity_construction }}",
+        "activity_extraction": "{{ icons.activity_extraction }}",
+        "shard_gem": "{{ icons.shard_gem }}",
+        "location_pin": "{{ icons.location_pin }}",
+        "calendar_date": "{{ icons.calendar_date }}",
+        "camera_photo": "{{ icons.camera_photo }}",
+        "box_package": "{{ icons.box_package }}",
+        "chart_activity": "{{ icons.chart_activity }}",
+        "rocket_launch": "{{ icons.rocket_launch }}",
+        "dice_random": "{{ icons.dice_random }}",
+        "video_film": "{{ icons.video_film }}",
+        "gift_box": "{{ icons.gift_box }}",
+        "wrench_repair": "{{ icons.wrench_repair }}",
+        "shopping_cart": "{{ icons.shopping_cart }}",
+        "shop_storefront": "{{ icons.shop_storefront }}",
+        "microscope_lab": "{{ icons.microscope_lab }}",
+        "edit_pencil": "{{ icons.edit_pencil }}"
+    }
+}
+</script>
+<script src="/static/js/discovery-modal.js?v={{ static_v }}" defer></script>
+<script src="/static/js/discovery_utils.js?v={{ static_v }}" defer></script>
+<script src="/static/js/inventory.js?v={{ static_v }}" defer></script>
+{% endif %}
+{% endblock %}
+
+
+{% block content %}
+
+{% if not user %}
+<h1>Inventory</h1>
+<!-- ANONYMOUS USER -->
+<div class="dashboard-card card-dark text-center" style="padding: 40px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Inventory" class="mb-20" style="width: 80px; height: 80px; filter: drop-shadow(0 4px 12px rgba(var(--color-mars-rgb), 0.4));">
+    <h2 class="text-white mb-12">The Vault of Discoveries</h2>
+    <p class="text-lg leading-relaxed opacity-90 mb-24 mx-auto max-w-500">
+        Ancient relics, crystallized artifacts, and remnants of civilizations long forgotten—all waiting to be unearthed from the Martian dust. Your collection tells the story of your pilgrimage.
+    </p>
+    <div class="flex gap-16 justify-center flex-wrap">
+        <a href="/" class="btn btn-large text-white font-bold" style="background: var(--gradient-success); padding: 16px 32px;">Begin Your Journey</a>
+        <a href="/login" class="btn btn-large text-white" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 16px 32px;">Return to Mars</a>
+    </div>
+    <p class="text-sm opacity-50 mt-20">Already established a colony? Sign in to continue your pilgrimage.</p>
+</div>
+
+{% else %}
+<!-- AUTHENTICATED USER: Full Inventory -->
+
+<!-- Hero Section -->
+<div class="hero-section relative rounded-lg overflow-hidden flex flex-col justify-center" style="margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 140px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/hero_inventory_1767643020_hero.png" alt="Inventory" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0 object-cover">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Your Collection & Assets</div>
+        <h1 class="hero-title text-white mb-0" style="text-shadow: 0 3px 20px rgba(0,0,0,0.7); font-size: 26px;">Inventory</h1>
+    </div>
+</div>
+
+<!-- Compact Status Bar -->
+<div class="inventory-status-bar">
+    <div class="inventory-status-item">
+        <div class="inventory-status-label">Discoveries</div>
+        <div class="inventory-status-value" id="totalItems">0</div>
+    </div>
+    <div class="inventory-status-item">
+        <div class="inventory-status-label">Scientific Value</div>
+        <div class="inventory-status-value green" id="totalValue">0</div>
+    </div>
+    <div class="inventory-status-item">
+        <div class="inventory-status-label">Weight</div>
+        <div class="inventory-status-value" id="totalWeight">0 kg</div>
+    </div>
+    <div class="inventory-status-item">
+        <div class="inventory-status-label">Legendary</div>
+        <div class="inventory-status-value gold" id="legendaryCount">0</div>
+    </div>
+    <div class="inventory-status-item">
+        <div class="inventory-status-label">Equipment</div>
+        <div class="inventory-status-value" id="equipmentCount">0</div>
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="inventory-tabs">
+    <button class="inventory-tab active" data-tab="discoveries" onclick="switchInventoryTab('discoveries')">
+        <img src="{{ icons.tab_map }}" alt="" class="inventory-tab-icon" style="width: 18px; height: 18px;">
+        <span class="inventory-tab-label">Discoveries</span>
+    </button>
+    <button class="inventory-tab" data-tab="equipment" onclick="switchInventoryTab('equipment')">
+        <img src="{{ icons.tab_tools }}" alt="" class="inventory-tab-icon" style="width: 18px; height: 18px;">
+        <span class="inventory-tab-label">Equipment</span>
+    </button>
+    <button class="inventory-tab" data-tab="caches" onclick="switchInventoryTab('caches')">
+        <img src="{{ icons.tab_wallet }}" alt="" class="inventory-tab-icon" style="width: 18px; height: 18px;">
+        <span class="inventory-tab-label">Caches</span>
+    </button>
+    <button class="inventory-tab" data-tab="activity" onclick="switchInventoryTab('activity')">
+        <img src="{{ icons.activity_income }}" alt="" class="inventory-tab-icon" style="width: 18px; height: 18px;">
+        <span class="inventory-tab-label">Activity</span>
+    </button>
+</div>
+
+<!-- DISCOVERIES Tab -->
+<div id="tab-discoveries" class="inventory-tab-content">
+    <!-- ARIA Bonds Section - Special entangled crystal artifacts -->
+    <div id="ariaBondsSection" style="display: none; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="color: #06b6d4; font-size: 16px;"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon"></span>
+            <h3 style="color: var(--text-primary); font-size: 14px; font-weight: 600; margin: 0;">ARIA BONDS</h3>
+            <span style="color: var(--text-muted); font-size: 11px;">Entangled Crystal Fragments</span>
+        </div>
+        <div id="ariaBondsGrid" class="inventory-grid" style="margin-bottom: 16px;"></div>
+    </div>
+
+    <!-- Shard It All Banner -->
+    <div id="shardItAllBanner" class="shard-it-all-banner" style="display: none;">
+        <button class="btn shard-it-all-btn" onclick="showShardItAllModal()">
+            <img src="{{ icons.shard_gem }}" alt="" style="width: 16px; height: 16px; margin-right: 6px;"> Shard It All!
+        </button>
+        <div class="shard-banner-meta">
+            <div class="shard-banner-quote" id="shardBannerQuote"></div>
+            <div class="shard-banner-info">
+                <span id="shardableCount">0</span> specimens • <span id="shardableValue">0</span> shards
+            </div>
+        </div>
+    </div>
+
+    <div class="inventory-controls">
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all" onclick="filterDiscoveries('all')">All</button>
+            <button class="filter-btn" data-filter="legendary" onclick="filterDiscoveries('legendary')"><img src="{{ icons.rarity_legendary }}" alt="" style="width: 14px; height: 14px;"> Legendary</button>
+            <button class="filter-btn" data-filter="rare" onclick="filterDiscoveries('rare')"><img src="{{ icons.rarity_rare }}" alt="" style="width: 14px; height: 14px;"> Rare</button>
+            <button class="filter-btn" data-filter="uncommon" onclick="filterDiscoveries('uncommon')"><img src="{{ icons.rarity_uncommon }}" alt="" style="width: 14px; height: 14px;"> Uncommon</button>
+            <button class="filter-btn" data-filter="common" onclick="filterDiscoveries('common')"><img src="{{ icons.rarity_common }}" alt="" style="width: 14px; height: 14px;"> Common</button>
+        </div>
+        <select class="sort-select" id="discoverySort" onchange="sortDiscoveries(this.value)">
+            <option value="rarity-desc">Rarity: Best First</option>
+            <option value="rarity-asc">Rarity: Common First</option>
+            <option value="value-desc">Value: High to Low</option>
+            <option value="value-asc">Value: Low to High</option>
+            <option value="weight-desc">Weight: Heaviest</option>
+            <option value="weight-asc">Weight: Lightest</option>
+            <option value="distance-desc">Distance: Farthest</option>
+            <option value="recent">Most Recent</option>
+            <option value="oldest">Oldest First</option>
+        </select>
+    </div>
+    <div id="discoveriesGrid" class="inventory-grid">
+        <div class="empty-state">
+            <img src="{{ icons.box_package }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+            <div class="empty-state-text">Loading discoveries...</div>
+        </div>
+    </div>
+</div>
+
+<!-- EQUIPMENT Tab -->
+<div id="tab-equipment" class="inventory-tab-content" style="display: none;">
+    <div class="inventory-controls">
+        <div class="text-base text-secondary">Equipment upgrades improve expedition performance</div>
+        <a href="/depot" class="btn btn-purple btn-small">Shop More</a>
+    </div>
+    <div id="equipmentGrid" class="inventory-grid">
+        <div class="empty-state">
+            <img src="{{ icons.tab_tools }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+            <div class="empty-state-text">Loading equipment...</div>
+        </div>
+    </div>
+</div>
+
+<!-- CACHES Tab -->
+<div id="tab-caches" class="inventory-tab-content" style="display: none;">
+    {% if wallets %}
+    <div class="inventory-grid">
+        {% for wallet in wallets %}
+        <div class="cache-card {{ 'primary' if wallet.is_primary_wallet }}">
+            <div class="cache-header">
+                <div class="cache-name">
+                    {{ wallet.wallet_name }}
+                    {% if wallet.is_primary_wallet %}<span class="text-xs text-success badge-primary-label">PRIMARY</span>{% endif %}
+                </div>
+                <div class="cache-balance">{{ "%.1f"|format(wallet.current_balance_eth * 10000000) }}</div>
+            </div>
+            <div class="cache-address">{{ wallet.wallet_address[:12] }}...{{ wallet.wallet_address[-8:] }}</div>
+            <div class="cache-meta">Created {{ wallet.created_at.strftime('%b %d, %Y') }}</div>
+            <a href="https://sepolia.etherscan.io/address/{{ wallet.wallet_address }}" target="_blank"
+               class="inline-flex text-sm text-primary mt-12">
+                View Transaction Logs →
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <img src="{{ icons.tab_wallet }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+        <div class="empty-state-text">No resource caches found</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ACTIVITY Tab -->
+<div id="tab-activity" class="inventory-tab-content" style="display: none;">
+    <div class="inventory-controls">
+        <div class="text-base text-secondary">
+            <span id="activityCount">0</span> activities recorded
+        </div>
+        <select class="sort-select" id="activityFilter" onchange="filterActivity(this.value)">
+            <option value="all">All Activity</option>
+            <option value="income">Income Only</option>
+            <option value="expenses">Expenses Only</option>
+            <option value="expeditions">Expeditions</option>
+        </select>
+    </div>
+    <div id="activityFeed" class="activity-feed">
+        <div class="empty-state">
+            <img src="{{ icons.chart_activity }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
+            <div class="empty-state-text">Loading activity...</div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

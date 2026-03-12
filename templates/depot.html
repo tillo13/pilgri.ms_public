@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+{% block title %}Depot - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'depot';
+        {% if user %}
+        // Tutorial persists until they have infrastructure
+        {% if not existing %}
+        chat.dataset.greeting = "Welcome to the **Supply Depot**.\n\nSpend Sepolia shards here on:\n• **Infrastructure** – Generators that produce shards over time\n• **Equipment** – Gear that boosts expedition success\n• **Upgrades** – Improve your rovers, scanners, and more\n\nI'd recommend building a **Solar Array** first—passive income!";
+        {% endif %}
+        // Build detailed context about what user owns and what's available
+        let ownedItems = [];
+        let availableItems = [];
+        let upgradeStatus = [];
+
+        {% if existing %}
+        // Infrastructure owned (with levels)
+        {% for struct in existing %}
+        ownedItems.push('{{ struct.name }} Lv{{ struct.level|default(1) }}/10');
+        {% endfor %}
+        {% endif %}
+
+        {% if shop_catalog %}
+        // Shop items - check what's owned vs available
+        {% for cat_key, cat_data in shop_catalog.items() %}
+        {% for item_key, item in cat_data.items() %}
+        {% if item.owned %}
+        ownedItems.push('{{ item.name }} ({{ item.current_owned }}/{{ item.max_owned }})');
+        {% elif item.can_purchase %}
+        availableItems.push('{{ item.name }} ({{ item.cost|int }} shards{% if not item.requirements_met %}, requires: {{ item.missing_requirements|join(", ") }}{% endif %})');
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+        {% endif %}
+
+        {% if upgrade_catalog %}
+        // Upgrades - show current levels and next upgrade costs
+        {% for cat_key, cat_items in upgrade_catalog.items() %}
+        {% for item_key, item in cat_items.items() %}
+        {% if item.current_level > 0 %}
+        upgradeStatus.push('{{ item.name }} Lv{{ item.current_level }}/{{ item.max_level }}{% if not item.is_max_level %} (next: {{ item.upgrade_cost|int }} shards){% endif %}');
+        {% elif item.can_afford %}
+        availableItems.push('{{ item.name }} Lv1 ({{ item.upgrade_cost|int }} shards, unlockable)');
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+        {% endif %}
+
+        // Building items - under construction
+        let buildingItems = [];
+        {% if building_items %}
+        {% for item in building_items %}
+        {% set days = (item.seconds_remaining / 86400)|round(1) %}
+        buildingItems.push('{{ item.name }} ({{ days }}d remaining, ready {{ item.ready_at_str }})');
+        {% endfor %}
+        {% endif %}
+
+        let context = 'User on Depot page. Balance: {{ "%.1f"|format(current_balance) }} shards. ';
+        {% if has_commander %}context += 'Has commander. ';{% else %}context += 'NO COMMANDER YET - needs to create one on Crew page first. ';{% endif %}
+        context += 'Build queue: {{ concurrent_upgrades|default(0) }}/{{ upgrade_cap|default(1) }} slots used. ';
+
+        if (buildingItems.length > 0) {
+            context += 'UNDER CONSTRUCTION (' + buildingItems.length + ' items): ' + buildingItems.join(', ') + '. The next item to complete is ' + buildingItems[0] + '. ';
+        }
+        if (ownedItems.length > 0) {
+            context += 'ALREADY OWNS: ' + ownedItems.join(', ') + '. ';
+        }
+        if (upgradeStatus.length > 0) {
+            context += 'UPGRADE LEVELS: ' + upgradeStatus.join(', ') + '. ';
+        }
+        if (availableItems.length > 0) {
+            context += 'CAN PURCHASE: ' + availableItems.slice(0, 8).join(', ') + (availableItems.length > 8 ? '... and more' : '') + '. ';
+        }
+
+        context += 'IMPORTANT: Suggest items the user does NOT already own. Recommend upgrades if they have low-level equipment. For new players without Solar Array, suggest building one first for passive income.';
+
+        chat.dataset.pageContext = context;
+        {% else %}
+        chat.dataset.pageContext = 'Anonymous visitor on Depot page. Cannot make purchases without signing in. The depot contains equipment, infrastructure, and upgrades.';
+        {% endif %}
+    }
+
+    {% if user %}
+    // Auto-open once, but greeting persists until they have infrastructure
+    {% if not existing %}
+    setTimeout(function() {
+        if (!localStorage.getItem('ariaTutorial_depot')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaTutorial_depot', 'true');
+            }
+        }
+    }, 1500);
+    {% endif %}
+    {% endif %}
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/depot.css?v={{ static_v }}">
+{% endblock %}
+
+{% block content %}
+
+{% if not user %}
+<h1>Supply Depot</h1>
+<!-- ANONYMOUS USER -->
+<div class="dashboard-card card-dark text-center p-24">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/depot_icon_1767579883_nav.png" alt="Depot" class="mb-20" style="width: 80px; height: 80px; filter: drop-shadow(0 4px 12px rgba(153, 92, 50, 0.4));">
+    <h2 class="text-white mb-12">The Ancient Depot</h2>
+    <p class="text-lg leading-relaxed opacity-90 mb-24 max-w-500 mx-auto">
+        Dormant Martian machinery hums with potential. Channel your Sepolia shards to awaken forgotten technologies, enhance your captain's abilities, and raise structures from the rust-red soil.
+    </p>
+    <div class="flex gap-16 justify-center flex-wrap">
+        <a href="/" class="btn btn-large bg-success text-white font-bold" style="padding: 16px 32px;">Begin Your Journey</a>
+        <a href="/login" class="btn btn-large text-white" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); padding: 16px 32px;">Return to Mars</a>
+    </div>
+    <p class="text-sm opacity-50 mt-20">Already established a colony? Sign in to continue your pilgrimage.</p>
+</div>
+
+{% else %}
+<!-- AUTHENTICATED USER -->
+
+<!-- Hero Section -->
+<div class="hero-section relative rounded-lg overflow-hidden flex flex-col justify-center" style="margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 140px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/hero_depot_1767643003_hero.png" alt="Supply Depot" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Equipment & Infrastructure</div>
+        <h1 class="hero-title text-white mb-0 text-4xl" style="text-shadow: 0 3px 20px rgba(0,0,0,0.7);">Supply Depot</h1>
+    </div>
+</div>
+
+<!-- Colony Links - View your assets and construction progress -->
+{% set total_building = (active_builds|default([])|length) %}
+{% set total_structures = (existing|default([]))|length %}
+<div class="colony-links">
+    {% if total_building > 0 %}
+    <a href="/colony?tab=assets" class="colony-link building">
+        <img src="{{ icons.hammer_building }}" alt="" style="width: 18px; height: 18px;">
+        <div class="colony-link-text">
+            <span class="colony-link-title">{{ total_building }} Under Construction</span>
+            <span class="colony-link-subtitle">View build progress</span>
+        </div>
+        <span class="colony-link-arrow">&rarr;</span>
+    </a>
+    {% endif %}
+    {% if total_structures > 0 %}
+    <a href="/colony?tab=assets" class="colony-link assets">
+        <img src="{{ icons.construction_crane }}" alt="" style="width: 18px; height: 18px;">
+        <div class="colony-link-text">
+            <span class="colony-link-title">{{ total_structures }} Structure{{ 's' if total_structures > 1 else '' }}</span>
+            <span class="colony-link-subtitle">View your colony</span>
+        </div>
+        <span class="colony-link-arrow">&rarr;</span>
+    </a>
+    {% endif %}
+</div>
+
+{% if not has_commander %}
+<div class="dashboard-card warning-box mb-20">
+    <h4 class="text-primary m-0 mb-8">Captain Required</h4>
+    <p class="text-secondary m-0 mb-12">Create a captain before acquiring equipment.</p>
+    <a href="/crew" class="btn btn-purple">Create Captain</a>
+</div>
+{% else %}
+
+<!-- Sort/Filter Controls -->
+<div class="depot-controls">
+    <div class="filter-group">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="affordable">Affordable</button>
+        <button class="filter-btn" data-filter="owned">Owned</button>
+        <button class="filter-btn" data-filter="upgradeable">Upgradeable</button>
+    </div>
+    <div class="sort-group">
+        <select id="sortSelect" class="sort-select">
+            <option value="price-asc" selected>Shards: Fewest First</option>
+            <option value="price-desc">Shards: Most First</option>
+            <option value="category">By Category</option>
+        </select>
+    </div>
+</div>
+
+<!-- Build Queue Status -->
+{% set slots_used = concurrent_upgrades|default(0) %}
+{% set slots_max = upgrade_cap|default(3) %}
+{% set slots_available = slots_max - slots_used %}
+{% set builds = active_builds|default([]) %}
+<div class="build-queue-panel" style="background: var(--bg-secondary); border-radius: 8px; margin-bottom: 16px; padding: 12px 16px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: {% if builds %}10px{% else %}0{% endif %};">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="color: var(--text-secondary); font-size: 13px;"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon"> Build Slots:</span>
+            <div style="display: flex; gap: 6px;">
+                {% for i in range(slots_max) %}
+                <span style="width: 20px; height: 20px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; {% if i < slots_used %}background: var(--color-warning); color: #000;{% else %}background: var(--bg-tertiary); color: var(--text-muted);{% endif %}">
+                    {% if i < slots_used %}<img src="{{ icons.lightning_power }}" alt="" class="inline-icon-sm">{% else %}○{% endif %}
+                </span>
+                {% endfor %}
+            </div>
+            <span style="color: {% if slots_available > 0 %}var(--color-success){% else %}var(--color-error){% endif %}; font-size: 13px; font-weight: 500;">{{ slots_available }} available</span>
+            {% if slots_max > 3 %}
+            <span style="color: var(--text-muted); font-size: 11px;">(+1 from Habitat)</span>
+            {% endif %}
+        </div>
+    </div>
+    {% if builds %}
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        {% for build in builds %}
+        <div class="active-build-item" style="display: flex; align-items: center; gap: 8px; background: var(--bg-tertiary); padding: 6px 12px; border-radius: 6px; border-left: 3px solid var(--color-warning);">
+            <span style="font-size: 12px; color: var(--text-primary);">{{ build.name }}</span>
+            {% if build.target_level %}<span style="font-size: 11px; color: var(--text-muted);">Lv{{ build.target_level }}</span>{% endif %}
+            <span class="build-countdown" data-seconds="{{ build.seconds_remaining }}" style="font-size: 11px; color: var(--color-warning); font-family: monospace; min-width: 50px;"></span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+
+<!-- Unified Items Grid -->
+<div class="depot-grid" id="depotGrid">
+
+    <!-- Infrastructure Items -->
+    {% if structures %}
+    {% for structure in structures|sort(attribute='definition.cost_sepolia') %}
+    {% set cost_display = (structure.definition.cost_sepolia * 10000000)|int %}
+    {% set can_afford = current_balance >= cost_display %}
+    <div class="depot-card {% if not structure.can_build %}locked{% elif not can_afford and cost_display > 0 %}insufficient{% endif %}"
+         data-category="infrastructure"
+         data-infra-type="{{ structure.type }}"
+         data-price="{{ cost_display }}"
+         data-affordable="{{ 'true' if can_afford else 'false' }}"
+         data-owned="false">
+        {% if structure.definition.image_url %}
+        <img src="{{ structure.definition.image_url }}" alt="{{ structure.definition.name }}" class="depot-card-image" loading="lazy">
+        {% endif %}
+        <div class="depot-card-body">
+            <div class="depot-card-header">
+                <h4>{{ structure.definition.icon }} {{ structure.definition.name }}</h4>
+                <div class="depot-card-price {% if cost_display == 0 %}free{% endif %}">{% if cost_display == 0 %}FREE{% else %}{{ "{:,}".format(cost_display) }}{% endif %}</div>
+            </div>
+            <p class="depot-card-desc">{{ structure.definition.description }}</p>
+            <div class="depot-card-stats">
+                <span>{% set seconds = structure.definition.build_time_seconds %}{% if seconds >= 86400 %}{{ (seconds / 86400)|round(3) }}d{% elif seconds >= 3600 %}{{ (seconds / 3600)|round(1) }}h{% else %}{{ (seconds / 60)|round(0) }}m{% endif %} build</span>
+                {% if structure.generation_rate > 0 %}<span class="stat-highlight">{{ "%.0f"|format(structure.generation_rate) }}/hr</span>{% endif %}
+            </div>
+            {% if not structure.can_build and structure.missing_requirements %}
+            <div class="depot-card-requirement">Requires: {{ structure.missing_requirements|join(', ')|replace('_', ' ')|title }}</div>
+            {% elif not can_afford and cost_display > 0 %}
+            <div class="depot-card-shortfall">Need {{ "{:,}".format(cost_display - current_balance|int) }} more</div>
+            {% endif %}
+            {% if not structure.can_build %}
+            <button class="btn btn-secondary btn-block" disabled>Locked</button>
+            {% elif not can_afford and cost_display > 0 %}
+            <button class="btn btn-secondary btn-block" disabled>Insufficient</button>
+            {% else %}
+            <button class="btn {% if cost_display == 0 %}btn-green{% else %}btn-purple{% endif %} btn-block" onclick="buildStructure('{{ structure.type }}', '{{ structure.definition.name }}', {{ structure.definition.build_time_seconds }}, {{ cost_display }})">{% if cost_display == 0 %}Build Free{% else %}Build{% endif %}</button>
+            {% endif %}
+        </div>
+        <span class="depot-card-tag tag-infrastructure">Infrastructure</span>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Equipment Items -->
+    {% for category_id, category in shop_catalog.items() %}
+    {% for item in category['items']|sort(attribute='cost') %}
+    {% set is_building = item.status == 'building' %}
+    <div class="depot-card {% if is_building %}building{% elif item.owned %}owned{% elif not item.can_afford %}insufficient{% elif not item.can_purchase %}locked{% endif %}"
+         data-category="equipment"
+         data-price="{{ item.cost|int }}"
+         data-affordable="{{ 'true' if item.can_afford else 'false' }}"
+         data-owned="{{ 'true' if item.owned else 'false' }}"
+         data-item-id="{{ item.id }}"
+         data-status="{{ item.status or '' }}"
+         data-ready-at="{{ item.ready_at or '' }}"
+         data-seconds-remaining="{{ item.seconds_remaining or 0 }}"
+         data-build-time="{{ item.build_time_seconds or 0 }}">
+        {% if item.image_url %}
+        <img src="{{ item.image_url }}" alt="{{ item.name }}" class="depot-card-image{% if is_building %} building-img{% endif %}" loading="lazy">
+        {% else %}
+        <div class="depot-card-icon">{{ item.icon }}</div>
+        {% endif %}
+        {% if is_building %}
+        <div class="build-progress-overlay">
+            <div class="build-timer" data-item-id="{{ item.id }}">
+                {% set remaining = item.seconds_remaining %}
+                {% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d
+                {% elif remaining > 3600 %}{{ (remaining / 3600)|round(1) }}h
+                {% else %}{{ (remaining / 60)|round(0) }}m{% endif %}
+            </div>
+            <div class="build-label"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Building</div>
+        </div>
+        {% endif %}
+        <div class="depot-card-body">
+            <div class="depot-card-header">
+                <h4>{{ item.name }}</h4>
+                <div class="depot-card-price">{{ "{:,}".format(item.cost|int) }}</div>
+            </div>
+            <p class="depot-card-desc">{{ item.description }}</p>
+            {% if is_building %}
+            <div class="depot-card-build-info">
+                <span class="build-time-remaining" data-item-id="{{ item.id }}">
+                    {% set remaining = item.seconds_remaining %}
+                    {% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d remaining
+                    {% elif remaining > 3600 %}{{ (remaining / 3600)|round(1) }}h remaining
+                    {% else %}{{ (remaining / 60)|round(0) }}m remaining{% endif %}
+                </span>
+            </div>
+            <a href="/colony?tab=assets&item={{ item.id }}" class="btn btn-building btn-block" style="text-decoration: none;"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> View in Colony</a>
+            {% elif not item.can_afford and not item.owned %}
+            <div class="depot-card-shortfall">Need {{ "{:,}".format(item.shortfall|int) }} more</div>
+            <button class="btn btn-secondary btn-block" disabled>Insufficient</button>
+            {% elif not item.requirements_met %}
+            <div class="depot-card-requirement">Requires: {{ item.missing_requirements|join(', ') }}</div>
+            <button class="btn btn-secondary btn-block" disabled>Locked</button>
+            {% elif item.owned %}
+            <button class="btn btn-secondary btn-block" disabled>{% if item.current_owned >= item.max_owned %}Max Owned{% else %}Owned ({{ item.current_owned }}/{{ item.max_owned }}){% endif %}</button>
+            {% elif item.can_purchase %}
+            <div class="depot-card-stats"><span>{{ (item.build_time_seconds / 86400)|round(0)|int }}d build</span></div>
+            <button class="btn btn-purple btn-block" onclick="purchaseUpgrade('{{ item.id }}')">Get</button>
+            {% else %}
+            <button class="btn btn-secondary btn-block" disabled>Locked</button>
+            {% endif %}
+        </div>
+        <span class="depot-card-tag tag-equipment">{{ category.name }}</span>
+        {% if item.owned and not is_building %}<span class="owned-checkmark">✓</span>{% endif %}
+        {% if is_building %}<span class="building-badge"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"></span>{% endif %}
+    </div>
+    {% endfor %}
+    {% endfor %}
+
+    <!-- Upgradeable Items (Vehicles, Equipment, etc.) - CoC/AoE style: only show owned items -->
+    {% if upgrade_catalog %}
+    {% for category_key, items in upgrade_catalog.items() %}
+    {% for item_key, item in items.items() %}
+    {% set upgrade_cost = item.upgrade_cost|default(0) %}
+    {% set can_afford = item.can_afford %}
+    {% set is_locked = item.is_locked %}
+    {% set is_max = item.is_max_level %}
+    {% set is_building = item.is_building %}
+    {% set build_status = item.build_status %}
+    <div class="depot-card {% if is_building %}building{% elif is_max %}owned{% elif is_locked %}locked{% elif not can_afford and upgrade_cost %}insufficient{% endif %}"
+         style="cursor: pointer;{% if is_locked %} opacity: 0.7;{% endif %}"
+         data-seconds-remaining="{{ build_status.seconds_remaining|int if build_status and build_status.seconds_remaining else 0 }}"
+         data-category="{{ category_key }}"
+         data-price="{{ upgrade_cost|int if upgrade_cost else 0 }}"
+         data-affordable="{{ 'true' if can_afford else 'false' }}"
+         data-owned="{{ 'true' if item.current_level > 0 else 'false' }}"
+         data-upgradeable="true"
+         data-upgrade-category="{{ category_key }}"
+         data-upgrade-item="{{ item_key }}"
+         onclick="showUpgradeModal('{{ category_key }}', '{{ item_key }}')">
+        {% if item.image_url %}
+        <img src="{{ item.image_url }}" alt="{{ item.name }}" class="depot-card-image{% if is_building %} building-img{% endif %}" loading="lazy">
+        {% else %}
+        <div class="depot-card-icon">{{ item.icon }}</div>
+        {% endif %}
+        {% if is_building and build_status and build_status.seconds_remaining %}
+        <div class="build-progress-overlay">
+            <div class="build-timer">
+                {% set remaining = build_status.seconds_remaining|int %}
+                {% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d
+                {% elif remaining > 3600 %}{{ (remaining / 3600)|round(0)|int }}h
+                {% else %}{{ (remaining / 60)|round(0)|int }}m{% endif %}
+            </div>
+            <div class="build-label"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Upgrading</div>
+        </div>
+        {% endif %}
+        <div class="depot-card-body">
+            <div class="depot-card-header">
+                <h4>{{ item.icon }} {{ item.name }}</h4>
+                {% if is_max %}
+                <div class="depot-card-price text-success">MAX</div>
+                {% elif upgrade_cost %}
+                <div class="depot-card-price">{{ "{:,}".format(upgrade_cost|int) }}</div>
+                {% endif %}
+            </div>
+            <p class="depot-card-desc">{{ item.description }}</p>
+
+            <!-- Level indicator -->
+            <div class="depot-card-level">
+                <span class="level-current">{{ item.current_level_name }}</span>
+                <span class="level-progress">{% if is_locked %}Locked{% else %}Lv {{ item.current_level }}/{{ item.max_level }}{% endif %}</span>
+            </div>
+
+            <!-- Stats preview (for owned items) -->
+            {% if item.current_stats and item.current_level > 0 %}
+            <div class="depot-card-stats">
+                {# VEHICLES #}
+                {% if item.current_stats.cargo %}<span>{{ item.current_stats.cargo }} cargo</span>{% endif %}
+                {% if item.current_stats.expedition_speed_mult %}<span>{{ (item.current_stats.expedition_speed_mult * 2)|round|int }} km/h</span>{% endif %}
+                {% if item.current_stats.max_range_km %}<span>{{ "{:,}".format(item.current_stats.max_range_km) }} km</span>{% endif %}
+                {% if item.current_stats.fuel_cost_mult and item.current_stats.fuel_cost_mult < 1.0 %}<span class="stat-highlight">-{{ "%.0f"|format((1 - item.current_stats.fuel_cost_mult) * 100) }}% cost</span>{% endif %}
+                {# SCANNER #}
+                {% if item.current_stats.discovery_chance_bonus %}<span class="stat-highlight">+{{ "%.0f"|format(item.current_stats.discovery_chance_bonus * 100) }}% discovery</span>{% endif %}
+                {% if item.current_stats.rare_chance_bonus %}<span class="stat-gold">+{{ "%.0f"|format(item.current_stats.rare_chance_bonus * 100) }}% rare</span>{% endif %}
+                {# LIFE SUPPORT #}
+                {% if item.current_stats.life_support_cost_mult and item.current_stats.life_support_cost_mult < 1.0 %}<span class="stat-highlight">-{{ "%.0f"|format((1 - item.current_stats.life_support_cost_mult) * 100) }}% life support</span>{% endif %}
+                {# GENERATOR #}
+                {% if item.current_stats.passive_income_mult and item.current_stats.passive_income_mult > 1.0 %}<span class="stat-gold">{{ "%.2f"|format(item.current_stats.passive_income_mult) }}x passive income</span>{% endif %}
+                {# RESEARCH #}
+                {% if item.current_stats.discovery_value_mult and item.current_stats.discovery_value_mult > 1.0 %}<span class="stat-gold">{{ "%.2f"|format(item.current_stats.discovery_value_mult) }}x discovery value</span>{% endif %}
+                {# EVA SUIT #}
+                {% if item.current_stats.stat_exploration_bonus %}<span class="stat-highlight">+{{ item.current_stats.stat_exploration_bonus }}% exploration</span>{% endif %}
+                {# AUTOMATION #}
+                {% if item.current_stats.passive_income_base %}<span class="stat-gold">+{{ item.current_stats.passive_income_base }} shards/hr</span>{% endif %}
+                {% if item.current_stats.dust_storm_immune %}<span class="stat-highlight">Dust immune</span>{% endif %}
+                {# STORAGE #}
+                {% if item.current_stats.capacity %}<span>{{ item.current_stats.capacity }} storage</span>{% endif %}
+                {# CARGO #}
+                {% if item.current_stats.cargo_slots %}<span>+{{ item.current_stats.cargo_slots }} cargo slots</span>{% endif %}
+                {% if item.current_stats.bio_discovery_value_mult and item.current_stats.bio_discovery_value_mult > 1.0 %}<span class="stat-gold">{{ "%.2f"|format(item.current_stats.bio_discovery_value_mult) }}x bio value</span>{% endif %}
+                {# INFRASTRUCTURE #}
+                {% if item.current_stats.generation_rate %}<span class="stat-gold">{{ "%.1f"|format(item.current_stats.generation_rate) }} shards/hr</span>{% endif %}
+                {% if item.current_stats.science_generation_rate %}<span>{{ "%.1f"|format(item.current_stats.science_generation_rate) }} SV/hr</span>{% endif %}
+                {% if item.current_stats.fuel_cost_reduction %}<span class="stat-highlight">-{{ "%.0f"|format(item.current_stats.fuel_cost_reduction * 100) }}% cost</span>{% endif %}
+                {% if item.current_stats.life_support_reduction %}<span class="stat-highlight">-{{ "%.0f"|format(item.current_stats.life_support_reduction * 100) }}% life support</span>{% endif %}
+                {% if item.current_stats.night_generation %}<span>{{ "%.0f"|format(item.current_stats.night_generation * 100) }}% night gen</span>{% endif %}
+                {% if item.current_stats.expedition_capacity %}<span>{{ item.current_stats.expedition_capacity }} expedition slots</span>{% endif %}
+                {% if item.current_stats.all_generation_mult and item.current_stats.all_generation_mult > 1.0 %}<span class="stat-gold">{{ "%.2f"|format(item.current_stats.all_generation_mult) }}x all gen</span>{% endif %}
+                {% if item.current_stats.discovery_bonus %}<span class="stat-highlight">+{{ "%.0f"|format(item.current_stats.discovery_bonus * 100) }}% discovery</span>{% endif %}
+                {% if item.current_stats.legendary_discovery_chance %}<span class="stat-gold">+{{ "%.0f"|format(item.current_stats.legendary_discovery_chance * 100) }}% legendary</span>{% endif %}
+            </div>
+            {% elif is_locked and item.next_level_stats %}
+            <!-- Locked item preview: show what Lv1 gives -->
+            <div class="depot-card-stats" style="opacity: 0.7;">
+                {# VEHICLES #}
+                {% if item.next_level_stats.cargo %}<span>{{ item.next_level_stats.cargo }} cargo</span>{% endif %}
+                {% if item.next_level_stats.expedition_speed_mult %}<span>{{ (item.next_level_stats.expedition_speed_mult * 2)|round|int }} km/h</span>{% endif %}
+                {% if item.next_level_stats.max_range_km %}<span>{{ "{:,}".format(item.next_level_stats.max_range_km) }} km</span>{% endif %}
+                {# SCANNER #}
+                {% if item.next_level_stats.discovery_chance_bonus %}<span class="stat-highlight">+{{ "%.0f"|format(item.next_level_stats.discovery_chance_bonus * 100) }}% discovery</span>{% endif %}
+                {# EVA SUIT #}
+                {% if item.next_level_stats.stat_exploration_bonus %}<span class="stat-highlight">+{{ item.next_level_stats.stat_exploration_bonus }}% exploration</span>{% endif %}
+                {# AUTOMATION #}
+                {% if item.next_level_stats.passive_income_base %}<span class="stat-gold">+{{ item.next_level_stats.passive_income_base }} shards/hr</span>{% endif %}
+                {# STORAGE #}
+                {% if item.next_level_stats.capacity %}<span>{{ item.next_level_stats.capacity }} storage</span>{% endif %}
+                {# GENERATOR #}
+                {% if item.next_level_stats.passive_income_mult and item.next_level_stats.passive_income_mult > 1.0 %}<span class="stat-gold">{{ "%.2f"|format(item.next_level_stats.passive_income_mult) }}x passive</span>{% endif %}
+                {# RESEARCH #}
+                {% if item.next_level_stats.discovery_value_mult and item.next_level_stats.discovery_value_mult > 1.0 %}<span class="stat-gold">{{ "%.2f"|format(item.next_level_stats.discovery_value_mult) }}x disc value</span>{% endif %}
+                {# INFRASTRUCTURE #}
+                {% if item.next_level_stats.generation_rate %}<span class="stat-gold">{{ "%.1f"|format(item.next_level_stats.generation_rate) }}/hr</span>{% endif %}
+                {% if item.next_level_stats.night_generation %}<span>{{ "%.0f"|format(item.next_level_stats.night_generation * 100) }}% night gen</span>{% endif %}
+                {% if item.next_level_stats.expedition_capacity %}<span>{{ item.next_level_stats.expedition_capacity }} expedition slots</span>{% endif %}
+                {% if item.next_level_stats.fuel_cost_reduction %}<span class="stat-highlight">-{{ "%.0f"|format(item.next_level_stats.fuel_cost_reduction * 100) }}% cost</span>{% endif %}
+                {% if item.next_level_stats.life_support_reduction %}<span class="stat-highlight">-{{ "%.0f"|format(item.next_level_stats.life_support_reduction * 100) }}% life support</span>{% endif %}
+                {% if item.next_level_stats.science_generation_rate %}<span>{{ "%.1f"|format(item.next_level_stats.science_generation_rate) }} SV/hr</span>{% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Milestone notes for special bonuses at certain levels -->
+            {% if item_key == 'habitat_module' and item.current_level < 5 %}
+            <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-sepolia); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv5: +1 build slot</div>
+            {% elif item_key == 'automation' and item.current_level < 3 %}
+            <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-success); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv3: Dust storm immunity</div>
+            {% elif item_key == 'regolith_forge' and item.current_level < 5 %}
+            <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-sepolia); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv5: Unlocks Resonance Chamber</div>
+            {% elif item_key == 'resonance_chamber' and item.current_level < 5 %}
+            <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-sepolia); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv5: Unlocks Thermal Vent Tap</div>
+            {% elif item_key == 'thermal_vent_tap' and item.current_level < 5 %}
+            <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-sepolia); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv5: Unlocks Monolith Antenna</div>
+            {% endif %}
+
+            <!-- Next level preview -->
+            {% if item.next_level_stats and not is_max and not is_locked %}
+            <div class="depot-card-upgrade-preview">
+                <span class="upgrade-arrow">→</span> {{ item.next_level_name }}
+                {% if item.next_level_stats.cargo and item.current_stats and item.current_stats.cargo and (item.next_level_stats.cargo - item.current_stats.cargo) > 0 %}
+                <span class="upgrade-delta">+{{ item.next_level_stats.cargo - item.current_stats.cargo }} cargo</span>
+                {% endif %}
+                {% if item.next_level_stats.expedition_speed_mult and item.current_stats and item.current_stats.expedition_speed_mult %}
+                {% set speed_delta = item.next_level_stats.expedition_speed_mult - item.current_stats.expedition_speed_mult %}
+                {% if speed_delta > 0 %}<span class="upgrade-delta">+{{ "%.0f"|format((speed_delta / item.current_stats.expedition_speed_mult) * 100) }}% speed</span>{% endif %}
+                {% endif %}
+                {% if item.next_level_stats.generation_rate and item.current_stats and item.current_stats.generation_rate %}
+                {% set gen_delta = item.next_level_stats.generation_rate - item.current_stats.generation_rate %}
+                {% if gen_delta > 0 %}<span class="upgrade-delta">+{{ "%.1f"|format(gen_delta) }}/hr</span>{% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if not can_afford and upgrade_cost and not is_max %}
+            <div class="depot-card-shortfall">Need {{ "{:,}".format((upgrade_cost - current_balance)|int) }} more</div>
+            {% endif %}
+
+            {% if item.next_level_stats and item.next_level_stats.build_time_days and not is_max and not is_building %}
+            {% set btd = item.next_level_stats.build_time_days %}
+            <div class="depot-card-build-time"><img src="{{ icons.stopwatch_duration }}" alt="" class="inline-icon-sm"> {% if btd < 1 %}{{ (btd * 24)|round|int }} hour{% if (btd * 24)|round|int != 1 %}s{% endif %}{% else %}{{ btd|round|int }} day{% if btd|round|int != 1 %}s{% endif %}{% endif %} to build</div>
+            {% endif %}
+
+            {% if is_building and build_status and build_status.seconds_remaining %}
+            <button class="btn btn-building btn-block" disabled onclick="event.stopPropagation()"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Building... <span class="build-time-remaining">{% set remaining = build_status.seconds_remaining|int %}{% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d{% elif remaining > 3600 %}{{ (remaining / 3600)|round(0)|int }}h{% else %}{{ (remaining / 60)|round(0)|int }}m{% endif %}</span></button>
+            {% elif is_max %}
+            <button class="btn btn-secondary btn-block" disabled onclick="event.stopPropagation()">Max Level</button>
+            {% elif is_locked and can_afford %}
+            <button class="btn btn-purple btn-block" onclick="event.stopPropagation(); performUpgrade('{{ category_key }}', '{{ item_key }}')">Unlock ({{ "{:,}".format(upgrade_cost|int) }})</button>
+            {% elif can_afford %}
+            <button class="btn btn-purple btn-block" onclick="event.stopPropagation(); performUpgrade('{{ category_key }}', '{{ item_key }}')">Upgrade ({{ "{:,}".format(upgrade_cost|int) }})</button>
+            {% elif is_locked %}
+            <button class="btn btn-secondary btn-block" disabled onclick="event.stopPropagation()">{{ "{:,}".format(upgrade_cost|int) }} to unlock</button>
+            {% else %}
+            <button class="btn btn-secondary btn-block" disabled onclick="event.stopPropagation()">Insufficient</button>
+            {% endif %}
+        </div>
+        <span class="depot-card-tag tag-{{ category_key }}">{{ category_key|title }}</span>
+        {% if is_building %}<span class="building-badge"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"></span>{% endif %}
+        {% if not is_locked and not is_max and not is_building %}<span class="level-badge">Lv{{ item.current_level }}</span>{% endif %}
+        {% if is_max %}<span class="owned-checkmark">✓</span>{% endif %}
+        {% if is_locked %}<span class="level-badge" style="background: var(--bg-tertiary); color: var(--text-muted);"><img src="{{ icons.lock_closed }}" alt="" class="inline-icon-sm"></span>{% endif %}
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+</div>
+
+<!-- Hidden preview panel for captain purchases -->
+<div id="commanderPreview" class="commander-display" style="display: none;">
+    <h3 class="text-center mb-16">Updated Captain</h3>
+    <div class="commander-image-container"><img id="previewImage" src="{{ commander.gcs_url if commander else '' }}" alt="Captain Preview" class="commander-image" onclick="showImageModal(this.src)"></div>
+    <div id="previewStats" class="stats-container">
+        <h4 id="statsTitle">Captain Attributes</h4>
+        <div class="stat-row"><span class="stat-label">Leadership</span><div class="stat-bar"><div class="stat-fill" id="preview_leadershipBar"></div></div><span class="stat-value" id="preview_leadershipValue">0</span></div>
+        <div class="stat-row"><span class="stat-label">Strategy</span><div class="stat-bar"><div class="stat-fill" id="preview_strategyBar"></div></div><span class="stat-value" id="preview_strategyValue">0</span></div>
+        <div class="stat-row"><span class="stat-label">Exploration</span><div class="stat-bar"><div class="stat-fill" id="preview_explorationBar"></div></div><span class="stat-value" id="preview_explorationValue">0</span></div>
+        <div class="stat-row"><span class="stat-label">Logistics</span><div class="stat-bar"><div class="stat-fill" id="preview_logisticsBar"></div></div><span class="stat-value" id="preview_logisticsValue">0</span></div>
+        <div class="stat-row"><span class="stat-label">Charisma</span><div class="stat-bar"><div class="stat-fill" id="preview_charismaBar"></div></div><span class="stat-value" id="preview_charismaValue">0</span></div>
+        <div class="stat-total"><strong>Total:</strong> <span id="preview_totalScore">0</span>/450</div>
+    </div>
+    <div class="button-row mt-16">
+        <a href="/crew" class="btn btn-purple">View Profile</a>
+        <button class="btn btn-secondary" onclick="resetDepotView()">Continue</button>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<script type="application/json" id="depotData">
+{
+    "currentBalance": {{ current_balance if current_balance else 0 }},
+    "pricing": {
+        "reroll_cost": {{ pricing.reroll_cost if pricing else 500 }},
+        "transmutation_cost": {{ pricing.transmutation_cost if pricing else 1000 }},
+        "modify_cost": {{ pricing.modify_cost if pricing else 15 }},
+        "reroll_count": {{ pricing.reroll_count if pricing else 0 }},
+        "transmutation_count": {{ pricing.transmutation_count if pricing else 0 }}
+    },
+    "hasCommander": {{ 'true' if has_commander else 'false' }},
+    "currentCommanderUrl": "{{ commander.gcs_url if commander else '' }}",
+    "currentStats": {{ stats|tojson if stats else 'null' }},
+    "icons": {
+        "hammer_building": "{{ icons.hammer_building }}",
+        "success_check": "{{ icons.success_check }}",
+        "env_sun_power": "{{ icons.env_sun_power }}"
+    },
+    "discoveryCount": {{ discovery_count|default(0) }},
+    "rangeMult": {{ range_mult|default(1.0) }},
+    "upgradeCatalog": {{ upgrade_catalog|tojson if upgrade_catalog else '{}' }},
+    "infraItems": {
+        {% for structure in structures|default([]) %}
+        "{{ structure.type }}": { "tier": {{ structure.definition.tier|default(1) }}, "category": "{{ structure.definition.category|default('general') }}", "build_time": {{ structure.definition.build_time_seconds|default(0) }}, "gen_rate": {{ structure.generation_rate|default(0)|round(1) }}, "generates": "{{ structure.definition.generates_resource|default('') }}", "effect": "{{ structure.definition.effect|default('') }}", "effect_value": {{ structure.definition.effect_value|default(0)|tojson }}, "requirements": {{ structure.definition.requirements|default([])|tojson }} }{{ "," if not loop.last else "" }}
+        {% endfor %}
+    },
+    "shopItems": {
+        {% for cat_key, cat in shop_catalog.items() %}{% for item in cat['items'] %}
+        "{{ item.id }}": { "category": "{{ cat.name }}", "effects": {{ item.effects|tojson if item.effects else '{}' }}, "requirements": {{ item.requirements|tojson if item.requirements else '[]' }}, "max_owned": {{ item.max_owned|default(1) }}, "current_owned": {{ item.current_owned|default(0) }}, "build_time": {{ item.build_time_seconds|default(0) }} }{{ "," if not loop.last else "" }}
+        {% endfor %}{% endfor %}
+    }
+}
+</script>
+<script src="/static/js/depot.js?v={{ static_v }}" defer></script>
+<script src="/static/js/depot-xeno.js?v={{ static_v }}" defer></script>
+<script src="/static/js/depot-shop.js?v={{ static_v }}" defer></script>
+
+
+{% endblock %}

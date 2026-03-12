@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}Deploy to Mars - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'deploy';
+        {% if has_character %}
+        // Final step - encourage them to accept
+        chat.dataset.greeting = "This is the final step.\n\nClick **Accept Mission** to sign in and begin your colony.\n\nYour captain, your shards, your scientist—everything will be saved permanently.\n\nMars awaits, Captain.";
+        chat.dataset.pageContext = 'NEW USER on final step (Step 3) - Accept Mission page. They have selected a captain with {{ stats.values()|sum }} total power and have {{ "%.1f"|format(current_balance) }} starting shards. {% if scientist %}Their scientist is {{ scientist.name }} ({{ scientist.specialty }}).{% endif %} The user needs to click "Accept Mission" to sign in with Google and officially start their colony. This is the LAST step before they become a full Pilgrim. They can see a preview of what they will do on Mars: build infrastructure, launch expeditions, discover artifacts. Help them understand why they should accept the mission and start their journey.';
+        {% else %}
+        chat.dataset.pageContext = 'User on Accept Mission page but has no captain selected. They need to go back to the crew page to select a captain first before they can accept the mission.';
+        {% endif %}
+    }
+
+    // Auto-open ARIA for new users on this critical step
+    {% if has_character %}
+    setTimeout(function() {
+        // Only auto-open if not already opened and not dismissed
+        if (!localStorage.getItem('ariaAutoOpenedDeploy')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaAutoOpenedDeploy', 'true');
+            }
+        }
+    }, 1500);
+    {% endif %}
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/arrival.js?v={{ static_v }}"></script>
+{% endblock %}
+
+{% block content %}
+
+{% if not has_character %}
+<!-- No captain - redirect back -->
+<div class="text-center mb-24">
+    <div class="text-base text-white opacity-70 uppercase tracking-wider mb-8">Year 2157 • Mars Orbit</div>
+    <h1 class="text-white mb-0" style="text-shadow: 0 2px 20px rgba(0,0,0,0.3);">Captain Required</h1>
+</div>
+<div class="dashboard-card text-center">
+    <p class="text-secondary mb-16">You need to select a captain before landing.</p>
+    <a href="/crew" class="btn btn-large text-white" style="background: var(--gradient-primary);">Select Captain</a>
+</div>
+
+{% else %}
+<!-- STEP 3: FINAL STEP - Accept Mission -->
+
+<!-- Step Navigation at top -->
+<div class="flex justify-center gap-8 mb-16">
+    <a href="/" class="no-underline">
+        <div class="step-indicator step-complete">
+            <div class="step-number">✓</div>
+            <span class="step-label">Mine</span>
+        </div>
+    </a>
+    <a href="/crew" class="no-underline">
+        <div class="step-indicator step-complete">
+            <div class="step-number">✓</div>
+            <span class="step-label">Captain</span>
+        </div>
+    </a>
+    <div class="step-indicator step-active">
+        <div class="step-number">3</div>
+        <span class="step-label">Accept</span>
+    </div>
+</div>
+
+<!-- TOP CTA - Most prominent element -->
+<div class="rounded-xl p-20 mb-20 text-center" style="background: var(--gradient-success); box-shadow: 0 4px 24px rgba(var(--color-success-rgb),0.4);">
+    <div class="text-sm text-white opacity-90 uppercase tracking-wider mb-8"><img src="{{ icons.rocket_launch }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> Final Step</div>
+    <div class="text-3xl font-bold text-white mb-12">Almost There, Captain!</div>
+    <a href="/login" class="btn inline-flex font-bold rounded-lg" style="background: white; color: var(--color-success-dark); padding: 16px 32px; font-size: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">Accept Mission →</a>
+    <div class="text-xs text-white opacity-80 mt-10">Sign in with Google to begin your colony</div>
+</div>
+
+<!-- Hero Section with Background Image -->
+<div class="hero-section relative flex flex-col justify-center rounded-lg overflow-hidden" style="margin: 0 -20px 20px -20px; padding: 30px 20px 24px 20px; min-height: 120px;">
+    <!-- Background Image -->
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/banner_step3_landing_1767634761.png" alt="Mars Landing" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <!-- Gradient Overlay for readability -->
+    <div class="hero-overlay"></div>
+    <!-- Text Content -->
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Year 2157 • Mars Surface</div>
+        <h1 class="hero-title text-3xl mb-0">Your Crew is Ready</h1>
+    </div>
+</div>
+
+<!-- Mission Briefing -->
+<div class="dashboard-card card-dark mb-20">
+    <div class="p-12">
+        <div class="section-label">Mission Briefing</div>
+        <p class="text-lg leading-relaxed mb-0 opacity-90">
+            The dust settles around your lander. Through the viewport, you see it—<strong class="text-mars">the Martian horizon stretching endlessly</strong>. The ancient crystals in your cargo bay pulse with anticipation. <em class="text-primary">Accept your mission to begin.</em>
+        </p>
+    </div>
+</div>
+
+<!-- Captain - Full display with stats -->
+<div class="dashboard-card text-center p-20 mb-20 relative overflow-hidden">
+    <!-- Mars Surface Background -->
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111.png" alt="" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <div class="absolute inset-0 w-full h-full z-1" style="background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.7) 100%);"></div>
+
+    <!-- Content -->
+    <div class="relative z-2">
+        <div class="text-xs uppercase tracking-wide mb-12 font-semibold" style="color: var(--color-success-dark); text-shadow: 0 1px 2px rgba(255,255,255,0.8);">Your Captain</div>
+        {% if video_url %}
+        <video autoplay muted loop playsinline class="crew-portrait w-full rounded-xl mb-16 cursor-pointer transition" onclick="showFullImage('{{ character_url }}', 'Your Captain')" style="max-width: 280px; border: 4px solid var(--color-success); box-shadow: 0 8px 32px rgba(var(--color-success-rgb),0.3);">
+            <source src="{{ video_url }}" type="video/mp4">
+        </video>
+        {% else %}
+        <img src="{{ character_url }}" alt="Captain" class="crew-portrait w-full rounded-xl mb-16 cursor-pointer transition" onclick="showFullImage('{{ character_url }}', 'Your Captain')" style="max-width: 280px; border: 4px solid var(--color-success); box-shadow: 0 8px 32px rgba(var(--color-success-rgb),0.3);">
+        {% endif %}
+
+        <!-- Stats with explanations -->
+        <div class="rounded-lg p-16 text-left" style="background: rgba(var(--neutral-100-rgb, 245,240,234),0.9);">
+            <div class="text-center mb-12">
+                <span class="text-3xl font-bold text-primary">{{ stats.values()|sum }}</span>
+                <span class="text-base text-muted">/450 Total Power</span>
+            </div>
+            <div class="grid gap-8 text-sm">
+                <div class="flex justify-between items-center p-8 rounded" style="background: rgba(255,255,255,0.9);">
+                    <span><img src="{{ icons.crown_leadership }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> <strong class="text-primary">Leadership {{ stats.leadership }}</strong></span>
+                    <span class="text-secondary text-xs">-{{ ((stats.leadership / 90) * 20)|int }}% operation costs</span>
+                </div>
+                <div class="flex justify-between items-center p-8 rounded" style="background: rgba(255,255,255,0.9);">
+                    <span><img src="{{ icons.target_strategy }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> <strong class="text-success">Strategy {{ stats.strategy }}</strong></span>
+                    <span class="text-secondary text-xs">+{{ ((stats.strategy / 90) * 25)|int }}% discovery speed</span>
+                </div>
+                <div class="flex justify-between items-center p-8 rounded" style="background: rgba(255,255,255,0.9);">
+                    <span><img src="{{ icons.compass_exploration }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> <strong class="text-mars">Exploration {{ stats.exploration }}</strong></span>
+                    <span class="text-secondary text-xs">+{{ ((stats.exploration / 90) * 15)|int }}% find quality</span>
+                </div>
+                <div class="flex justify-between items-center p-8 rounded" style="background: rgba(255,255,255,0.9);">
+                    <span><img src="{{ icons.box_package }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> <strong style="color: var(--color-info);">Logistics {{ stats.logistics }}</strong></span>
+                    <span class="text-secondary text-xs">+{{ ((stats.logistics / 90) * 40)|int }}% supply efficiency</span>
+                </div>
+                <div class="flex justify-between items-center p-8 rounded" style="background: rgba(255,255,255,0.9);">
+                    <span><img src="{{ icons.sparkle_charisma }}" alt="" style="width: 18px; height: 18px; vertical-align: middle;"> <strong style="color: var(--color-aria);">Charisma {{ stats.charisma }}</strong></span>
+                    <span class="text-secondary text-xs">+{{ ((stats.charisma / 90) * 30)|int }}% extraction bonus</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full Image Modal -->
+<div id="crewImageModal" class="justify-center items-center" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999;" onclick="this.style.display='none'">
+    <div class="relative" style="max-width: 90vw; max-height: 90vh;">
+        <img id="crewModalImage" src="" alt="" class="w-full rounded-lg shadow-md" style="max-height: 90vh;">
+        <div id="crewModalTitle" class="text-center text-white mt-12 text-lg font-semibold"></div>
+        <div class="text-center text-white opacity-50 mt-4 text-sm">Click anywhere to close</div>
+    </div>
+</div>
+
+<script>
+function showFullImage(src, title) {
+    document.getElementById('crewModalImage').src = src;
+    document.getElementById('crewModalTitle').textContent = title;
+    document.getElementById('crewImageModal').style.display = 'flex';
+}
+</script>
+
+<!-- Your Crewmate - The scientist who made the journey with you -->
+{% if scientist %}
+<div class="dashboard-card card-dark mb-20">
+    <div class="flex items-start gap-16 flex-wrap">
+        <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" class="crew-portrait rounded-lg cursor-pointer transition" onclick="showFullImage('{{ scientist.image_url }}', '{{ scientist.name }}')" style="width: 100px; height: 100px; object-fit: cover; border: 3px solid var(--color-primary); flex-shrink: 0;">
+        <div style="flex: 1; min-width: 200px;">
+            <div class="text-xs text-primary uppercase tracking-wide mb-4"><img src="{{ icons.microscope_lab }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Your Crewmate</div>
+            <div class="text-xl font-semibold text-white mb-4">{{ scientist.name }}</div>
+            <div class="text-base text-primary mb-12">{{ scientist.specialty }} Specialist</div>
+            <div class="text-sm leading-relaxed text-white opacity-80">
+                <strong class="text-white">{{ scientist.name }}</strong> survived the 7-month journey alongside you. Now on Mars, your scientist will:
+            </div>
+            <ul class="text-sm leading-normal text-white opacity-80 mt-8 mb-0" style="padding-left: 20px;">
+                <li><strong class="text-success">Analyze discoveries</strong> — Extract Sepolia shards from expedition finds</li>
+                <li><strong class="text-primary">Research artifacts</strong> — Higher-tier discoveries yield more shards</li>
+                <li><strong class="text-mars">Unlock upgrades</strong> — Build research labs to enhance your captain</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Landing Coordinates -->
+<div class="dashboard-card text-white" style="background: var(--gradient-primary);">
+    <div class="text-xs opacity-80 uppercase tracking-wider mb-12">Your Colony Location</div>
+    <div class="flex justify-around mb-16">
+        <div class="text-center">
+            <div class="text-xs opacity-70">Latitude</div>
+            <div class="text-2xl font-bold" style="font-family: monospace;" id="mars-lat">--</div>
+        </div>
+        <div class="text-center">
+            <div class="text-xs opacity-70">Longitude</div>
+            <div class="text-2xl font-bold" style="font-family: monospace;" id="mars-lon">--</div>
+        </div>
+    </div>
+    <div class="rounded p-12 text-base" style="background: rgba(255,255,255,0.1);">
+        <div class="font-semibold mb-8">Nearby Real Mars Landmarks:</div>
+        <div id="landmark-info" class="opacity-90">Scanning NASA database...</div>
+    </div>
+    <div class="text-xs opacity-70 mt-12 text-center">
+        All coordinates are real Mars locations from NASA/JPL data
+    </div>
+</div>
+
+<!-- Resources Summary -->
+<div class="dashboard-card flex justify-around text-center border-sepolia" style="background: rgba(var(--color-success-rgb),0.1); border-width: 2px;">
+    <div>
+        <div class="text-xs uppercase" style="color: var(--color-success-dark);">Starting Shards</div>
+        <div class="text-5xl font-bold text-success">{{ "%.1f"|format(current_balance) }}</div>
+        <div class="text-xs text-secondary">Ancient Sepolia shards</div>
+    </div>
+    <div>
+        <div class="text-xs uppercase" style="color: var(--color-success-dark);">Captain Stats</div>
+        <div class="text-5xl font-bold text-success">{{ stats.values()|sum }}</div>
+        <div class="text-xs text-secondary">Combined stat total</div>
+    </div>
+</div>
+
+<!-- What You Can Do - Detailed -->
+<div class="dashboard-card card-dark">
+    <div class="p-16">
+        <div class="section-label mb-16">What You'll Do on Mars</div>
+
+        <div class="grid gap-16 mb-20">
+            <!-- Infrastructure -->
+            <div class="rounded-lg p-16" style="background: rgba(255,255,255,0.08);">
+                <div class="flex items-center gap-12 mb-8">
+                    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/infrastructure_feature_1767746755.png" alt="Infrastructure" loading="lazy" class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
+                    <div>
+                        <div class="text-base font-semibold">Build Colony Infrastructure</div>
+                        <div class="text-xs text-success">Generate passive Sepolia income</div>
+                    </div>
+                </div>
+                <div class="text-sm opacity-80 leading-normal">
+                    Construct <strong>Solar Arrays</strong> to generate shards hourly. Build <strong>Battery Banks</strong> for night generation. Expand with <strong>Habitat Modules</strong>, <strong>Research Labs</strong>, and more. Each structure provides unique bonuses.
+                </div>
+            </div>
+
+            <!-- Expeditions -->
+            <div class="rounded-lg p-16" style="background: rgba(255,255,255,0.08);">
+                <div class="flex items-center gap-12 mb-8">
+                    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expedition_feature_1767746763.png" alt="Expeditions" loading="lazy" class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
+                    <div>
+                        <div class="text-base font-semibold">Launch Expeditions</div>
+                        <div class="text-xs text-primary">Explore actual Mars locations</div>
+                    </div>
+                </div>
+                <div class="text-sm opacity-80 leading-normal">
+                    Send your captain to <strong>real Mars landmarks</strong>—Olympus Mons, Valles Marineris, ancient riverbeds. Each expedition uses real NASA coordinates. Farther expeditions cost more but yield rarer discoveries.
+                </div>
+            </div>
+
+            <!-- Discoveries -->
+            <div class="rounded-lg p-16" style="background: rgba(255,255,255,0.08);">
+                <div class="flex items-center gap-12 mb-8">
+                    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/discovery_feature_1767746771.png" alt="Discoveries" loading="lazy" class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
+                    <div>
+                        <div class="text-base font-semibold">Discover Martian Artifacts</div>
+                        <div class="text-xs text-mars">From common rocks to legendary relics</div>
+                    </div>
+                </div>
+                <div class="text-sm opacity-80 leading-normal">
+                    Find <strong>mineral samples</strong>, <strong>ancient fossils</strong>, <strong>alien artifacts</strong>, and <strong>legendary relics</strong>. Each discovery can be analyzed by your scientist to extract Sepolia shards. Rarity tiers: Common → Uncommon → Rare → Legendary.
+                </div>
+            </div>
+
+            <!-- The Mystery -->
+            <div class="rounded-lg p-16 border-mars" style="background: rgba(var(--color-mars-rgb),0.15);">
+                <div class="flex items-center gap-12 mb-8">
+                    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt="Mystery" loading="lazy" class="rounded" style="width: 48px; height: 48px; object-fit: cover;">
+                    <div>
+                        <div class="text-base font-semibold">Uncover the Mystery</div>
+                        <div class="text-xs text-mars">What happened to the previous expeditions?</div>
+                    </div>
+                </div>
+                <div class="text-sm opacity-80 leading-normal">
+                    The Sepolia shards predate human civilization. The previous expeditions found them—then disappeared. <strong>Signals have been detected from the northern hemisphere.</strong> As your colony grows, you'll piece together what happened... and what's waiting.
+                </div>
+            </div>
+        </div>
+
+        <p class="text-base leading-relaxed mb-0 opacity-90 text-center pt-16" style="border-top: 1px solid rgba(255,255,255,0.1);">
+            Your colony is ready. Your crew awaits orders.<br>
+            <strong class="text-success text-lg">Mars is yours to explore.</strong>
+        </p>
+    </div>
+</div>
+
+<!-- Bottom CTA - Matches top -->
+<div class="rounded-xl p-20 my-24 text-center" style="background: var(--gradient-success); box-shadow: 0 4px 24px rgba(var(--color-success-rgb),0.4);">
+    <div class="text-2xl font-bold text-white mb-12">Ready to Begin?</div>
+    <a href="/login" class="btn inline-flex font-bold rounded-lg" style="background: white; color: var(--color-success-dark); padding: 16px 32px; font-size: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.2);">Accept Mission →</a>
+    <div class="text-xs text-white opacity-80 mt-10">Sign in with Google to begin your colony</div>
+</div>
+
+<style>
+@media (max-width: 768px) {
+    .hero-section { margin: -16px -16px 16px -16px !important; padding: 30px 16px 24px 16px !important; min-height: 140px !important; }
+    .hero-title { font-size: 22px !important; }
+    .hero-subtitle { font-size: 11px !important; letter-spacing: 1px !important; }
+}
+@media (max-width: 480px) {
+    div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+    .hero-section { margin: -12px -12px 12px -12px !important; padding: 24px 12px 20px 12px !important; min-height: 120px !important; }
+    .hero-title { font-size: 20px !important; }
+}
+.crew-portrait:hover {
+    transform: scale(1.05);
+}
+</style>
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => generateMarsLocation(), 500);
+});
+</script>
+{% endif %}
+
+{% endblock %}

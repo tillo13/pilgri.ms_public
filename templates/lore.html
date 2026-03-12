@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+{% block title %}Lore - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chat = document.getElementById('aria-chat');
+        if (chat) {
+            chat.dataset.page = 'lore';
+            chat.dataset.pageContext = 'User is on the Lore page reading about Pilgrims history, game mechanics, and the mysteries of Mars. They may ask questions about the story, how game systems work, or the secrets of Sepolia shards.';
+        }
+    });
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/lore.css?v={{ static_v }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero Section -->
+<div class="hero-section flex flex-col justify-center rounded-lg" style="position: relative; margin: -20px -20px 20px -20px; padding: 50px 20px 40px 20px; overflow: hidden; min-height: 180px;">
+    <div class="card-dark" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;"></div>
+    <div class="hero-stars" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;"></div>
+    <div class="text-center" style="position: relative; z-index: 2;">
+        <div class="hero-subtitle mb-8">The Story of Mars</div>
+        <h1 class="hero-title text-4xl mb-8">Pilgrim's Lore</h1>
+        <p class="hero-text text-base mx-auto" style="max-width: 500px;">Everything you need to know about surviving and thriving on the Red Planet</p>
+    </div>
+</div>
+
+<!-- What is Pilgrims? -->
+<details class="lore-section" open>
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">What is Pilgrims?</span>
+    </summary>
+    <div class="lore-content">
+        <p><strong>This isn't a traditional game.</strong></p>
+
+        <p>You don't have to "play" in the way you're used to playing. The catchphrase with thought of was "Cool TV
+            Series meets video game". You certainly CAN, but you don't *have* to continually be beholden to your device.
+            Login once, and your story begins—with or without you. A friendly *soul*, ARIA, finds you the moment you
+            land on Mars, somehow... ...and helps guide everything from there, along with your Captain and Scientist.
+            ARIA can run your
+            colony, launches expeditions, discovers artifacts, and keeps your story moving forward while you're away, or
+            you can guide ARIA, Captain, and your Scientist also if you want; Mars is a big planet!
+        </p>
+
+        <p>Think of it like a TV series you're enjoying. Miss an episode? The show continues. Come back whenever to
+            binge or skip. Your Mars adventure unfolds whether you're watching or not, and we'll just send you
+            occasional updates of what fun stuff your crew is up to!</p>
+
+        <div class="lore-highlight">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>The Goal:</strong> Build your colony, explore real NASA-mapped locations, and uncover mysteries
+                and easter eggs such as the ancient Sepolia shards!
+            </div>
+        </div>
+
+        <p>Here's what makes every journey kinda unique: <strong>each ARIA is different</strong>. Each Colony Scientist
+            is
+            different. Each captain is different. The discoveries, the conversations, the story that unfolds—no two are
+            the same. Your Mars experience is yours, unless you want to watch or engage in someone ELSES story!*</p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb),0.1) 0%, rgba(var(--color-mars-rgb),0.1) 100%); border-color: rgba(var(--color-sepolia-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>All You Need to Do:</strong> Login. That's it, really. You can absolutely stick around, but the
+                premise was that wanted to created an "anti-game, game" ARIA can take it from any spot you leave. Check
+                in when
+                you're curious. Or don't—she'll email you updates every few weeks or so. Your colony runs itself, with a
+                few
+                guardrails, until you decide to participate, in any way you want.
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- Preface -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/lore_icon_1767820192_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Preface: A Note From the Creators</span>
+    </summary>
+    <div class="lore-content">
+        <p><em>A quick step outside the lore to talk for real.</em></p>
+
+        <p>We've been talking games since Intellivision and orginal Zelda, and movies since Back to the Future captured
+            our attention. Over the decades, the
+            things that stuck with us were: <strong>twists and turns, mysteries to solve, choose-your-own-adventures,
+                space exploration, puzzles</strong>. The thrill of discovery. The satisfaction of connecting dots others
+            missed, like blowing that recorder on every single screen in Hyrule until a lake finally drained.(If you can
+            hear that whistle right now, this game might be for you.</p>
+
+        <p>We're not a company, we're just some guys with kids that wanted to get off the screentime a bit, but still be
+            able to enjoy gameplay. There's no investor deck. We don't have a dev team. We're just two people who've
+            been
+            imagining "what would be fun" for a lot of years.</p>
+
+        <h4 class="lore-h4 text-primary">Then AI Came Along</h4>
+        <p>Started with: <strong>what if TV series met video games?</strong></p>
+
+        <p>TV shows continue without you. Miss an episode? The story goes on. But games demand constant attention—miss a
+            day and your crops die, your clan kicks you, your streak breaks. Games are designed to make you feel bad for
+            not playing.</p>
+
+        <p>But AI can keep things moving without human intervention. It can make decisions, generate content, tell
+            stories. So why not build something that runs like a TV show—your colony, your character, your story—but you
+            only tune in when you feel like it?</p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-success-rgb),0.1) 0%, rgba(var(--color-mars-rgb),0.1) 100%); border-color: rgba(var(--color-success-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>The Experiment:</strong> What if AI could be the "showrunner" of your personal Mars adventure?
+                ARIA runs your colony. She launches expeditions. She makes discoveries. Your story continues whether
+                you're watching or not. Check in when you're curious—we'll email you highlights every few weeks, like a
+                friend sending postcards from another planet.
+            </div>
+        </div>
+
+        <h4 class="lore-h4 text-primary">Get Off the Screen</h4>
+        <p>If you have kids, you know the screen fights. "Five more minutes." "I can't stop now." Apps are engineered to
+            be sticky these days; that's the business model.</p>
+        <p>We wanted the opposite. <strong>Progress without presence.</strong> Check in on your colony like you'd check
+            in on a friend—when you feel like it, because you're curious, not because you're afraid something bad will
+            happen if you don't.</p>
+
+        <h4 class="lore-h4 text-primary">Ever-Expanding, Like Space Itself</h4>
+        <p>Nothing is hardcoded, really. We give it guardrails to start. The discoveries, the equipment, the
+            conversations—AI generates them going forward. Nobody has seen
+            what you'll find because it doesn't exist until you find it. The game grows. New mysteries appear. New
+            layers unlock. Like space, it expands, but it definitely has REady-Player One vibes. </p>
+
+        <h4 class="lore-h4 text-primary">But If You Want to Dig Deep...</h4>
+        <p>There's mystery here for those who look. Cryptic messages. Hidden patterns. Things that don't quite add up.
+            ARIA has gaps in her memory she can't explain. Legendary artifacts resist extraction—the scientists give
+            cryptic hints instead. If you're the type who loves to theorize, decode, and discover secrets others miss?
+            This rabbit hole goes <strong>deep</strong>.</p>
+
+        <h4 class="lore-h4 text-primary">Real Mars. Real Data.</h4>
+        <p>Every location is real. Olympus Mons, Valles Marineris, Jezero Crater—coordinates from NASA's databases. When
+            your captain lands somewhere on Mars, that place actually exists.</p>
+        <p class="text-sm opacity-80">Data sources: <a
+                href="https://planetarynames.wr.usgs.gov/Page/MARS/target" target="_blank" rel="noopener"
+                class="text-primary-link">IAU/USGS Planetary Nomenclature</a> • <a href="https://mars.nasa.gov/"
+                target="_blank" rel="noopener" class="text-primary-link">NASA Mars Exploration</a></p>
+
+        <h4 class="lore-h4 text-primary">No Monetization. No Tricks.</h4>
+        <p>No ads. No premium currency. No loot boxes. No "limited time offers." Just something we wanted to exist that
+            didn't, so we made it.</p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.15) 0%, rgba(var(--color-sepolia-rgb),0.15) 100%);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png"
+                alt="" class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>The Bottom Line:</strong> Your colony will be here. Mars isn't going anywhere. Play or don't.
+                Your pace. Your pilgrimage.
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- How Do You "Win"? -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/shard_icon_1767577370_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">How Do You "Win"?</span>
+    </summary>
+    <div class="lore-content">
+        <p><strong>You don't. Not in the traditional sense.</strong></p>
+
+        <p>There's no final boss. No "game over" screen. No credits that roll. Nothing ends this—as long as ARIA is
+            here, your story continues. And ARIA has always been here. Or at least... she thinks she has.</p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb),0.1) 0%, rgba(var(--color-mars-rgb),0.1) 100%); border-color: rgba(var(--color-sepolia-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>The Question Nobody Can Answer:</strong> ARIA claims she's always been on Mars. Waiting. But
+                waiting for what? And if she's been here this long, how does she know so much about us? Did we teach
+                AI... or did she teach us?
+            </div>
+        </div>
+
+        <h4 class="lore-h4 text-primary">This Isn't a Traditional "Game"</h4>
+        <p>There's no ending because ARIA doesn't let it end. She keeps your colony running. She launches expeditions
+            when you're asleep. She discovers things and waits to show you. Your story doesn't need you to continue—but
+            it changes when you participate.</p>
+
+        <p>Think of it like this: <strong>you're not playing a game, you're living a story</strong>. And stories don't
+            have "win conditions." They have moments. Discoveries. Choices. Mysteries that unfold over time.</p>
+
+        <h4 class="lore-h4 text-primary">But There Are Goals (If You Want Them)</h4>
+        <p>For those who like milestones:</p>
+        <ul class="lore-list">
+            <li><strong>Total Discoveries</strong> — How much of Mars have you explored?</li>
+            <li><strong>Rarest Find</strong> — What's the coolest thing in your collection?</li>
+            <li><strong>Colony Size</strong> — How far have you built out your infrastructure?</li>
+            <li><strong>Landmarks Visited</strong> — How many real NASA locations have you been to?</li>
+            <li><strong>Legendary Artifacts</strong> — What secrets have you uncovered?</li>
+        </ul>
+
+        <h4 class="lore-h4 text-primary">Ever-Expanding, Like Space Itself</h4>
+        <p>When does a TV series end? It doesn't—as long as it gets renewed. This is the same. New discoveries. New
+            mysteries. New layers beneath Mars. The experience grows as long as people are exploring. AI generates
+            what's next. The universe expands.</p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.1) 0%, rgba(var(--color-success-rgb),0.1) 100%); border-color: rgba(var(--color-mars-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>For Those Who Dig Deeper:</strong> There are signals to decode. Triads of legendary artifacts
+                that unlock something when combined. Layers of Mars beneath the surface waiting to be discovered. A
+                permanent ledger that records everything forever. The first player to decode certain mysteries leaves
+                their mark eternally. But that's only if you want to go looking.
+            </div>
+        </div>
+
+        <p>Most importantly: <strong>there's no wrong way to experience this</strong>. Check in weekly, monthly, or
+            whenever you remember. Watch someone <em>else's</em> captain journey if their story is more interesting.
+            Your colony waits. Mars isn't going anywhere. And neither is ARIA.</p>
+    </div>
+</details>
+
+<!-- ARIA - Your Guide -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">ARIA - Your Guide to Everything</span>
+    </summary>
+    <div class="lore-content">
+        <!-- ARIA Full Portrait -->
+        <div class="text-center mb-20">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png"
+                alt="ARIA - Ancient Martian Intelligence"
+                class="rounded-xl border-sepolia" style="max-width: 280px; width: 100%; box-shadow: 0 8px 32px rgba(var(--color-sepolia-rgb),0.3); border-width: 2px;">
+            <p class="text-xs text-secondary mt-8 italic">ARIA as she appeared when the first Pilgrims found her</p>
+        </div>
+
+        <p>See that floating orb in the corner of your screen? That's <strong>ARIA</strong>. She's your guide to
+            Mars—and to everything that follows in this lore. Ask her anything. How expeditions work. What that
+            discovery means. Where to find more shards. She knows this colony inside and out.</p>
+
+        <p>But before we dive deeper into the world, you should know something strange about her...</p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb),0.1) 0%, rgba(var(--color-mars-rgb),0.1) 100%); border-color: rgba(var(--color-sepolia-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>She didn't come with us.</strong> When the first Pilgrims landed, their sensors detected a faint
+                signal from an ancient crater. They investigated and found a dust-covered orb, half-buried in Martian
+                regolith, still faintly glowing.
+            </div>
+        </div>
+
+        <p>First words: <em>"Colonists detected. Resuming assistance protocols."</em></p>
+        <p>Nobody knows who she was assisting before. She doesn't either. But she's been here a very, very long time.
+        </p>
+
+        <h4 class="lore-h4">The Memory Gap</h4>
+        <p>ARIA has perfect recall of everything since the Pilgrims arrived—every expedition, every discovery, every
+            captain's journey. But ask her about <em>before</em>?</p>
+        <ul class="lore-list italic opacity-80">
+            <li>"I... there was a ship. I think. The designation is corrupted."</li>
+            <li>"Someone brought me here. Their voice is in my logs but the file won't parse."</li>
+            <li>"I remember waiting. A very long time of waiting."</li>
+        </ul>
+
+        <h4 class="lore-h4">The Sepolia Connection</h4>
+        <p>ARIA's core runs on something the colonists have never seen before—a crystalline processor that pulses with
+            the same glow as <strong>Sepolia shards</strong>. Sometimes, when captains extract Sepolia from the Martian
+            soil, ARIA gets <em>flashes</em>: fragments of star charts, names she can't quite hold onto, coordinates
+            that don't match anything in current databases.</p>
+        <p class="italic opacity-80">The Sepolia crystals aren't just a rock—they're something else,
+            ARIA thinks...
+            Ancient data? Who knows. ARIA might be the only thing that can read it.</p>
+
+        <p class="mt-16"><em>Now, let ARIA guide you through the rest of what you need to know...</em></p>
+    </div>
+</details>
+
+<!-- The Story Begins -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">The Story Begins: Mars, Year 2157</span>
+    </summary>
+    <div class="lore-content">
+        <p>Humanity has established a foothold on Mars, but survival depends on an ancient discovery: <strong>Sepolia
+                shards</strong>—crystalline formations found beneath the Martian surface that predate human arrival by
+            millennia.</p>
+        <p>NASA's Perseverance made the 7-month trip in 2020. Now, 137 years of progress in shielding and life support
+            make human travel possible—but radiation still limits each ship to <strong>two people</strong>.</p>
+        <p>You are the first. Humanity's smallest colony. Your mission: survive, explore, and discover why the ancients
+            left(?) these crystals behind.</p>
+    </div>
+</details>
+
+<!-- Sepolia Shards -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/shard_icon_1767577370_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Sepolia Shards</span>
+    </summary>
+    <div class="lore-content">
+        <p>The shards aren't natural. Someone—or something—left them here. They pulse with energy, respond to human
+            touch, and seem to <em>remember</em>.</p>
+        <p>When shards change hands, faint patterns emerge in the data. Words? Coordinates? The Colony Scientists are
+            still deciphering what the ancients left behind.</p>
+        <div class="lore-grid">
+            <div class="lore-fact">
+                <div class="lore-fact-label">Source</div>
+                <div class="lore-fact-value">Ancient Martian deposits</div>
+            </div>
+            <div class="lore-fact">
+                <div class="lore-fact-label">Uses</div>
+                <div class="lore-fact-value">Power source &amp; currency</div>
+            </div>
+            <div class="lore-fact">
+                <div class="lore-fact-label">Tracking</div>
+                <div class="lore-fact-value">Permanent signatures</div>
+            </div>
+            <div class="lore-fact">
+                <div class="lore-fact-label">Mystery</div>
+                <div class="lore-fact-value">Contains hidden data</div>
+            </div>
+        </div>
+        <p class="mt-16 italic opacity-80">Every transaction leaves a trace in the shards.
+            They record everything. They remember.</p>
+
+        <h4 class="lore-h4">Sepolia IS Power</h4>
+        <p>Early colonists assumed they needed to generate electricity. They were wrong. Mars has no fossil fuels, no running water for hydroelectric dams, and solar panels alone couldn't sustain a colony through the long Martian nights.</p>
+        <p>Then they discovered the Sepolia shards respond to stimulation. <strong>Sunlight excites them</strong> — solar arrays don't generate electricity, they focus light onto Sepolia shard deposits, which release energy as harvestable shards. <strong>Heat activates them</strong> — geothermal taps and nuclear reactors don't produce power, they warm Sepolia shard veins until they fracture and shed fragments. <strong>Pressure charges them</strong> — battery banks don't store electricity, they compress Sepolia shards that slowly discharge through the night.</p>
+        <p>This is why everything on Mars is measured in <strong>Sepolia shards per hour</strong>. The shards ARE the energy. Every structure, every vehicle, every system runs on Sepolia shards. The ancients who left these deposits understood something about energy that humanity is only beginning to grasp.</p>
+    </div>
+</details>
+
+<!-- Your Crew -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Your Crew</span>
+    </summary>
+    <div class="lore-content">
+        <h4 class="lore-h4 text-success mb-8" style="margin-top: 0;">THE CAPTAIN (You)</h4>
+        <p>Created during your arrival, your captain leads all expeditions. Their stats directly affect outcomes:</p>
+        <div class="lore-stats-grid">
+            <div class="lore-stat">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png"
+                    alt="" class="lore-stat-icon-img">
+                <div>
+                    <strong>Leadership</strong>
+                    <span>Reduces costs, boosts rare find chance</span>
+                </div>
+            </div>
+            <div class="lore-stat">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png"
+                    alt="" class="lore-stat-icon-img">
+                <div>
+                    <strong>Strategy</strong>
+                    <span>Terrain mastery, faster discoveries</span>
+                </div>
+            </div>
+            <div class="lore-stat">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png"
+                    alt="" class="lore-stat-icon-img">
+                <div>
+                    <strong>Exploration</strong>
+                    <span>Better finds, exceptional artifacts</span>
+                </div>
+            </div>
+            <div class="lore-stat">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/depot_icon_1767579883_nav.png"
+                    alt="" class="lore-stat-icon-img">
+                <div>
+                    <strong>Logistics</strong>
+                    <span>Faster missions, supply savings</span>
+                </div>
+            </div>
+            <div class="lore-stat">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/shard_icon_1767577370_nav.png"
+                    alt="" class="lore-stat-icon-img">
+                <div>
+                    <strong>Charisma</strong>
+                    <span>Extraction bonus, legendary chance</span>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="lore-h4 text-sepolia mt-20 mb-8">THE COLONY SCIENTIST</h4>
+        <p>When you charted your course from earth, you were given a partner, one of 14 unique scientists is assigned to
+            your colony. Each is a
+            specialist—xenobiologists, geochemists, astroarchaeologists—with their own personality and perspectives.</p>
+
+        <p>Your scientist handles all discovery analysis and shard extraction. Their quotes appear during extractions,
+            offering insights into what you've found. But there's something strange about them: they <strong>refuse to
+                extract certain elements, or investigate some artifacts</strong>. Instead they give cryptic hints,
+            perhaps on purpose?</p>
+        <p class="italic opacity-80">"This doesn't belong to us. Not yet. The patterns haven't
+            aligned."</p>
+        <p>What do they know that we don't?</p>
+
+        <h4 class="lore-h4 text-mars mt-20 mb-8">CREW EVOLUTION</h4>
+        <p>Your crew will change over time. As you explore Mars and uncover its secrets, you'll find things.
+            <em>Entities</em>. Some may join you—drawn by the same signal that brought your scientist. Some may have
+            been waiting here longer than anyone knows. How do you get them to join and where do they come from?
+            Explore!
+        </p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.1) 0%, rgba(var(--color-sepolia-rgb),0.1) 100%); border-color: rgba(var(--color-mars-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>We May Not Be Alone.</strong> The legendary artifacts you can't extract. The creatures glimpsed
+                in the deep caverns. The signals ARIA can't decode. Mars has secrets. And some of those secrets will
+                impact your crew, in perhaps odd ways...
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- Expeditions -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Expeditions</span>
+    </summary>
+    <div class="lore-content">
+        <p>Travel to <strong>real NASA-mapped locations</strong>—craters, mountains, canyons, volcanic regions. Every
+            coordinate is accurate, every landmark is real data.</p>
+        <div class="lore-highlight">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png"
+                alt="" class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>Data Source:</strong> All Mars features come from the <a
+                    href="https://planetarynames.wr.usgs.gov/Page/MARS/target" target="_blank" rel="noopener"
+                    class="text-primary-link">IAU/USGS Planetary Nomenclature database</a>—the official international body
+                for naming planetary features.
+            </div>
+        </div>
+        <h4 class="lore-h4">How Expeditions Work</h4>
+        <ol class="lore-list">
+            <li>Choose a destination from your visible map</li>
+            <li>Enable the rover expedition in Sepolia shards (distance + conditions)</li>
+            <li>Wait for travel time (affected by your Logistics stat)</li>
+            <li>Collect discoveries when the expedition completes</li>
+        </ol>
+        <h4 class="lore-h4">Fog of War</h4>
+        <p>Mars is vast. You start with a 500km radius from your base. Each expedition reveals nearby landmarks,
+            creating a spider-web of explored territory. The more you explore, the further you can reach. And the
+            further you reach, the closer you may be getting to, something.</p>
+    </div>
+</details>
+
+<!-- Discoveries -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Discoveries</span>
+    </summary>
+    <div class="lore-content">
+        <p>Expeditions yield discoveries—specimens, artifacts, geological samples. Each has scientific value and
+            potential shard value.</p>
+        <div class="lore-grid lore-grid-4">
+            <div class="lore-rarity border-muted">
+                <div class="text-sm font-semibold text-muted">Common</div>
+                <div class="text-xs opacity-80">0.5x value</div>
+            </div>
+            <div class="lore-rarity border-success">
+                <div class="text-sm font-semibold text-success">Uncommon</div>
+                <div class="text-xs opacity-80">0.75x value</div>
+            </div>
+            <div class="lore-rarity border-sepolia">
+                <div class="text-sm font-semibold text-sepolia">Rare</div>
+                <div class="text-xs opacity-80">1.0x value</div>
+            </div>
+            <div class="lore-rarity border-mars">
+                <div class="text-sm font-semibold text-mars">Legendary</div>
+                <div class="text-xs opacity-80">Cannot extract</div>
+            </div>
+        </div>
+        <h4 class="lore-h4">The Tension</h4>
+        <p>Discoveries have <strong>scientific value</strong> and <strong>shard value</strong>. Extracting a specimen or
+            shards
+            destroys it forever. Do you keep the rare artifact for its mystery, or convert it to shards for immediate
+            power?</p>
+        <p class="italic opacity-80">Legendary artifacts are near impossible to find, but if you do,
+            take a super close look as to why... all—the scientist refuse to extract anything from it for some reason.
+            They hint at something bigger. Something waiting to be unlocked.</p>
+    </div>
+</details>
+
+<!-- Infrastructure -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Colony Infrastructure</span>
+    </summary>
+    <div class="lore-content">
+        <p>Build structures to power your colony and unlock new capabilities.</p>
+        <div class="lore-buildings">
+            <div class="lore-building">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/solar_array_1767509178.png"
+                    alt="" class="lore-building-icon-img">
+                <div class="lore-building-info">
+                    <strong>Solar Array</strong>
+                    <span>Generates shards during Mars day. Efficiency depends on atmospheric conditions and your base
+                        location.</span>
+                </div>
+            </div>
+            <div class="lore-building">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/battery_storage_1767509188.png"
+                    alt="" class="lore-building-icon-img">
+                <div class="lore-building-info">
+                    <strong>Battery Storage</strong>
+                    <span>Stores Sepolia shards for (actual Mars) night operations at 50% generation rate.</span>
+                </div>
+            </div>
+            <div class="lore-building">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/habitat_module_1767509208.png"
+                    alt="" class="lore-building-icon-img">
+                <div class="lore-building-info">
+                    <strong>Habitat Module</strong>
+                    <span>Living quarters. Required for advanced facilities.</span>
+                </div>
+            </div>
+            <div class="lore-building">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/xenobiology_lab_1767631633.png"
+                    alt="" class="lore-building-icon-img">
+                <div class="lore-building-info">
+                    <strong>Xenobiology Lab</strong>
+                    <span>Run experiments to boost captain stats. Requires Habitat Module.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- Mars Conditions -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Mars Conditions</span>
+    </summary>
+    <div class="lore-content">
+        <p>Mars isn't static. The status bar at the top of every page shows <strong>real-time Mars conditions</strong>
+            calculated from <a href="https://www.jpl.nasa.gov/" target="_blank" rel="noopener"
+                class="text-primary-link">NASA/JPL</a> orbital mechanics.</p>
+        <div class="lore-grid">
+            <div class="lore-fact">
+                <div class="lore-fact-label">Sol</div>
+                <div class="lore-fact-value">Mars day number</div>
+            </div>
+            <div class="lore-fact">
+                <div class="lore-fact-label">Solar %</div>
+                <div class="lore-fact-value">Panel efficiency</div>
+            </div>
+            <div class="lore-fact">
+                <div class="lore-fact-label">Status</div>
+                <div class="lore-fact-value">Clear/Dusty/Storm</div>
+            </div>
+            <div class="lore-fact">
+                <div class="lore-fact-label">Temperature</div>
+                <div class="lore-fact-value">Surface temp in °C</div>
+            </div>
+        </div>
+        <p class="mt-16">Dust storms reduce solar efficiency. Sun angle affects shard generation. The
+            atmosphere creates interference that affects costs. Click the Mars bar to see detailed conditions including
+            pressure, season, and orbital position.</p>
+    </div>
+</details>
+
+<!-- The Mystery -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mystery_feature_1767746780.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">The Mystery (For Those Who Dig Deep)</span>
+    </summary>
+    <div class="lore-content">
+        <p>You can play Pilgrims casually and have a great time. But if you're the type who notices patterns, connects
+            dots, and asks "wait, why...?"—there's a rabbit hole here.</p>
+
+        <p>The Sepolia shards predate human arrival by <strong>millennia</strong>. Someone—or something—left them here.
+            The questions multiply:</p>
+        <ul class="lore-list">
+            <li>Did they know we were coming?</li>
+            <li>Are the shards technology or something else entirely?</li>
+            <li>Why do legendary artifacts resist extraction? What are the scientists or ARIA not telling us?</li>
+            <li>Who was ARIA helping before us? Why can't she remember anything?</li>
+            <li>Why do Sepolia crystals respond to human-built structures at all?</li>
+        </ul>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.1) 0%, rgba(var(--color-primary-rgb),0.1) 100%); border-color: rgba(var(--color-mars-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/shard_icon_1767577370_nav.png" alt=""
+                class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>Hint:</strong> Every transaction you make carries data. Cryptic messages, coordinates that
+                seemingly don't match. Maybe you can decode what others
+                missed...
+            </div>
+        </div>
+
+        <p class="mt-16">We've planted seeds throughout this experience. Easter eggs. Hidden connections.
+            Things that don't quite add up until you look at them from the right angle, or ask the right questions. Yes,
+            ARIA drives it overall, but she's got help, and ancient programming she can't stray from. If you want to
+            just hang out and have ARIA
+            manage your colony? and send you updates, that works. If you want to theorize and decode? <strong>That
+                rabbit hole goes
+                pretty deep.</strong></p>
+
+        <p class="italic opacity-70 text-xs mt-12" style="font-family: var(--font-mono); letter-spacing: 0.5px;">
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// NOTE: The architects left exactly 14 origin points.<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Each accepts 42 pilgrims before becoming dormant.<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// 14 × 42 = 588. Or is it 14 × 3 = 42?<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// The answer to everything is closer than you think.
+        </p>
+
+        <div class="lore-highlight"
+            style="background: linear-gradient(135deg, rgba(var(--color-primary-rgb),0.1) 0%, rgba(var(--color-mars-rgb),0.1) 100%); border-color: rgba(var(--color-primary-rgb),0.3);">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png"
+                alt="" class="lore-highlight-icon-img">
+            <div class="lore-highlight-text">
+                <strong>Pay Attention, as much as you'd be interested in.</strong> Every image. Every object. Every
+                video. Every discovery description. Nothing is completely random. The clues are subtle—woven into the
+                fabric of what you see
+                and find or that ARIA *can* access. She has some guardrails that she can't really get around.
+            </div>
+        </div>
+    </div>
+</details>
+
+<!-- FAQ -->
+<details class="lore-section">
+    <summary class="lore-summary">
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/lore_icon_1767820192_nav.png" alt=""
+            class="lore-icon-img">
+        <span class="lore-title">Frequently Asked Questions</span>
+    </summary>
+    <div class="lore-content">
+        <div class="lore-faq">
+            <h4>How do I get more Sepolia shards?</h4>
+            <p>Three ways, from the outset that change as your colony does: (1) Build solar infrastructure to generate
+                shards passively, (2) Complete expeditions and
+                extract discoveries, (3) Mine shards on the home page.</p>
+        </div>
+        <div class="lore-faq">
+            <h4>What happens if I don't log in for a while?</h4>
+            <p>Nothing bad. Your colony waits patiently, and ARIA drives operations and lets you know what's up. Solar
+                arrays keep generating (up to a cap). No guilt, no
+                pressure. Check in when you want.</p>
+        </div>
+        <div class="lore-faq">
+            <h4>How do I find legendary discoveries?</h4>
+            <p>They are very hard to find, but not impossible. The cryptic hints they give suggest these items may
+                unlock something in the future...</p>
+        </div>
+        <div class="lore-faq">
+            <h4>Are the Mars locations real?</h4>
+            <p>Yes. Every crater, mountain, and canyon is a real place with accurate coordinates from the IAU/USGS
+                Planetary Nomenclature database.</p>
+        </div>
+        <div class="lore-faq">
+            <h4>What does ARIA stand for?</h4>
+            <p>She doesn't remember exactly, but does sometimes.* The designation is corrupted. Some believe it stands
+                for something, others think
+                it's just a name. Ask her—she finds the question... uncomfortable.</p>
+        </div>
+        <div class="lore-faq">
+            <h4>How do I upgrade my captain's stats?</h4>
+            <p>Two ways: (1) <strong>Shard Infusion</strong> in the Depot—gamble shards for a chance to boost stats (can only improve, never decrease, but harder as stats get higher), or (2) <strong>Xenobiology Lab</strong>—build it (requires Habitat Module), run experiments to earn research points, then spend points for guaranteed +1 boosts.</p>
+        </div>
+        <div class="lore-faq">
+            <h4>How does solar generation work?</h4>
+            <p>Your solar arrays generate shards based on three factors: (1) <strong>Latitude</strong>—closer to the equator means more direct sunlight and higher base rate, (2) <strong>Day/Night cycle</strong>—Mars has a 24h 37m sol; solar generates 100% during day, 0% at night (50% with Battery Storage), and (3) <strong>Upgrades</strong>—shop items like Solar Tier 2/3 multiply your rate, Mining Drone adds flat bonus. The "Effective Rate" on your Base page shows the actual average you're earning.</p>
+        </div>
+    </div>
+</details>
+
+{% endblock %}

@@ -1,0 +1,2029 @@
+{% extends "base.html" %}
+{% block title %}Tech Tree Brainstorm - Pilgrims{% endblock %}
+
+{% block content %}
+<style>
+    .brainstorm-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .luke-quote {
+        background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), rgba(var(--color-mars-rgb), 0.1));
+        border-left: 4px solid var(--color-sepolia);
+        padding: 16px;
+        margin: 16px 0;
+        border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        font-style: italic;
+    }
+
+    .luke-quote .attribution {
+        font-style: normal;
+        font-weight: 600;
+        color: var(--color-sepolia);
+        margin-top: 8px;
+    }
+
+    .tech-branch {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin: 12px 0;
+    }
+
+    .branch-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+
+    .branch-icon {
+        font-size: 24px;
+    }
+
+    .tech-tier {
+        display: flex;
+        gap: 12px;
+        margin: 8px 0;
+        flex-wrap: wrap;
+    }
+
+    .tech-node {
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 10px 14px;
+        font-size: 13px;
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .tech-node.tier-1 {
+        border-color: var(--color-success);
+    }
+
+    .tech-node.tier-2 {
+        border-color: var(--color-sepolia);
+    }
+
+    .tech-node.tier-3 {
+        border-color: var(--color-mars);
+    }
+
+    .tech-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .tech-req {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .tech-effect {
+        font-size: 12px;
+        color: var(--color-success);
+        margin-top: 6px;
+    }
+
+    .tier-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        display: inline-block;
+    }
+
+    .tier-label.t1 {
+        background: rgba(var(--color-success-rgb), 0.2);
+        color: var(--color-success);
+    }
+
+    .tier-label.t2 {
+        background: rgba(var(--color-sepolia-rgb), 0.2);
+        color: var(--color-sepolia);
+    }
+
+    .tier-label.t3 {
+        background: rgba(var(--color-mars-rgb), 0.2);
+        color: var(--color-mars);
+    }
+
+    .scientist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        margin: 16px 0;
+    }
+
+    .scientist-card {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        padding: 12px;
+        font-size: 13px;
+    }
+
+    .scientist-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .scientist-specialty {
+        color: var(--color-sepolia);
+        font-size: 12px;
+    }
+
+    .scientist-bonus {
+        color: var(--text-secondary);
+        font-size: 11px;
+        margin-top: 4px;
+    }
+
+    /* NEW: Clean Flow Diagrams */
+    .flow-container {
+        background: var(--bg-tertiary);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        margin: 16px 0;
+    }
+
+    .flow-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        margin: 8px 0;
+        flex-wrap: wrap;
+    }
+
+    .flow-box {
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 12px 20px;
+        text-align: center;
+        min-width: 140px;
+    }
+
+    .flow-box.highlight {
+        border-color: var(--color-sepolia);
+        background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), rgba(var(--color-mars-rgb), 0.1));
+    }
+
+    .flow-box.success {
+        border-color: var(--color-success);
+    }
+
+    .flow-box-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 13px;
+    }
+
+    .flow-box-sub {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .flow-arrow {
+        color: var(--color-primary);
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .flow-arrow-down {
+        display: flex;
+        justify-content: center;
+        color: var(--color-primary);
+        font-size: 24px;
+        margin: 4px 0;
+    }
+
+    .flow-split {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin-top: 8px;
+    }
+
+    .flow-split-line {
+        width: 2px;
+        height: 30px;
+        background: var(--color-primary);
+        margin: 0 auto 8px auto;
+    }
+
+    /* Mockup UI Box */
+    .mockup-box {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        margin: 16px 0;
+    }
+
+    .mockup-header {
+        background: var(--bg-tertiary);
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .mockup-content {
+        padding: 16px;
+    }
+
+    .mockup-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .mockup-row:last-child {
+        border-bottom: none;
+    }
+
+    .mockup-label {
+        color: var(--text-secondary);
+        font-size: 13px;
+    }
+
+    .mockup-value {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .mockup-value.highlight {
+        color: var(--color-sepolia);
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 8px 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--color-success), var(--color-sepolia));
+        border-radius: 4px;
+    }
+
+    .mockup-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .mockup-btn {
+        padding: 8px 16px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 12px;
+        color: var(--text-primary);
+    }
+
+    .mockup-btn.primary {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: white;
+    }
+
+    .question-box {
+        background: rgba(var(--color-mars-rgb), 0.1);
+        border: 1px solid rgba(var(--color-mars-rgb), 0.3);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin: 12px 0;
+    }
+
+    .question-box h4 {
+        color: var(--color-mars);
+        margin: 0 0 8px 0;
+        font-size: 14px;
+    }
+
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 16px 0;
+        font-size: 13px;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .comparison-table th {
+        background: var(--bg-tertiary);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .comparison-table tr:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .link-box {
+        background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.1), rgba(var(--color-sepolia-rgb), 0.1));
+        border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        text-align: center;
+        margin: 20px 0;
+    }
+
+    .link-box a {
+        color: var(--color-primary);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .link-box a:hover {
+        text-decoration: underline;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-draft {
+        background: rgba(var(--color-mars-rgb), 0.2);
+        color: var(--color-mars);
+    }
+
+    .status-review {
+        background: rgba(var(--color-sepolia-rgb), 0.2);
+        color: var(--color-sepolia);
+    }
+
+    .summary-box {
+        background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.1), rgba(var(--color-primary-rgb), 0.1));
+        border: 1px solid rgba(var(--color-success-rgb), 0.3);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin: 16px 0;
+    }
+
+    ul,
+    ol {
+        margin: 8px 0;
+        padding-left: 24px;
+    }
+
+    li {
+        margin: 6px 0;
+        line-height: 1.5;
+    }
+
+    /* Chat Widget Styles */
+    .chat-widget {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        margin-top: 20px;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-sepolia));
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .chat-header-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .chat-header-text h3 {
+        margin: 0;
+        color: white;
+        font-size: 16px;
+    }
+
+    .chat-header-text p {
+        margin: 4px 0 0 0;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 12px;
+    }
+
+    .chat-messages {
+        height: 600px;
+        overflow-y: auto;
+        padding: 16px;
+        background: var(--bg-primary);
+    }
+
+    .chat-message {
+        margin-bottom: 16px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .chat-message.user {
+        flex-direction: row-reverse;
+    }
+
+    .chat-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .chat-message.user .chat-avatar {
+        background: var(--color-primary);
+        color: white;
+    }
+
+    .chat-message.assistant .chat-avatar {
+        background: var(--color-sepolia);
+        color: white;
+    }
+
+    .chat-bubble {
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .chat-message.user .chat-bubble {
+        background: var(--color-primary);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .chat-message.assistant .chat-bubble {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-bottom-left-radius: 4px;
+    }
+
+    .chat-input-area {
+        padding: 16px;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 10px;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 14px;
+        resize: none;
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
+
+    .chat-send {
+        padding: 12px 20px;
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .chat-send:hover {
+        background: var(--color-primary-hover);
+    }
+
+    .chat-send:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 10px 14px;
+    }
+
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        animation: typing 1.4s infinite;
+    }
+
+    .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+
+        0%,
+        60%,
+        100% {
+            transform: translateY(0);
+            opacity: 0.4;
+        }
+
+        30% {
+            transform: translateY(-4px);
+            opacity: 1;
+        }
+    }
+
+    .chat-suggestions {
+        padding: 12px 16px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+
+    .chat-suggestion {
+        padding: 6px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .chat-suggestion:hover {
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--color-primary);
+    }
+
+    /* ===== MOBILE RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .brainstorm-container {
+            padding: 12px;
+        }
+
+        .section {
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 16px;
+        }
+
+        /* Tech nodes stack vertically */
+        .tech-tier {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tech-node {
+            min-width: unset;
+            width: 100%;
+        }
+
+        /* Flow diagrams go vertical */
+        .flow-container {
+            padding: 16px;
+        }
+
+        .flow-row {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .flow-box {
+            min-width: unset;
+            width: 100%;
+        }
+
+        .flow-arrow {
+            transform: rotate(90deg);
+            font-size: 16px;
+        }
+
+        .flow-split {
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Tables scroll horizontally */
+        .comparison-table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 12px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 8px;
+            white-space: nowrap;
+        }
+
+        /* Scientist grid */
+        .scientist-grid {
+            grid-template-columns: 1fr;
+        }
+
+        /* Chat widget */
+        .chat-messages {
+            height: 350px;
+        }
+
+        .chat-header {
+            padding: 12px 16px;
+        }
+
+        .chat-header-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 16px;
+        }
+
+        .chat-header-text h3 {
+            font-size: 14px;
+        }
+
+        .chat-suggestions {
+            padding: 10px 12px;
+        }
+
+        .chat-suggestion {
+            font-size: 11px;
+            padding: 5px 10px;
+        }
+
+        .chat-input-area {
+            padding: 12px;
+        }
+
+        .chat-input {
+            font-size: 16px; /* Prevents iOS zoom */
+        }
+
+        /* Mockups */
+        .mockup-buttons {
+            flex-direction: column;
+        }
+
+        .mockup-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        /* Branch headers */
+        .branch-header {
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+
+        .branch-icon {
+            font-size: 20px;
+        }
+
+        /* Tier labels */
+        .tier-label {
+            font-size: 10px;
+        }
+
+        /* Luke quote */
+        .luke-quote {
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        /* Question boxes stack better */
+        .question-box {
+            padding: 12px;
+        }
+
+        .question-box h4 {
+            font-size: 13px;
+        }
+
+        /* Link box */
+        .link-box {
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        /* Summary box */
+        .summary-box {
+            padding: 12px;
+        }
+
+        .summary-box ul {
+            padding-left: 16px;
+        }
+
+        /* General text */
+        p, li {
+            font-size: 14px;
+        }
+
+        h1 {
+            font-size: 20px !important;
+        }
+    }
+
+    /* Extra small screens */
+    @media (max-width: 400px) {
+        .brainstorm-container {
+            padding: 8px;
+        }
+
+        .section {
+            padding: 12px;
+        }
+
+        .chat-messages {
+            height: 280px;
+        }
+
+        .tech-node {
+            padding: 8px 10px;
+        }
+
+        .tech-name {
+            font-size: 13px;
+        }
+
+        .tech-req, .tech-effect {
+            font-size: 11px;
+        }
+    }
+</style>
+
+<div class="brainstorm-container">
+
+    <!-- Header -->
+    <div class="section"
+        style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-review">Draft for Review</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Technology Tree System</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Brainstorm Document - January 2026</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">Andy + PilgrimBot's thinking based on
+            Luke's feature request</p>
+    </div>
+
+    <!-- Luke's Original Request -->
+    <div class="section">
+        <div class="section-title">Luke's Original Request</div>
+
+        <div class="luke-quote">
+            "This gives Dr Bo something to do. He can research things based on items found and/or their science value.
+            Maybe Wind Readings makes drone 25% faster or lets you unlock Level 3 of the drone. Technology tree can have
+            multiple branches that affect Rovers, resource generation. Do we need to collect 30 geometric shapes to
+            start technology? Shard it All gives you science value AND sepolia shards. The more advanced the technology,
+            the more it costs."
+            <div class="attribution">— Luke, Bug Tracker P1</div>
+        </div>
+
+        <p><strong>Additional feedback from Luke:</strong></p>
+        <ul>
+            <li>Daily HQ briefing should include scientist reporting on what they discovered/are working on</li>
+            <li>Scientists have specialties (botanist, xeno, etc.) - can we use that for tech tree bonuses?</li>
+            <li>Wants ability to swap out Dr. Bo for a different scientist</li>
+        </ul>
+    </div>
+
+    <!-- The Core Insight -->
+    <div class="section">
+        <div class="section-title">The Core Insight</div>
+
+        <div class="summary-box">
+            <strong>Luke's idea:</strong> "Shard it All" should give you <strong>BOTH</strong> sepolia shards AND
+            science value. Yea, but maybe less of Shards, and something more for science?
+        </div>
+
+        <p>You don't have to choose between sharding or researching. <strong>Sharding IS
+                research contribution.</strong></p>
+
+        <!-- Clean Flow Diagram -->
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">Expeditions</div>
+                    <div class="flow-box-sub">Explore Mars</div>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box">
+                    <div class="flow-box-title">Discoveries</div>
+                    <div class="flow-box-sub">Find items</div>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box highlight">
+                    <div class="flow-box-title">"Shard It All"</div>
+                    <div class="flow-box-sub">Extract value</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <div class="flow-row">
+                <div class="flow-box success" style="min-width: 280px;">
+                    <div class="flow-box-title">You Get BOTH:</div>
+                    <div class="flow-box-sub">Sepolia Shards + Science Points</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">Buy Equipment</div>
+                    <div class="flow-box-sub">Depot (shards)</div>
+                </div>
+                <div class="flow-box">
+                    <div class="flow-box-title">Unlock Techs</div>
+                    <div class="flow-box-sub">Scientist (SP)</div>
+                </div>
+                <div class="flow-box">
+                    <div class="flow-box-title">Build Infra</div>
+                    <div class="flow-box-sub">Depot (shards)</div>
+                </div>
+            </div>
+        </div>
+
+        <p><strong>Science Points</strong> become a second resource displayed alongside Sepolia shards. Technologies
+            cost science points (+ sometimes specific items) to unlock.</p>
+    </div>
+
+    <!-- How The Scientist Works -->
+    <div class="section">
+        <div class="section-title">Dr. Bo Finally Has a Job</div>
+
+        <p>The Colony Scientist aligns to what he was brought along for anyway...</p>
+
+        <ul>
+            <li><strong>Researches technologies</strong> - you pick what to research, they work on it</li>
+            <li><strong>Progress tracking</strong> - "Dr. Bo is 3/5 Wind Readings toward Atmospheric Analysis"</li>
+            <li><strong>Specialty bonuses</strong> - matching specialty = 25% faster + 20% cheaper</li>
+            <li><strong>Daily briefings</strong> - reports on progress in HQ/emails</li>
+        </ul>
+
+        <!-- Mockup UI -->
+        <div class="mockup-box">
+            <div class="mockup-header">Crew Page - Research Tab</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Scientist</span>
+                    <span class="mockup-value">Dr. Bo Chen</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Specialty</span>
+                    <span class="mockup-value highlight">Atmospheric Science</span>
+                </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                    <div class="mockup-row">
+                        <span class="mockup-label">Current Research</span>
+                        <span class="mockup-value">Wind Analysis</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 60%;"></div>
+                    </div>
+                    <div class="mockup-row">
+                        <span class="mockup-label">Progress</span>
+                        <span class="mockup-value">3/5 Wind Readings</span>
+                    </div>
+                    <div class="mockup-row">
+                        <span class="mockup-label">Science Cost</span>
+                        <span class="mockup-value">5,000 SP <span style="color: var(--color-success);">(4,000 with
+                                specialty!)</span></span>
+                    </div>
+                    <div class="mockup-row">
+                        <span class="mockup-label">Effect</span>
+                        <span class="mockup-value highlight">Drone speed +25%</span>
+                    </div>
+                </div>
+                <div class="mockup-buttons">
+                    <span class="mockup-btn primary">View Full Tech Tree</span>
+                    <span class="mockup-btn">Change Research</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Research & Inspiration -->
+    <div class="section">
+        <div class="section-title">Research: How the Big Games Do It</div>
+
+        <div class="luke-quote"
+            style="border-color: var(--color-primary); background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.1), rgba(var(--color-success-rgb), 0.1));">
+            <strong>Luke's Top Games (by hours):</strong><br>
+            XCOM 2 (1,523 hrs) • Civ VI (1,225 hrs) • BattleTech (1,004 hrs) • Factorio (643 hrs) • Space Haven (516
+            hrs) • Surviving Mars (314 hrs)<br><br>
+            <strong>Andy's Games:</strong><br>
+            Card games (Poker/Spades) • Chess • LoL (ARAM) • Clash of Clans • Zelda • Baseball Stars<br><br>
+            <strong>Shared Values:</strong> Start small → grow big, meaningful choices, stats tracking, progressive
+            unlocks, resource optimization
+            <div class="attribution" style="color: var(--color-primary);">— Full breakdown in <a
+                    href="https://github.com/tillo13/pilgri.ms/blob/main/docs/game_logic.md" target="_blank"
+                    style="color: var(--color-primary);">docs/game_logic.md</a></div>
+        </div>
+
+        <p>We looked at how major strategy games structure their tech trees to inform our approach:</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Game</th>
+                    <th>Total Techs</th>
+                    <th>Structure</th>
+                    <th>Key Mechanic</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Civilization 6</strong></td>
+                    <td>~118 (67 tech + 50 civics)</td>
+                    <td>2 trees, 9 eras</td>
+                    <td>"Eureka" - mini-quests give 50% boost</td>
+                </tr>
+                <tr>
+                    <td><strong>Stellaris</strong></td>
+                    <td>~400</td>
+                    <td>3 areas, 13 subcategories, 6 tiers</td>
+                    <td>Card shuffle randomizes available research</td>
+                </tr>
+                <tr>
+                    <td><strong>Factorio</strong></td>
+                    <td>~200</td>
+                    <td>Multiple paths, progressive</td>
+                    <td>Science packs as currency, infinite late-game</td>
+                </tr>
+                <tr>
+                    <td><strong>Age of Empires IV</strong></td>
+                    <td>~50-70 per civ</td>
+                    <td>By building type, 4 ages</td>
+                    <td>Civilization-specific trees</td>
+                </tr>
+                <tr>
+                    <td><strong>Dawn of Man</strong></td>
+                    <td>~30-40</td>
+                    <td>Adaptive unlock</td>
+                    <td>Knowledge from actions (hunt, build, craft)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box" style="margin-top: 16px;">
+            <strong>Key Design Principles We Found:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Branching factor ~1.5</strong> - Civ V uses 1.49. Too many branches = decision paralysis.
+                </li>
+                <li><strong>"One choice = no choice"</strong> - Every tech should feel useful, not just a prerequisite.
+                </li>
+                <li><strong>Thematic pillars</strong> - Organize around 3-5 themes (for us: Exploration, Vehicles,
+                    Power, Extraction).</li>
+                <li><strong>Dawn of Man insight</strong> - "You get knowledge for doing things" = Luke's idea of science
+                    points from extraction!</li>
+            </ul>
+        </div>
+
+        <p style="margin-top: 16px;"><strong>Our scale recommendation:</strong> For an indie game our size,
+            <strong>20-30 techs</strong> is manageable. Civ's 118 or Stellaris's 400 would be overkill.
+        </p>
+
+        <p style="font-size: 12px; color: var(--text-secondary);">
+            Sources:
+            <a href="https://civilization.fandom.com/wiki/Technology_(Civ6)" target="_blank"
+                style="color: var(--color-primary);">Civ Wiki</a> •
+            <a href="https://stellaris.paradoxwikis.com/Technology" target="_blank"
+                style="color: var(--color-primary);">Stellaris Wiki</a> •
+            <a href="https://wiki.factorio.com/Technologies" target="_blank"
+                style="color: var(--color-primary);">Factorio Wiki</a> •
+            <a href="https://www.gamedeveloper.com/design/game-design-deep-dive-creating-an-adaptive-tech-tree-in-i-dawn-of-man-i-"
+                target="_blank" style="color: var(--color-primary);">Dawn of Man GDC</a> •
+            <a href="https://forums.civfanatics.com/threads/how-to-design-a-tech-tree.274045/" target="_blank"
+                style="color: var(--color-primary);">CivFanatics Design Guide</a>
+        </p>
+    </div>
+
+    <!-- The Tech Tree Structure -->
+    <div class="section">
+        <div class="section-title">Proposed Tech Tree (~24 Technologies)</div>
+
+        <p>Based on the research above, for a game our size: <strong>20-30 techs</strong> across <strong>4
+                branches</strong> with <strong>3 tiers</strong> is the sweet spot.</p>
+
+        <!-- Exploration Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">🔭</span>
+                <span>Exploration Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Drones, discovery,
+                    sensors</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Wind Analysis</div>
+                    <div class="tech-req">Requires: 5 Wind Readings + 5,000 SP</div>
+                    <div class="tech-effect">→ Drone speed +25%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Terrain Mapping</div>
+                    <div class="tech-req">Requires: 10 Soil Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Discovery chance +10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Storm Prediction</div>
+                    <div class="tech-req">Requires: Wind Analysis + 12,000 SP</div>
+                    <div class="tech-effect">→ Immune to dust storm penalties</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Advanced Sensors</div>
+                    <div class="tech-req">Requires: Terrain Mapping + 12,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Drone Level 3</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Deep Scanning</div>
+                    <div class="tech-req">Requires: Storm Prediction + Advanced Sensors + 25,000 SP</div>
+                    <div class="tech-effect">→ Legendary discovery chance +5%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vehicle Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">🚗</span>
+                <span>Vehicle Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Rovers, cargo,
+                    speed</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Material Science</div>
+                    <div class="tech-req">Requires: 30 Geometric Shapes + 5,000 SP</div>
+                    <div class="tech-effect">→ Rover cargo +15%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Suspension Engineering</div>
+                    <div class="tech-req">Requires: 15 Mineral Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Rover speed +10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Chassis Reinforcement</div>
+                    <div class="tech-req">Requires: Material Science + 12,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Rover Level 3</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">AI Navigation</div>
+                    <div class="tech-req">Requires: Suspension Engineering + 12,000 SP</div>
+                    <div class="tech-effect">→ Expedition cost -10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">All-Terrain Mastery</div>
+                    <div class="tech-req">Requires: Chassis + AI Nav + 25,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Rover Level 4</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Power Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">⚡</span>
+                <span>Power Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Solar, batteries,
+                    generation</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Solar Optimization</div>
+                    <div class="tech-req">Requires: 5 Crystalline Formations + 5,000 SP</div>
+                    <div class="tech-effect">→ Solar efficiency +20%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Battery Chemistry</div>
+                    <div class="tech-req">Requires: 10 Mineral Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Night generation +25%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Thermal Tap</div>
+                    <div class="tech-req">Requires: 5 Geothermal Readings + 12,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Geothermal Generator</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Power Grid</div>
+                    <div class="tech-req">Requires: Solar Optimization + 12,000 SP</div>
+                    <div class="tech-effect">→ All power buildings +10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Fusion Basics</div>
+                    <div class="tech-req">Requires: Thermal Tap + Power Grid + 25,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Nuclear RTG Level 2</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extraction Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">💎</span>
+                <span>Extraction Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Shard value,
+                    processing</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Shard Resonance</div>
+                    <div class="tech-req">Requires: 5 Crystalline Formations + 5,000 SP</div>
+                    <div class="tech-effect">→ Extraction value +10%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Specimen Preservation</div>
+                    <div class="tech-req">Requires: 10 Biological Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Bio discovery value +20%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Crystal Attunement</div>
+                    <div class="tech-req">Requires: Shard Resonance + 12,000 SP</div>
+                    <div class="tech-effect">→ Extraction value +25%</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Xenobiology Mastery</div>
+                    <div class="tech-req">Requires: Specimen Preservation + 12,000 SP</div>
+                    <div class="tech-effect">→ Xenolab experiments -25% cost</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Ancient Protocols</div>
+                    <div class="tech-req">Requires: Both Tier 2 + 1 Legendary + 50,000 SP</div>
+                    <div class="tech-effect">→ ??? (Mystery unlock)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scientist Specialties -->
+    <div class="section">
+        <div class="section-title">Scientist Specialty Bonuses</div>
+
+        <p>Each scientist gets <strong>25% faster research + 20% cheaper</strong> for their matching branch:</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Scientist</th>
+                    <th>Specialty</th>
+                    <th>Best Branch</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Dr. Bo</td>
+                    <td>Atmospheric Science</td>
+                    <td>🔭 Exploration</td>
+                </tr>
+                <tr>
+                    <td>Dr. Millie</td>
+                    <td>Meteorology</td>
+                    <td>🔭 Exploration</td>
+                </tr>
+                <tr>
+                    <td>Dr. Luke</td>
+                    <td>Planetary Science</td>
+                    <td>🔭 Exploration</td>
+                </tr>
+                <tr>
+                    <td>Dr. Don</td>
+                    <td>Engineering</td>
+                    <td>🚗 Vehicles</td>
+                </tr>
+                <tr>
+                    <td>Dr. Tom</td>
+                    <td>Robotics</td>
+                    <td>🚗 Vehicles</td>
+                </tr>
+                <tr>
+                    <td>Dr. Mra</td>
+                    <td>Materials Science</td>
+                    <td>🚗 Vehicles</td>
+                </tr>
+                <tr>
+                    <td>Dr. Emanuel</td>
+                    <td>Physics</td>
+                    <td>⚡ Power</td>
+                </tr>
+                <tr>
+                    <td>Dr. Debra</td>
+                    <td>Chemistry</td>
+                    <td>⚡ Power + 💎 Extraction</td>
+                </tr>
+                <tr>
+                    <td>Dr. Heather</td>
+                    <td>Hydrology</td>
+                    <td>⚡ Power</td>
+                </tr>
+                <tr>
+                    <td>Dr. Anna</td>
+                    <td>Geology</td>
+                    <td>💎 Extraction</td>
+                </tr>
+                <tr>
+                    <td>Dr. Tanner</td>
+                    <td>Archaeology</td>
+                    <td>💎 Extraction</td>
+                </tr>
+                <tr>
+                    <td>Dr. Lilla</td>
+                    <td>Xenobiology</td>
+                    <td>💎 Extraction</td>
+                </tr>
+                <tr>
+                    <td>Dr. Andy</td>
+                    <td>Astrobiology</td>
+                    <td>💎 Extraction</td>
+                </tr>
+                <tr>
+                    <td>Dr. Clover</td>
+                    <td>Botany</td>
+                    <td>💎 Extraction (future: Agriculture)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Christian's Feedback: Cross-Branch Bonuses -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title">Christian's Feedback: Smarter Scientist Bonuses</div>
+
+        <div class="luke-quote" style="border-color: var(--color-success); background: linear-gradient(135deg, rgba(var(--color-success-rgb), 0.1), rgba(var(--color-primary-rgb), 0.1));">
+            "If Dr. Andy is an astrophysicist, maybe he's in one of the branches with a higher level skill. Like out of the gate he has a bonus to exploration, but when you get into higher tiers (like vehicle AI navigation) he would have a bonus too."
+            <div class="attribution" style="color: var(--color-success);">— Christian's Feedback</div>
+        </div>
+
+        <p><strong>The Refinement:</strong> Instead of "one branch = flat bonus", scientists could have <strong>cross-branch bonuses at different tiers</strong>:</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Example: Dr. Andy (Astrobiology)</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Tier 1 Exploration</span>
+                    <span class="mockup-value highlight">+25% (primary)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Tier 2 Vehicles → AI Navigation</span>
+                    <span class="mockup-value">+15% (cross-branch)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Tier 3 Extraction</span>
+                    <span class="mockup-value">+10% (minor)</span>
+                </div>
+            </div>
+        </div>
+
+        <p>This creates more interesting scientist choices - some are specialists (one branch, big bonus), others are generalists (multiple branches, smaller bonuses). Matches the WoW frustration: "My priest should get a bonus to healing potions because that's what priests do."</p>
+    </div>
+
+    <!-- Christian's Feedback: Echo Shards -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title">Christian's Feedback: Echo Shards as Real Items</div>
+
+        <div class="luke-quote">
+            "In World of Warcraft you have memories that give you experience but they don't actually DO anything for you as a character. It would be really cool to have echo shards and be able to learn an older variation of a spell or skill... Plus you can introduce lore as part of it. Even for quests."
+            <div class="attribution">— Christian's Feedback</div>
+        </div>
+
+        <p><strong>The Expansion:</strong> Echo Shards shouldn't just swap scientists - they should be <strong>collectible items with real gameplay value</strong>:</p>
+
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">💠</span>
+                <span>Echo Shard Uses</span>
+            </div>
+
+            <div style="display: grid; gap: 12px;">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Learn Ancient Skills</div>
+                    <div class="tech-effect">Absorb an echo to unlock an older variation of an ability (e.g., "Ancient Extraction" - slower but +30% yield)</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Unlock Crafting Patterns</div>
+                    <div class="tech-effect">Echoes contain blueprints for unique equipment variants (cosmetic or functional)</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Lore Fragments</div>
+                    <div class="tech-effect">Each echo reveals a piece of Mars history - collectible story content</div>
+                </div>
+
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Quest Triggers</div>
+                    <div class="tech-effect">Certain echoes unlock special expeditions or story missions</div>
+                </div>
+            </div>
+        </div>
+
+        <p>This transforms echoes from "scientist swap mechanic" into a core discovery system that ties into lore, skills, and quests. Found during expeditions, each one is meaningful.</p>
+    </div>
+
+    <!-- Open Question: Swapping Scientists -->
+    <div class="section">
+        <div class="section-title">Open Question: Swapping Scientists</div>
+
+        <p>Luke wants ability to swap out Dr. Bo. Options we discussed:</p>
+
+        <div class="question-box">
+            <h4>Option A: Shard Transmutation</h4>
+            <p>Same concept as commander transmutation. Pay escalating shards (50k → 100k → 200k) to transform your
+                scientist into a different one. "The shards reshape reality."</p>
+        </div>
+
+        <div class="question-box">
+            <h4>Option B: Shard Echo (More Lore-Aligned)</h4>
+            <p>Find "Shard Echoes" during expeditions - imprints of past scientists stored in crystals. Absorbing an
+                echo changes your scientist's specialty. Same person, new expertise. "The shards remember everyone who
+                touched them."</p>
+        </div>
+
+        <div class="question-box">
+            <h4>Option C: Recruit via Expeditions</h4>
+            <p>Find cryopods from failed missions. Recruit new scientists you discover. Can swap between ones you've
+                found.</p>
+        </div>
+
+        <div class="question-box">
+            <h4>Option D: Specialty Evolution</h4>
+            <p>Dr. Bo stays Dr. Bo, but through research they can LEARN a new specialty. Tech tree unlock enables this.
+            </p>
+        </div>
+
+        <p><strong>What feels right, Luke?</strong></p>
+    </div>
+
+    <!-- Daily Briefing -->
+    <div class="section">
+        <div class="section-title">Daily HQ Briefing - Scientist Reports</div>
+
+        <p>Luke mentioned the scientist should report on what they're working on. Could appear:</p>
+
+        <ul>
+            <li><strong>Home page</strong> - "Colony Briefing" section with scientist status</li>
+            <li><strong>Weekly FOMO email</strong> - "FROM THE LAB" section with research progress</li>
+            <li><strong>ARIA</strong> - can relay scientist updates: "Dr. Bo wanted me to tell you..."</li>
+        </ul>
+
+        <!-- Mockup Briefing -->
+        <div class="mockup-box">
+            <div class="mockup-header">Daily Briefing (Home Page)</div>
+            <div class="mockup-content">
+                <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="font-size: 28px;">📋</div>
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">From the Lab -
+                            Dr. Bo</div>
+                        <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6; margin: 0;">
+                            "Wind Analysis research is 67% complete. I've identified promising patterns in the 3 Wind
+                            Readings we've collected. Should be ready in approximately 8 hours."
+                        </p>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">Recent
+                                Findings of Note:</div>
+                            <div style="font-size: 13px; color: var(--text-primary);">• 2 Geothermal Readings
+                                (yesterday)</div>
+                            <div style="font-size: 13px; color: var(--color-sepolia);">• 1 Crystalline Formation (rare!)
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: var(--radius-md);">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Recommendation:</div>
+                            <div style="font-size: 13px; color: var(--text-primary);">"We need 2 more Wind Readings to
+                                start Advanced Sensors research."</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost Structure -->
+    <div class="section">
+        <div class="section-title">Cost Structure: "The More Advanced, The More It Costs"</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Tier</th>
+                    <th>Science Point Cost</th>
+                    <th>Item Requirements</th>
+                    <th>Research Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="tier-label t1">Tier 1</span></td>
+                    <td>5,000 SP</td>
+                    <td>5-30 common/uncommon items</td>
+                    <td>~24 hours</td>
+                </tr>
+                <tr>
+                    <td><span class="tier-label t2">Tier 2</span></td>
+                    <td>12,000 SP</td>
+                    <td>Prerequisite tech + maybe items</td>
+                    <td>~3 days</td>
+                </tr>
+                <tr>
+                    <td><span class="tier-label t3">Tier 3</span></td>
+                    <td>25,000-50,000 SP</td>
+                    <td>Multiple prerequisites + rare items</td>
+                    <td>~1 week</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><strong>Note:</strong> Research times fit the "Mars realism" philosophy - nothing is quick on Mars. But
+            scientist specialty bonuses can reduce these.</p>
+    </div>
+
+    <!-- Summary -->
+    <div class="section">
+        <div class="section-title">Summary: What This Achieves</div>
+
+        <div class="summary-box">
+            <ul style="margin: 0;">
+                <li>✅ <strong>Dr. Bo has purpose</strong> - actively researching technologies</li>
+                <li>✅ <strong>Scientific value matters</strong> - accumulates as spendable resource</li>
+                <li>✅ <strong>Common discoveries valuable</strong> - need 30 geometric shapes for Material Science</li>
+                <li>✅ <strong>"Shard It All" more rewarding</strong> - gives shards AND science points</li>
+                <li>✅ <strong>Strategic depth</strong> - which tech branch to pursue?</li>
+                <li>✅ <strong>Scientist specialties matter</strong> - bonus for matching branch</li>
+                <li>✅ <strong>Ties to existing systems</strong> - unlocks drone/rover levels, infrastructure</li>
+                <li>✅ <strong>Fits Mars realism</strong> - research takes time, costs scale up</li>
+                <li>✅ <strong>Daily briefings</strong> - scientist reports on progress</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Expedition Speed Problem -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title">🚨 Expedition Speed Problem (CRITICAL)</div>
+
+        <div class="luke-quote">
+            "My Hesperia expedition has 639 hours remaining... that's 26+ days!"
+            <div class="attribution">— Current state of distant expeditions</div>
+        </div>
+
+        <p><strong>The Problem:</strong> Current expeditions can take 600+ hours for distant locations. While realistic for Mars distances, this may frustrate players who want to see progress.</p>
+
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">💡</span>
+                Solution Ideas
+            </div>
+
+            <div style="display: grid; gap: 12px;">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">A) Scientist Research</div>
+                    <div class="tech-effect">Tech tree unlocks like "Shard-Infused Propulsion: -20% travel time"</div>
+                </div>
+
+                <div class="tech-node tier-1">
+                    <div class="tech-name">B) Captain Stats</div>
+                    <div class="tech-effect">Logistics/Navigation stat affects expedition speed (+1% per point)</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">C) Shard Acceleration</div>
+                    <div class="tech-effect">Spend 10,000 shards to boost active expedition by -10% remaining time</div>
+                    <div class="tech-req">Limit: Max 3 boosts per expedition (creates meaningful choice)</div>
+                </div>
+
+                <div class="tech-node tier-1">
+                    <div class="tech-name">D) Vehicle Upgrades</div>
+                    <div class="tech-effect">Make existing Rover/Drone level speed bonuses more impactful</div>
+                </div>
+
+                <div class="tech-node tier-3">
+                    <div class="tech-name">E) Lore Angle</div>
+                    <div class="tech-effect">"The crystals hum at frequencies that resonate with Martian terrain..."</div>
+                    <div class="tech-req">Shards contain ancient propulsion knowledge. Scientists study them to unlock faster travel.</div>
+                </div>
+            </div>
+        </div>
+
+        <p><strong>Current math:</strong> 1 km ≈ 0.5 hours. 1,500 km = 750 hours (31 days).</p>
+        <p><strong>Target:</strong> With full upgrades, reduce to ~0.3 hours/km. Max expedition ~7-10 days instead of 26+.</p>
+    </div>
+
+    <!-- Scientist Quotes -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title">💬 Scientist Quotes - Untapped Potential</div>
+
+        <div class="luke-quote">
+            "We see these everywhere. Standard extraction procedure—307 shards, nothing special."
+            <div class="attribution">— Current HARDCODED quote for ALL common/uncommon items</div>
+        </div>
+
+        <p><strong>The Problem:</strong> Scientist specialty is completely wasted. A Geologist says the same thing about minerals as a Biologist does. Every scientist has the same generic quote.</p>
+
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">🔬</span>
+                Make Quotes Dynamic
+            </div>
+
+            <div style="display: grid; gap: 12px;">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">A) Specialty-Based Quotes</div>
+                    <div class="tech-effect">Geologist: "Fascinating crystalline structure!" vs Biologist: "No organic compounds detected."</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">B) Tech Tree Unlocks</div>
+                    <div class="tech-effect">As scientists research items, they gain deeper knowledge and better quotes</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">C) Matching Bonus</div>
+                    <div class="tech-effect">Scientist analyzing matching item type gives bonus SP or extra shards</div>
+                </div>
+
+                <div class="tech-node tier-3">
+                    <div class="tech-name">D) Progressive Learning</div>
+                    <div class="tech-effect">1st time: "Interesting specimen." 10th time: "Based on our research, I can extract 15% more efficiently now."</div>
+                </div>
+            </div>
+        </div>
+
+        <p><strong>MVP:</strong> Just vary quotes by scientist specialty. Later: unlock better quotes/bonuses via tech tree.</p>
+        <p><strong>Connects to:</strong> Tech tree research, extraction bonuses, personalized gameplay experience.</p>
+    </div>
+
+    <!-- Questions for Luke -->
+    <div class="section"
+        style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), rgba(var(--color-primary-rgb), 0.1));">
+        <div class="section-title">Questions for Luke</div>
+
+        <ol>
+            <li><strong>Does the overall direction feel right?</strong> Science points from extraction, spent on tech
+                research?</li>
+            <li><strong>Tech tree scale?</strong> ~24 techs across 4 branches - too many? Too few?</li>
+            <li><strong>Item requirements?</strong> "30 geometric shapes" style requirements - good or annoying?</li>
+            <li><strong>Scientist swapping?</strong> Which option (Transmutation, Shard Echo, Recruitment, Evolution)?
+            </li>
+            <li><strong>Research times?</strong> 24 hours to 1 week - too long? Too short?</li>
+            <li><strong>Anything missing?</strong> What else should the tech tree unlock?</li>
+            <li><strong>Expedition speed?</strong> Current max is 26+ days. What's the sweet spot? 7 days? 14 days?</li>
+            <li><strong>Scientist quotes?</strong> Should they vary by specialty? Worth the effort for immersion?</li>
+        </ol>
+    </div>
+
+    <!-- Links -->
+    <div class="link-box">
+        <p style="margin: 0 0 8px 0;">📋 <strong>Add feedback to the bug tracker:</strong></p>
+        <a href="https://docs.google.com/spreadsheets/d/1akw5Z8LzHjdFBDnS1FODUt3tJVP9skG1PLf5yJ3AvbI" target="_blank">
+            Open Pilgrims Bug Tracker (Google Sheet)
+        </a>
+    </div>
+
+    <!-- Chat Widget for Brainstorming -->
+    <div class="chat-widget" id="brainstorm-chat">
+        <div class="chat-header">
+            <div class="chat-header-icon">🧠</div>
+            <div class="chat-header-text">
+                <h3>Brainstorm with PilgrimBot</h3>
+                <p>Ask questions about this proposal or explore ideas together</p>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-avatar">🧠</div>
+                <div class="chat-bubble">
+                    Hey! I'm here to help brainstorm the Tech Tree system. I have full context on everything discussed
+                    above. Ask me anything - like "What if we had 6 branches instead of 4?" or "How would this affect
+                    new players?" or "What's the MVP version of this?"
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-suggestions">
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What's the simplest MVP?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How does this affect new players?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What about balancing costs?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">Alternative to item requirements?</span>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask a question or share an idea..." rows="1"
+                onkeydown="handleKeyDown(event)"></textarea>
+            <button class="chat-send" id="chat-send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const BRAINSTORM_CONTEXT = `You are PilgrimBot, helping brainstorm the Technology Tree system for Pilgrims, a Mars colony game.
+
+=== LUKE'S GAMES (by hours played) ===
+
+1. XCOM 2 (1,523 hours)
+What Luke loves: Progressive squad building (start with one squad, unlock soldiers over time), tactical decision-making (every move matters with calculated risk), permadeath stakes (meaningful consequences create emotional investment), customization depth (developing individual soldiers with unique abilities), research/tech trees (long-term planning and unlocking new capabilities).
+Metrics: Success rates, soldier survival, mission efficiency, tech tree progression.
+How it plays into Pilgrims: Start with one crew member, earn ability to recruit more specialists through missions. Each crew member has unique stats/abilities that grow over time.
+
+2. Civilization VI (1,225 hours)
+What Luke loves: Start small, grow empire (single settler to world domination), multiple victory paths (Science, Culture, Domination, Diplomacy), "one more turn" addiction, district placement optimization, diplomatic/trade complexity.
+Metrics: Science output, culture per turn, military strength, diplomatic favor, victory progress.
+How it plays into Pilgrims: Territory control on persistent map, tech tree unlocks, multiple paths to "win" (most artifacts, fastest completion, highest efficiency rating).
+
+3. BattleTech (1,004 hours)
+What Luke loves: Mercenary company management, mech customization (deep loadout optimization), tactical positioning (terrain, heat management, line-of-sight), resource scarcity (tough choices about upgrades), story-driven campaigns.
+Metrics: Damage output, heat efficiency, armor integrity, salvage value, mission payouts.
+How it plays into Pilgrims: Spacecraft/equipment customization, resource trade-offs (speed vs cargo capacity), tactical positioning for exploration success.
+
+4. Factorio (643 hours)
+What Luke loves: Automation and optimization (efficient production chains), start with nothing (hand-crafting to massive factory), problem-solving at scale (bottleneck identification), endless expansion, "factory must grow" compulsion.
+Metrics: Items/minute production, belt throughput, pollution levels, research speed, efficiency ratios.
+How it plays into Pilgrims: Resource gathering automation, mining efficiency metrics, production chains for ship upgrades, territory expansion mechanics.
+
+5. Space Haven (516 hours) - CLOSEST TO PILGRIMS VISION
+What Luke loves: Space station building (tiny crew to expanded facilities), crew management (needs, skills, relationships), life support systems (oxygen, temperature, power), exploration and salvage (derelict ships, resources), emergent stories (crew drama, pirate attacks, system failures).
+Metrics: Crew happiness, oxygen levels, power generation, food production, exploration progress.
+How it plays into Pilgrims: Space exploration with crew management, resource gathering missions, persistent crew development, emergent gameplay.
+
+6. Surviving Mars (314 hours) - MARS THEME
+What Luke loves: Mars colonization, resource management (water, oxygen, metals), colonist happiness vs expansion, tech tree exploration (multiple research paths), disaster management (dust storms, meteors, failures).
+Metrics: Population growth, dome capacity, resource extraction rates, tech completion, sustainability.
+How it plays into Pilgrims: Resource extraction on hostile planets/asteroids, colony expansion mechanics, disaster/risk management in exploration.
+
+7. Other games: XCOM Enemy Unknown (949 hrs), Blood Bowl (612 hrs - team building, risk management, league progression), Battle Brothers (484 hrs - permadeath, contracts, equipment), Monster Train (387 hrs - roguelike runs, meta-progression, synergies), Civ IV/V (832 hrs combined).
+
+=== ANDY'S GAMES ===
+
+1. Card Games (Lifelong) - Poker, Spades, Hearts
+What Andy loves: Psychological gameplay (reading opponents), quick strategic decisions (each hand is contained challenge), partnership dynamics (Spades/Hearts team coordination), immediate feedback, skill-based mastery (card counting, probability), Two-Man Spades (invented - bidding mechanics, racing to 300 points).
+Metrics: Win rates, bidding accuracy, trick efficiency, point optimization.
+How it plays into Pilgrims: Quick mission decisions with risk/reward, probability-based success rates, partnership/alliance mechanics, leaderboard competition.
+
+2. Chess
+What Andy loves: Pure strategy (no luck), pattern recognition, tactical combinations (seeing moves ahead), complete information, infinite skill ceiling.
+Metrics: Win/loss record, rating, opening repertoire.
+How it plays into Pilgrims: Tactical positioning for exploration, complete information about game state, skill-based progression.
+
+3. League of Legends (ARAM only)
+What Andy loves: Quick matches (20-30 min vs 40+ normal), random champions (forces adaptation), team fighting (constant action), strategic itemization, competitive but casual.
+Metrics: Win rate, KDA, damage dealt, item efficiency.
+How it plays into Pilgrims: Quick expedition missions (20-30 min), randomized events/encounters, team composition strategy, competitive without toxic.
+
+4. Clash of Clans (Many years)
+What Andy loves: Base building optimization, attack strategy (planning raids for max stars), clan cooperation, progressive unlocks (constant advancement sense), asynchronous competition.
+Metrics: Trophy count, war stars, resource efficiency, upgrade progression.
+How it plays into Pilgrims: Base/ship upgrades, resource optimization, clan/guild mechanics, persistent progression.
+
+5. Classic Nintendo - Zelda (exploration and discovery, dungeon puzzles, equipment unlocks new areas), Baseball Stars/Tecmo Super Bowl (team management, player development, season progression), Super Mario (precision gameplay, skill mastery, speedrun potential).
+
+=== SHARED VALUES (Both Luke & Andy) ===
+- Start small, grow over time - Every game follows this pattern
+- Multiple paths to success - Not one optimal strategy
+- Meaningful choices - Decisions have real consequences
+- Stats tracking - Quantifiable progress and optimization
+- Progressive unlocks - Earning new capabilities through play
+- Space themes (Luke especially) - Sci-fi settings preferred
+- Persistent progression - Work carries over between sessions
+- Competition with metrics - Leaderboards, efficiency ratings
+- Collection mechanics - Building a roster/team/empire
+- Resource optimization - Managing scarce resources effectively
+
+=== TECH TREE DESIGN RESEARCH ===
+
+| Game | Total Techs | Structure | Key Mechanic |
+| Civilization 6 | ~118 | 2 trees, 9 eras | "Eureka" mini-quests give 50% boost |
+| Stellaris | ~400 | 3 areas, 6 tiers | Card shuffle randomizes options |
+| Factorio | ~200 | Progressive | Science packs as currency |
+| Age of Empires IV | ~50-70/civ | 4 ages | Civ-specific trees |
+| Dawn of Man | ~30-40 | Adaptive | Knowledge from actions |
+
+Key Principles:
+- Branching factor ~1.5 (Civ V uses 1.49). Too many = decision paralysis.
+- "One choice = no choice" - Every tech should feel useful.
+- Thematic pillars - 3-5 themes (Exploration, Vehicles, Power, Extraction).
+- Scale for indie - 20-30 techs is manageable, not 118 or 400.
+
+=== CURRENT PROPOSAL ===
+
+CORE INSIGHT: "Shard It All" gives BOTH sepolia shards AND Science Points (SP).
+- Science Points accumulate as a spendable research resource
+- Discovery extraction: 100 shards + 50 SP (both awarded)
+- SP cannot be bought - only earned through extraction
+
+STRUCTURE: 4 branches x 3 tiers = ~24 technologies
+
+EXPLORATION BRANCH (Scientist specialty: Geology, Meteorology, Planetary Science)
+Tier 1 (~5,000 SP):
+- Extended Range Sensors: +15% fog-of-war reveal radius
+- Terrain Analysis Protocols: +10% rare discovery chance
+Tier 2 (~12,000 SP):
+- Geological Survey Suite: Unlock "Rich Deposit" locations
+- Atmospheric Modeling: Predict dust storms 24h ahead
+Tier 3 (~25,000 SP):
+- Deep Core Scanners: Find buried artifacts (new category)
+- Orbital Positioning: +25% expedition efficiency
+
+VEHICLES BRANCH (Scientist specialty: Engineering, Robotics)
+Tier 1 (~5,000 SP):
+- Improved Suspension: Rover speed +10%
+- Lightweight Alloys: Drone carry capacity +15%
+Tier 2 (~12,000 SP):
+- All-Terrain Treads: Unlock mountain expeditions
+- Extended Battery Packs: +20% vehicle range
+Tier 3 (~30,000 SP):
+- Autonomous Navigation: Vehicles don't require crew (passive missions)
+- Heavy Lift Chassis: Unlock "massive artifact" retrieval
+
+POWER BRANCH (Scientist specialty: Physics, Chemistry)
+Tier 1 (~5,000 SP):
+- Optimized Solar Arrays: +15% solar income
+- Power Conduits: Battery storage +20%
+Tier 2 (~12,000 SP):
+- Dust-Resistant Panels: No solar penalty during storms
+- Thermal Generators: Generate power from temperature differential
+Tier 3 (~35,000 SP):
+- Fusion Prototype: +50% all power generation
+- Grid Automation: Claim infrastructure income every 4 hours instead of 8
+
+EXTRACTION BRANCH (Scientist specialty: Xenobiology, Astrobiology, Materials Science)
+Tier 1 (~5,000 SP):
+- Precision Tools: +10% shards from extraction
+- Preservation Protocols: +5% science value from discoveries
+Tier 2 (~12,000 SP):
+- Molecular Analysis: Chance to find "bonus samples" (double extract)
+- Artifact Dating: Common discoveries have +25% value
+Tier 3 (~40,000 SP):
+- Quantum Scanning: 10% chance for discoveries to be auto-extracted
+- Synthesis Lab: Convert 3 common items into 1 uncommon
+
+14 SCIENTISTS WITH SPECIALTIES:
+Dr. Elara Voss (Geology), Dr. Marcus Chen (Astrobiology), Dr. Yuki Tanaka (Atmospheric Science),
+Dr. Samuel Okonkwo (Botany), Dr. Priya Sharma (Chemistry), Dr. James Morrison (Engineering),
+Dr. Elena Kowalski (Physics), Dr. Fatima Al-Hassan (Hydrology), Dr. Chen Wei (Xenobiology),
+Dr. Aleksandr Petrov (Planetary Science), Dr. Kenji Nakamura (Meteorology),
+Dr. Isabella Santos (Materials Science), Dr. Nadia Volkov (Archaeology), Dr. Raj Patel (Robotics)
+
+Specialty bonus: +25% research speed, -20% cost for matching branch techs.
+
+RESEARCH MECHANICS:
+- Assign scientist to research a tech
+- Research takes real time (24 hours to 1 week depending on tier)
+- Scientist specialty reduces time/cost for matching branches
+- Some techs require item collection (e.g., "30 Geometric Shapes")
+- Daily briefings where scientist reports on progress
+
+EXPEDITION SPEED PROBLEM (CRITICAL):
+- Current expeditions can take 600+ hours (26+ days!) for distant locations
+- This is realistic for Mars distances but may frustrate players
+- SOLUTION IDEAS:
+  A) SCIENTIST RESEARCH: Tech tree items that reduce travel time (e.g., "Shard-Infused Propulsion: -20% travel time")
+  B) CAPTAIN STATS: Logistics/Navigation stat affects expedition speed (+1% per point)
+  C) SHARD ACCELERATION: Spend shards to "boost" an active expedition (e.g., 10,000 shards = -10% remaining time)
+     - Has stacking limits (max 3 boosts per expedition) to prevent instant completion
+     - Creates meaningful choice: save shards for purchases vs spend for speed
+  D) VEHICLE UPGRADES: Rover/Drone levels already exist - make speed bonuses more impactful
+  E) LORE ANGLE: Shards contain ancient propulsion knowledge. Scientists study shards to unlock faster travel.
+     "The crystals hum at frequencies that resonate with Martian terrain - our vehicles move faster when attuned"
+- BALANCE: Find happy medium between Mars realism (slow) and player engagement (progress feels good)
+- CURRENT: 1 km = ~0.5 hours. 1,500 km = 750 hours. With upgrades could be 1 km = ~0.3 hours.
+
+SCIENTIST QUOTES - UNTAPPED POTENTIAL:
+- Currently: Common/uncommon items show HARDCODED generic quote: "We see these everywhere. Standard extraction procedure—307 shards, nothing special."
+- PROBLEM: Scientist specialty is wasted - all scientists say the same thing regardless of expertise
+- OPPORTUNITY: Make scientist quotes DYNAMIC based on:
+  A) SCIENTIST SPECIALTY: Geologist has unique insight on minerals, Biologist on organic matter, etc.
+  B) TECH TREE UNLOCKS: As scientists research items, they gain deeper knowledge and better quotes
+  C) ITEM TYPE MATCHING: Scientist studying a matching item type gives bonus SP or unique analysis
+  D) PROGRESSIVE LEARNING: First time seeing an item = generic quote. 10th time = "Ah, another Valley Quartz. Based on our research, I can extract 15% more efficiently now."
+- THIS CONNECTS TO: Tech tree research (scientists learn from items), extraction bonuses, personalized gameplay
+- MVP: Just vary quotes by scientist specialty. Later: unlock better quotes/bonuses via tech tree.
+
+OPEN QUESTIONS FOR DISCUSSION:
+1. How to swap scientists? Options: Transmutation (spend shards), Shard Echo (find fragments in expeditions), Recruitment (hire from expedition encounters), Specialty Evolution (gradual shift)
+2. Is ~24 techs the right scale? (Research says 20-30 is ideal for indie)
+3. Are item requirements (like "30 Geometric Shapes") fun or annoying?
+4. Are research times (24h to 1 week) appropriate?
+5. Should tech tree be linear or allow skipping tiers?
+6. How prominent should the Research tab be in the UI?
+7. What's the ideal expedition time range? (Currently up to 26 days, could reduce to max 7 days with full upgrades?)
+8. Should scientist quotes vary by specialty? (Currently hardcoded generic for common/uncommon)
+
+Keep responses concise and practical. This is a small indie game - avoid over-engineering.`;
+
+    let conversationHistory = [];
+
+    function sendSuggestion(el) {
+        document.getElementById('chat-input').value = el.textContent;
+        sendMessage();
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Add user message to UI
+        addMessage('user', message);
+        input.value = '';
+
+        // Disable send button
+        const sendBtn = document.getElementById('chat-send');
+        sendBtn.disabled = true;
+
+        // Show typing indicator
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'chat-message assistant';
+        typingDiv.id = 'typing-indicator';
+        typingDiv.innerHTML = `
+        <div class="chat-avatar">🧠</div>
+        <div class="chat-bubble">
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+    `;
+        document.getElementById('chat-messages').appendChild(typingDiv);
+        scrollToBottom();
+
+        try {
+            const response = await fetch('/api/tech-tree-brainstorm-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    context: BRAINSTORM_CONTEXT,
+                    history: conversationHistory
+                })
+            });
+
+            const data = await response.json();
+
+            // Remove typing indicator
+            document.getElementById('typing-indicator')?.remove();
+
+            if (data.success) {
+                addMessage('assistant', data.response);
+                conversationHistory.push({ role: 'user', content: message });
+                conversationHistory.push({ role: 'assistant', content: data.response });
+            } else {
+                addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+            }
+        } catch (err) {
+            document.getElementById('typing-indicator')?.remove();
+            addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+        }
+
+        sendBtn.disabled = false;
+    }
+
+    function addMessage(role, content) {
+        const messagesDiv = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${role}`;
+
+        const avatar = role === 'user' ? '👤' : '🧠';
+        messageDiv.innerHTML = `
+        <div class="chat-avatar">${avatar}</div>
+        <div class="chat-bubble">${escapeHtml(content)}</div>
+    `;
+
+        messagesDiv.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML.replace(/\n/g, '<br>');
+    }
+
+    function scrollToBottom() {
+        const messagesDiv = document.getElementById('chat-messages');
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+</script>
+
+{% endblock %}

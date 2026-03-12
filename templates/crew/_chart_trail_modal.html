@@ -1,0 +1,164 @@
+<!-- Chart Trail Modal (shown when clicking a visited site on the map) -->
+<div id="chart-trail-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--bg-secondary); border-radius: 16px; max-width: 500px; width: 95%; max-height: 90vh; overflow: hidden; border: 1px solid var(--border-default);">
+        <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-default); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 18px;"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Chart Trail to <span id="trail-destination-name">---</span></h3>
+            <button onclick="closeChartTrailModal()" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+        </div>
+        <div style="padding: 20px; overflow-y: auto; max-height: calc(90vh - 60px);">
+            <!-- Trail Progress -->
+            <div class="mb-16 p-12" style="background: var(--bg-tertiary); border-radius: 8px;">
+                <div class="flex justify-between text-xs mb-8">
+                    <span>Trail Progress</span>
+                    <span id="trail-progress-text">0.000 / 150.0 km</span>
+                </div>
+                <div style="background: var(--bg-primary); height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div id="trail-progress-bar" style="background: linear-gradient(90deg, var(--color-sepolia), var(--color-success)); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+                <div class="flex justify-between text-xs mt-8 opacity-60">
+                    <span id="trail-speed-bonus">Speed bonus: 1.00×</span>
+                    <span id="trail-percent">0.0% complete</span>
+                </div>
+            </div>
+
+            <!-- Trail Bonuses Section (ALWAYS SHOWN - even at 0%) -->
+            <div class="mb-16 p-12" style="background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-default);">
+                <div class="text-xs font-semibold mb-8 opacity-70">Speed Bonuses</div>
+
+                <!-- Scanner Row -->
+                <div class="flex justify-between text-xs mb-4">
+                    <span>Scanner <span class="opacity-50" id="scanner-name-display">(none)</span></span>
+                    <span id="scanner-bonus-display" style="color: var(--color-sepolia);">+0%</span>
+                </div>
+
+                <!-- Consumable Selector -->
+                <div class="flex justify-between items-center text-xs mb-4">
+                    <span>Consumable</span>
+                    <select id="consumable-select" onchange="onConsumableChange(this.value)" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 11px; max-width: 160px;">
+                        <option value="">None (+0%)</option>
+                    </select>
+                </div>
+                <div class="text-xs opacity-50 mb-4" style="text-align: right;">
+                    Common/uncommon biological &amp; mineral samples only
+                </div>
+
+                <!-- Consumable Warning (shown when selected) -->
+                <div id="consumable-warning" style="display: none; color: var(--color-warning); font-size: 10px; margin-bottom: 8px; text-align: right;">
+                    Item destroyed when mission starts
+                </div>
+
+                <!-- Total Bonus -->
+                <div class="flex justify-between text-sm font-semibold pt-8" style="border-top: 1px solid var(--border-default);">
+                    <span>Total Bonus</span>
+                    <span id="total-bonus-display" style="color: var(--color-success);">+0%</span>
+                </div>
+
+                <!-- Trip Duration (calculated from bonus) -->
+                <div class="flex justify-between text-sm font-semibold mt-8">
+                    <span>Trip Time</span>
+                    <span id="trip-duration-display" style="color: var(--text-secondary);">15 min</span>
+                </div>
+                <div class="text-xs opacity-50 mt-4" style="text-align: right;">
+                    Higher bonus = faster trips
+                </div>
+            </div>
+
+            <!-- Crew Selection (like expedition vehicle selection) -->
+            <label class="text-xs opacity-70 mb-8 block">Select Crew Member</label>
+            <div class="grid gap-12" style="grid-template-columns: 1fr;">
+                <!-- Captain -->
+                <div id="crew-option-captain" class="crew-option" style="background: var(--bg-tertiary); border-radius: 12px; padding: 16px; border: 2px solid var(--color-success); transition: all 0.2s;">
+                    <div class="flex items-center gap-12">
+                        <img src="{{ character_url if character_url else '/static/img/placeholder.png' }}" alt="Captain" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                        <div class="flex-1">
+                            <div class="font-semibold">{{ commander.commander_name if commander and commander.commander_name else 'Captain' }}</div>
+                            <div class="text-xs opacity-70">Uses Logistics stat</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-semibold" style="color: var(--color-success);">FREE</div>
+                            <div class="text-xs opacity-60" id="captain-build-rate">~0.015 km</div>
+                        </div>
+                    </div>
+                    <div class="mt-8 pt-8" style="border-top: 1px solid var(--border-default);">
+                        <div class="flex justify-between text-xs">
+                            <span class="opacity-60">Logistics XP</span>
+                            <span id="captain-xp-modal">0</span>
+                        </div>
+                        <div class="flex justify-between text-xs mt-4">
+                            <span class="opacity-60">Speed Bonus</span>
+                            <span id="captain-bonus" style="color: var(--color-success);">+0%</span>
+                        </div>
+                        <div class="flex justify-between text-xs mt-4">
+                            <span class="opacity-60">Contributed</span>
+                            <span id="captain-contributed">0.000 km</span>
+                        </div>
+                    </div>
+                    <button id="captain-deploy-btn" onclick="selectCrewMember('captain')" class="btn w-full mt-12" style="background: var(--gradient-success); color: white; padding: 10px 16px; font-weight: 600;">
+                        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Deploy to Trail
+                    </button>
+                </div>
+
+                <!-- Scientist -->
+                {% if scientist %}
+                <div id="crew-option-scientist" class="crew-option" style="background: var(--bg-tertiary); border-radius: 12px; padding: 16px; border: 2px solid var(--color-sepolia); transition: all 0.2s;">
+                    <div class="flex items-center gap-12">
+                        <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                        <div class="flex-1">
+                            <div class="font-semibold">{{ scientist.name }}</div>
+                            <div class="text-xs opacity-70">Uses Navigation stat</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-semibold" style="color: var(--color-sepolia);">500 shards</div>
+                            <div class="text-xs opacity-60" id="scientist-build-rate">~0.012 km</div>
+                        </div>
+                    </div>
+                    <div class="mt-8 pt-8" style="border-top: 1px solid var(--border-default);">
+                        <div class="flex justify-between text-xs">
+                            <span class="opacity-60">Navigation XP</span>
+                            <span id="scientist-xp-modal">0</span>
+                        </div>
+                        <div class="flex justify-between text-xs mt-4">
+                            <span class="opacity-60">Speed Bonus</span>
+                            <span id="scientist-bonus" style="color: var(--color-sepolia);">+0%</span>
+                        </div>
+                        <div class="flex justify-between text-xs mt-4">
+                            <span class="opacity-60">Contributed</span>
+                            <span id="scientist-contributed">0.000 km</span>
+                        </div>
+                    </div>
+                    <button id="scientist-deploy-btn" onclick="selectCrewMember('scientist')" class="btn w-full mt-12" style="background: var(--gradient-sepolia); color: white; padding: 10px 16px; font-weight: 600;">
+                        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Deploy to Trail
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- ARIA -->
+                <div id="crew-option-aria" class="crew-option" style="background: var(--bg-tertiary); border-radius: 12px; padding: 16px; border: 2px solid #a855f7; transition: all 0.2s;">
+                    <div class="flex items-center gap-12">
+                        <img src="{{ icons.aria_avatar }}" alt="ARIA" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                        <div class="flex-1">
+                            <div class="font-semibold">ARIA</div>
+                            <div class="text-xs opacity-70">Colony Companion</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs opacity-60" id="aria-build-rate">~0.018 km</div>
+                        </div>
+                    </div>
+                    <div class="mt-8 pt-8" style="border-top: 1px solid var(--border-default);">
+                        <div class="flex justify-between text-xs">
+                            <span class="opacity-60">Speed Bonus</span>
+                            <span id="aria-bonus" style="color: #a855f7;">+0%</span>
+                        </div>
+                        <div class="flex justify-between text-xs mt-4">
+                            <span class="opacity-60">Contributed</span>
+                            <span id="aria-contributed">0.000 km</span>
+                        </div>
+                    </div>
+                    <button id="aria-deploy-btn" onclick="selectCrewMember('aria')" class="btn w-full mt-12" style="background: linear-gradient(135deg, #a855f7, #8b5cf6); color: white; padding: 10px 16px; font-weight: 600;">
+                        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Deploy to Trail
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
