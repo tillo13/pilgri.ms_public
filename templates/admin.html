@@ -3,91 +3,17 @@
 {% block content %}
 <div class="container" style="max-width: 900px; margin: 0 auto; padding: 20px;">
     <h2 style="color: var(--color-sepolia); margin-bottom: 4px;">Admin Dashboard</h2>
-    <p class="text-sm text-muted mb-16">Admin tools for Andy & Luke</p>
-
-    <!-- Quick Actions -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px;">
-        <a href="/mimic" class="admin-card">
-            <div class="admin-card-icon">👤</div>
-            <div class="admin-card-title">Mimic User</div>
-            <div class="admin-card-desc">Log in as any user to see their view of the app. Useful for debugging user-specific issues. Select from dropdown on next page.</div>
-        </a>
-        <div class="admin-card" onclick="generateAriaSnapshot()" style="cursor: pointer;">
-            <div class="admin-card-icon"><img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg"></div>
-            <div class="admin-card-title">ARIA Photo Journal</div>
-            <div class="admin-card-desc">Generate an ARIA snapshot now. Runs via cron at 6am PST. 24h dedup guard prevents double-billing. Enter a user ID to target one user, or leave blank for all active users.</div>
-        </div>
-        <div class="admin-card" onclick="syncBalances()" style="cursor: pointer;">
-            <div class="admin-card-icon"><img src="{{ icons.value_diamond }}" alt="" class="inline-icon-lg"></div>
-            <div class="admin-card-title">Refresh Shard Balances</div>
-            <div class="admin-card-desc">Query Sepolia blockchain for all wallet balances. Use if shard counts seem stale or after manual blockchain transactions.</div>
-        </div>
-        <div class="admin-card" onclick="document.getElementById('test-email-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
-            <div class="admin-card-icon"><img src="{{ icons.email_envelope }}" alt="" class="inline-icon-lg"></div>
-            <div class="admin-card-title">Test Email</div>
-            <div class="admin-card-desc">Send a test ARIA notification email. Scroll down to enter recipient. Safe to use for testing email formatting.</div>
-        </div>
-        <div class="admin-card" onclick="clearAllAriaChats()" style="cursor: pointer;">
-            <div class="admin-card-icon"><img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg"></div>
-            <div class="admin-card-title">Clear ARIA Chats</div>
-            <div class="admin-card-desc">Delete ALL ARIA conversation history for ALL players. Use to reset chat logs during testing or cleanup.</div>
-        </div>
-        <a href="/admin/speed" class="admin-card">
-            <div class="admin-card-icon">&#9201;</div>
-            <div class="admin-card-title">Page Speed Test</div>
-            <div class="admin-card-desc">Time every page's server-side data function. Charts, history, and trend tracking. Use after deploys or when things feel slow.</div>
-        </a>
-        <div class="admin-card" onclick="document.getElementById('trusty-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
-            <div class="admin-card-icon"><img src="{{ icons.vehicle_rover }}" alt="" class="inline-icon-lg"></div>
-            <div class="admin-card-title">Ol' Trusty Bot</div>
-            <div class="admin-card-desc">QA bot (user 250) runs every 30min exercising all game systems. {% if trusty_data %}Last patrol: {{ trusty_data.last_patrol }}{% else %}No recent activity{% endif %}</div>
-        </div>
-    </div>
-
-    <!-- Brainstorm & Design -->
-    <div class="admin-section" style="margin-bottom: 24px;">
-        <div class="admin-section-header">
-            <span>Brainstorm & Design</span>
-            <span class="text-sm text-muted">Planning pages</span>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding: 12px;">
-            <a href="/brainstorm/progression" class="admin-card" style="padding: 12px;">
-                <div class="admin-card-icon"><img src="{{ icons.tree_progression }}" alt="" class="inline-icon-lg"></div>
-                <div class="admin-card-title">Progression Tree</div>
-                <div class="admin-card-desc">Civ-style visualization of Lab + Depot + Infrastructure</div>
-            </a>
-            <a href="/brainstorm/tech-tree" class="admin-card" style="padding: 12px;">
-                <div class="admin-card-icon"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-lg"></div>
-                <div class="admin-card-title">Tech Tree Plan</div>
-                <div class="admin-card-desc">Original tech tree design notes</div>
-            </a>
-            <a href="/brainstorm/trail-network" class="admin-card" style="padding: 12px;">
-                <div class="admin-card-icon"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-lg"></div>
-                <div class="admin-card-title">Trail Network</div>
-                <div class="admin-card-desc">Martian trail system design</div>
-            </a>
-            <a href="/brainstorm/icon-redesign" class="admin-card" style="padding: 12px;">
-                <div class="admin-card-icon"><img src="{{ icons.palette_art }}" alt="" class="inline-icon-lg"></div>
-                <div class="admin-card-title">Icon Redesign</div>
-                <div class="admin-card-desc">UI icon system plans</div>
-            </a>
-            <a href="/brainstorm/aria-meetings" class="admin-card" style="padding: 12px;">
-                <div class="admin-card-icon"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-lg"></div>
-                <div class="admin-card-title">ARIA Meetings</div>
-                <div class="admin-card-desc">Bond system, multiplicity, cross-colony outcomes</div>
-            </a>
-            <a href="/brainstorm/sv-economy" class="admin-card" style="padding: 12px;">
-                <div class="admin-card-icon"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-lg"></div>
-                <div class="admin-card-title">SV Economy</div>
-                <div class="admin-card-desc">Rebalancing science value generation & spending</div>
-            </a>
-        </div>
-    </div>
+    <ul class="admin-summary">
+        <li><strong>Tools</strong> — Mimic users, sync balances, ARIA snapshots, test emails</li>
+        <li><strong>PilgrimBot</strong> — Ask the codebase questions about game mechanics</li>
+        <li><strong>Brainstorm</strong> — Tech tree, trails, icons, ARIA meetings, SV economy</li>
+        <li><strong>Data</strong> — Users, expeditions, trails, discoveries, Trusty Bot patrol logs</li>
+    </ul>
 
     <!-- Status Messages -->
     <div id="admin-status" style="display: none; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 16px;"></div>
 
-    <!-- Game Stats Overview -->
+    <!-- Game Stats (always visible) -->
     {% if game_stats %}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px;">
         <div class="stat-box">
@@ -109,242 +35,361 @@
     </div>
     {% endif %}
 
-    <!-- User Overview -->
+    <!-- === TOOLS === -->
     <div class="admin-section">
-        <div class="admin-section-header">
-            <span>User Overview</span>
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('tools')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="tools-chevron" class="admin-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span>Tools</span>
+            </div>
+            <span class="text-sm text-muted">Admin actions</span>
+        </div>
+        <div id="tools-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 12px;">
+                <a href="/mimic" class="admin-card">
+                    <div class="admin-card-icon">&#128100;</div>
+                    <div class="admin-card-title">Mimic User</div>
+                    <div class="admin-card-desc">Log in as any user to debug their view</div>
+                </a>
+                <div class="admin-card" onclick="generateAriaSnapshot()" style="cursor: pointer;">
+                    <div class="admin-card-icon"><img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">ARIA Photo Journal</div>
+                    <div class="admin-card-desc">Generate ARIA snapshots (cron 6am PST)</div>
+                </div>
+                <div class="admin-card" onclick="syncBalances()" style="cursor: pointer;">
+                    <div class="admin-card-icon"><img src="{{ icons.value_diamond }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Refresh Shard Balances</div>
+                    <div class="admin-card-desc">Query Sepolia blockchain for all wallets</div>
+                </div>
+                <div class="admin-card" onclick="clearAllAriaChats()" style="cursor: pointer;">
+                    <div class="admin-card-icon"><img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Clear ARIA Chats</div>
+                    <div class="admin-card-desc">Delete ALL ARIA conversation history</div>
+                </div>
+                <a href="/admin/speed" class="admin-card">
+                    <div class="admin-card-icon">&#9201;</div>
+                    <div class="admin-card-title">Page Speed Test</div>
+                    <div class="admin-card-desc">Time every page's server-side data function</div>
+                </a>
+                <a href="/pilgrimbot" class="admin-card">
+                    <div class="admin-card-icon"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">PilgrimBot</div>
+                    <div class="admin-card-desc">Ask the codebase questions about game mechanics</div>
+                </a>
+            </div>
+            <!-- Test Email (inline) -->
+            <div style="padding: 0 12px 12px 12px;" id="test-email-section">
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <input type="email" id="test-email-address" placeholder="Email address" value="{{ admin_email or '' }}"
+                           style="padding: 8px 12px; background: var(--bg-card); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); font-size: 13px; width: 250px;">
+                    <button onclick="sendTestEmail()" class="admin-btn">Send Test Email</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- === BRAINSTORM & DESIGN === -->
+    <div class="admin-section">
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('brainstorm')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="brainstorm-chevron" class="admin-chevron collapsed" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span>Brainstorm & Design</span>
+            </div>
+            <span class="text-sm text-muted">6 planning pages</span>
+        </div>
+        <div id="brainstorm-body" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding: 12px;">
+                <a href="/brainstorm/progression" class="admin-card" style="padding: 12px;">
+                    <div class="admin-card-icon"><img src="{{ icons.tree_progression }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Progression Tree</div>
+                    <div class="admin-card-desc">Civ-style visualization of Lab + Depot + Infrastructure</div>
+                </a>
+                <a href="/brainstorm/tech-tree" class="admin-card" style="padding: 12px;">
+                    <div class="admin-card-icon"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Tech Tree Plan</div>
+                    <div class="admin-card-desc">Original tech tree design notes</div>
+                </a>
+                <a href="/brainstorm/trail-network" class="admin-card" style="padding: 12px;">
+                    <div class="admin-card-icon"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Trail Network</div>
+                    <div class="admin-card-desc">Martian trail system design</div>
+                </a>
+                <a href="/brainstorm/icon-redesign" class="admin-card" style="padding: 12px;">
+                    <div class="admin-card-icon"><img src="{{ icons.palette_art }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Icon Redesign</div>
+                    <div class="admin-card-desc">UI icon system plans</div>
+                </a>
+                <a href="/brainstorm/aria-meetings" class="admin-card" style="padding: 12px;">
+                    <div class="admin-card-icon"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">ARIA Meetings</div>
+                    <div class="admin-card-desc">Bond system, multiplicity, cross-colony outcomes</div>
+                </a>
+                <a href="/brainstorm/sv-economy" class="admin-card" style="padding: 12px;">
+                    <div class="admin-card-icon"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">SV Economy</div>
+                    <div class="admin-card-desc">Rebalancing science value generation & spending</div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- === USER OVERVIEW === -->
+    <div class="admin-section">
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('users')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="users-chevron" class="admin-chevron collapsed" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span>User Overview</span>
+            </div>
             <span class="text-sm text-muted">{{ users|length }} total users</span>
         </div>
-        <div class="admin-table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Email</th>
-                        <th>Captain</th>
-                        <th>Balance</th>
-                        <th>Last Active</th>
-                        <th>Expeditions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td>{{ user.id }}</td>
-                        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</td>
-                        <td>{{ user.captain_name or '—' }}</td>
-                        <td>{{ '{:,.0f}'.format(user.balance) }}</td>
-                        <td>{{ user.last_active or '—' }}</td>
-                        <td>{{ user.expedition_count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div id="users-body" style="display: none;">
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Captain</th>
+                            <th>Balance</th>
+                            <th>Last Active</th>
+                            <th>Expeditions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;">{{ user.email }}</td>
+                            <td>{{ user.captain_name or '—' }}</td>
+                            <td>{{ '{:,.0f}'.format(user.balance) }}</td>
+                            <td>{{ user.last_active or '—' }}</td>
+                            <td>{{ user.expedition_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- All Expeditions -->
+    <!-- === RECENT EXPEDITIONS === -->
     <div class="admin-section">
-        <div class="admin-section-header">
-            <span>Recent Expeditions (All Users)</span>
-            <span class="text-sm text-muted">{{ all_expeditions|length }} shown (last 50)</span>
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('expeditions')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="expeditions-chevron" class="admin-chevron collapsed" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span>Recent Expeditions</span>
+            </div>
+            <span class="text-sm text-muted">{{ all_expeditions|length }} shown</span>
         </div>
-        {% if all_expeditions %}
-        <div class="admin-table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Captain</th>
-                        <th>Destination</th>
-                        <th>Distance</th>
-                        <th>Status</th>
-                        <th>Departed</th>
-                        <th>ETA/Returned</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for exp in all_expeditions %}
-                    <tr>
-                        <td>{{ exp.captain_name or exp.email }}</td>
-                        <td>{{ exp.destination_name }}</td>
-                        <td>{{ '{:.0f}'.format(exp.distance_km) }} km</td>
-                        <td>
-                            {% if exp.status == 'in_progress' or exp.status == 'traveling' %}
-                            <span style="color: #fbbf24;">● In Progress</span>
-                            {% elif exp.status == 'returning' or exp.status == 'recalled' %}
-                            <span style="color: #f97316;">● Returning</span>
-                            {% elif exp.status == 'complete' or exp.status == 'completed' %}
-                            <span style="color: #4ade80;">● Complete</span>
-                            {% else %}
-                            <span style="color: #888;">{{ exp.status }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ exp.departed_at }}</td>
-                        <td>{{ exp.eta or '—' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div id="expeditions-body" style="display: none;">
+            {% if all_expeditions %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Captain</th>
+                            <th>Destination</th>
+                            <th>Distance</th>
+                            <th>Status</th>
+                            <th>Departed</th>
+                            <th>ETA/Returned</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exp in all_expeditions %}
+                        <tr>
+                            <td>{{ exp.captain_name or exp.email }}</td>
+                            <td>{{ exp.destination_name }}</td>
+                            <td>{{ '{:.0f}'.format(exp.distance_km) }} km</td>
+                            <td>
+                                {% if exp.status == 'in_progress' or exp.status == 'traveling' %}
+                                <span style="color: #fbbf24;">&#9679; In Progress</span>
+                                {% elif exp.status == 'returning' or exp.status == 'recalled' %}
+                                <span style="color: #f97316;">&#9679; Returning</span>
+                                {% elif exp.status == 'complete' or exp.status == 'completed' %}
+                                <span style="color: #4ade80;">&#9679; Complete</span>
+                                {% else %}
+                                <span style="color: #888;">{{ exp.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ exp.departed_at }}</td>
+                            <td>{{ exp.eta or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-muted" style="padding: 12px;">No expeditions yet</p>
+            {% endif %}
         </div>
-        {% else %}
-        <p class="text-sm text-muted" style="padding: 12px;">No expeditions yet</p>
-        {% endif %}
     </div>
 
-    <!-- Trail Network Stats -->
+    <!-- === TRAIL NETWORK === -->
     <div class="admin-section">
-        <div class="admin-section-header">
-            <span>Trail Network</span>
-            <span class="text-sm text-muted">{{ trail_stats.total_km_built }} / {{ trail_stats.total_km_needed }} km built</span>
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('trails')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="trails-chevron" class="admin-chevron collapsed" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span>Trail Network</span>
+            </div>
+            <span class="text-sm text-muted">{{ trail_stats.total_km_built }} / {{ trail_stats.total_km_needed }} km</span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px;">
-            <div class="stat-box">
-                <div class="stat-value">{{ trail_stats.total_trails }}</div>
-                <div class="stat-label">Total Trails</div>
+        <div id="trails-body" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 12px;">
+                <div class="stat-box">
+                    <div class="stat-value">{{ trail_stats.total_trails }}</div>
+                    <div class="stat-label">Total Trails</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="color: #78b4dc;">{{ trail_stats.in_progress }}</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="color: #ffb450;">{{ trail_stats.halfway }}</div>
+                    <div class="stat-label">50%+ Done</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="color: #64dc96;">{{ trail_stats.complete }}</div>
+                    <div class="stat-label">Complete</div>
+                </div>
             </div>
-            <div class="stat-box">
-                <div class="stat-value" style="color: #78b4dc;">{{ trail_stats.in_progress }}</div>
-                <div class="stat-label">In Progress</div>
+            {% if crew_mission_stats %}
+            <div style="padding: 0 12px 12px 12px;">
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Crew Mission Activity</div>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px;">
+                    <span>Total Missions: <strong>{{ crew_mission_stats.total_missions }}</strong></span>
+                    <span>Captain: <strong>{{ crew_mission_stats.captain_missions }}</strong></span>
+                    <span>Scientist: <strong>{{ crew_mission_stats.scientist_missions }}</strong></span>
+                    <span>ARIA: <strong>{{ crew_mission_stats.aria_missions }}</strong></span>
+                </div>
             </div>
-            <div class="stat-box">
-                <div class="stat-value" style="color: #ffb450;">{{ trail_stats.halfway }}</div>
-                <div class="stat-label">50%+ Done</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value" style="color: #64dc96;">{{ trail_stats.complete }}</div>
-                <div class="stat-label">Complete</div>
-            </div>
+            {% endif %}
         </div>
-        {% if crew_mission_stats %}
-        <div style="padding: 0 12px 12px 12px;">
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Crew Mission Activity</div>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px;">
-                <span>Total Missions: <strong>{{ crew_mission_stats.total_missions }}</strong></span>
-                <span>Captain: <strong>{{ crew_mission_stats.captain_missions }}</strong></span>
-                <span>Scientist: <strong>{{ crew_mission_stats.scientist_missions }}</strong></span>
-                <span>ARIA: <strong>{{ crew_mission_stats.aria_missions }}</strong></span>
-            </div>
-        </div>
-        {% endif %}
     </div>
 
-    <!-- Recent Discoveries -->
+    <!-- === RECENT DISCOVERIES === -->
     <div class="admin-section">
-        <div class="admin-section-header">
-            <span>Recent Discoveries</span>
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('discoveries')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="discoveries-chevron" class="admin-chevron collapsed" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <span>Recent Discoveries</span>
+            </div>
         </div>
-        {% if recent_discoveries %}
-        <div class="admin-table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Item</th>
-                        <th>Rarity</th>
-                        <th>Location</th>
-                        <th>When</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for disc in recent_discoveries %}
-                    <tr>
-                        <td>{{ disc.email }}</td>
-                        <td>{{ disc.item_name }}</td>
-                        <td><span class="rarity-{{ disc.rarity }}">{{ disc.rarity }}</span></td>
-                        <td>{{ disc.destination_name }}</td>
-                        <td>{{ disc.created_at }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div id="discoveries-body" style="display: none;">
+            {% if recent_discoveries %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Item</th>
+                            <th>Rarity</th>
+                            <th>Location</th>
+                            <th>When</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for disc in recent_discoveries %}
+                        <tr>
+                            <td>{{ disc.email }}</td>
+                            <td>{{ disc.item_name }}</td>
+                            <td><span class="rarity-{{ disc.rarity }}">{{ disc.rarity }}</span></td>
+                            <td>{{ disc.destination_name }}</td>
+                            <td>{{ disc.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-muted" style="padding: 12px;">No recent discoveries</p>
+            {% endif %}
         </div>
-        {% else %}
-        <p class="text-sm text-muted" style="padding: 12px;">No recent discoveries</p>
-        {% endif %}
     </div>
 
-    <!-- Ol' Trusty Bot Section -->
+    <!-- === OL' TRUSTY BOT === -->
     <div class="admin-section" id="trusty-section">
-        <div class="admin-section-header">
-            <span><img src="{{ icons.vehicle_rover }}" alt="" class="inline-icon"> Ol' Trusty Bot</span>
-            <span class="text-sm text-muted">QA Bot — User 250 — Runs every 30 min</span>
+        <div class="admin-section-header admin-toggle" onclick="toggleSection('trusty')">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg id="trusty-chevron" class="admin-chevron collapsed" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                <img src="{{ icons.vehicle_rover }}" alt="" class="inline-icon">
+                <span>Ol' Trusty Bot</span>
+            </div>
+            <span class="text-sm text-muted">{% if trusty_data %}Last: {{ trusty_data.last_patrol }} · {{ trusty_data.errors }} errors{% else %}No recent activity{% endif %}</span>
         </div>
-        {% if trusty_data %}
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; padding: 12px;">
-            <div class="stat-box">
-                <div class="stat-value" style="font-size: 16px;">{{ trusty_data.last_patrol }}</div>
-                <div class="stat-label">Last Patrol</div>
+        <div id="trusty-body" style="display: none;">
+            {% if trusty_data %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; padding: 12px;">
+                <div class="stat-box">
+                    <div class="stat-value" style="font-size: 16px;">{{ trusty_data.last_patrol }}</div>
+                    <div class="stat-label">Last Patrol</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="font-size: 20px;">{{ trusty_data.total_events }}</div>
+                    <div class="stat-label">Recent Events</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="font-size: 20px; color: {{ '#ef4444' if trusty_data.errors > 0 else '#4ade80' }};">{{ trusty_data.errors }}</div>
+                    <div class="stat-label">Errors Detected</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="font-size: 20px;">{{ trusty_data.categories|length }}</div>
+                    <div class="stat-label">Systems Tested</div>
+                </div>
             </div>
-            <div class="stat-box">
-                <div class="stat-value" style="font-size: 20px;">{{ trusty_data.total_events }}</div>
-                <div class="stat-label">Recent Events</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value" style="font-size: 20px; color: {{ '#ef4444' if trusty_data.errors > 0 else '#4ade80' }};">{{ trusty_data.errors }}</div>
-                <div class="stat-label">Errors Detected</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value" style="font-size: 20px;">{{ trusty_data.categories|length }}</div>
-                <div class="stat-label">Systems Tested</div>
-            </div>
-        </div>
-        {% if trusty_data.categories %}
-        <div style="padding: 0 12px 8px 12px;">
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Systems Exercised</div>
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px;">
-                {% for cat, count in trusty_data.categories.items() %}
-                <span>{{ cat }}: <strong>{{ count }}</strong></span>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-        <div class="admin-table-wrap">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>When</th>
-                        <th>Category</th>
-                        <th>Event</th>
-                        <th>Title</th>
-                        <th>Detail</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for evt in trusty_data.recent %}
-                    <tr>
-                        <td>{{ evt.created_at }}</td>
-                        <td>{{ evt.category }}</td>
-                        <td>{{ evt.event_type }}</td>
-                        <td>{{ evt.title }}</td>
-                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ evt.detail }}</td>
-                    </tr>
+            {% if trusty_data.categories %}
+            <div style="padding: 0 12px 8px 12px;">
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Systems Exercised</div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px;">
+                    {% for cat, count in trusty_data.categories.items() %}
+                    <span>{{ cat }}: <strong>{{ count }}</strong></span>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-sm text-muted" style="padding: 12px;">No recent Trusty activity found. Bot runs every 30 minutes via cron.</p>
-        {% endif %}
-    </div>
-
-    <!-- Test Email Section -->
-    <div class="admin-section" id="test-email-section">
-        <div class="admin-section-header">
-            <span>Test Email</span>
-        </div>
-        <div style="padding: 12px;">
-            <p class="text-sm text-muted mb-8"><strong>What this does:</strong> Sends a sample ARIA notification email to the specified address. This is the same type of email players receive for expedition updates, discovery alerts, etc.</p>
-            <p class="text-sm text-muted mb-12"><strong>Safe to use:</strong> Only sends to the address you enter. Use your own email for testing. The email will appear in your inbox within a few seconds.</p>
-            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <input type="email" id="test-email-address" placeholder="Email address" value="{{ admin_email or '' }}"
-                       style="padding: 8px 12px; background: var(--bg-card); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); font-size: 13px; width: 250px;">
-                <button onclick="sendTestEmail()" class="admin-btn">Send Test Email</button>
+                </div>
             </div>
+            {% endif %}
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Category</th>
+                            <th>Event</th>
+                            <th>Title</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evt in trusty_data.recent %}
+                        <tr>
+                            <td>{{ evt.created_at }}</td>
+                            <td>{{ evt.category }}</td>
+                            <td>{{ evt.event_type }}</td>
+                            <td>{{ evt.title }}</td>
+                            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ evt.detail }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-muted" style="padding: 12px;">No recent Trusty activity found. Bot runs every 30 minutes via cron.</p>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <style>
+.admin-summary {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 20px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+}
+.admin-summary li strong { color: var(--text-primary); }
 .admin-card {
     background: var(--bg-card);
     border: 1px solid rgba(255,255,255,0.08);
@@ -358,24 +403,14 @@
     border-color: var(--color-sepolia);
     transform: translateY(-2px);
 }
-.admin-card-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-}
-.admin-card-title {
-    font-weight: 600;
-    font-size: 14px;
-    margin-bottom: 4px;
-}
-.admin-card-desc {
-    font-size: 12px;
-    color: var(--text-secondary);
-}
+.admin-card-icon { font-size: 24px; margin-bottom: 8px; }
+.admin-card-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.admin-card-desc { font-size: 12px; color: var(--text-secondary); }
 .admin-section {
     background: var(--bg-card);
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: var(--radius-md);
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     overflow: hidden;
 }
 .admin-section-header {
@@ -383,18 +418,22 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
     font-weight: 600;
     font-size: 14px;
 }
-.admin-table-wrap {
-    overflow-x: auto;
+.admin-toggle {
+    cursor: pointer;
+    user-select: none;
 }
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
+.admin-toggle:hover { background: rgba(255,255,255,0.03); }
+.admin-chevron {
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+    flex-shrink: 0;
 }
+.admin-chevron.collapsed { transform: rotate(-90deg); }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .admin-table th, .admin-table td {
     padding: 10px 12px;
     text-align: left;
@@ -407,25 +446,15 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.admin-table tbody tr:hover {
-    background: rgba(255,255,255,0.02);
-}
+.admin-table tbody tr:hover { background: rgba(255,255,255,0.02); }
 .stat-box {
     text-align: center;
     padding: 12px;
     background: rgba(255,255,255,0.03);
     border-radius: var(--radius-sm);
 }
-.stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--color-sepolia);
-}
-.stat-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 4px;
-}
+.stat-value { font-size: 24px; font-weight: 700; color: var(--color-sepolia); }
+.stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
 .rarity-common { color: #888; }
 .rarity-uncommon { color: #4ade80; }
 .rarity-rare { color: #60a5fa; }
@@ -446,8 +475,21 @@
 </style>
 
 <script>
-function showStatus(message, isError = false) {
-    const el = document.getElementById('admin-status');
+function toggleSection(name) {
+    var body = document.getElementById(name + '-body');
+    var chev = document.getElementById(name + '-chevron');
+    if (!body || !chev) return;
+    if (body.style.display === 'none') {
+        body.style.display = '';
+        chev.classList.remove('collapsed');
+    } else {
+        body.style.display = 'none';
+        chev.classList.add('collapsed');
+    }
+}
+
+function showStatus(message, isError) {
+    var el = document.getElementById('admin-status');
     el.textContent = message;
     el.style.display = 'block';
     el.style.background = isError ? 'rgba(239, 68, 68, 0.15)' : 'rgba(74, 222, 128, 0.15)';
@@ -456,82 +498,57 @@ function showStatus(message, isError = false) {
 }
 
 async function generateAriaSnapshot() {
-    const userIdStr = prompt('Generate for specific user ID (leave blank for all active users):');
-    if (userIdStr === null) return; // Cancelled
-    const userId = userIdStr.trim() ? parseInt(userIdStr.trim()) : null;
-    const dryRun = confirm('Dry run? (OK = dry run, Cancel = real generation)');
-    const label = dryRun ? 'Dry run' : 'Generating';
-    showStatus(`${label} ARIA snapshot${userId ? ` for user ${userId}` : ' for all active users'}...`);
+    var userIdStr = prompt('Generate for specific user ID (leave blank for all active users):');
+    if (userIdStr === null) return;
+    var userId = userIdStr.trim() ? parseInt(userIdStr.trim()) : null;
+    var dryRun = confirm('Dry run? (OK = dry run, Cancel = real generation)');
+    showStatus((dryRun ? 'Dry run' : 'Generating') + ' ARIA snapshot' + (userId ? ' for user ' + userId : ' for all active users') + '...');
     try {
-        const resp = await fetch('/api/admin/generate_snapshots', {
+        var resp = await fetch('/api/admin/generate_snapshots', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, dry_run: dryRun })
         });
-        const data = await resp.json();
+        var data = await resp.json();
         if (data.success) {
-            const count = data.snapshots_generated ?? (data.total_generated ?? '?');
-            showStatus(`Done! ${count} snapshot(s) generated${dryRun ? ' (dry run)' : ''}.`);
+            showStatus('Done! ' + (data.snapshots_generated || data.total_generated || '?') + ' snapshot(s) generated' + (dryRun ? ' (dry run)' : '') + '.');
         } else {
             showStatus('Error: ' + (data.error || 'Unknown error'), true);
         }
-    } catch (e) {
-        showStatus('Error: ' + e.message, true);
-    }
+    } catch (e) { showStatus('Error: ' + e.message, true); }
 }
 
 async function syncBalances() {
     showStatus('Syncing blockchain balances...');
     try {
-        const resp = await fetch('/api/admin/sync_balances', { method: 'POST' });
-        const data = await resp.json();
-        if (data.success) {
-            showStatus(`Synced ${data.updated || 0} wallet balances!`);
-        } else {
-            showStatus('Error: ' + (data.error || 'Unknown error'), true);
-        }
-    } catch (e) {
-        showStatus('Error: ' + e.message, true);
-    }
+        var resp = await fetch('/api/admin/sync_balances', { method: 'POST' });
+        var data = await resp.json();
+        if (data.success) { showStatus('Synced ' + (data.updated || 0) + ' wallet balances!'); }
+        else { showStatus('Error: ' + (data.error || 'Unknown error'), true); }
+    } catch (e) { showStatus('Error: ' + e.message, true); }
 }
 
 async function sendTestEmail() {
-    const email = document.getElementById('test-email-address')?.value || '';
-    showStatus(`Sending test email to ${email}...`);
+    var email = document.getElementById('test-email-address').value || '';
+    showStatus('Sending test email to ' + email + '...');
     try {
-        const resp = await fetch('/api/admin/test_email', {
+        var resp = await fetch('/api/admin/test_email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email })
         });
-        const data = await resp.json();
-        if (data.success) {
-            showStatus('Test email sent successfully!');
-        } else {
-            showStatus('Error: ' + (data.error || 'Unknown error'), true);
-        }
-    } catch (e) {
-        showStatus('Error: ' + e.message, true);
-    }
+        var data = await resp.json();
+        if (data.success) { showStatus('Test email sent successfully!'); }
+        else { showStatus('Error: ' + (data.error || 'Unknown error'), true); }
+    } catch (e) { showStatus('Error: ' + e.message, true); }
 }
 
 function clearAllAriaChats() {
     MarsModal.show({
         title: 'Clear All ARIA Chats',
         icon: '<img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg">',
-        body: `
-            <p style="margin-bottom: 12px;">This will <strong>permanently delete</strong> all ARIA conversation history for <strong>every player</strong>.</p>
-            <ul style="margin: 0 0 12px 20px; font-size: 13px; color: var(--text-secondary);">
-                <li>All chat messages between players and ARIA will be erased</li>
-                <li>Players will see empty chat history next time they open ARIA</li>
-                <li>This action cannot be undone</li>
-            </ul>
-            <p style="font-size: 12px; color: #f59e0b;">Use this for testing cleanup or when resetting the game state.</p>
-        `,
-        footer: `
-            <button onclick="MarsModal.hide()" class="admin-btn" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.2);">Cancel</button>
-            <button onclick="confirmClearAriaChats()" class="admin-btn" style="background: #dc2626;">Delete All Chats</button>
-        `,
+        body: '<p style="margin-bottom: 12px;">This will <strong>permanently delete</strong> all ARIA conversation history for <strong>every player</strong>.</p><p style="font-size: 12px; color: #f59e0b;">This action cannot be undone.</p>',
+        footer: '<button onclick="MarsModal.hide()" class="admin-btn" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.2);">Cancel</button> <button onclick="confirmClearAriaChats()" class="admin-btn" style="background: #dc2626;">Delete All Chats</button>',
         width: 'sm'
     });
 }
@@ -540,16 +557,11 @@ async function confirmClearAriaChats() {
     MarsModal.hide();
     showStatus('Clearing all ARIA conversations...');
     try {
-        const resp = await fetch('/api/admin/clear_aria_chats', { method: 'POST' });
-        const data = await resp.json();
-        if (data.success) {
-            showStatus(`Cleared ${data.deleted_count} ARIA messages from all players!`);
-        } else {
-            showStatus('Error: ' + (data.error || 'Unknown error'), true);
-        }
-    } catch (e) {
-        showStatus('Error: ' + e.message, true);
-    }
+        var resp = await fetch('/api/admin/clear_aria_chats', { method: 'POST' });
+        var data = await resp.json();
+        if (data.success) { showStatus('Cleared ' + data.deleted_count + ' ARIA messages from all players!'); }
+        else { showStatus('Error: ' + (data.error || 'Unknown error'), true); }
+    } catch (e) { showStatus('Error: ' + e.message, true); }
 }
 </script>
 {% endblock %}
