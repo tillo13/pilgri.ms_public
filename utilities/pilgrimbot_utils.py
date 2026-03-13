@@ -255,33 +255,50 @@ def find_relevant_files(question, max_files=4):
 
 # === Bug Creation Fallback ===
 
+def ensure_reports_table():
+    """Create the pilgrimbot_reports table if it doesn't exist."""
+    with db_cursor(commit=True) as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pilgrim.pilgrimbot_reports (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                submitted_by VARCHAR(100),
+                status VARCHAR(20) DEFAULT 'open',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+
 def create_bug_from_question(question, user_display_name="PilgrimBot User", description=None):
-    """Create a bug/idea via pb tool from PilgrimBot chat."""
+    """Save a bug/feature report to the database."""
     try:
-        title = f"PilgrimBot: {question[:80]}"
+        ensure_reports_table()
+        title = question[:200]
         if not description:
-            description = f"Question: {question}"
-        description = (
-            f"{description}\n\n"
-            f"Submitted by: {user_display_name}\n"
-            f"Via: PilgrimBot chat\n"
-            f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M PST')}"
-        )
-        # Use pb idea to create in the sheet
-        result = subprocess.run(
-            ["python3", "-m", "tools.pb", "idea", title, description],
-            capture_output=True, text=True, timeout=15,
-            cwd=PROJECT_ROOT
-        )
-        if result.returncode == 0:
-            logger.info(f"Created bug from PilgrimBot: {title}")
-            return True
-        else:
-            logger.warning(f"pb idea failed: {result.stderr}")
-            return False
+            description = ""
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                INSERT INTO pilgrim.pilgrimbot_reports (title, description, submitted_by)
+                VALUES (%s, %s, %s)
+            """, (title, description, user_display_name))
+        logger.info(f"PilgrimBot report saved: {title[:60]}")
+        return True
     except Exception as e:
-        logger.warning(f"Bug creation failed: {e}")
+        logger.warning(f"Report save failed: {e}")
         return False
+
+
+def get_reports(limit=50):
+    """Get all PilgrimBot reports, newest first."""
+    ensure_reports_table()
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT id, title, description, submitted_by, status, created_at
+            FROM pilgrim.pilgrimbot_reports
+            ORDER BY created_at DESC LIMIT %s
+        """, (limit,))
+        return cur.fetchall()
 
 
 # === Chat Handler ===
