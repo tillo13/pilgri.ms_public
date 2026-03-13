@@ -15,6 +15,27 @@
     const chatListEl = document.getElementById('pbChatList');
     const newChatBtn = document.getElementById('pbNewChat');
 
+    // === Markdown rendering ===
+
+    function formatContent(text) {
+        if (!text) return '';
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({breaks: true, gfm: true, headerIds: false, mangle: false});
+            return marked.parse(text);
+        }
+        // Fallback: basic formatting
+        let h = escapeHtml(text);
+        h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+        h = h.replace(/\n/g, '<br>');
+        return h;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     // === Send message ===
 
     function sendMessage(text) {
@@ -25,19 +46,31 @@
         // Hide welcome screen
         if (welcomeEl) welcomeEl.style.display = 'none';
 
-        // Add user message
+        // Add user bubble
         appendMessage('user', text);
         inputEl.value = '';
         inputEl.style.height = 'auto';
         isStreaming = true;
         sendBtn.disabled = true;
 
-        // Create assistant placeholder
-        const assistantEl = appendMessage('assistant', '');
-        const contentEl = assistantEl.querySelector('.pb-msg-content');
+        // Show typing indicator
+        const typingEl = showTyping();
+
+        // Timeout: if no response in 30s, show error
+        let gotFirstDelta = false;
+        const streamTimeout = setTimeout(() => {
+            if (!gotFirstDelta && isStreaming) {
+                removeTyping(typingEl);
+                appendMessage('assistant', 'PilgrimBot took too long to respond. Please try again.');
+                finishStream('', false, text);
+            }
+        }, 30000);
 
         // Stream response
         const userQuestion = text;
+        let assistantEl = null;
+        let contentEl = null;
+
         fetch('/api/pilgrimbot/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -56,6 +89,8 @@
             function processChunk() {
                 reader.read().then(({done, value}) => {
                     if (done) {
+                        clearTimeout(streamTimeout);
+                        if (assistantEl) renderMarkdown(contentEl, fullText);
                         finishStream(fullText, cantAnswer, userQuestion);
                         return;
                     }
@@ -71,15 +106,27 @@
                             if (data.type === 'start' && data.chat_id) {
                                 currentChatId = data.chat_id;
                             } else if (data.type === 'delta' && data.text) {
+                                if (!gotFirstDelta) {
+                                    gotFirstDelta = true;
+                                    clearTimeout(streamTimeout);
+                                    removeTyping(typingEl);
+                                    assistantEl = appendMessage('assistant', '');
+                                    contentEl = assistantEl.querySelector('.pb-msg-content');
+                                }
                                 fullText += data.text;
                                 contentEl.textContent = fullText;
                                 messagesEl.scrollTop = messagesEl.scrollHeight;
                             } else if (data.type === 'stop') {
+                                clearTimeout(streamTimeout);
                                 if (data.cant_answer) cantAnswer = true;
+                                removeTyping(typingEl);
+                                if (assistantEl) renderMarkdown(contentEl, fullText);
                                 finishStream(fullText, cantAnswer, userQuestion);
                                 return;
                             } else if (data.type === 'error') {
-                                contentEl.textContent = data.message || 'Something went wrong.';
+                                clearTimeout(streamTimeout);
+                                removeTyping(typingEl);
+                                appendMessage('assistant', data.message || 'Something went wrong.');
                                 finishStream(fullText, false, userQuestion);
                                 return;
                             }
@@ -90,16 +137,23 @@
             }
             processChunk();
         }).catch(err => {
-            contentEl.textContent = 'Connection error. Please try again.';
+            clearTimeout(streamTimeout);
+            removeTyping(typingEl);
+            appendMessage('assistant', 'Connection error. Please try again.');
             finishStream('', false, userQuestion);
         });
+    }
+
+    function renderMarkdown(contentEl, text) {
+        if (contentEl && text) {
+            contentEl.innerHTML = formatContent(text);
+        }
     }
 
     function finishStream(text, cantAnswer, userQuestion) {
         isStreaming = false;
         sendBtn.disabled = false;
         inputEl.focus();
-        // Show "Report this" button if PilgrimBot couldn't answer
         if (cantAnswer && userQuestion) {
             const reportDiv = document.createElement('div');
             reportDiv.className = 'pb-report-offer';
@@ -114,14 +168,13 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({question: userQuestion})
                 }).then(r => r.json()).then(data => {
-                    this.textContent = data.success ? 'Reported — the dev team will follow up!' : 'Could not report. Try again later.';
+                    this.textContent = data.success ? 'Reported — thanks!' : 'Could not report. Try again later.';
                     this.classList.add('pb-report-done');
                 }).catch(() => {
                     this.textContent = 'Connection error.';
                 });
             });
         }
-        // Refresh sidebar
         refreshChatList();
     }
 
@@ -130,18 +183,25 @@
     function appendMessage(role, text) {
         const div = document.createElement('div');
         div.className = `pb-msg pb-msg-${role}`;
-        div.innerHTML = `
-            <div class="pb-msg-label">${role === 'user' ? 'You' : 'PilgrimBot'}</div>
-            <div class="pb-msg-content">${escapeHtml(text)}</div>
-        `;
+        const label = role === 'user' ? 'You' : 'PilgrimBot';
+        const content = role === 'user' ? escapeHtml(text) : (text ? formatContent(text) : '');
+        div.innerHTML = `<div class="pb-msg-label">${label}</div><div class="pb-msg-content">${content}</div>`;
         messagesEl.appendChild(div);
         messagesEl.scrollTop = messagesEl.scrollHeight;
         return div;
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    function showTyping() {
+        const div = document.createElement('div');
+        div.className = 'pb-typing';
+        div.innerHTML = '<span class="pb-typing-label">PilgrimBot</span><div class="pb-typing-dots"><span></span><span></span><span></span></div>';
+        messagesEl.appendChild(div);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return div;
+    }
+
+    function removeTyping(el) {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
     }
 
     // === Chat list ===
@@ -163,27 +223,25 @@
                     div.addEventListener('click', () => loadChat(chat.chat_id));
                     chatListEl.appendChild(div);
                 });
-            });
+            }).catch(() => {});
     }
 
     function loadChat(chatId) {
         currentChatId = chatId;
-        // Clear messages and load from API
         messagesEl.innerHTML = '';
         if (welcomeEl) welcomeEl.style.display = 'none';
 
-        fetch(`/api/pilgrimbot/chats`)
+        // Load chat history
+        fetch(`/api/pilgrimbot/history?chat_id=${chatId}`)
             .then(r => r.json())
             .then(data => {
-                // Mark active in sidebar
+                if (data.success && data.messages) {
+                    data.messages.forEach(m => appendMessage(m.role, m.content));
+                }
                 document.querySelectorAll('.pb-chat-item').forEach(el => {
                     el.classList.toggle('active', el.dataset.chatId === chatId);
                 });
-            });
-
-        // Load chat history by sending empty request? No, we need a history endpoint.
-        // For now, start fresh with the chat_id — messages will load on next send.
-        // TODO: Add GET /api/pilgrimbot/history?chat_id=X endpoint
+            }).catch(() => {});
     }
 
     function startNewChat() {
@@ -208,7 +266,6 @@
         }
     });
 
-    // Auto-resize textarea
     inputEl.addEventListener('input', () => {
         inputEl.style.height = 'auto';
         inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
@@ -216,12 +273,10 @@
 
     newChatBtn.addEventListener('click', startNewChat);
 
-    // Example question buttons
     document.querySelectorAll('.pb-example').forEach(btn => {
         btn.addEventListener('click', () => sendMessage(btn.dataset.q));
     });
 
-    // Chat list click handlers (for initial server-rendered items)
     document.querySelectorAll('.pb-chat-item').forEach(el => {
         el.addEventListener('click', () => loadChat(el.dataset.chatId));
     });

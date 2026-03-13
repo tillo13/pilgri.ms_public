@@ -54,14 +54,9 @@
         </div>
     </div>
 </div>
-
-<script type="application/json" id="pilgrimBotData">
-{
-    "chats": {{ chats | tojson }}
-}
-</script>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 <script src="/static/js/pilgrimbot.js" defer></script>
 {% endblock %}

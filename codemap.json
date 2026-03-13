@@ -1620,14 +1620,14 @@
   },
   "static/js/pilgrimbot.js": {
     "exports": [
+      "formatContent",
+      "escapeHtml",
       "sendMessage",
       "processChunk",
+      "renderMarkdown",
       "finishStream",
       "appendMessage",
-      "escapeHtml",
-      "refreshChatList",
-      "loadChat",
-      "startNewChat"
+      "showTyping"
     ]
   },
   "static/js/signal.js": {
@@ -1645,7 +1645,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/sync_balances, api/admin/clear_aria_chats, api/admin/test_email"
+      "calls: api/admin/clear_aria_chats, api/admin/generate_snapshots, api/admin/test_email, api/admin/sync_balances"
     ]
   },
   "templates/admin_speed.html": {
@@ -1706,10 +1706,7 @@
     "description": "Page: Admin: Mimic User"
   },
   "templates/pilgrimbot.html": {
-    "description": "Page: PilgrimBot",
-    "notes": [
-      "has PAGE_DATA bridge"
-    ]
+    "description": "Page: PilgrimBot"
   },
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",

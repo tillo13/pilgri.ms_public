@@ -2372,6 +2372,20 @@ def api_pilgrimbot_chats():
     return jsonify({'success': True, 'chats': get_user_chats(real_user_id)})
 
 
+@app.route('/api/pilgrimbot/history', methods=['GET'])
+def api_pilgrimbot_history():
+    """Load message history for a specific PilgrimBot chat."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False}), 403
+    chat_id = request.args.get('chat_id', '')
+    if not chat_id:
+        return jsonify({'success': False, 'error': 'No chat_id'})
+    from utilities.pilgrimbot_utils import get_chat_history
+    messages = get_chat_history(real_user_id, chat_id, limit=100)
+    return jsonify({'success': True, 'messages': messages})
+
+
 if __name__ == '__main__':
     try:
         port = get_available_port()

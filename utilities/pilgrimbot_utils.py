@@ -101,6 +101,7 @@ def get_chat_history(user_id, chat_id, limit=MAX_HISTORY):
 
 def get_user_chats(user_id):
     """List all chat threads for a user, most recent first."""
+    ensure_pilgrimbot_table()
     with db_cursor() as cur:
         cur.execute("""
             SELECT chat_id, title,
@@ -284,10 +285,7 @@ def create_bug_from_question(question, user_display_name="PilgrimBot User"):
 def handle_chat_streaming(message, chat_id, user_id, history=None):
     """Stream a PilgrimBot response. Yields SSE-formatted JSON chunks."""
     # Ensure table exists (idempotent)
-    try:
-        ensure_pilgrimbot_table()
-    except Exception:
-        pass
+    ensure_pilgrimbot_table()
 
     # Generate or validate chat_id
     if not chat_id:
