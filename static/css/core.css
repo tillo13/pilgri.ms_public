@@ -1568,8 +1568,8 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .mars-night #shardsItem * { color: var(--color-warning) !important; }
 .mars-night #scienceItem * { color: var(--color-aria) !important; }
 
-/* Adjust main content padding for fixed Mars bar (nav 58px + bar ~32px + 8px buffer) */
-.main-content { padding-top: 102px !important; }
+/* Adjust main content padding for fixed Mars bar (nav 58px + bar ~36px + 20px buffer) */
+.main-content { padding-top: 114px !important; }
 
 /* Time of Day Themes */
 .mars-dawn { background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%); }
@@ -1803,8 +1803,8 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
     .mars-desktop-only { display: none !important; }
     .mars-status-expand { font-size: 14px; padding-left: 4px; }
 
-    /* Adjust main content for Mars bar (nav 56px + bar ~28px + 8px buffer) */
-    .main-content { padding-top: 96px !important; }
+    /* Adjust main content for Mars bar (nav 56px + bar ~28px + 20px buffer) */
+    .main-content { padding-top: 108px !important; }
 
     /* Legacy Mars conditions bar - compact on mobile */
     .mars-conditions-bar {

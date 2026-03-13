@@ -1645,7 +1645,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/sync_balances, api/admin/generate_snapshots, api/admin/test_email, api/admin/clear_aria_chats"
+      "calls: api/admin/sync_balances, api/admin/test_email, api/admin/clear_aria_chats, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_speed.html": {
