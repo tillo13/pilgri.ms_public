@@ -96,7 +96,7 @@ def get_chat_history(user_id, chat_id, limit=MAX_HISTORY):
         """, (user_id, str(chat_id)))
         rows = cur.fetchall()
     # Return last N messages
-    return [{"role": r[0], "content": r[1]} for r in rows[-limit:]]
+    return [{"role": r['role'], "content": r['content']} for r in rows[-limit:]]
 
 
 def get_user_chats(user_id):
@@ -116,11 +116,11 @@ def get_user_chats(user_id):
         """, (user_id,))
         rows = cur.fetchall()
     return [{
-        "chat_id": str(r[0]),
-        "title": r[1] or "New conversation",
-        "started": r[2].isoformat() if r[2] else None,
-        "last_message": r[3].isoformat() if r[3] else None,
-        "message_count": r[4],
+        "chat_id": str(r['chat_id']),
+        "title": r['title'] or "New conversation",
+        "started": r['started'].isoformat() if r.get('started') else None,
+        "last_message": r['last_message'].isoformat() if r.get('last_message') else None,
+        "message_count": r['message_count'],
     } for r in rows]
 
 

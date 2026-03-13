@@ -1645,7 +1645,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/clear_aria_chats, api/admin/generate_snapshots, api/admin/test_email, api/admin/sync_balances"
+      "calls: api/admin/sync_balances, api/admin/generate_snapshots, api/admin/test_email, api/admin/clear_aria_chats"
     ]
   },
   "templates/admin_speed.html": {
@@ -1711,7 +1711,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
