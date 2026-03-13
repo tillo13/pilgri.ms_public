@@ -585,7 +585,8 @@ def api_signal_brainstorm_chat():
 def tech_tree_brainstorm():
     """Tech Tree brainstorm page for team discussion"""
     user = auth.get_current_user() if auth.is_authenticated() else None
-    return render_template('brainstorm/tech_tree.html', active_tab=None, user=user)
+    from config import BUG_TRACKER_URL
+    return render_template('brainstorm/tech_tree.html', active_tab=None, user=user, bug_tracker_url=BUG_TRACKER_URL)
 
 
 @app.route('/brainstorm/progression')
@@ -643,7 +644,8 @@ def api_icon_redesign_brainstorm_chat():
 def aria_meetings_brainstorm():
     """ARIA Meetings & Outcomes brainstorm page — bond system, multiplicity, cross-colony."""
     user = auth.get_current_user() if auth.is_authenticated() else None
-    return render_template('brainstorm/aria_meetings.html', active_tab=None, user=user)
+    from config import BUG_TRACKER_URL
+    return render_template('brainstorm/aria_meetings.html', active_tab=None, user=user, bug_tracker_url=BUG_TRACKER_URL)
 
 
 @app.route('/api/brainstorm/aria-meetings-chat', methods=['POST'])
@@ -2303,6 +2305,70 @@ def api_admin_speed_test():
         )
 
     return jsonify({'success': True, 'results': pages, 'threshold_s': THRESHOLD, 'all_ok': all_ok})
+
+
+# =============================================================================
+# PILGRIMBOT — Codebase Q&A (admin-only for now, public-ready routes)
+# =============================================================================
+
+@app.route('/pilgrimbot')
+def pilgrimbot():
+    """PilgrimBot chat interface — codebase Q&A."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return redirect(url_for('home'))
+    from utilities.pilgrimbot_utils import get_user_chats
+    chats = get_user_chats(real_user_id) if real_user_id else []
+    return render_template('pilgrimbot.html', user=auth.get_current_user(), chats=chats)
+
+
+@app.route('/api/pilgrimbot/chat', methods=['POST'])
+def api_pilgrimbot_chat():
+    """Chat with PilgrimBot — streaming SSE response."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    message = data.get('message', '').strip()
+    if not message:
+        return jsonify({'success': False, 'error': 'No message provided'})
+
+    chat_id = data.get('chat_id')
+    from utilities.pilgrimbot_utils import handle_chat_streaming
+    generator = handle_chat_streaming(message, chat_id, real_user_id)
+    return Response(
+        stream_with_context(generator),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache, no-store, must-revalidate',
+                 'X-Accel-Buffering': 'no', 'Connection': 'keep-alive'}
+    )
+
+
+@app.route('/api/pilgrimbot/report', methods=['POST'])
+def api_pilgrimbot_report():
+    """Report an unanswered PilgrimBot question as a bug (user-confirmed)."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    data = request.get_json() or {}
+    question = data.get('question', '').strip()
+    if not question:
+        return jsonify({'success': False, 'error': 'No question provided'})
+    display_name = auth.get_current_user().get('username', 'Unknown') if auth.get_current_user() else 'Unknown'
+    from utilities.pilgrimbot_utils import create_bug_from_question
+    success = create_bug_from_question(question, display_name)
+    return jsonify({'success': success})
+
+
+@app.route('/api/pilgrimbot/chats', methods=['GET'])
+def api_pilgrimbot_chats():
+    """List user's PilgrimBot chat threads."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False}), 403
+    from utilities.pilgrimbot_utils import get_user_chats
+    return jsonify({'success': True, 'chats': get_user_chats(real_user_id)})
 
 
 if __name__ == '__main__':

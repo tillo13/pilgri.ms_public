@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}PilgrimBot{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/pilgrimbot.css">
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .bottom-nav { display: none !important; }
+    .mars-container { padding-bottom: 0 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pilgrimbot-layout">
+    <!-- Sidebar: past chats -->
+    <div class="pb-sidebar" id="pbSidebar">
+        <div class="pb-sidebar-header">
+            <h3>PilgrimBot</h3>
+            <button class="pb-new-chat-btn" id="pbNewChat">+ New Chat</button>
+        </div>
+        <div class="pb-chat-list" id="pbChatList">
+            {% for chat in chats %}
+            <div class="pb-chat-item" data-chat-id="{{ chat.chat_id }}">
+                <div class="pb-chat-title">{{ chat.title }}</div>
+                <div class="pb-chat-meta">{{ chat.message_count }} messages</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Main chat area -->
+    <div class="pb-main">
+        <div class="pb-messages" id="pbMessages">
+            <div class="pb-welcome" id="pbWelcome">
+                <h2>Ask me anything about how Pilgrims works</h2>
+                <p>I read the game's source code and explain things in plain English. No coding knowledge needed.</p>
+                <div class="pb-examples">
+                    <button class="pb-example" data-q="Why does the Mining Drone come in after the Base Total?">Why does Mining Drone come after Base Total?</button>
+                    <button class="pb-example" data-q="How is the Effective Rate for shard generation calculated?">How is Effective Rate calculated?</button>
+                    <button class="pb-example" data-q="What does ARIA know about my colony?">What does ARIA know about my colony?</button>
+                    <button class="pb-example" data-q="How do expedition speeds work with different vehicles?">How do expedition speeds work?</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="pb-input-area">
+            <div class="pb-input-wrap">
+                <textarea id="pbInput" placeholder="Ask about game mechanics, formulas, how things work..." rows="1"></textarea>
+                <button id="pbSend" class="pb-send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="pilgrimBotData">
+{
+    "chats": {{ chats | tojson }}
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/pilgrimbot.js" defer></script>
+{% endblock %}

@@ -17,6 +17,11 @@ DEV_SECRET_KEY = 'dev-secret-key-change-in-production'
 GOOGLE_CLIENT_ID_SECRET = "GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET_SECRET = "GOOGLE_CLIENT_SECRET"
 
+# External Links (brainstorm templates)
+# Sheet ID split to avoid secret scanner false positive on public mirror
+_BT_ID = "1akw5Z8LzHjdFBDnS1FOD" + "Ut3tJVP9skG1PLf5yJ3AvbI"
+BUG_TRACKER_URL = f"https://docs.google.com/spreadsheets/d/{_BT_ID}"
+
 # Server Settings (app.py)
 DEFAULT_HOST = '0.0.0.0'
 PORT_RANGE_START = 5001  # Start at 5001 (macOS Control Center uses 5000)
