@@ -3,7 +3,7 @@
 {% block title %}PilgrimBot{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/pilgrimbot.css">
+<link rel="stylesheet" href="/static/css/pilgrimbot.css?v=4">
 {% endblock %}
 
 {% block extra_head %}
@@ -11,6 +11,7 @@
 <style>
     .bottom-nav { display: none !important; }
     .mars-container { padding-bottom: 0 !important; }
+    .main-content { padding: 0 !important; max-width: none !important; }
 </style>
 {% endblock %}
 
@@ -62,5 +63,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/pilgrimbot.js" defer></script>
+<script src="/static/js/pilgrimbot.js?v=4" defer></script>
 {% endblock %}
