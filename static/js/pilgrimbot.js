@@ -31,7 +31,6 @@
             marked.setOptions({breaks: true, gfm: true, headerIds: false, mangle: false});
             return marked.parse(text);
         }
-        // Fallback
         let h = escapeHtml(text);
         h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
@@ -49,14 +48,27 @@
 
     function appendMessage(role, text, timestamp) {
         const div = document.createElement('div');
-        div.className = `pb-msg pb-msg-${role}`;
+        div.className = 'pb-msg pb-msg-' + role;
         const name = role === 'user' ? USER_NAME : 'PilgrimBot';
         const time = timestamp ? formatTime(timestamp) : formatTime(new Date());
         const content = role === 'user' ? escapeHtml(text) : parseMarkdown(text);
 
         div.innerHTML =
-            '<div class="pb-msg-header">' + escapeHtml(name) + ' <span class="pb-msg-time">' + time + '</span></div>' +
+            '<div class="pb-msg-header">' + escapeHtml(name) +
+            ' <span class="pb-msg-time">' + time + '</span></div>' +
             '<div class="pb-msg-content">' + content + '</div>';
+
+        // Add "Create bug/feature" footer to assistant messages with content
+        if (role === 'assistant' && text) {
+            const footer = document.createElement('div');
+            footer.className = 'pb-msg-footer';
+            footer.innerHTML = '<button class="pb-feedback-link">Create bug/feature from this</button>';
+            div.appendChild(footer);
+            footer.querySelector('.pb-feedback-link').addEventListener('click', function() {
+                openReportModal(text);
+            });
+        }
+
         messagesEl.appendChild(div);
         messagesEl.scrollTop = messagesEl.scrollHeight;
         return div;
@@ -78,6 +90,98 @@
 
     function removeTyping(el) {
         if (el && el.parentNode) el.remove();
+    }
+
+    // === Report modal ===
+
+    function openReportModal(responseText) {
+        // Remove existing modal if any
+        const existing = document.getElementById('pbReportModal');
+        if (existing) existing.remove();
+
+        const snippet = responseText.length > 300 ? responseText.slice(0, 300) + '...' : responseText;
+
+        const modal = document.createElement('div');
+        modal.id = 'pbReportModal';
+        modal.className = 'pb-modal-overlay';
+        modal.innerHTML =
+            '<div class="pb-modal">' +
+                '<div class="pb-modal-header">Create Bug / Feature Request</div>' +
+                '<label class="pb-modal-label">Title</label>' +
+                '<input type="text" class="pb-modal-input" id="pbReportTitle" placeholder="Brief description..." maxlength="200">' +
+                '<label class="pb-modal-label">Details</label>' +
+                '<textarea class="pb-modal-textarea" id="pbReportBody" rows="6" placeholder="What should the dev team know?">' +
+                    escapeHtml(snippet) + '</textarea>' +
+                '<div class="pb-modal-actions">' +
+                    '<button class="pb-modal-cancel" id="pbReportCancel">Cancel</button>' +
+                    '<button class="pb-modal-submit" id="pbReportSubmit">Submit</button>' +
+                '</div>' +
+                '<div class="pb-modal-status" id="pbReportStatus"></div>' +
+            '</div>';
+
+        document.body.appendChild(modal);
+
+        // Focus title
+        document.getElementById('pbReportTitle').focus();
+
+        // Close on overlay click
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeReportModal();
+        });
+
+        document.getElementById('pbReportCancel').addEventListener('click', closeReportModal);
+        document.getElementById('pbReportSubmit').addEventListener('click', submitReport);
+
+        // Escape to close
+        modal._escHandler = function(e) { if (e.key === 'Escape') closeReportModal(); };
+        document.addEventListener('keydown', modal._escHandler);
+    }
+
+    function closeReportModal() {
+        const modal = document.getElementById('pbReportModal');
+        if (modal) {
+            if (modal._escHandler) document.removeEventListener('keydown', modal._escHandler);
+            modal.remove();
+        }
+    }
+
+    function submitReport() {
+        const title = document.getElementById('pbReportTitle').value.trim();
+        const body = document.getElementById('pbReportBody').value.trim();
+        const status = document.getElementById('pbReportStatus');
+        const btn = document.getElementById('pbReportSubmit');
+
+        if (!title) {
+            status.textContent = 'Please add a title.';
+            status.style.color = '#ffa07a';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+        status.textContent = '';
+
+        fetch('/api/pilgrimbot/report', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title: title, description: body})
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                status.textContent = 'Submitted! The dev team will see this.';
+                status.style.color = '#8fd88f';
+                setTimeout(closeReportModal, 1500);
+            } else {
+                status.textContent = data.error || 'Could not submit.';
+                status.style.color = '#ffa07a';
+                btn.disabled = false;
+                btn.textContent = 'Submit';
+            }
+        }).catch(() => {
+            status.textContent = 'Connection error.';
+            status.style.color = '#ffa07a';
+            btn.disabled = false;
+            btn.textContent = 'Submit';
+        });
     }
 
     // === Send message ===
@@ -102,14 +206,14 @@
             if (!gotFirstDelta && isStreaming) {
                 removeTyping(typingEl);
                 appendMessage('assistant', 'PilgrimBot took too long to respond. Please try again.');
-                finishStream('', false, text);
+                finishStream('');
             }
         }, 30000);
 
         const userQuestion = text;
         let contentEl = null;
         let fullText = '';
-        let cantAnswer = false;
+        let assistantEl = null;
 
         fetch('/api/pilgrimbot/chat', {
             method: 'POST',
@@ -125,7 +229,8 @@
                     if (done) {
                         clearTimeout(streamTimeout);
                         if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
-                        finishStream(fullText, cantAnswer, userQuestion);
+                        addFooterToEl(assistantEl, fullText);
+                        finishStream(fullText);
                         return;
                     }
 
@@ -144,25 +249,31 @@
                                     gotFirstDelta = true;
                                     clearTimeout(streamTimeout);
                                     removeTyping(typingEl);
-                                    const el = appendMessage('assistant', '');
-                                    contentEl = el.querySelector('.pb-msg-content');
+                                    // Create assistant bubble without footer (added after stream)
+                                    assistantEl = document.createElement('div');
+                                    assistantEl.className = 'pb-msg pb-msg-assistant';
+                                    assistantEl.innerHTML =
+                                        '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
+                                        formatTime(new Date()) + '</span></div>' +
+                                        '<div class="pb-msg-content"></div>';
+                                    messagesEl.appendChild(assistantEl);
+                                    contentEl = assistantEl.querySelector('.pb-msg-content');
                                 }
                                 fullText += data.text;
-                                // Show raw text while streaming, render markdown on finish
                                 contentEl.textContent = fullText;
                                 messagesEl.scrollTop = messagesEl.scrollHeight;
                             } else if (data.type === 'stop') {
                                 clearTimeout(streamTimeout);
-                                if (data.cant_answer) cantAnswer = true;
                                 removeTyping(typingEl);
                                 if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
-                                finishStream(fullText, cantAnswer, userQuestion);
+                                addFooterToEl(assistantEl, fullText);
+                                finishStream(fullText);
                                 return;
                             } else if (data.type === 'error') {
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
                                 appendMessage('assistant', data.message || 'Something went wrong.');
-                                finishStream(fullText, false, userQuestion);
+                                finishStream(fullText);
                                 return;
                             }
                         } catch (e) { /* skip malformed */ }
@@ -175,34 +286,25 @@
             clearTimeout(streamTimeout);
             removeTyping(typingEl);
             appendMessage('assistant', 'Connection error. Please try again.');
-            finishStream('', false, userQuestion);
+            finishStream('');
         });
     }
 
-    function finishStream(text, cantAnswer, userQuestion) {
+    function addFooterToEl(el, text) {
+        if (!el || !text) return;
+        const footer = document.createElement('div');
+        footer.className = 'pb-msg-footer';
+        footer.innerHTML = '<button class="pb-feedback-link">Create bug/feature from this</button>';
+        el.appendChild(footer);
+        footer.querySelector('.pb-feedback-link').addEventListener('click', function() {
+            openReportModal(text);
+        });
+    }
+
+    function finishStream(text) {
         isStreaming = false;
         sendBtn.disabled = false;
         inputEl.focus();
-
-        if (cantAnswer && userQuestion) {
-            const reportDiv = document.createElement('div');
-            reportDiv.className = 'pb-report-offer';
-            reportDiv.innerHTML = '<button class="pb-report-btn">Flag this for the dev team</button>';
-            messagesEl.appendChild(reportDiv);
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-            reportDiv.querySelector('.pb-report-btn').addEventListener('click', function() {
-                this.disabled = true;
-                this.textContent = 'Reporting...';
-                fetch('/api/pilgrimbot/report', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({question: userQuestion})
-                }).then(r => r.json()).then(data => {
-                    this.textContent = data.success ? 'Reported — thanks!' : 'Could not report.';
-                    this.classList.add('pb-report-done');
-                }).catch(() => { this.textContent = 'Connection error.'; });
-            });
-        }
         refreshChatList();
     }
 

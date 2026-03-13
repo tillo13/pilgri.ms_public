@@ -1626,8 +1626,8 @@
       "appendMessage",
       "showTyping",
       "removeTyping",
-      "sendMessage",
-      "processChunk"
+      "openReportModal",
+      "closeReportModal"
     ]
   },
   "static/js/signal.js": {
@@ -1645,7 +1645,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots, api/admin/clear_aria_chats, api/admin/sync_balances"
+      "calls: api/admin/sync_balances, api/admin/clear_aria_chats, api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_speed.html": {
@@ -1711,7 +1711,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

@@ -255,14 +255,16 @@ def find_relevant_files(question, max_files=4):
 
 # === Bug Creation Fallback ===
 
-def create_bug_from_question(question, user_display_name="PilgrimBot User"):
-    """Create a bug/idea via pb tool when PilgrimBot can't answer."""
+def create_bug_from_question(question, user_display_name="PilgrimBot User", description=None):
+    """Create a bug/idea via pb tool from PilgrimBot chat."""
     try:
-        title = f"PilgrimBot Q: {question[:60]}"
+        title = f"PilgrimBot: {question[:80]}"
+        if not description:
+            description = f"Question: {question}"
         description = (
-            f"A user asked PilgrimBot a question it couldn't answer from the codebase.\n\n"
-            f"Question: {question}\n"
-            f"Asked by: {user_display_name}\n"
+            f"{description}\n\n"
+            f"Submitted by: {user_display_name}\n"
+            f"Via: PilgrimBot chat\n"
             f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M PST')}"
         )
         # Use pb idea to create in the sheet

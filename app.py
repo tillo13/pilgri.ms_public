@@ -2348,17 +2348,18 @@ def api_pilgrimbot_chat():
 
 @app.route('/api/pilgrimbot/report', methods=['POST'])
 def api_pilgrimbot_report():
-    """Report an unanswered PilgrimBot question as a bug (user-confirmed)."""
+    """Submit a bug/feature from PilgrimBot chat."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json() or {}
-    question = data.get('question', '').strip()
-    if not question:
-        return jsonify({'success': False, 'error': 'No question provided'})
-    display_name = auth.get_current_user().get('username', 'Unknown') if auth.get_current_user() else 'Unknown'
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    if not title:
+        return jsonify({'success': False, 'error': 'Title is required'})
+    display_name = auth.get_current_user().get('name', 'Unknown') if auth.get_current_user() else 'Unknown'
     from utilities.pilgrimbot_utils import create_bug_from_question
-    success = create_bug_from_question(question, display_name)
+    success = create_bug_from_question(title, display_name, description=description)
     return jsonify({'success': success})
 
 
