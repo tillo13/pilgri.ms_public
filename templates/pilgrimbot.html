@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
     .bottom-nav { display: none !important; }
     .mars-container { padding-bottom: 0 !important; }
@@ -54,9 +55,12 @@
         </div>
     </div>
 </div>
+
+<script>
+    window.PB_USER_NAME = {{ (user.name.split()[0] | tojson) if user and user.name else '"Captain"' }};
+</script>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
 <script src="/static/js/pilgrimbot.js" defer></script>
 {% endblock %}

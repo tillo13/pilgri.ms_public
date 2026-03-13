@@ -1,4 +1,4 @@
-/* PilgrimBot — Codebase Q&A chat interface (Mars dark theme) */
+/* PilgrimBot — Codebase Q&A chat interface */
 
 .pilgrimbot-layout {
     display: flex;
@@ -28,11 +28,7 @@
     align-items: center;
 }
 
-.pb-sidebar-header h3 {
-    margin: 0;
-    color: #fff;
-    font-size: 16px;
-}
+.pb-sidebar-header h3 { margin: 0; color: #fff; font-size: 16px; }
 
 .pb-new-chat-btn {
     background: rgba(255,255,255,0.1);
@@ -43,16 +39,9 @@
     cursor: pointer;
     font-size: 13px;
 }
+.pb-new-chat-btn:hover { background: rgba(255,255,255,0.2); }
 
-.pb-new-chat-btn:hover {
-    background: rgba(255,255,255,0.2);
-}
-
-.pb-chat-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-}
+.pb-chat-list { flex: 1; overflow-y: auto; padding: 8px; }
 
 .pb-chat-item {
     padding: 10px 12px;
@@ -60,14 +49,8 @@
     cursor: pointer;
     margin-bottom: 4px;
 }
-
-.pb-chat-item:hover {
-    background: rgba(255,255,255,0.08);
-}
-
-.pb-chat-item.active {
-    background: rgba(255,255,255,0.12);
-}
+.pb-chat-item:hover { background: rgba(255,255,255,0.08); }
+.pb-chat-item.active { background: rgba(255,255,255,0.12); }
 
 .pb-chat-title {
     color: #fff;
@@ -101,25 +84,11 @@
     gap: 16px;
 }
 
-/* === Welcome screen === */
+/* === Welcome === */
 
-.pb-welcome {
-    text-align: center;
-    padding: 60px 20px;
-    align-self: center;
-}
-
-.pb-welcome h2 {
-    color: #fff;
-    font-size: 22px;
-    margin-bottom: 8px;
-}
-
-.pb-welcome p {
-    color: rgba(255,255,255,0.6);
-    font-size: 14px;
-    margin-bottom: 32px;
-}
+.pb-welcome { text-align: center; padding: 60px 20px; align-self: center; }
+.pb-welcome h2 { color: #fff; font-size: 22px; margin-bottom: 8px; }
+.pb-welcome p { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 32px; }
 
 .pb-examples {
     display: flex;
@@ -140,19 +109,22 @@
     font-size: 13px;
     text-align: left;
 }
-
-.pb-example:hover {
-    background: rgba(255,255,255,0.15);
-}
+.pb-example:hover { background: rgba(255,255,255,0.15); }
 
 /* === Message Bubbles === */
 
 .pb-msg {
     max-width: 75%;
-    padding: 14px 18px;
+    padding: 12px 16px;
     border-radius: 16px;
     line-height: 1.6;
     font-size: 14px;
+    animation: pbSlideIn 0.2s ease-out;
+}
+
+@keyframes pbSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .pb-msg-user {
@@ -164,26 +136,29 @@
 
 .pb-msg-assistant {
     align-self: flex-start;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.92);
     border-bottom-left-radius: 4px;
 }
 
-.pb-msg-label {
-    font-size: 11px;
+/* Message header: name + timestamp */
+
+.pb-msg-header {
+    font-size: 0.75rem;
     font-weight: 600;
     margin-bottom: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    opacity: 0.7;
 }
 
-.pb-msg-user .pb-msg-label {
-    color: rgba(255,255,255,0.7);
-}
+.pb-msg-user .pb-msg-header { color: rgba(255,255,255,0.8); }
+.pb-msg-assistant .pb-msg-header { color: #ffa07a; }
 
-.pb-msg-assistant .pb-msg-label {
-    color: #ffa07a;
+.pb-msg-time {
+    font-weight: 400;
+    margin-left: 6px;
+    font-size: 0.7rem;
+    opacity: 0.7;
 }
 
 /* === Message content (markdown) === */
@@ -193,35 +168,21 @@
     line-height: 1.7;
 }
 
-.pb-msg-content p {
-    margin: 0 0 10px 0;
-}
-
-.pb-msg-content p:last-child {
-    margin-bottom: 0;
-}
+.pb-msg-content p { margin: 0 0 0.75em 0; }
+.pb-msg-content p:last-child { margin-bottom: 0; }
 
 .pb-msg-content ul,
-.pb-msg-content ol {
-    margin: 8px 0;
-    padding-left: 20px;
-}
-
-.pb-msg-content li {
-    margin: 4px 0;
-}
-
+.pb-msg-content ol { margin: 0.5em 0; padding-left: 1.5em; }
+.pb-msg-content li { margin: 0.25em 0; }
 .pb-msg-content li > ul,
-.pb-msg-content li > ol {
-    margin: 4px 0;
-}
+.pb-msg-content li > ol { margin: 0.25em 0; }
 
 .pb-msg-content pre {
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.5);
     border-radius: 8px;
-    padding: 14px;
+    padding: 12px;
     overflow-x: auto;
-    margin: 12px 0;
+    margin: 0.75em 0;
     font-family: 'SF Mono', Monaco, 'Courier New', monospace;
     font-size: 13px;
     line-height: 1.5;
@@ -233,126 +194,108 @@
 }
 
 .pb-msg-content :not(pre) > code {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.12);
+    color: #ffa07a;
     padding: 2px 6px;
     border-radius: 4px;
-    font-size: 13px;
 }
 
 .pb-msg-user .pb-msg-content :not(pre) > code {
     background: rgba(255,255,255,0.2);
+    color: #fff;
 }
 
 .pb-msg-content blockquote {
     border-left: 3px solid #ffa07a;
-    margin: 12px 0;
-    padding: 8px 14px;
+    margin: 0.75em 0;
+    padding: 0.5em 1em;
     background: rgba(255,160,122,0.08);
     border-radius: 0 8px 8px 0;
 }
-
-.pb-msg-content blockquote p {
-    margin: 0;
-}
+.pb-msg-content blockquote p { margin: 0; }
 
 .pb-msg-content h1,
 .pb-msg-content h2,
 .pb-msg-content h3,
 .pb-msg-content h4 {
-    margin: 14px 0 6px 0;
+    margin: 1em 0 0.4em 0;
     font-weight: 600;
     line-height: 1.3;
 }
-
 .pb-msg-content h1 { font-size: 1.3em; }
 .pb-msg-content h2 { font-size: 1.2em; }
 .pb-msg-content h3 { font-size: 1.1em; }
-.pb-msg-content h4 { font-size: 1em; }
+.pb-msg-content h4 { font-size: 1em; color: #ffa07a; }
 
-.pb-msg-content a {
-    color: #ffa07a;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.pb-msg-content a:hover {
-    text-decoration: underline;
-}
-
-.pb-msg-user .pb-msg-content a {
-    color: #fff;
-    text-decoration: underline;
-}
+.pb-msg-content a { color: #ffa07a; text-decoration: none; font-weight: 500; }
+.pb-msg-content a:hover { text-decoration: underline; }
+.pb-msg-user .pb-msg-content a { color: #fff; text-decoration: underline; }
 
 .pb-msg-content table {
     border-collapse: collapse;
     width: 100%;
     font-size: 13px;
-    margin: 12px 0;
+    margin: 0.75em 0;
 }
-
 .pb-msg-content th,
 .pb-msg-content td {
     border: 1px solid rgba(255,255,255,0.15);
     padding: 6px 10px;
     text-align: left;
 }
-
-.pb-msg-content th {
-    background: rgba(255,255,255,0.08);
-    font-weight: 600;
-}
+.pb-msg-content th { background: rgba(255,255,255,0.08); font-weight: 600; }
 
 .pb-msg-content hr {
     border: none;
     border-top: 1px solid rgba(255,255,255,0.15);
-    margin: 12px 0;
+    margin: 0.75em 0;
 }
 
-.pb-msg-content strong {
-    font-weight: 600;
-}
+.pb-msg-content strong { font-weight: 600; }
 
-/* === Thinking indicator === */
+/* === Typing indicator === */
 
 .pb-typing {
     align-self: flex-start;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 16px;
     border-bottom-left-radius: 4px;
-    padding: 14px 18px;
+    padding: 12px 16px;
+    animation: pbSlideIn 0.2s ease-out;
+}
+
+.pb-typing-header {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffa07a;
+    margin-bottom: 6px;
+    opacity: 0.7;
+}
+
+.pb-typing-body {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.pb-typing-label {
-    color: #ffa07a;
-    font-weight: 600;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 .pb-typing-dots {
     display: flex;
-    gap: 4px;
+    gap: 5px;
 }
 
 .pb-typing-dots span {
-    width: 7px;
-    height: 7px;
+    width: 8px;
+    height: 8px;
     background: #ffa07a;
     border-radius: 50%;
     animation: pbBounce 1.4s infinite ease-in-out;
 }
-
 .pb-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
 .pb-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes pbBounce {
-    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
     40% { transform: scale(1); opacity: 1; }
 }
 
@@ -385,14 +328,8 @@
     max-height: 120px;
     transition: border-color 0.2s;
 }
-
-.pb-input-wrap textarea:focus {
-    border-color: rgba(255,255,255,0.4);
-}
-
-.pb-input-wrap textarea::placeholder {
-    color: rgba(255,255,255,0.3);
-}
+.pb-input-wrap textarea:focus { border-color: rgba(255,255,255,0.4); }
+.pb-input-wrap textarea::placeholder { color: rgba(255,255,255,0.3); }
 
 .pb-send-btn {
     background: #c0392b;
@@ -406,24 +343,12 @@
     white-space: nowrap;
     transition: background 0.2s, transform 0.1s;
 }
+.pb-send-btn:hover { background: #e74c3c; transform: translateY(-1px); }
+.pb-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-.pb-send-btn:hover {
-    background: #e74c3c;
-    transform: translateY(-1px);
-}
+/* === Report button === */
 
-.pb-send-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* === Report button (can't answer) === */
-
-.pb-report-offer {
-    align-self: flex-start;
-    max-width: 75%;
-}
+.pb-report-offer { align-self: flex-start; }
 
 .pb-report-btn {
     background: rgba(255, 160, 122, 0.15);
@@ -435,16 +360,8 @@
     font-size: 13px;
     font-weight: 600;
 }
-
-.pb-report-btn:hover {
-    background: rgba(255, 160, 122, 0.25);
-}
-
-.pb-report-btn:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
+.pb-report-btn:hover { background: rgba(255, 160, 122, 0.25); }
+.pb-report-btn:disabled { opacity: 0.6; cursor: default; }
 .pb-report-btn.pb-report-done {
     background: rgba(100, 200, 100, 0.15);
     border-color: rgba(100, 200, 100, 0.4);
@@ -455,34 +372,14 @@
 /* === Mobile === */
 
 @media (max-width: 768px) {
-    .pb-sidebar {
-        display: none;
-    }
-    .pb-messages {
-        padding: 16px;
-        gap: 12px;
-    }
-    .pb-msg {
-        max-width: 90%;
-        padding: 12px 14px;
-        font-size: 15px;
-    }
-    .pb-input-area {
-        padding: 12px 16px 16px;
-    }
-    .pb-input-wrap textarea {
-        font-size: 16px; /* Prevent iOS zoom */
-    }
-    .pb-typing {
-        padding: 12px 14px;
-    }
+    .pb-sidebar { display: none; }
+    .pb-messages { padding: 16px; gap: 12px; }
+    .pb-msg { max-width: 90%; font-size: 15px; }
+    .pb-input-area { padding: 12px 16px 16px; }
+    .pb-input-wrap textarea { font-size: 16px; }
 }
 
 @media (max-width: 480px) {
-    .pb-messages {
-        padding: 10px;
-    }
-    .pb-msg {
-        max-width: 95%;
-    }
+    .pb-messages { padding: 10px; }
+    .pb-msg { max-width: 95%; }
 }

@@ -1620,14 +1620,14 @@
   },
   "static/js/pilgrimbot.js": {
     "exports": [
-      "formatContent",
       "escapeHtml",
-      "sendMessage",
-      "processChunk",
-      "renderMarkdown",
-      "finishStream",
+      "parseMarkdown",
+      "formatTime",
       "appendMessage",
-      "showTyping"
+      "showTyping",
+      "removeTyping",
+      "sendMessage",
+      "processChunk"
     ]
   },
   "static/js/signal.js": {

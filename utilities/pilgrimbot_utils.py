@@ -90,13 +90,15 @@ def get_chat_history(user_id, chat_id, limit=MAX_HISTORY):
     """Load conversation history for a specific chat."""
     with db_cursor() as cur:
         cur.execute("""
-            SELECT role, content FROM pilgrim.pilgrimbot_conversations
+            SELECT role, content, created_at FROM pilgrim.pilgrimbot_conversations
             WHERE user_id = %s AND chat_id = %s
             ORDER BY created_at ASC
         """, (user_id, str(chat_id)))
         rows = cur.fetchall()
     # Return last N messages
-    return [{"role": r['role'], "content": r['content']} for r in rows[-limit:]]
+    return [{"role": r['role'], "content": r['content'],
+             "created_at": r['created_at'].isoformat() if r.get('created_at') else None}
+            for r in rows[-limit:]]
 
 
 def get_user_chats(user_id):
