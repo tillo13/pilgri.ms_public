@@ -1598,11 +1598,12 @@ def api_crew_mission_start():
         if not deduct_result.get('success'):
             return jsonify({'success': False, 'error': 'Failed to deduct shards'})
 
-    # Calculate duration
+    # Calculate duration and km to add
     distance = float(trail['distance_km'])
     duration = max(5, min(10, 5 + distance * 0.1))
+    km_to_add = 0.15 * duration  # 0.15 km per minute base rate
 
-    result = start_crew_mission(g.user_id, crew_member, destination, int(duration))
+    result = start_crew_mission(g.user_id, crew_member, destination, int(duration), km_to_add)
     return jsonify(result)
 
 
