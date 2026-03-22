@@ -113,8 +113,21 @@ def get_command_page_data(user_id):
         'image_history': image_history, 'original_image_url': original_image_url,
         'current_asset_id': current_asset_id, 'all_commanders': all_commanders,
         'scientist': scientist, 'has_research_station': has_research_station,
-        'scientist_research': scientist_research, 'base_coords': base_coords
+        'scientist_research': scientist_research, 'base_coords': base_coords,
+        'all_scientists': _get_all_scientists_with_bonuses(),
     }
+
+def _get_all_scientists_with_bonuses():
+    """Get all scientists with their research branch bonuses for the swap modal."""
+    from config import COLONY_SCIENTISTS
+    from config_tech import get_scientist_branch_bonuses
+    result = {}
+    for key, sci in COLONY_SCIENTISTS.items():
+        entry = dict(sci)
+        entry['_branch_bonuses'] = get_scientist_branch_bonuses(key)
+        result[key] = entry
+    return result
+
 
 def build_recent_activity(user_id, limit=10):
     """
@@ -1067,6 +1080,14 @@ def get_dashboard_page_data(user_id, auth):
     except Exception:
         pass
 
+    # Get completed ARIA bonds for dashboard display
+    completed_bonds = []
+    try:
+        from utilities.aria_bond_utils import get_bonds_for_display
+        completed_bonds = get_bonds_for_display(user_id)
+    except Exception as e:
+        logger.warning(f"Could not fetch completed bonds: {e}")
+
     return {
         'user': user, 'wallets': wallets, 'primary_wallet': primary_wallet,
         'total_balance': total_balance, 'primary_balance': total_balance, 'has_commander': has_commander,
@@ -1088,7 +1109,8 @@ def get_dashboard_page_data(user_id, auth):
         'live_rates': live_rates,
         'fleet_status': fleet_status,
         'fleet_debug': fleet_debug,
-        'welcome_back': welcome_back
+        'welcome_back': welcome_back,
+        'completed_bonds': completed_bonds,
     }
 
 def get_profile_page_data(user_id, auth):
@@ -1246,8 +1268,9 @@ def get_colony_page_data(user_id, auth):
     raw_vehicles = get_user_owned_vehicles(user_id)
     owned_vehicles = []
 
-    # Check which vehicles are currently on active expeditions
+    # Check which vehicles are currently on active expeditions + lifetime stats
     expedition_vehicles = {}
+    vehicle_lifetime_stats = {}
     with db_cursor() as cur:
         cur.execute("""
             SELECT id, vehicle_type, destination_name, distance_km, status,
@@ -1265,6 +1288,21 @@ def get_colony_page_data(user_id, auth):
                 'arrives_at': row['arrives_at'],
                 'returns_at': row['return_arrives_at'],
             }
+        # Lifetime stats per vehicle type (trips, km, finds)
+        cur.execute("""
+            SELECT e.vehicle_type, COUNT(e.id) as trips, COALESCE(SUM(e.distance_km), 0) as total_km,
+                   COUNT(ed.id) as total_finds
+            FROM pilgrim.expeditions e
+            LEFT JOIN pilgrim.expedition_discoveries ed ON ed.expedition_id = e.id
+            WHERE e.user_id = %s
+            GROUP BY e.vehicle_type
+        """, (user_id,))
+        for row in cur.fetchall():
+            vehicle_lifetime_stats[row['vehicle_type']] = {
+                'trips': row['trips'],
+                'total_km': float(row['total_km']),
+                'total_finds': row['total_finds'],
+            }
 
     for v in raw_vehicles:
         enriched = dict(v)
@@ -1280,6 +1318,12 @@ def get_colony_page_data(user_id, auth):
         enriched['max_level'] = vehicle_config.get('max_level', 1)
         enriched['fuel_cost_mult'] = level_stats.get('fuel_cost_mult', 1.0)
         enriched['cost_paid'] = level_stats.get('cost', 0)
+
+        # Lifetime stats
+        lifetime = vehicle_lifetime_stats.get(v['vehicle_type'], {})
+        enriched['lifetime_trips'] = lifetime.get('trips', 0)
+        enriched['lifetime_km'] = lifetime.get('total_km', 0)
+        enriched['lifetime_finds'] = lifetime.get('total_finds', 0)
 
         # Range/speed breakdown data
         lv1_stats = vehicle_config.get('levels', {}).get(1, {})
@@ -1360,9 +1404,9 @@ def get_colony_page_data(user_id, auth):
         partner_name = None
         if partner_id:
             with db_cursor() as cur:
-                cur.execute("SELECT commander_name FROM pilgrim.users WHERE id = %s", (partner_id,))
+                cur.execute("SELECT captain_name FROM pilgrim.users WHERE id = %s", (partner_id,))
                 row = cur.fetchone()
-                partner_name = row['commander_name'] if row else f"Captain {partner_id}"
+                partner_name = row['captain_name'] if row else f"Captain {partner_id}"
         aria_bonds.append({
             'id': b['id'],
             'landmark_name': b['landmark_name'],
@@ -1387,6 +1431,24 @@ def get_colony_page_data(user_id, auth):
     for v in owned_vehicles:
         v['effective_range_km'] = int(v.get('max_range_km', 0) * range_mult)
 
+    # Get income calculation with multipliers so colony UI shows effective rates
+    income_data = {}
+    try:
+        from utilities.infrastructure_utils import calculate_accumulated_income
+        income_calc = calculate_accumulated_income(user_id)
+        income_data = {
+            'effective_rate': income_calc.get('rate_breakdown', {}).get('actual_avg_rate', 0),
+            'base_rate': income_calc.get('rate_breakdown', {}).get('base_hourly_rate', 0),
+            'passive_income_mult': income_calc.get('bonuses_applied', {}).get('passive_income_mult', 1.0),
+            'passive_income_source': income_calc.get('bonuses_applied', {}).get('passive_income_source'),
+            'all_generation_mult': income_calc.get('bonuses_applied', {}).get('all_generation_mult', 1.0),
+            'passive_income_base': income_calc.get('bonuses_applied', {}).get('passive_income_base', 0),
+            'scientist_shard_mult': income_calc.get('bonuses_applied', {}).get('scientist_shard_mult', 1.0),
+            'theoretical_max_rate': income_calc.get('rate_breakdown', {}).get('theoretical_max_rate', 0),
+        }
+    except Exception as e:
+        logger.warning(f"Could not get income calc for colony: {e}")
+
     return {
         'user': auth.get_current_user(),
         'total_balance': total_balance,
@@ -1399,6 +1461,7 @@ def get_colony_page_data(user_id, auth):
         'now': datetime.now(),
         'discovery_count': discovery_count,
         'range_mult': range_mult,
+        'income_data': income_data,
     }
 
 
@@ -1519,6 +1582,13 @@ def get_depot_page_data(user_id, auth):
     depot_fog_radius = min(1000, 300 + depot_discovery_count * 50)
     depot_range_mult = round(depot_fog_radius / 300.0, 2)
 
+    # Build speed bonus from Logistics stat + upgrades
+    try:
+        from utilities.upgrades_utils import get_user_upgrade_effects
+        build_time_mult = get_user_upgrade_effects(user_id).get('build_time_mult', 1.0)
+    except Exception:
+        build_time_mult = 1.0
+
     return {
         'user': auth.get_current_user(), 'current_balance': total_balance, 'wallet_info': wallet_info,
         'pricing': get_pricing_info(user_id), 'has_commander': len(images) > 0,
@@ -1527,12 +1597,13 @@ def get_depot_page_data(user_id, auth):
         'shop_catalog': shop_catalog,
         'upgrade_catalog': upgrade_catalog,
         'building_items': building_items,
-        'operations_fee': OPERATIONS_FEE_BUFFER_DISPLAY,  # 1000 shards for blockchain gas
+        'operations_fee': OPERATIONS_FEE_BUFFER_DISPLAY,
         'concurrent_upgrades': concurrent_upgrades,
         'upgrade_cap': upgrade_cap,
         'active_builds': active_builds,
         'discovery_count': depot_discovery_count,
         'range_mult': depot_range_mult,
+        'build_time_mult': round(build_time_mult, 3),
     }
 
 

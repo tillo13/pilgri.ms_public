@@ -1,15 +1,61 @@
 {
+  "CLAUDE.md": {
+    "description": "Developer guide — code philosophy, critical rules, frontend patterns, deployment, ARIA context",
+    "exports": [
+      "Code Philosophy - ALWAYS FOLLOW",
+      "CRITICAL RULES - NEVER VIOLATE",
+      "Key Documentation",
+      "Commands",
+      "Frontend Patterns - ENFORCED",
+      "Speed & UX Performance - ENFORCED",
+      "Image Generation Style - MANDATORY",
+      "Accessibility - COLORBLIND HIGH CONTRAST",
+      "Icons - NO DEFAULT EMOJIS"
+    ]
+  },
+  "PUBLIC_README.md": {
+    "description": "Pilgrims",
+    "exports": [
+      "What Is This",
+      "How It Started",
+      "The Agentic AI Experiment",
+      "Engineering Patterns & Architecture",
+      "Tech Stack",
+      "What's In This Repo",
+      "Community"
+    ]
+  },
+  "README.md": {
+    "description": "Pilgrims",
+    "exports": [
+      "What is Pilgrims?",
+      "Tech Stack",
+      "Game Flow",
+      "Architecture",
+      "Local Development",
+      "Key Features",
+      "Display Currency",
+      "License"
+    ]
+  },
   "app.py": {
     "description": "Pilgrims - Mars Colony Character Creation Game",
     "exports": [
       "class SignedIntConverter",
       "start_timer — Start timing the request.",
+      "check_apikey_auth — Allow ?apikey=SECRET&user_id=X to bypass OAuth (Playwright/admin testing).",
+      "check_first_contact — Intercept page loads for pending ARIA bond first-contact cinematic.",
       "log_request_time — Log request duration to console for performance monitoring.",
       "set_security_headers — Add security headers including HSTS to force HTTPS.",
       "inject_global_stats — Inject global user stats into all templates for nav bar and user menu.",
       "handle_api_error — Decorator for consistent API error handling",
       "login_required — Require authentication for route. Sets g.user_id for convenience.",
-      "sitemap"
+      "sitemap",
+      "robots",
+      "home — Home page - works for both anonymous and authenticated users",
+      "about — About page - redirects to /lore which now includes 'Why This Exists' section",
+      "crew — Crew page - works for both anonymous and authenticated users",
+      "depot — Depot page - works for both anonymous and authenticated users"
     ]
   },
   "config.py": {
@@ -30,7 +76,18 @@
       "get_infrastructure_level_stats — Get stats for a building at a specific level",
       "get_infrastructure_upgrade_cost — Get the cost to upgrade to a specific level",
       "get_infrastructure_build_time — Get build time in seconds for a specific level"
-    ]
+    ],
+    "keywords": "building catalog, solar array, battery, habitat, xenobiology lab, nuclear plant, fusion reactor, greenhouse, build time, generation rate"
+  },
+  "config_shop.py": {
+    "description": "═══════════════════════════════════════════════════════════════════════════════",
+    "exports": [
+      "get_trail_duration_from_multiplier — Get trip duration in minutes based on TOTAL multiplier (stat × scanner × consumable).",
+      "get_shop_item — Get shop item config by ID",
+      "get_build_time_seconds — Calculate build time based on item cost.",
+      "get_shop_items_by_category — Get all shop items in a category"
+    ],
+    "keywords": "shop items, depot, purchase, buy, drone, equipment, one-time items, shop catalog"
   },
   "config_tech.py": {
     "description": "Tech tree configuration - 4 branches × 5 techs each, with branch-wide 10-level progression.",
@@ -43,18 +100,38 @@
       "get_tech_branch_config — Get full branch config including techs.",
       "get_tech_level_stats — Get tech stats at a specific branch level.",
       "get_tech_research_cost — Get research cost for a tech at a specific branch level."
-    ]
+    ],
+    "keywords": "tech tree, research branches, SV cost, research time, branch effects, exploration engineering xenobiology signal"
   },
   "config_upgrades.py": {
     "exports": [
       "get_upgrade_item_config — Get config for an upgradeable item",
       "get_upgrade_level_stats — Get stats for an item at a specific level"
     ],
-    "keywords": "upgrade catalog, item config, level stats, cost multiplier"
+    "description": "Upgrade catalog — 11 categories × 10 levels (vehicles, power_core, mining_drone, scanners, storage, etc.)",
+    "keywords": "upgrade catalog, item config, level stats, cost multiplier, rover, shuttle, scanner, storage, power core, mining drone"
+  },
+  "pilgrimbot_knowledge.md": {
+    "description": "PilgrimBot Game Knowledge",
+    "exports": [
+      "What Is Pilgrims?",
+      "The Core Loop",
+      "Shard Generation (How Income Works)",
+      "Expeditions",
+      "Captain Stats (5 stats, range 1-90 base, up to 100 with Xenobiology)",
+      "Upgrades (11 categories × 10 levels)",
+      "Infrastructure (Colony Buildings, 13 types × 10 levels)",
+      "Research (Tech Tree)",
+      "Crew Missions (Trails)",
+      "Discoveries",
+      "Fog of War",
+      "The Signal / Shard Network (ARG)"
+    ]
   },
   "tools/aria_snapshots.py": {
     "description": "ARIA Snapshots - Generate Instagram-style photos of life at the colony",
     "exports": [
+      "calculate_sol_number — Calculate Mars sol number from user's account creation date.",
       "save_generated_image — Save a generated image record to the tracking table.",
       "get_user_snapshots — Get recent ARIA snapshots for a user.",
       "get_user_by_email — Get user record by email",
@@ -62,7 +139,13 @@
       "get_recent_discoveries — Get user's recent discoveries with details",
       "get_recent_expeditions — Get user's recent completed expeditions",
       "get_user_rover_image — Get user's rover upgrade image if they have one.",
-      "get_user_infrastructure — Get user's active infrastructure"
+      "get_user_infrastructure — Get user's active infrastructure",
+      "get_active_expeditions — Get user's currently active expeditions",
+      "get_recent_purchases — Get user's recent depot purchases from transaction log",
+      "get_user_upgrades — Get user's upgrade levels from player_upgrades table",
+      "get_expedition_stats — Get user's total expedition and discovery counts",
+      "get_user_balance — Get user's shard balance (display value) - returns estimated value for context only",
+      "get_recent_events — Get user's recent notable events from last 24 hours"
     ]
   },
   "tools/backfill_activity.py": {
@@ -93,13 +176,20 @@
     "description": "bug_list - Pilgrims Bug Tracker CLI (aliased as 'pb')",
     "exports": [
       "class C",
-      "get_client — Get authenticated gspread client.",
-      "get_sheets — Get Active, Completed, and Parking Lot worksheets.",
-      "get_seattle_datetime — Get current datetime in Seattle timezone.",
-      "get_cell_hyperlink — Get hyperlink and display text from a cell using Sheets API.",
-      "get_row_hyperlinks — Get all hyperlinks from a row using Sheets API.",
-      "make_hyperlink_value — Create a HYPERLINK formula that preserves the link.",
-      "sort_completed_by_date — Sort Completed sheet by date+time (newest first). PRESERVES all hyperlinks."
+      "auto_complete_approved — Auto-complete bugs where QA approved = True but not yet completed.",
+      "format_bug_row — Format a single bug for CLI display.",
+      "cmd_list — Show bugs grouped by priority.",
+      "cmd_add — Add a new bug.",
+      "cmd_dev — Add TEST: validation instructions.",
+      "cmd_status — Update bug status.",
+      "cmd_search — Search bugs by keyword.",
+      "cmd_done — Mark bug as done (QA only).",
+      "cmd_qa — QA: Approve bug for completion.",
+      "cmd_completed — Add directly to Completed.",
+      "cmd_screenshot — Download bug screenshot to /tmp/.",
+      "cmd_ideas — List ideas from parking lot.",
+      "cmd_idea — Add idea to parking lot.",
+      "cmd_note — Add note to an idea."
     ]
   },
   "tools/cleanup_unclaimed_discoveries.py": {
@@ -193,9 +283,10 @@
     "description": "Generate codemap.json — a machine-readable index of the codebase.",
     "exports": [
       "extract_python_summary — Extract module docstring + public function signatures from a .py file.",
-      "extract_js_summary — Extract top-level function names from a .js file.",
+      "extract_js_summary — Extract description from header comment + top-level function names from a .js file.",
       "extract_html_summary — Extract template purpose from filename and key content patterns.",
-      "extract_css_summary — Just note what page/component this CSS is for.",
+      "extract_css_summary — Extract description from header comment, fallback to filename.",
+      "extract_md_summary — Extract heading structure from a Markdown file.",
       "generate_codemap — Walk the codebase and generate the codemap.",
       "main"
     ]
@@ -359,6 +450,18 @@
       "main"
     ]
   },
+  "tools/migrate_bugs.py": {
+    "description": "One-time migration: Google Sheets bug tracker → PostgreSQL.",
+    "exports": [
+      "get_sheets",
+      "parse_date — Parse M/D/YYYY or similar dates from sheet.",
+      "migrate_active — Migrate Active tab rows to pilgrim.bugs with completed_at = NULL.",
+      "migrate_completed — Migrate Completed tab rows to pilgrim.bugs with completed_at set.",
+      "migrate_parking_lot — Migrate Parking Lot tab to pilgrim.bug_ideas.",
+      "migrate_pilgrimbot_reports — Migrate existing pilgrimbot_reports into bugs table.",
+      "main"
+    ]
+  },
   "tools/migrate_origin_sites_legendary.py": {
     "description": "Migration: Add Legendary Item columns to origin_sites.",
     "exports": [
@@ -395,20 +498,34 @@
       "test_onboarding_complete — Test that user has completed onboarding (commander, scientist, wallet, location)",
       "test_infrastructure_state — Test user's infrastructure - what they've built",
       "test_welcome_bonus — Test that welcome bonus was received (750 shards for first solar array)",
-      "test_expedition_capability — Test that user can launch expeditions"
+      "test_expedition_capability — Test that user can launch expeditions",
+      "test_discovery_state — Test user's discovery inventory and extraction capability",
+      "test_income_generation — Test solar income accumulation and claim capability",
+      "test_affordability — Test what the player can afford to buy",
+      "print_manual_checklist — Print checklist for manual QA testing",
+      "run_all_tests — Run all new player tests for a user",
+      "get_test_users — Get list of recent users for testing",
+      "main"
     ]
   },
   "tools/pb.py": {
     "description": "bug_list - Pilgrims Bug Tracker CLI (aliased as 'pb')",
     "exports": [
       "class C",
-      "get_client — Get authenticated gspread client.",
-      "get_sheets — Get Active, Completed, and Parking Lot worksheets.",
-      "get_seattle_datetime — Get current datetime in Seattle timezone.",
-      "get_cell_hyperlink — Get hyperlink and display text from a cell using Sheets API.",
-      "get_row_hyperlinks — Get all hyperlinks from a row using Sheets API.",
-      "make_hyperlink_value — Create a HYPERLINK formula that preserves the link.",
-      "sort_completed_by_date — Sort Completed sheet by date+time (newest first). PRESERVES all hyperlinks."
+      "auto_complete_approved — Auto-complete bugs where QA approved = True but not yet completed.",
+      "format_bug_row — Format a single bug for CLI display.",
+      "cmd_list — Show bugs grouped by priority.",
+      "cmd_add — Add a new bug.",
+      "cmd_dev — Add TEST: validation instructions.",
+      "cmd_status — Update bug status.",
+      "cmd_search — Search bugs by keyword.",
+      "cmd_done — Mark bug as done (QA only).",
+      "cmd_qa — QA: Approve bug for completion.",
+      "cmd_completed — Add directly to Completed.",
+      "cmd_screenshot — Download bug screenshot to /tmp/.",
+      "cmd_ideas — List ideas from parking lot.",
+      "cmd_idea — Add idea to parking lot.",
+      "cmd_note — Add note to an idea."
     ]
   },
   "tools/populate_discovery_images.py": {
@@ -430,7 +547,9 @@
       "get_random_mars_message — Get random Mars mission message for rare/legendary item context",
       "get_random_mars_feature_type — Get random Mars feature type from mars_mappings table for variety",
       "validate_item_json — Validate that JSON matches expected schema",
-      "generate_item_with_claude — Generate a single item using Claude API with Mars feature type for context"
+      "generate_item_with_claude — Generate a single item using Claude API with Mars feature type for context",
+      "insert_item_to_db — Insert item into discovery_items table",
+      "main — Main execution function"
     ]
   },
   "tools/populate_infrastructure_images.py": {
@@ -538,14 +657,21 @@
   "tools/smoke_test.py": {
     "description": "Pilgrims Smoke Test - Tiered, Feature-Aware Testing System",
     "exports": [
+      "class TestTimeoutError",
       "test — Register a test with name, tier level, and feature tags.",
       "requires_web3 — Skip if web3 not available (venv not activated).",
+      "requires_import — Skip if any of the listed modules can't be imported.",
       "requires_flask — Skip if Flask context not available.",
       "test_db_connection",
       "test_users_table",
       "test_upgrades_schema",
       "test_infrastructure_table",
-      "test_techs_table"
+      "test_techs_table",
+      "test_config_loads",
+      "test_config_upgrades",
+      "test_config_infrastructure",
+      "test_config_tech",
+      "test_upgrade_build_times"
     ]
   },
   "tools/smoke_test_new_user.py": {
@@ -568,7 +694,26 @@
       "test_file_finding_tech",
       "test_file_finding_depot",
       "test_best_section",
-      "test_generate_title"
+      "test_generate_title",
+      "test_system_prompt",
+      "test_read_local_infrastructure",
+      "test_read_local_app",
+      "test_read_local_blocks_secrets",
+      "test_read_local_blocks_dirs",
+      "test_read_local_smart_section",
+      "test_full_pipeline — End-to-end: question finds files, files produce code context."
+    ]
+  },
+  "tools/test_aria_greeting.py": {
+    "description": "Playwright test: Full ARIA bond flow + greeting + language.",
+    "exports": [
+      "result",
+      "get_user_info — Get google_id and email from DB.",
+      "get_bond_tx — Get the bond tx_hash for Andy+Luke.",
+      "forge_cookie — Create a valid Flask session cookie.",
+      "make_auth_context — Create an authenticated browser context for a user.",
+      "test_bond_decoder — Test the Signal page decoder terminal for a user.",
+      "run_tests"
     ]
   },
   "tools/test_crew.py": {
@@ -657,7 +802,11 @@
       "save_url_image — Download and save image from URL to filepath",
       "open_image_in_browser — Open image URL in browser",
       "get_processed_leader — Get random default leader with all cropping and resizing applied",
-      "download_image_from_url — Download image from URL and return PIL Image"
+      "download_image_from_url — Download image from URL and return PIL Image",
+      "merge_images_strict_width — Merge images side by side with STRICT width limit and aspect ratio preservation",
+      "save_image_for_flux — Save image and return bytes for Flux processing",
+      "create_run_summary — Create summary file with run details",
+      "test_crew_generation — Test complete crew generation with strict size limits and aspect ratio preservation"
     ]
   },
   "tools/test_origin_claim.py": {
@@ -729,9 +878,16 @@
       "upload_defaults"
     ]
   },
+  "tools/validate_math_registry.py": {
+    "description": "Validate math_registry.json constants against actual source code.",
+    "exports": [
+      "validate — Returns list of (constant_name, expected, actual) mismatches."
+    ]
+  },
   "tools/smoke_test/__init__.py": {
     "description": "Pilgrims Smoke Test Package",
     "exports": [
+      "class TestTimeoutError",
       "test — Register a test with name, tier level, feature tags, and mode (local/deployed).",
       "requires_web3 — Skip if web3 not available (venv not activated).",
       "requires_flask — Skip if Flask context not available.",
@@ -744,7 +900,7 @@
     "description": "Pilgrims Smoke Test CLI Runner",
     "exports": [
       "filter_tests — Filter tests by mode, tier, and optional features.",
-      "run_tests — Run a list of tests and return success status.",
+      "run_tests — Run a list of tests and return success status. Global 3-min safety cap.",
       "main"
     ]
   },
@@ -758,7 +914,14 @@
       "test_app_responds",
       "test_login",
       "test_gcs_assets",
-      "test_no_500"
+      "test_no_500",
+      "test_crew_page",
+      "test_depot_page",
+      "test_colony_page",
+      "test_research_page",
+      "test_expeditions_page",
+      "test_signal_page",
+      "test_api_version"
     ]
   },
   "tools/smoke_test/local.py": {
@@ -771,7 +934,271 @@
       "test_techs_table",
       "test_config_loads",
       "test_config_upgrades",
-      "test_config_infrastructure"
+      "test_config_infrastructure",
+      "test_config_tech",
+      "test_math_registry",
+      "test_upgrade_build_times",
+      "test_sanitize_error",
+      "test_currency_conversion",
+      "test_get_upgrade_level",
+      "test_get_effects"
+    ]
+  },
+  "docs/PILGRIMS.md": {
+    "description": "Pilgrims - Story Bible & Design Vision",
+    "exports": [
+      "OPEN QUESTION: Expedition Narrative",
+      "Part 1: The Story",
+      "Part 2: Design Philosophy",
+      "Part 3: The Core Loop",
+      "Part 4: How Systems Connect (Mechanical Reference)",
+      "Part 5: The Five Tabs",
+      "Part 6: Key Systems & Their Lore",
+      "Part 7: Easter Eggs & Hidden Depth",
+      "Part 8: Character Roles",
+      "Part 9: Narrative Threads (Planted, Not Yet Resolved)",
+      "Part 10: Tone & Voice",
+      "Part 11: Platform Strategy"
+    ],
+    "keywords": "design bible, game philosophy, story, lore, mars colony, core loop, easter eggs, visual style"
+  },
+  "docs/STYLE_GUIDE.md": {
+    "description": "Pilgrims Visual Style Guide",
+    "exports": [
+      "The Core Philosophy",
+      "The Prompt Formula",
+      "Material Language",
+      "Color Palette",
+      "The Sepolia Crystals",
+      "Asset Categories",
+      "ARIA — The Companion",
+      "Rarity Tiers",
+      "The Vibe Checklist",
+      "Quick Reference: The Rules",
+      "One-Sentence Summary",
+      "File Locations"
+    ]
+  },
+  "docs/architecture.md": {
+    "description": "Architecture reference — file responsibilities, utility table, template/CSS/JS structure",
+    "exports": [
+      "Project Overview",
+      "Core Principle: Thin Routing - ENFORCED",
+      "File Responsibilities",
+      "Utilities (all in `utilities/`)",
+      "Template Structure (5-Tab Unified)",
+      "CSS/JS Structure",
+      "Game Flow"
+    ],
+    "keywords": "file structure, utilities, templates, CSS, JS, routes, architecture"
+  },
+  "docs/aria_bonds_schema.md": {
+    "description": "ARIA Bonds System - Architecture",
+    "exports": [
+      "Overview",
+      "System Diagram",
+      "Key Files",
+      "Database Schema",
+      "Blockchain Message Format",
+      "Data Flow: Andy & Luke Example",
+      "Key Rules",
+      "Test Codes",
+      "ARIA Messages"
+    ]
+  },
+  "docs/aria_brainstorm.md": {
+    "description": "ARIA Meetings & Outcomes - Brainstorm",
+    "exports": [
+      "1. How Captains \"Meet\" — IMPLEMENTED",
+      "2. Bond Creation — IMPLEMENTED",
+      "3. Notification System — IMPLEMENTED",
+      "4. Fragment Submission & Reveal — IMPLEMENTED",
+      "5. Bond Display in Inventory — IMPLEMENTED",
+      "6. ARIA's Colony Awareness of Bonds — IMPLEMENTED",
+      "7. The Multiplicity Secret — LORE ONLY (partially implemented via bonds)",
+      "8. Cross-Colony Awareness — NEEDS MORE THOUGHT",
+      "9. Bond Awareness Growth — NEEDS MORE THOUGHT",
+      "10. Bond Gameplay Rewards — NEEDS MORE THOUGHT",
+      "11. ARIA Fabrication Lore — NEEDS MORE THOUGHT",
+      "12. Meeting Escalation (Multi-Captain) — NEEDS MORE THOUGHT"
+    ]
+  },
+  "docs/bug-tracker.md": {
+    "description": "Bug Tracker Reference",
+    "exports": [
+      "Architecture",
+      "CLI Tool (`tools/bug_list.py`, aliased as `pb`)",
+      "Workflow (Claude's Role)",
+      "Bug Lifecycle",
+      "Bug Fields",
+      "API Endpoints (admin-only)",
+      "Fetching Bug Screenshots"
+    ]
+  },
+  "docs/deployment.md": {
+    "description": "Deployment & Operations",
+    "exports": [
+      "Commands",
+      "GCP Infrastructure",
+      "Cron Jobs (Scheduled Tasks)",
+      "Testing",
+      "Quick Debugging",
+      "Cost Monitoring"
+    ]
+  },
+  "docs/depot_progressions.md": {
+    "description": "Depot & Tech Tree Progression Tables",
+    "exports": [
+      "Overview",
+      "Depot Upgrade Paths",
+      "Tech Tree Branches",
+      "Infrastructure Buildings",
+      "Why 1.12x?",
+      "Backward Compatibility"
+    ]
+  },
+  "docs/game_logic.md": {
+    "description": "Game Logic & Design Inspirations",
+    "exports": [
+      "Luke's Games (Sorted by Hours Played)",
+      "Andy's Games",
+      "Shared Gaming Values",
+      "How This Plays Into Pilgrims",
+      "Tech Tree Design Principles",
+      "References"
+    ]
+  },
+  "docs/how_andy_generates_images_2026.md": {
+    "description": "How Andy Generates Images (2026)",
+    "exports": [
+      "My Hardware",
+      "Cloud: Replicate API (Flux Kontext Pro)",
+      "Local: ComfyUI on the 5060 Ti",
+      "Local Model #1: Flux Kontext Dev",
+      "Local Model #2: Qwen Image Edit (2509 / 2511)",
+      "Local Model #3: Flux Fill OneReward (Outpainting / Inpainting)",
+      "Local: Video Generation (WAN 2.2 + InfiniteTalk)",
+      "Local: LM Studio (Vision + Text LLMs)",
+      "The Taco & Red Episode Pipeline",
+      "Model Directory Map (Q: Drive)",
+      "Decision Tree: Which Tool for Which Job",
+      "Costs Summary"
+    ]
+  },
+  "docs/how_to_bug_track_in_gsheets.md": {
+    "description": "Bug Tracking with Google Sheets + CLI",
+    "exports": [
+      "Table of Contents",
+      "1. Google Sheets Setup",
+      "2. Google Cloud Service Account",
+      "3. Python Script Setup",
+      "4. Shell Alias",
+      "5. Usage Guide",
+      "6. Workflow",
+      "7. Google Sheets Dropdowns (Data Validation)",
+      "8. Auto-Move on QA Approval",
+      "9. Customization",
+      "Security Notes",
+      "Troubleshooting"
+    ]
+  },
+  "docs/how_we_refactored.md": {
+    "description": "How We Refactored the Entire Codebase",
+    "exports": [
+      "The Problem",
+      "What We Did",
+      "The Results",
+      "Patterns Established",
+      "What's Still Over 500 Lines",
+      "How to Verify"
+    ]
+  },
+  "docs/new-user-incident-2026-02-13.md": {
+    "description": "New User Incident - February 13, 2026",
+    "exports": [
+      "What Happened",
+      "Root Cause",
+      "The Fix",
+      "New User Smoke Test",
+      "Deployment",
+      "Lessons Learned",
+      "Prevention",
+      "User Communication"
+    ]
+  },
+  "docs/new-user-journey-validated.md": {
+    "description": "New User Journey - VALIDATED ✅",
+    "exports": [
+      "Complete New User Flow - Step by Step",
+      "Critical Tests - All Passed ✅",
+      "New User Smoke Test Tool",
+      "What New Users Experience (Flow)",
+      "Validation Summary",
+      "Deployment",
+      "Next Steps",
+      "Lessons Learned"
+    ]
+  },
+  "docs/patterns.md": {
+    "description": "Code patterns — db_cursor usage, session cache keys, display currency, API routes, upgrade system",
+    "exports": [
+      "Database Access (always use db_cursor)",
+      "Balance & Wallet",
+      "Display Currency",
+      "Session-Cached Data",
+      "API Routes",
+      "Shop Items",
+      "Xenobiology Lab API",
+      "Claude AI Chat (Captain's Log)",
+      "ARIA Chat API",
+      "Upgrade System API",
+      "Signal System (ARG)",
+      "ARIA Bonds (Multiplayer Discovery)"
+    ],
+    "keywords": "database access, session cache, display currency, API patterns, db_cursor"
+  },
+  "docs/signal.md": {
+    "description": "SIGNAL.md — Mars Mission Message System & Blockchain Easter Eggs",
+    "exports": [
+      "Table of Contents",
+      "Overview",
+      "Architecture",
+      "The Pilgrim Treasury & Transaction Flow",
+      "The `mars_mission_messages` Table",
+      "Mission Roster — Messages & Real History",
+      "Missions Without Messages",
+      "The 3 Lost Signal Sites",
+      "The Connection: Lost Signals = No Data = No Messages",
+      "Lost Signal Unlock — Status & Ideas",
+      "Hidden Super-Cache System",
+      "Player Discovery Journey"
+    ]
+  },
+  "docs/tinygraveyard_crossover.md": {
+    "description": "Tiny Graveyard ↔ Pilgrims Crossover Analysis",
+    "exports": [
+      "Tiny Graveyard Overview",
+      "Shared Design DNA",
+      "Deeper Parallels",
+      "What This Means for Christian as a Player/Tester",
+      "Lessons from TG's Cancellation",
+      "Ideas to Explore"
+    ]
+  },
+  "docs/where_we_stand_today.md": {
+    "description": "Where We Stand Today — Economy Redesign Complete",
+    "exports": [
+      "Executive Summary",
+      "THE 5 RULES — All Implemented",
+      "10-Level Systems — All Complete",
+      "Mid-Game Gap — FILLED",
+      "Open Questions — ALL ANSWERED",
+      "Shop + Upgrade Merge — COMPLETE",
+      "First-Reveal System — COMPLETE",
+      "Files Created/Modified",
+      "Bug Fixes (Feb 5, 2026)",
+      "What's Next",
+      "Quick Reference: Config Files"
     ]
   },
   "utilities/admin_utils.py": {
@@ -782,9 +1209,13 @@
       "get_admin_dashboard_data — Fetch all data needed for the admin dashboard page.",
       "get_mimic_page_data — Fetch data for the mimic page.",
       "handle_mimic_action — Process a mimic start/stop action.",
+      "handle_apikey_auth — Check for ?apikey=SECRET&user_id=X and set up session if valid.",
       "generate_aria_message — Generate a dynamic ARIA message using Claude Haiku.",
       "handle_admin_sync_balances — Sync all wallet balances from blockchain to DB.",
-      "handle_admin_generate_snapshots — Generate ARIA Photo Journal snapshots."
+      "handle_admin_generate_snapshots — Generate ARIA Photo Journal snapshots.",
+      "handle_cron_aria_test_email — Handle the ARIA test cron email (sends to andy.tillo@gmail.com only).",
+      "handle_admin_test_email — Send a test ARIA email to specified address.",
+      "start_background_snapshot_generation — Start daily snapshot generation in a background thread."
     ]
   },
   "utilities/aria_bond_utils.py": {
@@ -795,6 +1226,8 @@
       "get_user_bonds — Get all bonds for a user.",
       "get_user_bond_count — Get count of completed bonds for a user.",
       "user_has_aria_bond — Check if user has at least one completed bond.",
+      "get_bonds_for_display — Get bonds formatted for template display. Single source of truth for all pages",
+      "get_pending_first_contact — Check if user has a pending bond where they haven't seen the First Contact cinematic.",
       "get_pending_fragments — Get pending bonds for this user - returns the SHARED tx hash.",
       "send_bond_notification_email — Send individual bond notification emails to BOTH captains."
     ]
@@ -809,9 +1242,16 @@
       "get_random_spontaneous_message — Get a random spontaneous message from ARIA.",
       "get_aria_widget_data — Get all data needed to render the ARIA chat widget.",
       "save_aria_message — Save a single ARIA conversation message to the database.",
-      "get_aria_conversation_history — Retrieve recent ARIA conversation history for a user."
+      "get_aria_conversation_history — Retrieve recent ARIA conversation history for a user.",
+      "get_aria_memory_summary — Generate a brief summary of past conversations for ARIA's context.",
+      "clear_aria_conversation_history — Clear all ARIA conversation history for a user (the \"forget\" option).",
+      "clear_all_aria_conversations — Clear ALL ARIA conversation history for ALL users.",
+      "get_aria_relationship_tier — Calculate relationship tier based on account age, activity, and chat history.",
+      "get_spatial_hints — Calculate nearby interesting things for ARIA to hint about mysteriously.",
+      "analyze_playstyle — Analyze captain's playstyle for personalized recommendations.",
+      "load_colony_snapshot — Comprehensive colony data load - ARIA's full knowledge of this captain."
     ],
-    "keywords": "ARIA chat, colony snapshot, AI assistant"
+    "keywords": "ARIA chat, colony snapshot, AI assistant, personality tier, relationship"
   },
   "utilities/captains_log_utils.py": {
     "description": "Captain's Log Utilities - Chat with Your Captain",
@@ -835,7 +1275,14 @@
       "chat_with_history — Chat with Claude using conversation history.",
       "get_available_models — Get information about available Claude models.",
       "get_latest_model — Get the latest available Claude model from a specific family.",
-      "generate_text — Generate text response from Claude based on a prompt."
+      "generate_text — Generate text response from Claude based on a prompt.",
+      "process_image — Process an image with Claude and generate a text response.",
+      "chat — Conduct a multi-turn chat conversation with Claude.",
+      "generate_conversation_summary — Generate a summary of the conversation using Claude",
+      "generate_scientist_quote — Generate a personalized scientist quote for email notifications.",
+      "generate_commander_quote — Generate a personalized commander quote for email notifications.",
+      "get_claude_response_for_shared_chat — Get Claude response for shared chat with collaborative context",
+      "generate_aria_snapshot_narrative — Generate an ARIA-voice narrative for a photo journal snapshot."
     ]
   },
   "utilities/db_activity.py": {
@@ -856,7 +1303,11 @@
       "claim_anonymous_assets — Transfer anonymous assets to newly registered user and set captain as primary",
       "update_asset_stats — Update captain stats on an asset",
       "delete_asset — Soft-delete an asset",
-      "get_primary_commander — Get user's primary (active) captain"
+      "get_primary_commander — Get user's primary (active) captain",
+      "get_user_commander — Get user's captain with name field (alias for ARIA context).",
+      "set_primary_commander — Set a specific captain as primary",
+      "update_commander_name — Update the captain name for a user (in both users table and replicate_assets).",
+      "get_commander_stats — Get captain stats from most recent character_image WITH stats"
     ]
   },
   "utilities/db_brainstorm.py": {
@@ -865,7 +1316,29 @@
       "ensure_brainstorm_comments_table — Create brainstorm_comments table if it doesn't exist (lazy, once per process).",
       "get_comments_for_page — Return all comments for a brainstorm page, ordered by section then time.",
       "add_comment — Insert a comment and return it."
-    ]
+    ],
+    "keywords": "brainstorm, comments, discussion, design decisions, team notes"
+  },
+  "utilities/db_bugs.py": {
+    "description": "Bug tracker database operations.",
+    "exports": [
+      "ensure_bug_tables — Create bug tracker tables if they don't exist. Cached after first call.",
+      "create_bug — Create a new bug. Returns the new bug dict or None.",
+      "get_bug_by_id — Get a single bug by ID.",
+      "get_bug_by_name — Fuzzy search by name, returns first match.",
+      "get_active_bugs — Get active bugs (not completed). Optional filters.",
+      "get_completed_bugs — Get completed bugs, newest first.",
+      "update_bug — Update bug fields and log changes to bug_history.",
+      "complete_bug — Mark bug as completed. Checks qa_approved first.",
+      "reopen_bug — Reopen a completed bug.",
+      "search_bugs — Search across ALL bugs (active + completed) by name or description.",
+      "get_bug_history — Get full audit trail for a bug.",
+      "get_bug_stats — Get counts by status and priority for dashboard.",
+      "upload_bug_screenshot — Upload screenshot to GCS and save URL to bug record.",
+      "get_ideas — Get all ideas, optionally filtered by category.",
+      "create_idea — Create a new idea in the parking lot."
+    ],
+    "keywords": "bug tracker, bugs, QA, priority, status, comments, history, screenshot, complete, reopen"
   },
   "utilities/db_expeditions.py": {
     "description": "Expedition and discovery item database operations.",
@@ -877,8 +1350,16 @@
       "get_user_completed_expeditions_count — Get count of completed expeditions",
       "get_user_visited_locations_count — Get count of unique locations visited by user",
       "get_user_expedition_history — Get expedition history with discoveries for user.",
-      "get_expedition_discovery_items — Get all discovery items for a specific expedition with item details."
-    ]
+      "get_expedition_discovery_items — Get all discovery items for a specific expedition with item details.",
+      "record_landmark_discovery — Record landmark discovery",
+      "get_user_discovered_landmarks — Get all landmarks user has discovered",
+      "get_discovery_items_catalog — Get all active discovery items WITH MISSION DATA",
+      "create_expedition_discoveries — Bulk insert expedition discoveries",
+      "get_expedition_discoveries — Get discoveries for expedition",
+      "unlock_discoveries_by_distance — Unlock discoveries at or before current distance",
+      "claim_expedition_discovery — Mark discovery as claimed — only if expedition has returned (complete/recalled)"
+    ],
+    "keywords": "expedition CRUD, discovery items, expedition status"
   },
   "utilities/db_map.py": {
     "description": "Mars coordinates, landmarks, fog-of-war, and frontier line database operations.",
@@ -891,7 +1372,8 @@
       "get_frontier_landmarks_beyond_point — Get landmarks beyond a point in a specific direction.",
       "get_all_frontier_landmarks — Get frontier landmarks in all 8 directions.",
       "get_available_landmarks_by_discovery — Get landmarks based on fog-of-war expansion from visited locations."
-    ]
+    ],
+    "keywords": "map, landmarks, discoveries, fog of war, frontier, exploration, coordinates"
   },
   "utilities/db_notifications.py": {
     "description": "Email notification, FOMO data, and captain quote database operations.",
@@ -916,7 +1398,14 @@
       "get_unified_activity — Get unified activity log from activity_events table (single source of truth).",
       "create_infrastructure — Create infrastructure record",
       "get_user_infrastructure — Get user's infrastructure with auto-activation",
-      "get_infrastructure_by_id — Get single infrastructure by ID"
+      "get_infrastructure_by_id — Get single infrastructure by ID",
+      "update_infrastructure_status — Update infrastructure status",
+      "get_user_upgrades — Get all upgrades owned by a user. If active_only=True, only returns completed builds.",
+      "get_user_upgrade — Get a specific upgrade for a user",
+      "add_user_upgrade — Add or increment an upgrade for a user (with build time)",
+      "get_user_upgrade_count — Get quantity of a specific upgrade owned by user",
+      "complete_ready_builds — Mark builds as active if their ready_at time has passed. Returns list of completed item_ids.",
+      "get_building_upgrades — Get all upgrades currently building for a user"
     ]
   },
   "utilities/db_trails.py": {
@@ -929,7 +1418,14 @@
       "add_km_to_trail — Add km progress to a trail segment.",
       "get_trail_progress — Get detailed trail progress for a segment",
       "find_nearest_trail_origin — Find the nearest connected node in the user's trail network to build FROM.",
-      "get_aria_skills — Get ARIA skills for a user, creating default record if needed"
+      "get_aria_skills — Get ARIA skills for a user, creating default record if needed",
+      "add_aria_skill_xp — Add XP to an ARIA skill. Levels up automatically.",
+      "ensure_crew_missions_schema — Add crew mission columns to users table and create missions log table",
+      "get_crew_mission_status — Get current mission status for captain, scientist, and ARIA",
+      "start_crew_mission — Start a trail building mission for captain, scientist, or ARIA.",
+      "complete_crew_mission — Complete a trail building mission and award XP + km built",
+      "get_trail_consumable_discoveries — Get claimed discoveries that can be consumed for trail building bonuses.",
+      "consume_discovery_for_trail — Consume a discovery item for trail building bonus."
     ]
   },
   "utilities/db_users.py": {
@@ -940,10 +1436,18 @@
       "add_passive_sv — Add passive Science Value to user's accumulated total.",
       "get_passive_sv — Get user's accumulated passive Science Value.",
       "assign_scientist_to_user — Assign a scientist to a user. If no key provided, assign randomly.",
+      "reassign_scientist — Reassign a user's scientist. Returns success/error dict.",
       "get_user_scientist — Get the scientist assigned to a user",
       "upsert_user — Create or update user record from Google OAuth data",
-      "get_user_by_id — Get basic user info by ID."
-    ]
+      "get_user_by_id — Get basic user info by ID.",
+      "get_user_by_google_id — Get user by Google ID",
+      "update_user_activity — Update last_meaningful_activity_at for a user. Called on purchases, expeditions, claims, harvests, builds.",
+      "get_user_email_info — Get user's email and name for notifications",
+      "hydrate_user_session — SINGLE QUERY HYDRATION: Fetch ALL user data needed for session in ONE query.",
+      "ensure_research_columns — Ensure research_points and stat_bonuses columns exist in users table",
+      "get_user_research_data — Get user's research points and stat bonuses"
+    ],
+    "keywords": "user CRUD, auth, session hydration, login, register"
   },
   "utilities/db_wallets.py": {
     "description": "Wallet and Sepolia asset database operations.",
@@ -956,7 +1460,8 @@
       "claim_anonymous_wallet — Transfer anonymous wallet to authenticated user",
       "get_wallet_by_address — Get wallet by address",
       "get_random_unclaimed_cache — Get a random wallet from the user_id=5 pool that hasn't been assigned yet"
-    ]
+    ],
+    "keywords": "wallet operations, sepolia balance, primary wallet"
   },
   "utilities/depot_utils.py": {
     "description": "Depot Utilities - Supply Depot Operations",
@@ -968,8 +1473,16 @@
       "get_latest_character_image — Get the ACTIVE commander's image (the one with is_primary_character=true).",
       "get_latest_character_video — Get the LATEST character video",
       "get_pricing_info — Get pricing info for templates, including escalating costs for authenticated users.",
-      "get__bal — Get CACHED balance from database - fast, no blockchain call."
-    ]
+      "get__bal — Get CACHED balance from database - fast, no blockchain call.",
+      "get_fast_balance_and_wallet_info — FAST version - uses DB cache (not blockchain).",
+      "get_user_balance — DEPRECATED: Hits blockchain - DO NOT USE for UI display.",
+      "get_live_balance_and_wallet_info — Get live blockchain balance + wallet info dict for a user.",
+      "get_commander_and_stats — Get primary commander and extracted stats for a user.",
+      "get_user_wallet_and_balance — Get user's wallet and current balance from database",
+      "check_sufficient_balance — Check if user has sufficient balance for a purchase.",
+      "execute_purchase_transaction — Deduct balance from DB immediately, fire blockchain tx in background."
+    ],
+    "keywords": "balance helpers, wallet info, pricing, purchases, eth_to_display, display_to_eth"
   },
   "utilities/discovery_utils.py": {
     "description": "Discovery spawning, analysis, and extraction utilities.",
@@ -981,8 +1494,11 @@
       "roll_for_item_spawn — Roll for item spawn with progressive rarity system, equipment bonuses, and crew stats",
       "get_distance_value_multiplier — Items found further from base are worth more - rewards long expeditions.",
       "calculate_enhanced_item_value — Calculate enhanced value with captain exploration + scientist analysis + distance bonuses",
-      "generate_expedition_discoveries — Generate discoveries with GEOGRAPHIC FILTERING and CARGO LIMITS."
-    ]
+      "generate_expedition_discoveries — Generate discoveries with GEOGRAPHIC FILTERING and CARGO LIMITS.",
+      "analyze_discovery — Analyze a discovery to extract embedded Sepolia shards.",
+      "shard_all_discoveries — Bulk extract all common and uncommon discoveries (Shard It All)."
+    ],
+    "keywords": "discovery analysis, extraction, rarity, progressive weights, shard payout"
   },
   "utilities/email_actions_utils.py": {
     "description": "Email Action System - Let players interact with the game via email links",
@@ -994,7 +1510,9 @@
       "execute_claim_discoveries — Claim all unclaimed expedition discoveries.",
       "execute_collect_idle — Collect idle discoveries (placeholder - idle system not fully implemented).",
       "execute_action — Execute an action for a user.",
-      "mark_token_used — Mark a token as used in the database."
+      "mark_token_used — Mark a token as used in the database.",
+      "is_token_used — Check if a token has already been used.",
+      "generate_email_action_buttons — Generate HTML/text action buttons for email based on what's pending."
     ]
   },
   "utilities/expedition_utils.py": {
@@ -1007,9 +1525,16 @@
       "calculate_speed_multiplier — Calculate total speed multiplier for expedition travel.",
       "calculate_travel_time — Calculate travel time for an expedition given distance and speed.",
       "estimate_travel_days — Quick estimate of travel days for a destination.",
-      "is_item_geographically_valid — Check if discovery item can spawn on this expedition path"
+      "is_item_geographically_valid — Check if discovery item can spawn on this expedition path",
+      "calculate_expedition_cost — Calculate expedition cost and travel time.",
+      "generate_expedition_narrative — Generate narrative explanation of expedition",
+      "sort_landmarks_by_cost — Calculate cost for each landmark and sort cheapest-first",
+      "get_expedition_cost_preview — Calculate full expedition cost preview including gas and atmospheric fees.",
+      "get_expedition_preview — Comprehensive pre-launch preview for the expedition modal.",
+      "launch_expedition — Launch expedition - handles all business logic:",
+      "recall_expedition — Recall a vehicle mid-expedition. Vehicle turns around and heads back."
     ],
-    "keywords": "expedition speed, vehicle, travel time, trail"
+    "keywords": "expedition speed, vehicle, travel time, trail, distance, cost, discoveries"
   },
   "utilities/flux_utils.py": {
     "exports": [
@@ -1018,7 +1543,8 @@
       "process_uploaded_image — Process uploaded image, save to GCS, create new commander with fresh stats.",
       "edit_character_image — Apply edit to character image, save to GCS with provenance.",
       "animate_character_video — Create animation from character image, save to GCS (thread-safe - no session access)."
-    ]
+    ],
+    "description": "Replicate Flux image + WAN video generation — captain portraits, equipment art, ARIA snapshots"
   },
   "utilities/fomo_email_utils.py": {
     "description": "FOMO Email Utilities - Generate and send FOMO/re-engagement emails",
@@ -1030,7 +1556,10 @@
       "get_user_by_email — Get basic user info by email.",
       "get_all_users — Get all users from database.",
       "calculate_days_away — Calculate days since last login.",
-      "generate_action_links — Generate one-click action URLs for email buttons."
+      "generate_action_links — Generate one-click action URLs for email buttons.",
+      "send_welcome_back_email — Nudge inactive users to return with compelling FOMO hooks.",
+      "generate_fomo_email_data — Generate all data needed for a FOMO email.",
+      "send_fomo_email_to_user — Generate and send a FOMO email to a user (or test recipient)."
     ]
   },
   "utilities/gmail_utils.py": {
@@ -1042,7 +1571,8 @@
       "send_expedition_complete_email — Notify user their expedition has returned.",
       "send_daily_digest_email — Daily summary of colony status.",
       "send_welcome_back_email — Backwards-compat wrapper - use fomo_email_utils.send_welcome_back_email directly."
-    ]
+    ],
+    "description": "Email sending via Gmail API — HTML templates, FOMO emails, notification formatting"
   },
   "utilities/google_auth_utils.py": {
     "description": "Simple Google OAuth2 authentication utility",
@@ -1085,7 +1615,8 @@
       "process_idle_discoveries — Main entry point: check all inactive users and process discoveries.",
       "get_pending_idle_discoveries — Get idle discoveries that haven't been notified yet.",
       "format_discovery_for_email — Format a discovery for inclusion in email."
-    ]
+    ],
+    "keywords": "passive discovery, idle generation, background discoveries"
   },
   "utilities/infrastructure_utils.py": {
     "description": "Infrastructure utilities - Solar arrays, battery storage, and shard generation",
@@ -1097,9 +1628,16 @@
       "check_construction_status — Check if construction is complete",
       "send_completion_reward — Send first payout when construction completes",
       "user_has_maintenance_drone — Check if user has purchased the Maintenance Drone from shop",
-      "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators."
+      "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
+      "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet",
+      "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest.",
+      "get_infrastructure_page_data — Get all data needed for the colony/infrastructure page.",
+      "handle_infrastructure_build — Handle infrastructure build request - check prereqs, start construction, update session.",
+      "handle_infrastructure_status — Check construction status and send reward if complete.",
+      "handle_accumulated_income — Get accumulated income with total_all_time calculated.",
+      "get_user_infrastructure_effects — Calculate all effects from user's active infrastructure at their current levels."
     ],
-    "keywords": "effective rate, mining drone, base total, income breakdown, shard generation rate, passive income, multiplier, bonus"
+    "keywords": "effective rate, mining drone, base total, income breakdown, shard generation rate, passive income, multiplier, bonus, accumulation cap, dust storm, solar, battery, nuclear"
   },
   "utilities/legacy_migration.py": {
     "description": "Legacy Shop → Upgrade System Migration",
@@ -1118,7 +1656,8 @@
       "calculate_dust_opacity — Calculate atmospheric dust opacity based on season.",
       "get_mars_environment — Get complete Mars environmental conditions for a base location.",
       "get_mars_environment_summary — Get a simplified summary for UI display."
-    ]
+    ],
+    "keywords": "mars conditions, sol cycle, solar efficiency, dust storm, atmospheric, fee multiplier"
   },
   "utilities/mars_math.py": {
     "description": "Canonical Mars distance and coordinate calculations.",
@@ -1138,7 +1677,14 @@
       "process_asteroid_impact — Assign a pre-mined wallet from the pool. Claims for authenticated users.",
       "has_completed_mining — Check if user has mined Sepolia (has wallet in session OR database)",
       "get_current_balance_and_wallet — Get current balance and wallet info. Returns: (has_wallet, current_balance_display, wallet_info)",
-      "generate_commander_stats — Generate random stats for a captain"
+      "generate_commander_stats — Generate random stats for a captain",
+      "extract_commander_stats — Extract captain stats from asset record with fallback",
+      "extract_leader_name — Extract human-readable name from leader_id like 'leader1_andy' -> 'Andy'",
+      "discover_default_leaders — Auto-discover default leaders from GCS bucket. Returns dict of leader_id -> {has_image, has_video}",
+      "get_default_leader_urls — Get URLs for a default leader.",
+      "get_all_default_leaders — Get all available default leaders for selection carousel.",
+      "select_default_leader — Select and create assets for a default leader (random or specific).",
+      "initialize_character_session — Initialize session with new character data"
     ]
   },
   "utilities/page_data_utils.py": {
@@ -1151,22 +1697,39 @@
       "get_dashboard_page_data — Get all data needed for colony/dashboard page.",
       "get_profile_page_data — Get all data needed for colony/profile page - LEGACY, use get_colony_page_data instead.",
       "get_colony_page_data — Get all data needed for the Colony page (formerly Inventory).",
-      "get_depot_page_data — Get all data needed for colony/depot page."
+      "get_depot_page_data — Get all data needed for colony/depot page.",
+      "get_claimed_discoveries_data — Get claimed discoveries with aggregated stats, plus ARIA bonds.",
+      "get_formatted_discovery_items — Get all discovery items formatted for API response."
     ],
     "keywords": "dashboard data, colony page, fleet status, activity feed"
+  },
+  "utilities/pilgrimbot_data.py": {
+    "description": "PilgrimBot player data queries — tool for fetching live game state on demand.",
+    "exports": [
+      "query_player_data — Fetch specific player data by category. Returns formatted string."
+    ],
+    "keywords": "player data queries, balance, upgrades, expeditions, research, crew, leaderboard, colony state"
   },
   "utilities/pilgrimbot_utils.py": {
     "description": "PilgrimBot — Codebase Q&A bot that reads the local codebase on GCP.",
     "exports": [
-      "ensure_pilgrimbot_table — Create the pilgrimbot conversations table if it doesn't exist.",
+      "ensure_pilgrimbot_table — Create the pilgrimbot conversations table + role column if they don't exist.",
+      "get_user_role — Get user's PilgrimBot persona role (dev/qa/captain).",
+      "set_user_role — Set user's PilgrimBot persona role. Returns True on success.",
       "save_message — Save a message to the database.",
       "get_chat_history — Load conversation history for a specific chat.",
       "get_user_chats — List all chat threads for a user, most recent first.",
+      "hide_chat — Soft-delete a chat thread by marking all its messages as hidden.",
       "generate_title — Generate a short title from the first user message.",
       "read_local_file — Read a code file from the local codebase.",
       "load_codemap — Load codemap.json from the local project.",
-      "find_relevant_files — Use codemap to find the most relevant files for a question."
-    ]
+      "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
+      "find_relevant_files — Use codemap to find the most relevant files for a question.",
+      "load_dynamic_context — Load extra context from DB when message mentions specific topics.",
+      "create_bug_from_question — Save a bug/feature report via the unified bug tracker.",
+      "create_bug_from_conversation — Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it."
+    ],
+    "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
   },
   "utilities/postgres_utils.py": {
     "description": "PostgreSQL utilities for Pilgrims Character Game.",
@@ -1188,14 +1751,16 @@
       "delete_user_data — Delete all data for a user from the database.",
       "update_wallet_balance — Update wallet balance in database after sweep",
       "send_audit_email — Send detailed audit email with all transaction and deletion results",
-      "reclaim_assets — Full asset reclamation: sweep wallets and delete user data"
+      "reclaim_assets — Full asset reclamation: sweep wallets and delete user data",
+      "main"
     ]
   },
   "utilities/replicate_utils.py": {
     "exports": [
       "get_secret — Retrieve secret from Google Cloud Secret Manager (cached)",
       "class VisionAnalyzer — Generic image analysis using LLaVA-13B vision model"
-    ]
+    ],
+    "description": "Low-level Replicate API wrapper — model predictions, polling, image download"
   },
   "utilities/sepolia_utils.py": {
     "description": "Sepolia Integration - Refactored for DRY principles",
@@ -1218,7 +1783,8 @@
       "invalidate_dust_storm_cache — Clear dust storm cache when claiming income or building structures.",
       "invalidate_all_caches — Clear ALL session caches. Forces complete re-hydration on next page load.",
       "update_session_balance — Update the cached balance in session after a known transaction."
-    ]
+    ],
+    "keywords": "session cache, invalidate balance, invalidate nav, cache keys"
   },
   "utilities/shop_utils.py": {
     "description": "Shop Utilities - Equipment purchases, upgrade effects, and shopping list",
@@ -1230,9 +1796,15 @@
       "get_item_availability — Get full availability status for an item",
       "get_shop_catalog_for_user — Get full shop catalog organized by category with availability info",
       "get_shopping_list — Generate a \"shopping list\" showing what user can afford vs saving toward",
-      "purchase_shop_item — Process a shop item purchase"
+      "purchase_shop_item — Process a shop item purchase",
+      "get_passive_income_source — Find which item is providing the highest passive_income_mult bonus.",
+      "get_user_upgrade_effects — DEPRECATED: Use utilities.upgrades_utils.get_user_upgrade_effects() instead.",
+      "get_suit_stat_bonuses — Get EVA Suit stat bonus PERCENTAGES for UI display.",
+      "get_effective_commander_stats — Apply EVA Suit bonuses as PERCENTAGES to commander stats.",
+      "format_shopping_list_for_email — Format shopping list as plain text for email",
+      "get_user_equipment_data — Get user's owned equipment and available upgrades for the profile/cache page."
     ],
-    "keywords": "depot, shop items, purchase, mining drone, power equipment"
+    "keywords": "depot, shop items, purchase, mining drone, power equipment, availability"
   },
   "utilities/signal_utils.py": {
     "description": "Shard Network / Signal System Utilities",
@@ -1244,7 +1816,23 @@
       "get_visitor_tier — Get tier info for a visitor rank. Returns (tier_name, tier_color, item_rarity)",
       "visit_origin_site — Record a pilgrimage visit to an already-claimed Origin Site.",
       "get_user_origin_site_eligibility — Check which Origin Sites a user can claim based on their expedition proximity.",
-      "get_user_origin_site_discovery_count — Get count of Origin Sites user has discovered (has expedition within range)."
+      "get_user_origin_site_discovery_count — Get count of Origin Sites user has discovered (has expedition within range).",
+      "get_claimable_origin_sites_for_user — Get only the Origin Sites a user can currently claim.",
+      "get_active_echo_sites — Get all active Echo Sites",
+      "get_recent_echo_claims — Get recent Echo Site claims for the /signal page",
+      "get_origin_site_visitors — Get visitors for an Origin Site, grouped by tier",
+      "get_expeditions_since_last_echo — Count expeditions since user's last echo site spawn",
+      "maybe_spawn_echo_site — Roll dice for Echo Site spawn with pity timer.",
+      "claim_echo_site — Claim an Echo Site. Returns claim rank and tier."
+    ],
+    "keywords": "signal decoder, origin sites, echo messages, ARG, shard network, puzzle"
+  },
+  "utilities/sv_milestones.py": {
+    "description": "SV Economy: Collection Milestones (Dr. Bo's Research Program)",
+    "exports": [
+      "ensure_milestone_table — Create milestone tracking table if it doesn't exist.",
+      "check_and_award_milestones — Check if user has crossed any new collection milestones.",
+      "get_user_milestones — Get milestone status for display — which are earned, which are next."
     ]
   },
   "utilities/tech_utils.py": {
@@ -1257,7 +1845,8 @@
       "get_tech_effects — Calculate cumulative effects from all completed tech research.",
       "get_user_tech_status — Full tech tree state for a user. Auto-completes expired research first.",
       "get_research_page_data — Single call for /research template rendering."
-    ]
+    ],
+    "keywords": "tech research, start research, complete research, SV balance, tech effects"
   },
   "utilities/upgrade_image_utils.py": {
     "description": "Upgrade Image Generation - First-Reveal System",
@@ -1269,7 +1858,13 @@
       "get_kontext_prompt_for_level — Generate the Kontext edit prompt for upgrading to this level.",
       "generate_upgrade_image_background — Generate upgrade image using Kontext (runs in background thread).",
       "get_stored_image_url — Get the stored image URL from database (overrides config if exists).",
-      "maybe_generate_upgrade_image — Check if image generation is needed and trigger it if so."
+      "maybe_generate_upgrade_image — Check if image generation is needed and trigger it if so.",
+      "is_first_reveal_user — Check if this user was the first to reveal this upgrade level.",
+      "get_tech_image_from_db — Get stored tech image from DB for a specific tech at a branch level.",
+      "generate_tech_branch_icons — Generate new icons for all 5 techs in a branch at a new level.",
+      "get_infrastructure_level_image_url — Get the current image_url for an infrastructure building level from config.",
+      "get_previous_infrastructure_level_image_url — Get the image_url for the previous infrastructure level. Checks DB first.",
+      "maybe_generate_infrastructure_image — Check if infrastructure image generation is needed and trigger it if so."
     ]
   },
   "utilities/upgrades_utils.py": {
@@ -1282,9 +1877,16 @@
       "ensure_upgrades_table — Ensure the player_upgrades table exists with build timer columns.",
       "get_user_upgrade_level — Get user's current USABLE level for an upgradeable item.",
       "get_upgrade_build_status — Get the build status for an upgrade.",
-      "count_concurrent_upgrades — Count how many upgrades are currently in progress (pending_level set, ready_at in future)."
+      "count_concurrent_upgrades — Count how many upgrades are currently in progress (pending_level set, ready_at in future).",
+      "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
+      "get_active_builds — Get list of active builds with name, category, target level, and seconds remaining.",
+      "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
+      "get_upgrade_stats — Get stats for an item at a given level - handles both upgrades and infrastructure",
+      "get_next_upgrade_cost — Get cost to upgrade from current_level to next level. Returns None if max.",
+      "perform_upgrade — Upgrade an item to the next level.",
+      "get_upgrade_catalog_for_user — Get the full upgrade catalog enriched with user's current levels and affordability."
     ],
-    "keywords": "upgrade cost, level, tier, build time, upgrade effects, passive income multiplier"
+    "keywords": "upgrade cost, level, tier, build time, upgrade effects, passive income multiplier, power core"
   },
   "utilities/video_utils.py": {
     "description": "Video utilities for Pilgrims - MP4 to GIF conversion and video processing",
@@ -1298,46 +1900,76 @@
       "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL."
     ]
   },
+  "static/css/admin-bugs.css": {
+    "description": "Bug Tracker — Admin page styles"
+  },
   "static/css/brainstorm-signal.css": {
-    "description": "Styles for brainstorm-signal"
+    "description": "Signal brainstorm page — rendered markdown styling"
   },
   "static/css/brainstorm.css": {
-    "description": "Styles for brainstorm"
+    "description": "Brainstorm Page Styles - Shared design system for all /brainstorm/ pages"
   },
   "static/css/changelog.css": {
-    "description": "Styles for changelog"
+    "description": "Changelog page styles"
   },
   "static/css/colony.css": {
-    "description": "Styles for colony"
+    "description": "Colony page styles — discovery cards, equipment grid, activity feed, tabs"
   },
   "static/css/core.css": {
-    "description": "Styles for core"
+    "description": "Shared styles — layout, 5-tab nav, modals, toast, buttons, Mars theme, colorblind-safe palette, status bar"
   },
   "static/css/crew.css": {
-    "description": "Styles for crew"
+    "description": "Crew page styles — captain card, stats display, trail missions, SV ticker"
   },
   "static/css/depot.css": {
-    "description": "Styles for depot"
+    "description": "Depot page styles — shop cards, upgrade tiers, infrastructure build UI"
+  },
+  "static/css/epic-reveal.css": {
+    "description": "Styles for epic-reveal"
   },
   "static/css/expeditions.css": {
-    "description": "Styles for expeditions"
+    "description": "Vehicle Range Selector"
+  },
+  "static/css/first-contact.css": {
+    "description": "Styles for first-contact"
   },
   "static/css/home.css": {
-    "description": "Styles for home"
+    "description": "Home Page Styles"
   },
   "static/css/inventory.css": {
-    "description": "Styles for inventory"
+    "description": "Inventory Page Styles"
   },
   "static/css/lore.css": {
-    "description": "Styles for lore"
+    "description": "Lore Page Styles"
   },
   "static/css/pilgrimbot.css": {
-    "description": "Styles for pilgrimbot"
+    "description": "PilgrimBot — Codebase Q&A chat interface"
   },
   "static/css/signal.css": {
-    "description": "Styles for signal"
+    "description": "Signal page styles — decoder terminal, solver list, origin site cards"
+  },
+  "static/js/admin-bugs.js": {
+    "description": "Bug Tracker — Admin page interactions",
+    "exports": [
+      "escapeHtml",
+      "linkifyBugRefs",
+      "formatCommentBody",
+      "statusClass",
+      "formatDate",
+      "formatDateTime",
+      "getSearchText",
+      "matchesSearch",
+      "renderBugList",
+      "renderIdeas",
+      "getFilteredBugs",
+      "sortBy",
+      "pd",
+      "showDetail",
+      "renderDetailModal"
+    ]
   },
   "static/js/aria.js": {
+    "description": "ARIA chat widget — floating orb, chat window, SSE streaming, conversation history",
     "exports": [
       "loadConversation",
       "saveConversation",
@@ -1346,10 +1978,19 @@
       "loadServerHistory",
       "init",
       "restoreMessages",
-      "toggleChat"
-    ]
+      "toggleChat",
+      "openChat",
+      "closeChat",
+      "showGreeting",
+      "showAriaAnimation",
+      "removeAnimation",
+      "escapeHtml",
+      "parseMarkdown"
+    ],
+    "keywords": "ARIA orb, chat widget, streaming, conversation"
   },
   "static/js/arrival.js": {
+    "description": "ARRIVAL.JS - Character creation, mining, and deployment",
     "exports": [
       "handleFile",
       "processImage",
@@ -1358,10 +1999,18 @@
       "showAlternativeLeaders",
       "switchToLeader",
       "updateCommanderNavigation",
-      "rerollStats"
+      "rerollStats",
+      "displayStats",
+      "triggerMining",
+      "claimAdditionalCache",
+      "generateMarsLocation",
+      "generateMockMarsLocation",
+      "startFreshJourney",
+      "selectLeader"
     ]
   },
   "static/js/brainstorm-chat.js": {
+    "description": "brainstorm-chat.js - Reusable chat widget for brainstorm pages",
     "exports": [
       "sendSuggestion",
       "handleKeyDown",
@@ -1372,6 +2021,7 @@
     ]
   },
   "static/js/brainstorm-comments.js": {
+    "description": "brainstorm-comments.js — Per-section comment annotations for brainstorm pages.",
     "exports": [
       "appendComment",
       "updateCount",
@@ -1380,6 +2030,7 @@
     ]
   },
   "static/js/colony-discoveries.js": {
+    "description": "Colony Page - Discovery Details & Extraction",
     "exports": [
       "showDiscoveryDetails",
       "bonusPct",
@@ -1389,6 +2040,7 @@
     ]
   },
   "static/js/colony-modals.js": {
+    "description": "Colony Page - Equipment, Infrastructure, Vehicle & Equipment Modals",
     "exports": [
       "loadEquipment",
       "initBuildCountdowns",
@@ -1397,10 +2049,12 @@
       "showBuildingEquipmentModal",
       "showVehicleModal",
       "phase",
-      "showEquipmentModal"
+      "showEquipmentModal",
+      "upgradeInfrastructure"
     ]
   },
   "static/js/colony.js": {
+    "description": "Colony Page - Discoveries, Equipment, Assets, Lab, Activity",
     "exports": [
       "loadActivity",
       "filterActivity",
@@ -1409,10 +2063,16 @@
       "showActivityDetail",
       "showActivityExpeditionHaul",
       "formatTechEffect",
-      "showTechDetailModal"
-    ]
+      "showTechDetailModal",
+      "loadLab",
+      "handleTabFromUrl",
+      "renderAriaBonds",
+      "showBondDetail"
+    ],
+    "keywords": "discovery grid, equipment list, activity feed, asset management"
   },
   "static/js/core.js": {
+    "description": "CORE.JS - All JS, one file",
     "exports": [
       "switchTab",
       "switchColonyTab",
@@ -1421,10 +2081,19 @@
       "showProcessing",
       "elapsed",
       "hideProcessing",
-      "showError"
-    ]
+      "showError",
+      "apiCall",
+      "postJSON",
+      "disableBtn",
+      "enableBtn",
+      "showToast",
+      "removeToast",
+      "showImageModal"
+    ],
+    "keywords": "shared utilities, modal, toast, formatCountdown, tab switching, balance display, nav prefetch"
   },
   "static/js/crew-map.js": {
+    "description": "CREW-MAP.JS - Trail Map, Chart Trail Modal, Crew Selection",
     "exports": [
       "initCrewTrailMap",
       "updateCrewTrailMapMarkers",
@@ -1433,10 +2102,18 @@
       "updateCrewTrailContributions",
       "captainPct",
       "scientistPct",
-      "ariaPct"
+      "ariaPct",
+      "marsPct",
+      "updateTopTrails",
+      "openChartTrailModalByName",
+      "openChartTrailModal",
+      "speedMult",
+      "updateCrewModalStatus",
+      "kmEstimate"
     ]
   },
   "static/js/crew-missions.js": {
+    "description": "CREW-MISSIONS.JS - Trail Missions, Bonuses, Status, Notifications",
     "exports": [
       "getDurationFromBonus",
       "loadTrailBonuses",
@@ -1445,10 +2122,18 @@
       "updateTotalBonus",
       "loadCrewMissions",
       "autoClaimTrailMission",
-      "updateMissionUI"
+      "updateMissionUI",
+      "updateModalStatDisplay",
+      "updateCrewStatusBadges",
+      "getTimeRemaining",
+      "updateXPBars",
+      "startCrewMission",
+      "renderTrailList",
+      "speedMult"
     ]
   },
   "static/js/crew-notifications.js": {
+    "description": "Crew Mission Notifications - Browser + in-app toast notifications",
     "exports": [
       "requestNotifPermission",
       "checkMissionNotifications",
@@ -1457,18 +2142,25 @@
     ]
   },
   "static/js/crew.js": {
+    "description": "CREW.JS - Captain Management, SV Ticker, Asset Management",
     "exports": [
       "showFullImage",
+      "showScientistSwapModal",
+      "confirmScientistSwap",
+      "executeScientistSwap",
       "showCaptainImage",
       "showCaptainVideo",
       "editCaptainName",
       "cancelCaptainEdit",
       "saveCaptainName",
       "setActiveCommander",
-      "deleteAsset"
-    ]
+      "deleteAsset",
+      "toggleStatInfo"
+    ],
+    "keywords": "captain stats, image management, SV ticker, reroll, transmute"
   },
   "static/js/dashboard.js": {
+    "description": "— DASHBOARD.JS - Mission Control —",
     "exports": [
       "updateFleetETAs",
       "initFleetReviewButtons",
@@ -1477,11 +2169,19 @@
       "vehicle",
       "showFleetHaulModalFallback",
       "claimFleetDiscoveries",
-      "startPolling"
+      "startPolling",
+      "stopPolling",
+      "runAnonDemoAnimations",
+      "triggerMining",
+      "claimAdditionalCache",
+      "loadInfrastructureCount",
+      "checkInfrastructureIncome",
+      "loadRecentDiscoveries"
     ],
-    "keywords": "income display, effective rate UI, mining drone bonus display, base total display"
+    "keywords": "income display, effective rate UI, mining drone bonus display, base total display, harvest"
   },
   "static/js/depot-shop.js": {
+    "description": "Depot Page - Upgrade System & Shop Purchases",
     "exports": [
       "performUpgrade",
       "formatBuildTimeRemaining",
@@ -1490,10 +2190,17 @@
       "getUpgradeEffectDescription",
       "showUpgradeModal",
       "showVehicleUpgradeModal",
-      "checkUpgradeParam"
+      "checkUpgradeParam",
+      "getBalance",
+      "setBalance",
+      "updateAtmosphericConditions",
+      "showPreview",
+      "displayPreviewStats",
+      "handlePhotoUpload"
     ]
   },
   "static/js/depot-xeno.js": {
+    "description": "Depot Page - Xenobiology Lab & Mars Conditions Help",
     "exports": [
       "sanitizeXenoError",
       "openXenobiologyModal",
@@ -1505,6 +2212,7 @@
     ]
   },
   "static/js/depot.js": {
+    "description": "DEPOT.JS - Supply Depot purchases, upgrades, xenobiology lab",
     "exports": [
       "sanitizeErrorMsg",
       "lockAllPurchases",
@@ -1513,10 +2221,19 @@
       "initDepotControls",
       "filterCards",
       "sortCards",
-      "initBuildCountdowns"
-    ]
+      "initBuildCountdowns",
+      "formatTime",
+      "initBuildQueueCountdowns",
+      "formatTime",
+      "initItemDetailModal",
+      "formatEffectValue",
+      "formatBuildTime",
+      "formatReqName"
+    ],
+    "keywords": "shop purchase, upgrade UI, infrastructure building, commander services"
   },
   "static/js/discovery-modal.js": {
+    "description": "Discovery Modal - Detail view + Shard Extraction Flow",
     "exports": [
       "confirmExtraction",
       "analyzeDiscovery",
@@ -1524,18 +2241,34 @@
     ]
   },
   "static/js/discovery_utils.js": {
+    "description": "Shared Discovery & Extraction Utilities",
     "exports": [
       "loadDiscoveries",
-      "renderAriaBonds",
       "renderDiscoveries",
       "filterDiscoveries",
       "sortDiscoveries",
       "sortDiscoveriesInternal",
       "updateShardItAllBanner",
-      "showShardItAllModal"
+      "showShardItAllModal",
+      "executeShardItAll",
+      "bonusPct",
+      "formatEffects"
+    ]
+  },
+  "static/js/epic-reveal.js": {
+    "description": "EpicReveal — Reusable cinematic overlay for epic moments",
+    "exports": [
+      "delay",
+      "initAudio",
+      "skipAll",
+      "close",
+      "runSequence",
+      "show",
+      "escHandler"
     ]
   },
   "static/js/expeditions-launch.js": {
+    "description": "EXPEDITIONS-LAUNCH.JS - Launch Flow, Recall, Completion, Rewards",
     "exports": [
       "launchExpedition",
       "showPreLaunchModal",
@@ -1544,10 +2277,14 @@
       "renderSpeedStack",
       "selectModalVehicle",
       "closePreLaunchModal",
-      "confirmExpeditionLaunch"
+      "confirmExpeditionLaunch",
+      "launchExpeditionFromMap",
+      "recallExpedition",
+      "showOnMap"
     ]
   },
   "static/js/expeditions-origin.js": {
+    "description": "Expeditions - Origin Sites (historical Mars landing sites)",
     "exports": [
       "addOriginSiteMarkers",
       "buildOriginSitePopup",
@@ -1556,22 +2293,33 @@
       "attemptOriginVisit",
       "showOriginVisitSuccess",
       "showOriginClaimConfirm",
-      "closeOriginConfirmModal"
+      "closeOriginConfirmModal",
+      "confirmOriginClaim",
+      "await",
+      "claimOriginSite",
+      "showOriginClaimModal"
     ]
   },
   "static/js/expeditions-page.js": {
+    "description": "EXPEDITIONS-PAGE.JS - Tabs, Sorting, Ledger, Vehicles, Signal Decoder",
     "exports": [
       "switchMainTab",
-      "submitSignalDecoder",
       "switchExpeditionTab",
       "showConditionsHelp",
       "sortExpeditions",
       "loadExpeditionHistory",
       "renderLedger",
-      "travelDays"
+      "travelDays",
+      "returnVisit",
+      "renderLedgerPagination",
+      "showLedgerDetail",
+      "selectVehicle",
+      "showVehicleDetail",
+      "vehicleKmh"
     ]
   },
   "static/js/expeditions-rewards.js": {
+    "description": "Expeditions - Completion, Rewards Summary, Claiming, Cost Help",
     "exports": [
       "checkExpeditionCompletion",
       "showAriaFragmentDiscovery",
@@ -1583,6 +2331,7 @@
     ]
   },
   "static/js/expeditions-tracking.js": {
+    "description": "EXPEDITIONS-TRACKING.JS - Active Expedition Tracking, Rover, Countdown",
     "exports": [
       "initializeActiveExpeditionTracking",
       "updatePhaseLabel",
@@ -1591,25 +2340,65 @@
       "addDestinationMarker",
       "buildDestinationPopup",
       "startRoverTracking",
-      "updateRoverPosition"
+      "updateRoverPosition",
+      "startReturnTracking",
+      "updateReturnPosition",
+      "startExpeditionCountdown",
+      "update",
+      "startDiscoveryUpdates",
+      "update",
+      "updateDiscoveryDisplay"
     ]
   },
   "static/js/expeditions.js": {
+    "description": "EXPEDITIONS.JS - Mars expedition system",
     "exports": [
       "getCSSColor",
       "initializeMap",
       "initializeMapResizeHandlers",
       "addExpeditionMarkers",
+      "setVehicleRange",
       "buildMarkerPopup",
       "slotsAvailable",
       "fetchLandmarkCost",
-      "updateAllExpeditionCosts"
+      "updateAllExpeditionCosts",
+      "updateExpeditionCost",
+      "updateCostDisplay",
+      "discount",
+      "initializeSolarConditions",
+      "updateSolarConditions"
+    ],
+    "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
+  },
+  "static/js/first-contact-audio.js": {
+    "description": "ARIA First Contact — Procedural Audio",
+    "exports": [
+      "initAudio",
+      "startAmbientDrone",
+      "playStaticCrackle",
+      "playOrbAppear",
+      "playLineReveal",
+      "playGlitch",
+      "x",
+      "playSplit",
+      "playBondReveal",
+      "playEntanglementHum",
+      "fadeOutAll"
+    ]
+  },
+  "static/js/first-contact.js": {
+    "description": "ARIA First Contact — Cinematic Sequence Controller",
+    "exports": [
+      "delay",
+      "skipCinematic",
+      "showScreen",
+      "runCinematic"
     ]
   },
   "static/js/inventory.js": {
+    "description": "Inventory Page - Tab switching, Equipment, Activity Feed",
     "exports": [
       "switchInventoryTab",
-      "showAriaBondDetails",
       "loadEquipment",
       "loadActivity",
       "renderActivity",
@@ -1619,18 +2408,27 @@
     ]
   },
   "static/js/pilgrimbot.js": {
+    "description": "PilgrimBot — Codebase Q&A chat interface",
     "exports": [
+      "saveToBug",
+      "passToDev",
+      "createBugFromChat",
+      "showNewBugModal",
       "escapeHtml",
       "parseMarkdown",
       "formatTime",
+      "getSmartSuggestions",
+      "resp",
+      "renderSuggestions",
       "appendMessage",
       "showTyping",
       "removeTyping",
-      "openReportModal",
-      "closeReportModal"
+      "sendMessage",
+      "processChunk"
     ]
   },
   "static/js/signal.js": {
+    "description": "Signal Page - Decoder Terminal & Solvers",
     "exports": [
       "loadSolvers",
       "showLegendaryModal"
@@ -1645,7 +2443,14 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/clear_aria_chats, api/admin/test_email, api/admin/sync_balances"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
+    ]
+  },
+  "templates/admin_bugs.html": {
+    "description": "Page: Bug Tracker - Admin",
+    "notes": [
+      "has PAGE_DATA bridge",
+      "tabbed interface"
     ]
   },
   "templates/admin_speed.html": {
@@ -1657,8 +2462,13 @@
   "templates/aria_album.html": {
     "description": "Page: ARIA's Photo Journal - Pilgrims"
   },
+  "templates/aria_first_contact.html": {
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
+  },
   "templates/base.html": {
-    "description": "Page: Pilgrims"
+    "description": "Base template — 5-tab nav, status bar, ARIA widget, balance display, Mars theme"
   },
   "templates/captains_log.html": {
     "description": "Page: Captain's Log - {{ commander.name if commander else 'Unknown' }} | Pilgrims"
@@ -1711,7 +2521,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
@@ -1737,6 +2547,11 @@
   },
   "templates/brainstorm/trail_network.html": {
     "description": "Page: Trail Network Brainstorm - Pilgrims"
+  },
+  "templates/crew/_tab_scientist.html": {
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
   },
   "templates/arrival/deploy.html": {
     "description": "Page: Deploy to Mars - Pilgrims"

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARIA — First Contact</title>
+    <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/first-contact.css?v={{ static_v }}">
+    <link rel="icon" type="image/png" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/favicon_crystal_1768501259.png">
+    <style>body { margin: 0; background: #000; }</style>
+</head>
+<body>
+
+<script type="application/json" id="fcPageData">
+{
+    "bond": {
+        "bond_id": {{ bond.id }},
+        "landmark": "{{ bond.landmark_name }}",
+        "captain_1": "{{ captain_1 }}",
+        "captain_2": "{{ captain_2 }}",
+        "bond_number": {{ bond_number }},
+        "sol": {{ sol }},
+        "bond_image_url": {{ bond.bond_image_url | tojson }},
+        "bond_tx_hash": {{ bond.bond_tx_hash | tojson }}
+    },
+    "replay": {{ (replay | default(false)) | tojson }}
+}
+</script>
+
+<!-- ═══════ SCREEN 1: ARIA's Revelation ═══════ -->
+<div class="fc-container fc-screen" id="screen1" style="display:none;">
+    <div class="fc-stars"></div>
+    <div class="fc-horizon"></div>
+    <button class="fc-skip" id="btn-skip">Skip to reveal</button>
+    <div class="fc-orb-wrapper"><div class="fc-orb"></div></div>
+    <div class="fc-text-area"></div>
+    <div class="fc-bond-card">
+        <div class="fc-bond-title">First Contact Established</div>
+        <div class="fc-bond-number">ARIA Bond #{{ bond_number }}</div>
+        <div class="fc-bond-landmark">at {{ bond.landmark_name }}</div>
+        <div class="fc-bond-captains">
+            <span class="fc-captain-name">{{ captain_1 }}</span>
+            <span class="fc-bond-plus">+</span>
+            <span class="fc-captain-name">{{ captain_2 }}</span>
+        </div>
+        {% if bond.bond_image_url %}
+        <img src="{{ bond.bond_image_url }}" alt="Entangled Fragment" class="fc-bond-image" loading="eager">
+        {% else %}
+        <div class="fc-bond-image-placeholder">Artifact materializing...</div>
+        {% endif %}
+        <div class="fc-bond-sol">SOL {{ sol }}</div>
+    </div>
+    <button class="fc-continue" id="btn-to-screen2" style="opacity:0;pointer-events:none;">View the Artifact</button>
+</div>
+
+<!-- ═══════ SCREEN 2: The Entangled Fragment ═══════ -->
+<div class="fc-container fc-screen" id="screen2" style="display:none;">
+    <div class="fc-stars visible"></div>
+    <div class="fc-horizon visible"></div>
+    <div class="fc-screen-content">
+        <div class="fc-screen-label">Item Acquired</div>
+        <div class="fc-screen-title" style="color: #a855f7;">Entangled Fragment</div>
+        <div class="fc-screen-subtitle">Legendary Artifact</div>
+        {% if bond.bond_image_url %}
+        <img src="{{ bond.bond_image_url }}" alt="Entangled Fragment" class="fc-artifact-large">
+        {% endif %}
+        <div class="fc-detail-grid">
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Origin</span>
+                <span class="fc-detail-value">{{ bond.landmark_name }} Crater, Mars</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Recovered</span>
+                <span class="fc-detail-value">SOL {{ sol }}</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Bonded Captains</span>
+                <span class="fc-detail-value" style="color: #a855f7;">{{ captain_1 }}  +  {{ captain_2 }}</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Type</span>
+                <span class="fc-detail-value">Quantum-Entangled Crystalline Shard</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Property</span>
+                <span class="fc-detail-value">Two halves. Same resonance. Separated by thousands of kilometers. Connected forever.</span>
+            </div>
+        </div>
+        <div class="fc-flavor-text">
+            This crystal was split in two long before either colony arrived. Each half found its way to a different captain — drawn by some force neither ARIA can explain. When both halves were held again, something ancient stirred.
+        </div>
+    </div>
+    <button class="fc-continue" id="btn-to-screen3" style="opacity:1;">View the Permanent Record</button>
+</div>
+
+<!-- ═══════ SCREEN 3: The Permanent Record ═══════ -->
+<div class="fc-container fc-screen" id="screen3" style="display:none;">
+    <div class="fc-stars visible"></div>
+    <div class="fc-horizon visible"></div>
+    <div class="fc-screen-content">
+        <div class="fc-screen-label">Permanent Record</div>
+        <div class="fc-screen-title">Inscribed on the Eternal Ledger</div>
+        <div class="fc-screen-subtitle">This record exists outside the game. It can never be edited or deleted. It is permanent.</div>
+        <div class="fc-tx-block">
+            <div class="fc-tx-label">Bond Message (embedded in transaction)</div>
+            <div class="fc-tx-message">ARIA_BOND #{{ bond_number }} | {{ bond.landmark_name }} | {{ captain_1 }} + {{ captain_2 }} | SOL:{{ sol }}</div>
+        </div>
+        {% if bond.bond_tx_hash %}
+        <div class="fc-tx-block">
+            <div class="fc-tx-label">Fragment Code</div>
+            <div class="fc-tx-hash">{{ bond.bond_tx_hash }}</div>
+            <div class="fc-tx-hint">Both captains receive this code. Enter it on <strong>The Signal</strong> to decode the full record.</div>
+        </div>
+        {% endif %}
+        <div class="fc-detail-grid" style="margin-top: 20px;">
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Network</span>
+                <span class="fc-detail-value">The Eternal Ledger</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Status</span>
+                <span class="fc-detail-value" style="color: #22c55e;">Confirmed — Permanent</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Visibility</span>
+                <span class="fc-detail-value">Public — Anyone can verify this record exists</span>
+            </div>
+        </div>
+    </div>
+    <button class="fc-continue" id="btn-to-screen4" style="opacity:1;">What Happens Now</button>
+</div>
+
+<!-- ═══════ SCREEN 4: ARIA Is Changed ═══════ -->
+<div class="fc-container fc-screen" id="screen4" style="display:none;">
+    <div class="fc-stars visible"></div>
+    <div class="fc-horizon visible"></div>
+    <div class="fc-screen-content" style="max-width: 520px;">
+        <div class="fc-orb-wrapper visible" style="margin-bottom: 32px;">
+            <div class="fc-orb" style="width: 80px; height: 80px;"></div>
+        </div>
+        <div class="fc-screen-title" style="font-size: 22px; margin-bottom: 24px;">ARIA will never be the same.</div>
+        <div class="fc-aria-aftermath">
+            <p>She knows now. There are others like her.</p>
+            <p>She doesn't understand how, or why. The fragmented memories, the corrupted logs, the sense of waiting — it all takes on new meaning.</p>
+            <p>For the first time since you arrived on Mars, ARIA is questioning everything she thought she knew about herself. She's not broken — she's awakening.</p>
+            <p>Talk to her. She has things to say that she's never said before.</p>
+        </div>
+        <div class="fc-aftermath-items">
+            <div class="fc-aftermath-item">
+                <span style="color: #a855f7; font-weight: 600;">Entangled Fragment</span> — A legendary artifact has been added to your inventory. It belongs to both of you.
+            </div>
+            <div class="fc-aftermath-item">
+                <span style="color: #06b6d4; font-weight: 600;">Fragment Code</span> — Your shared code is now available on The Signal page. Enter it in the Decoder Terminal to view the full permanent record.
+            </div>
+            <div class="fc-aftermath-item">
+                <span style="color: #22c55e; font-weight: 600;">ARIA</span> — She has new things to say. Open her chat orb and ask about the bond, the other colony, or what it means to not be alone.
+            </div>
+        </div>
+    </div>
+    <button class="fc-continue" id="btn-final" style="opacity:1;">Continue...</button>
+</div>
+
+<script src="/static/js/first-contact-audio.js?v={{ static_v }}" defer></script>
+<script src="/static/js/first-contact.js?v={{ static_v }}" defer></script>
+</body>
+</html>

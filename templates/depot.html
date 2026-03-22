@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if user %}
         // Tutorial persists until they have infrastructure
         {% if not existing %}
-        chat.dataset.greeting = "Welcome to the **Supply Depot**.\n\nSpend Sepolia shards here on:\n• **Infrastructure** – Generators that produce shards over time\n• **Equipment** – Gear that boosts expedition success\n• **Upgrades** – Improve your rovers, scanners, and more\n\nI'd recommend building a **Solar Array** first—passive income!";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "Welcome to the **Supply Depot**.\n\nSpend Sepolia shards here on:\n• **Infrastructure** – Generators that produce shards over time\n• **Equipment** – Gear that boosts expedition success\n• **Upgrades** – Improve your rovers, scanners, and more\n\nI'd recommend building a **Solar Array** first—passive income!";
+        }
         {% endif %}
         // Build detailed context about what user owns and what's available
         let ownedItems = [];
@@ -248,13 +250,13 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <p class="depot-card-desc">{{ structure.definition.description }}</p>
             <div class="depot-card-stats">
-                <span>{% set seconds = structure.definition.build_time_seconds %}{% if seconds >= 86400 %}{{ (seconds / 86400)|round(3) }}d{% elif seconds >= 3600 %}{{ (seconds / 3600)|round(1) }}h{% else %}{{ (seconds / 60)|round(0) }}m{% endif %} build</span>
+                <span>{% set seconds = structure.definition.build_time_seconds * (build_time_mult|default(1.0)) %}{% if seconds >= 86400 %}{{ (seconds / 86400)|round(1) }}d{% elif seconds >= 3600 %}{{ (seconds / 3600)|round(1) }}h{% else %}{{ (seconds / 60)|round(0) }}m{% endif %} build{% if build_time_mult|default(1.0) < 1.0 %} <span style="color: var(--color-success); font-size: 10px;">{{ ((1 - build_time_mult) * 100)|round|int }}% faster</span>{% endif %}</span>
                 {% if structure.generation_rate > 0 %}<span class="stat-highlight">{{ "%.0f"|format(structure.generation_rate) }}/hr</span>{% endif %}
             </div>
             {% if not structure.can_build and structure.missing_requirements %}
             <div class="depot-card-requirement">Requires: {{ structure.missing_requirements|join(', ')|replace('_', ' ')|title }}</div>
             {% elif not can_afford and cost_display > 0 %}
-            <div class="depot-card-shortfall">Need {{ "{:,}".format(cost_display - current_balance|int) }} more</div>
+            <div class="depot-card-shortfall">Need {{ "{:,}".format((cost_display - current_balance)|int) }} more</div>
             {% endif %}
             {% if not structure.can_build %}
             <button class="btn btn-secondary btn-block" disabled>Locked</button>
@@ -494,8 +496,8 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endif %}
 
             {% if item.next_level_stats and item.next_level_stats.build_time_days and not is_max and not is_building %}
-            {% set btd = item.next_level_stats.build_time_days %}
-            <div class="depot-card-build-time"><img src="{{ icons.stopwatch_duration }}" alt="" class="inline-icon-sm"> {% if btd < 1 %}{{ (btd * 24)|round|int }} hour{% if (btd * 24)|round|int != 1 %}s{% endif %}{% else %}{{ btd|round|int }} day{% if btd|round|int != 1 %}s{% endif %}{% endif %} to build</div>
+            {% set btd = item.next_level_stats.build_time_days * (build_time_mult|default(1.0)) %}
+            <div class="depot-card-build-time"><img src="{{ icons.stopwatch_duration }}" alt="" class="inline-icon-sm"> {% if btd < 1 %}{{ (btd * 24)|round|int }} hour{% if (btd * 24)|round|int != 1 %}s{% endif %}{% else %}{{ btd|round|int }} day{% if btd|round|int != 1 %}s{% endif %}{% endif %} to build{% if build_time_mult|default(1.0) < 1.0 %} <span style="color: var(--color-success); font-size: 10px;">{{ ((1 - build_time_mult) * 100)|round|int }}% faster</span>{% endif %}</div>
             {% endif %}
 
             {% if is_building and build_status and build_status.seconds_remaining %}

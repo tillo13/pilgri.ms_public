@@ -17,6 +17,9 @@
             </div>
             <h2 class="text-xl font-bold mt-12 mb-4">{{ scientist.name }}</h2>
             <div class="text-sm text-sepolia">{{ scientist.specialty }} Specialist</div>
+            <button onclick="showScientistSwapModal()" style="margin-top: 10px; background: transparent; border: 1px solid var(--border-default); color: var(--text-secondary); padding: 6px 16px; border-radius: 8px; font-size: 11px; cursor: pointer;">
+                Reassign Scientist
+            </button>
         </div>
 
         <!-- Research Activity Panel -->
@@ -130,6 +133,90 @@
         </div>
     </div>
 </div>
+
+<!-- Scientist Swap Modal -->
+<div id="scientist-swap-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; overflow-y: auto;">
+    <div style="max-width: 750px; margin: 40px auto; padding: 24px; background: var(--bg-primary); border-radius: 16px; border: 1px solid var(--border-default);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 18px;">Reassign Colony Scientist</h3>
+            <button onclick="document.getElementById('scientist-swap-modal').style.display='none'" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; padding: 10px; background: rgba(224,96,48,0.05); border: 1px solid rgba(224,96,48,0.15); border-radius: 8px;">
+            Your research branch bonuses will change with your new scientist. Active research continues uninterrupted.
+        </div>
+        <div id="scientist-swap-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+            {% for key, sci in all_scientists.items() %}
+            <div class="scientist-swap-card {% if scientist and scientist.key == key %}current{% endif %}"
+                 data-key="{{ key }}" onclick="{% if not scientist or scientist.key != key %}confirmScientistSwap('{{ key }}', '{{ sci.name }}'){% endif %}"
+                 style="padding: 12px; border-radius: 10px; border: 2px solid {% if scientist and scientist.key == key %}var(--color-sepolia){% else %}var(--border-default){% endif %}; cursor: {% if scientist and scientist.key == key %}default{% else %}pointer{% endif %}; transition: all 0.15s; background: {% if scientist and scientist.key == key %}rgba(138,112,219,0.08){% else %}var(--bg-secondary){% endif %};">
+                {% if sci.image_url %}
+                <img src="{{ sci.image_url }}" alt="{{ sci.name }}" style="width: 100%; height: 120px; object-fit: cover; object-position: center 20%; border-radius: 8px; margin-bottom: 8px;" loading="lazy">
+                {% endif %}
+                <div style="font-size: 13px; font-weight: 700; margin-bottom: 2px;">{{ sci.name }}{% if scientist and scientist.key == key %} <span style="font-size: 10px; color: var(--color-sepolia);">(current)</span>{% endif %}</div>
+                <div style="font-size: 11px; color: var(--color-sepolia); margin-bottom: 6px;">{{ sci.specialty }}</div>
+                {% set s = sci.stats %}
+                <div style="font-size: 10px; color: var(--text-secondary); display: grid; grid-template-columns: 1fr 1fr; gap: 2px;">
+                    <span>Nav: {{ s.navigation }}</span><span>Anl: {{ s.analysis }}</span>
+                    <span>Geo: {{ s.geology }}</span><span>Eng: {{ s.engineering }}</span>
+                </div>
+                {% set bonuses = sci.get('_branch_bonuses', {}) %}
+                {% if bonuses %}
+                <div style="font-size: 9px; color: var(--color-success); margin-top: 4px;">
+                    {% for branch, info in bonuses.items() %}{{ branch|title }}: {{ info.label }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div id="scientist-swap-error" style="display: none; color: var(--color-error); font-size: 12px; margin-top: 10px; text-align: center;"></div>
+    </div>
+</div>
+
+<!-- Scientist Comparison Modal (side-by-side) -->
+<div id="scientist-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; overflow-y: auto;">
+    <div style="max-width: 600px; margin: 60px auto; padding: 24px; background: var(--bg-primary); border-radius: 16px; border: 1px solid var(--color-mars);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 16px;">Confirm Reassignment</h3>
+            <button onclick="document.getElementById('scientist-confirm-modal').style.display='none'" style="background: none; border: none; color: var(--text-secondary); font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: start;">
+            <!-- Current scientist -->
+            <div style="text-align: center;">
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 8px;">Current</div>
+                <img id="compare-current-img" src="" alt="" style="width: 100%; max-width: 200px; border-radius: 10px; border: 2px solid var(--color-sepolia); margin-bottom: 8px;">
+                <div id="compare-current-name" style="font-size: 14px; font-weight: 700;"></div>
+                <div id="compare-current-specialty" style="font-size: 11px; color: var(--color-sepolia); margin-bottom: 8px;"></div>
+                <div id="compare-current-stats" style="font-size: 11px; color: var(--text-secondary);"></div>
+                <div id="compare-current-bonuses" style="font-size: 10px; color: var(--color-success); margin-top: 6px;"></div>
+            </div>
+            <!-- Arrow -->
+            <div style="display: flex; align-items: center; padding-top: 80px; font-size: 24px; color: var(--color-mars);">&#9654;</div>
+            <!-- New scientist -->
+            <div style="text-align: center;">
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--color-mars); margin-bottom: 8px;">New</div>
+                <img id="compare-new-img" src="" alt="" style="width: 100%; max-width: 200px; border-radius: 10px; border: 2px solid var(--color-mars); margin-bottom: 8px;">
+                <div id="compare-new-name" style="font-size: 14px; font-weight: 700;"></div>
+                <div id="compare-new-specialty" style="font-size: 11px; color: var(--color-sepolia); margin-bottom: 8px;"></div>
+                <div id="compare-new-stats" style="font-size: 11px; color: var(--text-secondary);"></div>
+                <div id="compare-new-bonuses" style="font-size: 10px; color: var(--color-success); margin-top: 6px;"></div>
+            </div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-secondary); text-align: center; margin-top: 16px;">Research branch bonuses will change. Any pending SV will be auto-recorded first.</div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+            <button onclick="document.getElementById('scientist-confirm-modal').style.display='none'" style="padding: 10px 24px; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); cursor: pointer; font-size: 13px;">Cancel</button>
+            <button id="scientist-confirm-btn" onclick="executeScientistSwap()" style="padding: 10px 24px; background: var(--color-mars); border: none; border-radius: 8px; color: white; cursor: pointer; font-size: 13px; font-weight: 600;">Reassign</button>
+        </div>
+    </div>
+</div>
+
+<!-- Scientist data for comparison modal -->
+<script type="application/json" id="scientistData">
+{
+    "current": {% if scientist %}{"key": "{{ scientist.key }}", "name": "{{ scientist.name }}", "specialty": "{{ scientist.specialty }}", "image_url": "{{ scientist.image_url }}", "stats": {"navigation": {{ scientist.stats.navigation if scientist.stats else 0 }}, "analysis": {{ scientist.stats.analysis if scientist.stats else 0 }}, "geology": {{ scientist.stats.geology if scientist.stats else 0 }}, "engineering": {{ scientist.stats.engineering if scientist.stats else 0 }}}, "bonuses": {{ scientist.get('_branch_bonuses', {})|tojson }} }{% else %}null{% endif %},
+    "all": {{ all_scientists|tojson }}
+}
+</script>
+
 {% else %}
 <div class="dashboard-card text-center p-20">
     <div class="text-4xl mb-12"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-xl"></div>

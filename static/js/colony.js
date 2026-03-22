@@ -301,7 +301,10 @@ function handleTabFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     const itemId = params.get('item');
-    if (tab && ['discoveries', 'equipment', 'assets', 'lab', 'activity'].includes(tab)) switchColonyTab(tab);
+    // Support both ?tab=assets and #base hash (alias: base → assets)
+    const hashTab = window.location.hash.replace('#', '');
+    const effectiveTab = tab || ({'base': 'assets'}[hashTab] || hashTab) || null;
+    if (effectiveTab && ['discoveries', 'equipment', 'assets', 'lab', 'activity'].includes(effectiveTab)) switchColonyTab(effectiveTab);
     if (itemId) {
         setTimeout(() => {
             const allCards = document.querySelectorAll('.asset-card.building');
@@ -369,7 +372,8 @@ function showBondDetail(index) {
 
     if (bond.bond_tx_hash) {
         body += `<div class="mm-section-label">--- CRYSTAL FRAGMENT ---</div>`;
-        body += `<div class="mm-kv"><span class="mm-kv-label">Fragment Code</span><span class="mm-kv-value" style="font-family:monospace;font-size:11px;word-break:break-all;color:var(--color-sepolia);">${bond.bond_tx_hash}</span></div>`;
+        body += `<div class="mm-kv"><span class="mm-kv-label">Fragment Code</span><span class="mm-kv-value" style="font-family:monospace;font-size:11px;word-break:break-all;color:var(--color-sepolia);cursor:pointer;" onclick="navigator.clipboard.writeText('${bond.bond_tx_hash}');showToast('Fragment code copied!')" title="Click to copy">${bond.bond_tx_hash}</span></div>`;
+        body += `<div style="font-size:11px;color:var(--text-muted);padding:4px 0;text-align:center;">Click the code to copy it, then paste it into The Signal's Decoder Terminal</div>`;
         if (isPending && !bond.my_submitted) {
             body += `<div style="margin-top:12px;text-align:center;"><a href="/signal" class="btn btn-purple btn-small">Enter Fragment on The Signal &rarr;</a></div>`;
         }
@@ -377,7 +381,11 @@ function showBondDetail(index) {
 
     if (bond.status === 'bonded') {
         body += `<div class="mm-section-label">--- WHAT'S NEXT ---</div>`;
-        body += `<div style="font-size:12px;color:var(--text-secondary);line-height:1.5;padding:8px 0;">This bond is permanently recorded. Both captains share a crystal resonance at ${bond.landmark_name}. Check the <a href="/brainstorm/aria-meetings" style="color:var(--color-sepolia);">ARIA Meetings brainstorm</a> for ideas on what's coming next.</div>`;
+        body += `<div style="font-size:12px;color:var(--text-secondary);line-height:1.5;padding:8px 0;">This bond is permanently recorded. Both captains share a crystal resonance at ${bond.landmark_name}. Ask ARIA about it — she has new things to say.</div>`;
+        body += `<div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap;">`;
+        body += `<a href="/aria-first-contact/replay" class="btn btn-purple btn-small">Replay First Contact</a>`;
+        body += `<a href="/signal" class="btn btn-small" style="background:rgba(6,182,212,0.15);color:#06b6d4;border:1px solid rgba(6,182,212,0.3);">Enter Fragment on Signal</a>`;
+        body += `</div>`;
     }
 
     MarsModal.show({

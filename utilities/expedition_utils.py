@@ -420,7 +420,8 @@ def calculate_expedition_cost(
     upgrade_effects: dict = None,
     is_return_visit: bool = False,
     scientist_nav_mult: float = 1.0,
-    trail_speed_mult: float = 1.0
+    trail_speed_mult: float = 1.0,
+    vehicle_type: str = None
 ) -> dict:
     """
     Calculate expedition cost and travel time.
@@ -450,6 +451,11 @@ def calculate_expedition_cost(
     terrain_speed_mult = terrain_info.get('speed_mult', 1.0)
     terrain_cost_mult = terrain_info.get('cost_mult', 1.0)
     terrain_reason = terrain_info['reason']
+
+    # Drones fly — terrain doesn't slow them (but still affects cost for landing/takeoff)
+    if vehicle_type == 'drone':
+        terrain_speed_mult = 1.0
+        terrain_reason = 'Aerial (no terrain impact)'
 
     # Distance tier (for narrative)
     if distance_km < 50:
@@ -929,8 +935,10 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     vehicle_estimates = []
     for v in vehicles:
         speed_mult = v['speed_mult']
+        # Drones fly — terrain doesn't slow them
+        v_terrain_mult = 1.0 if v['vehicle_type'] == 'drone' else terrain_speed_mult
         # Base speed without trail (trail is calculated per-segment)
-        base_speed_for_segments = speed_mult * logistics_speed_bonus * scientist_nav_mult * terrain_speed_mult
+        base_speed_for_segments = speed_mult * logistics_speed_bonus * scientist_nav_mult * v_terrain_mult
 
         # Use segmented travel time calculation
         segment_result = calculate_segmented_travel_time(
@@ -1000,8 +1008,8 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         'trail_speed_mult': round(effective_trail_mult, 2),
         'trail_level': trail_data['trail_level'],
         'trail_trip_count': trail_data['trip_count'],
-        'terrain_speed_mult': terrain_speed_mult,
-        'terrain_name': terrain_name,
+        'terrain_speed_mult': 1.0 if (primary_vehicle and primary_vehicle.get('vehicle_type') == 'drone') else terrain_speed_mult,
+        'terrain_name': 'Aerial (no terrain impact)' if (primary_vehicle and primary_vehicle.get('vehicle_type') == 'drone') else terrain_name,
         'total_mult': primary_vehicle['total_speed_mult'] if primary_vehicle else 1.0,
         'effective_speed_kmh': primary_vehicle['effective_speed_kmh'] if primary_vehicle else BASE_SPEED_KM_PER_HOUR,
         # Segment compounding info
@@ -1121,11 +1129,13 @@ def launch_expedition(
     scientist = get_user_scientist(user_id)
     sci_stats = scientist.get('stats', {}) if scientist else {}
     sci_nav_mult = 1.0 + (sci_stats.get('navigation', 0) / 150.0)
+    # Drones fly — terrain doesn't slow them
     terrain_mult = 1.0
-    for terrain_type, info in TERRAIN_MODIFIERS.items():
-        if terrain_type.lower() in destination_type.lower():
-            terrain_mult = info.get('speed_mult', 1.0)
-            break
+    if vehicle_type != 'drone':
+        for terrain_type, info in TERRAIN_MODIFIERS.items():
+            if terrain_type.lower() in destination_type.lower():
+                terrain_mult = info.get('speed_mult', 1.0)
+                break
     # Trail speed bonus for this route
     from utilities.postgres_utils import get_user_trail
     trail_data = get_user_trail(user_id, destination_name)
@@ -1288,12 +1298,11 @@ def launch_expedition(
             remaining_capacity = max(0, storage_capacity - current_unclaimed)
 
             if remaining_capacity == 0:
-                logger.warning(f"⚠️ Storage full: {current_unclaimed}/{storage_capacity} discoveries. New finds will be lost.")
-                # Cap cargo capacity to 0 so no new discoveries are generated
-                cargo_capacity = 0
+                logger.warning(f"⚠️ Storage full: {current_unclaimed}/{storage_capacity} discoveries. Limiting to minimum cargo.")
+                cargo_capacity = min(cargo_capacity, 3)  # Still get SOME finds
             elif remaining_capacity < cargo_capacity:
                 logger.info(f"📦 Storage nearly full: {current_unclaimed}/{storage_capacity}. Limiting cargo to {remaining_capacity}.")
-                cargo_capacity = remaining_capacity
+                cargo_capacity = max(3, remaining_capacity)  # Never below 3
 
             all_items = get_discovery_items_catalog()
             nearby_features = get_nearest_mars_landmarks(
@@ -1362,7 +1371,7 @@ def launch_expedition(
             except Exception as e:
                 logger.error(f"❌ Background blockchain tx error for expedition {expedition_id}: {e}")
 
-        thread = threading.Thread(target=do_blockchain_tx, daemon=True)
+        thread = threading.Thread(target=do_blockchain_tx)
         thread.start()
 
         # --- Return immediately ---
@@ -1447,13 +1456,14 @@ def recall_expedition(user_id: int, expedition_id: int) -> dict:
     trail_data = get_user_trail(user_id, expedition['destination_name'])
     trail_speed_mult = TRAIL_SPEED_MULTIPLIERS.get(trail_data['trail_level'], 1.0)
 
-    # Terrain speed modifier
+    # Terrain speed modifier (drones fly — terrain doesn't slow them)
     dest_type = expedition.get('destination_type', '')
     terrain_speed_mult = 1.0
-    for terrain_type, info in TERRAIN_MODIFIERS.items():
-        if terrain_type.lower() in dest_type.lower():
-            terrain_speed_mult = info.get('speed_mult', 1.0)
-            break
+    if expedition.get('vehicle_type') != 'drone':
+        for terrain_type, info in TERRAIN_MODIFIERS.items():
+            if terrain_type.lower() in dest_type.lower():
+                terrain_speed_mult = info.get('speed_mult', 1.0)
+                break
 
     total_speed_mult = vehicle_speed_mult * logistics_speed_bonus * scientist_nav_mult * trail_speed_mult * terrain_speed_mult
     effective_speed = BASE_SPEED_KM_PER_HOUR * total_speed_mult
@@ -1632,6 +1642,28 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
         logger.info(f"🛤️ Trail updated: {expedition['destination_name']} → {trail_result['trail_level']} ({trail_result['trip_count']} trips)")
     except Exception as e:
         logger.error(f"Failed to update trail: {e}")
+
+    # ========================================================================
+    # SV ECONOMY: Award Science Value on expedition completion
+    # Per brainstorm: 100-200 short, 200-500 medium, 500-1000 long, 1000-2000 epic
+    # Formula: base SV scales with distance, Dr. Bo analyzes field data on return
+    # ========================================================================
+    try:
+        from utilities.postgres_utils import add_passive_sv
+        distance = float(expedition.get('distance_km', 0))
+        if distance <= 200:
+            expedition_sv = 100 + int(distance * 0.5)  # 100-200 SV
+        elif distance <= 500:
+            expedition_sv = 200 + int((distance - 200) * 1.0)  # 200-500 SV
+        elif distance <= 1500:
+            expedition_sv = 500 + int((distance - 500) * 0.5)  # 500-1000 SV
+        else:
+            expedition_sv = 1000 + int((distance - 1500) * 0.4)  # 1000-2000+ SV
+        expedition_sv = max(100, min(expedition_sv, 2000))  # Clamp to 100-2000
+        add_passive_sv(user_id, expedition_sv)
+        logger.info(f"🔬 Expedition SV: user {user_id} earned {expedition_sv} SV from {distance:.0f} km expedition to {expedition['destination_name']}")
+    except Exception as e:
+        logger.error(f"Failed to award expedition SV: {e}")
 
     # ========================================================================
     # SHARD NETWORK: Check for Origin Site proximity and roll for Echo Site
@@ -1962,7 +1994,11 @@ def get_expeditions_page_data(user_id: int) -> dict:
     fog_radius = min(1000, 300 + discovery_count * 50)
     range_mult = fog_radius / 300.0
 
-    # Enrich vehicles with range breakdown data
+    # Determine which vehicle types are currently on active expeditions
+    active_vehicle_types = {e.get('vehicle_type', 'rover') for e in active_expeditions
+                            if e.get('status') in ('traveling', 'recalled')}
+
+    # Enrich vehicles with range breakdown data + availability
     for v in owned_vehicles:
         vtype = v.get('vehicle_type', 'rover')
         base_range = v.get('max_range_km', 9999)
@@ -1970,10 +2006,19 @@ def get_expeditions_page_data(user_id: int) -> dict:
         v['base_range_km'] = lv1_stats.get('max_range_km', base_range)
         v['base_speed'] = lv1_stats.get('expedition_speed_mult', v.get('speed_mult', 1.0))
         v['effective_range_km'] = int(base_range * range_mult)
+        v['available'] = vtype not in active_vehicle_types
 
     # Expedition slots: vehicle count capped by habitat capacity (default 3 if no habitat)
     expedition_cap = infra_effects.get('expedition_capacity', 3)
     max_concurrent_expeditions = min(vehicle_count, expedition_cap)
+
+    # ARIA bonds for Signal tab display
+    signal_bonds = []
+    try:
+        from utilities.aria_bond_utils import get_bonds_for_display
+        signal_bonds = get_bonds_for_display(user_id)
+    except Exception:
+        pass
 
     return {
         'drop_coords': home_coords,
@@ -1992,6 +2037,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
         'expedition_count': expeditions_completed,  # Total completed expeditions for History tab
         'discovery_count': discovery_count,  # For range breakdown display
         'range_mult': round(range_mult, 2),  # Discovery-based range multiplier
+        'signal_bonds': signal_bonds,  # ARIA bonds for Signal tab
     }
 
 def claim_all_discoveries(user_id, expedition_id=None):

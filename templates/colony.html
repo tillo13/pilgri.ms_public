@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
         chat.dataset.page = 'colony';
         {% if user %}
         // First-time tutorial for authenticated users
-        if (!localStorage.getItem('ariaTutorial_colony')) {
+        if (!localStorage.getItem('ariaTutorial_colony') && chat.dataset.greetingPriority !== 'true') {
             chat.dataset.greeting = "This is your **inventory**—everything you own on Mars.\n\n**Discoveries** – Items found on expeditions. Tap to extract shards.\n**Equipment** – Gear you've purchased.\n**Assets** – Infrastructure and buildings.\n**Lab** – Research and upgrades.\n\nYour scientist extracts more shards from rare discoveries!";
         }
         let colCtx = 'User on Colony page. Tabs: Discoveries, Equipment, Assets, Lab, Activity. ';
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </button>
     <button class="colony-tab" data-tab="assets" onclick="switchColonyTab('assets')">
         <img src="{{ icons.construction_crane }}" alt="" class="colony-tab-icon" style="width: 18px; height: 18px;">
-        <span class="colony-tab-label">Assets</span>
+        <span class="colony-tab-label">Base</span>
     </button>
     <button class="colony-tab" data-tab="lab" onclick="switchColonyTab('lab')">
         <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="" class="colony-tab-icon" style="width: 18px; height: 18px;">
@@ -185,18 +185,26 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <!-- Base Overview Summary -->
-    {% set total_hourly_income = namespace(value=0) %}
-    {% for building in active_infrastructure|default([]) %}
-        {% if building.generates_resource == 'sepolia' and building.generation_rate %}
-            {% set total_hourly_income.value = total_hourly_income.value + building.generation_rate %}
-        {% endif %}
-    {% endfor %}
+    {% set base_rate = income_data.base_rate|default(0) %}
+    {% set effective_rate = income_data.theoretical_max_rate|default(base_rate) %}
+    {% set passive_mult = income_data.passive_income_mult|default(1.0) %}
+    {% set all_gen_mult = income_data.all_generation_mult|default(1.0) %}
+    {% set passive_base = income_data.passive_income_base|default(0) %}
+    {% set scientist_mult = income_data.scientist_shard_mult|default(1.0) %}
     {% set total_building = (building_infrastructure|default([])|length) + (building_equipment|default([])|length) %}
 
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-default);">
         <div style="text-align: center;">
-            <div style="font-size: 22px; font-weight: 700; color: var(--color-warning);">+{{ "%.0f"|format(total_hourly_income.value) }}</div>
+            <div style="font-size: 22px; font-weight: 700; color: var(--color-warning);">+{{ "%.0f"|format(effective_rate) }}</div>
             <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Shards/hr</div>
+            {% if passive_mult > 1.0 or passive_base > 0 or scientist_mult > 1.0 %}
+            <div style="font-size: 9px; color: var(--color-success); margin-top: 2px;">
+                {{ "%.0f"|format(base_rate) }} base
+                {% if passive_mult > 1.0 %} +{{ "%.0f"|format((passive_mult - 1) * 100) }}%{% endif %}
+                {% if passive_base > 0 %} +{{ passive_base }}/hr{% endif %}
+                {% if scientist_mult > 1.0 %} +{{ "%.0f"|format((scientist_mult - 1) * 100) }}% sci{% endif %}
+            </div>
+            {% endif %}
         </div>
         <div style="text-align: center;">
             <div style="font-size: 22px; font-weight: 700; color: var(--color-success);">{{ active_infrastructure|default([])|length }}</div>
@@ -470,7 +478,10 @@ document.addEventListener('DOMContentLoaded', function() {
              data-expedition-departed="{{ vehicle.expedition_departed_at_iso|default('') }}"
              data-expedition-arrives="{{ vehicle.expedition_arrives_at_iso|default('') }}"
              data-expedition-returns-iso="{{ vehicle.expedition_returns_at_iso|default('') }}"
-             data-expedition-returns="{{ vehicle.expedition_returns_at_str|default('') }}">
+             data-expedition-returns="{{ vehicle.expedition_returns_at_str|default('') }}"
+             data-lifetime-trips="{{ vehicle.lifetime_trips|default(0) }}"
+             data-lifetime-km="{{ vehicle.lifetime_km|default(0)|int }}"
+             data-lifetime-finds="{{ vehicle.lifetime_finds|default(0) }}">
             {% if vehicle.image_url %}
             <img src="{{ vehicle.image_url }}" alt="{{ vehicle.name }}" class="asset-card-image" loading="lazy">
             {% else %}
@@ -497,6 +508,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span>Speed:</span>
                         <span class="asset-card-stat-value">+{{ ((vehicle.expedition_speed_mult - 1) * 100)|int }}%</span>
                     </div>
+                    {% endif %}
+                    {% if vehicle.next_level_cost and vehicle.level < vehicle.max_level|default(10) %}
+                    <a href="/depot?upgrade=vehicles:{{ vehicle.vehicle_type }}"
+                       class="asset-card-stat upgrade-link"
+                       style="color: var(--color-accent); text-decoration: none;"
+                       onclick="event.stopPropagation()">
+                        <span>&#x21E7; Upgrade ({{ "{:,}".format(vehicle.next_level_cost|int) }})</span>
+                    </a>
                     {% endif %}
                 </div>
             </div>

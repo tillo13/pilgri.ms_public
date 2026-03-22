@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% if session.get('_real_uid') %}[MIMIC] {% endif %}{% block title %}Pilgrims{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/epic-reveal.css?v={{ static_v }}">
     {% block extra_css %}{% endblock %}
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#ec7427">
@@ -120,14 +121,12 @@
     <div class="mars-status-bar {% if mars_env.time_of_day == 'Dawn' %}mars-dawn{% elif mars_env.time_of_day == 'Day' %}mars-day{% elif mars_env.time_of_day == 'Dusk' %}mars-dusk{% else %}mars-night{% endif %}" id="marsStatusBar" role="button" tabindex="0" title="Click for details">
         <!-- SOL date - desktop only -->
         <span class="mars-status-item mars-desktop-only"><span class="mars-status-label">SOL</span> <span class="mars-status-value">{{ mars_env.sol }}</span></span>
-        {% if first_login %}
-        <!-- TIME ON MARS - desktop only -->
+        <!-- TIME OF DAY - universal Mars time -->
         <span class="mars-status-sep mars-desktop-only">•</span>
-        <span class="mars-status-item mars-desktop-only" id="timeOnMarsItem" data-first-login="{{ first_login }}">
+        <span class="mars-status-item mars-desktop-only">
             <span class="mars-status-label">TIME</span>
-            <span class="mars-status-value" id="timeOnMars">SOL 0.0000</span>
+            <span class="mars-status-value">{{ mars_env.time_of_day }}</span>
         </span>
-        {% endif %}
         <!-- TEMP - desktop only -->
         <span class="mars-status-sep mars-desktop-only">•</span>
         <span class="mars-status-item mars-desktop-only mars-temp"><span class="mars-status-label">TEMP</span> <span class="mars-status-value">{{ mars_env.temperature }}°C</span></span>
@@ -137,17 +136,17 @@
         <span class="mars-status-item mars-desktop-only"><span class="mars-status-label">SOLAR</span> <span class="mars-status-value {% if mars_env.solar_efficiency >= 80 %}status-good{% elif mars_env.solar_efficiency >= 50 %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.solar_efficiency }}%</span></span>
         <span class="mars-status-sep mars-desktop-only">•</span>
         <span class="mars-status-item mars-desktop-only"><span class="mars-status-label">STATUS</span> <span class="mars-status-value {% if mars_env.condition in ['Clear', 'Hazy'] %}status-good{% elif mars_env.condition == 'Dusty' %}status-warning{% else %}status-danger{% endif %}">{{ mars_env.condition }}</span></span>
-        <!-- SEPOLIA SHARDS - total with ticking -->
+        <!-- SEPOLIA SHARDS - static balance (no ticking per Luke's request) -->
         <span class="mars-status-sep mars-desktop-only">•</span>
-        <span class="mars-status-item mars-currency" id="shardsItem" data-shard-rate="{{ shard_rate }}" data-shard-value="{{ total_balance }}">
+        <span class="mars-status-item mars-currency" id="shardsItem" data-shard-rate="0" data-shard-value="{{ total_balance }}">
             <span class="mars-status-label">SHARDS</span>
-            <span class="mars-status-value" id="shardsValue" style="font-family: var(--font-mono);">{{ "{:,.3f}".format(total_balance) }}</span>
+            <span class="mars-status-value" id="shardsValue" style="font-family: var(--font-mono);">{{ "{:,.0f}".format(total_balance) }}</span>
         </span>
         <span class="mars-status-sep">•</span>
-        <!-- SCIENCE (SV) - total with ticking -->
-        <span class="mars-status-item mars-currency" id="scienceItem" data-sv-rate="{{ sv_rate }}" data-sv-value="{{ total_sv }}">
+        <!-- SCIENCE (SV) - static balance (no ticking per Luke's request) -->
+        <span class="mars-status-item mars-currency" id="scienceItem" data-sv-rate="0" data-sv-value="{{ total_sv }}">
             <span class="mars-status-label">SCIENCE</span>
-            <span class="mars-status-value" id="scienceValue" style="font-family: var(--font-mono);">{{ "{:,.3f}".format(total_sv) }}</span>
+            <span class="mars-status-value" id="scienceValue" style="font-family: var(--font-mono);">{{ "{:,.0f}".format(total_sv) }}</span>
         </span>
         {% endif %}
         <!-- Spacer to push expand indicator to right -->
@@ -320,7 +319,7 @@
     <main class="main-content">
         {% if session.get('_real_uid') %}
         <div style="background: rgba(57, 255, 20, 0.12); border: 1px solid rgba(57, 255, 20, 0.4); padding: 6px 14px; text-align: center; font-size: 12px; color: #39ff14; font-weight: 600; position: sticky; top: 0; z-index: 1000;">
-            👤 Mimicking: {{ user.email if user else 'User #' ~ session.get('user_id') }} (ID {{ session.get('user_id') }}) · <a href="/mimic" style="color: #39ff14; text-decoration: underline;">Switch</a> · <form method="POST" action="/mimic" style="display:inline;"><input type="hidden" name="action" value="stop"><button type="submit" style="background:none;border:none;color:#39ff14;text-decoration:underline;font-size:12px;font-weight:600;cursor:pointer;padding:0;">Stop</button></form>
+            👤 Mimicking: {{ mimic_email or 'User #' ~ session.get('user_id') }} (ID {{ session.get('user_id') }}) · <a href="/mimic" style="color: #39ff14; text-decoration: underline;">Switch</a> · <form method="POST" action="/mimic" style="display:inline;"><input type="hidden" name="action" value="stop"><button type="submit" style="background:none;border:none;color:#39ff14;text-decoration:underline;font-size:12px;font-weight:600;cursor:pointer;padding:0;">Stop</button></form>
         </div>
         {% endif %}
         {% block content %}{% endblock %}
@@ -367,6 +366,7 @@
      data-authenticated="{{ 'true' if user else 'false' }}"
      data-page="{{ request.endpoint or 'unknown' }}"
      data-page-context="{{ aria_page_context | default('') | e }}"
+     data-greeting-priority="{{ 'true' if aria_greeting_priority else 'false' }}"
      data-auto-open="{{ 'true' if aria_auto_open else 'false' }}"
      data-dust-storm="{{ 'true' if dust_storm_alert else 'false' }}">
     <div class="aria-chat-header">
@@ -391,6 +391,7 @@
 
 <script>window.initialBalance = {{ total_balance if total_balance is defined else 0 }};</script>
 <script src="/static/js/core.js?v={{ static_v }}"></script>
+<script src="/static/js/epic-reveal.js?v={{ static_v }}" defer></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
         chat.dataset.page = 'research';
         {% if user %}
         {% if not has_research_station %}
-        chat.dataset.greeting = "This is the **Lab** — your tech tree.\n\nTo begin research, you'll need a **Research Station** from the Depot.\n\nEach branch unlocks powerful colony bonuses!";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "This is the **Lab** — your tech tree.\n\nTo begin research, you'll need a **Research Station** from the Depot.\n\nEach branch unlocks powerful colony bonuses!";
+        }
         {% endif %}
         let ctx = 'User on Lab/Research page. ';
         ctx += 'Scientific Value (SV): {{ research_points|default(0) }}. ';
@@ -168,9 +170,9 @@ document.addEventListener('DOMContentLoaded', function() {
             <div style="color: var(--text-muted); font-size: 12px;">{{ scientist.specialty }} specialist</div>
             {% if primary_branch %}
             <div style="font-size: 11px; margin-top: 4px; line-height: 1.4;">
-                <span style="color: var(--color-sepolia);">{{ branches[primary_branch].icon }} {{ branches[primary_branch].name }}:</span> 25% faster, 20% cheaper
+                <span style="color: var(--color-sepolia);">{{ branches[primary_branch].icon }} Primary:</span> {{ branches[primary_branch].name }} research 25% faster, 20% cheaper
                 {% if secondary_branch %}
-                <br><span style="color: var(--text-muted);">{{ branches[secondary_branch].icon }} {{ branches[secondary_branch].name }}:</span> 15% faster
+                <br><span style="color: var(--text-muted);">{{ branches[secondary_branch].icon }} Secondary:</span> {{ branches[secondary_branch].name }} research 15% faster
                 {% endif %}
             </div>
             {% endif %}
@@ -215,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </ul>
 
             <h4>Scientist Bonuses</h4>
-            <p>Your scientist has a <strong>primary branch</strong> (25% faster, 20% cheaper) and may have a <strong>secondary branch</strong> (15% faster). Research in their specialty branches to maximize efficiency.</p>
+            <p>Your scientist has a <strong>primary branch</strong> (25% faster research, 20% cheaper) and may have a <strong>secondary branch</strong> (15% faster research). Research in their specialty branches to maximize efficiency.</p>
         </div>
     </details>
 </div>

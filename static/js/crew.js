@@ -70,6 +70,81 @@ function showFullImage(src, title) {
     };
 })();
 
+/* ─── Scientist Swap ─── */
+let _pendingSwapKey = null;
+
+function showScientistSwapModal() {
+    document.getElementById('scientist-swap-modal').style.display = 'block';
+}
+
+function confirmScientistSwap(key, name) {
+    _pendingSwapKey = key;
+    const sciData = JSON.parse(document.getElementById('scientistData').textContent);
+    const currentKey = sciData.current ? sciData.current.key : null;
+    // Use all_scientists for current too — it has _branch_bonuses populated
+    const currentSci = currentKey ? sciData.all[currentKey] : null;
+    const newSci = sciData.all[key];
+    if (!newSci) return;
+
+    // Populate current scientist side
+    if (currentSci) {
+        document.getElementById('compare-current-img').src = currentSci.image_url;
+        document.getElementById('compare-current-name').textContent = currentSci.name;
+        document.getElementById('compare-current-specialty').textContent = currentSci.specialty;
+        const cs = currentSci.stats;
+        document.getElementById('compare-current-stats').innerHTML =
+            `Nav: ${cs.navigation} &middot; Anl: ${cs.analysis}<br>Geo: ${cs.geology} &middot; Eng: ${cs.engineering}`;
+        const cb = currentSci._branch_bonuses || {};
+        document.getElementById('compare-current-bonuses').innerHTML =
+            Object.entries(cb).map(([b, info]) => `${b.charAt(0).toUpperCase()+b.slice(1)}: ${info.label}`).join('<br>');
+    }
+
+    // Populate new scientist side
+    document.getElementById('compare-new-img').src = newSci.image_url;
+    document.getElementById('compare-new-name').textContent = newSci.name;
+    document.getElementById('compare-new-specialty').textContent = newSci.specialty;
+    const ns = newSci.stats;
+    document.getElementById('compare-new-stats').innerHTML =
+        `Nav: ${ns.navigation} &middot; Anl: ${ns.analysis}<br>Geo: ${ns.geology} &middot; Eng: ${ns.engineering}`;
+    const nb = newSci._branch_bonuses || {};
+    document.getElementById('compare-new-bonuses').innerHTML =
+        Object.entries(nb).map(([b, info]) => `${b.charAt(0).toUpperCase()+b.slice(1)}: ${info.label}`).join('<br>');
+
+    document.getElementById('scientist-confirm-modal').style.display = 'block';
+}
+
+async function executeScientistSwap() {
+    if (!_pendingSwapKey) return;
+    document.getElementById('scientist-confirm-modal').style.display = 'none';
+    const errEl = document.getElementById('scientist-swap-error');
+    errEl.style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/scientist/reassign', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({scientist_key: _pendingSwapKey})
+        });
+        const data = await resp.json();
+        if (data.success) {
+            // Close modals immediately
+            document.getElementById('scientist-swap-modal').style.display = 'none';
+            let msg = 'Scientist reassigned!';
+            if (data.sv_auto_recorded) msg += ` (${data.sv_auto_recorded} SV auto-recorded)`;
+            if (typeof showToast === 'function') showToast(msg, 'success');
+            // Hard reload to Scientist tab so new scientist is clearly visible
+            setTimeout(() => { window.location.href = '/crew?tab=scientist'; }, 800);
+        } else {
+            errEl.textContent = data.error || 'Failed to reassign';
+            errEl.style.display = 'block';
+        }
+    } catch (e) {
+        errEl.textContent = 'Network error';
+        errEl.style.display = 'block';
+    }
+    _pendingSwapKey = null;
+}
+
 // Captain image/video toggle
 function showCaptainImage() {
     document.getElementById('captainImageTab').style.display = 'flex';

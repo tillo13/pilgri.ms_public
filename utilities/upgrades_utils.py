@@ -529,14 +529,11 @@ def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any
         build_time_days = next_stats.get('build_time_days', 0)
 
         # Check balance (FAST: uses DB cache, not blockchain)
-        # Include operations fee buffer for blockchain transaction
-        from utilities.depot_utils import OPERATIONS_FEE_BUFFER_DISPLAY
         total_balance, wallet_info, primary_wallet = get_fast_balance_and_wallet_info(user_id)
-        total_needed = cost_display + OPERATIONS_FEE_BUFFER_DISPLAY
-        if total_balance < total_needed:
+        if total_balance < cost_display:
             return {
                 'success': False,
-                'error': f'Insufficient shards. Need {total_needed:.0f} (includes operations fee)',
+                'error': f'Insufficient shards. Need {cost_display:.0f}, have {total_balance:.0f}',
                 'cost': cost_display,
                 'balance': total_balance
             }
@@ -568,10 +565,13 @@ def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any
                 }
             )
 
-        # Calculate ready_at based on build time
+        # Calculate ready_at based on build time (apply build speed bonuses)
         ready_at = None
         if build_time_days > 0:
-            ready_at = datetime.now(timezone.utc) + timedelta(days=build_time_days)
+            effects = get_user_upgrade_effects(user_id)
+            build_mult = effects.get('build_time_mult', 1.0)
+            adjusted_days = max(0.01, build_time_days * build_mult)  # Floor: ~15 min
+            ready_at = datetime.now(timezone.utc) + timedelta(days=adjusted_days)
 
         # Update database with build timer
         with db_cursor(commit=True) as cur:
@@ -676,7 +676,7 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
         ...
     }
     """
-    from utilities.depot_utils import get_fast_balance_and_wallet_info, OPERATIONS_FEE_BUFFER_DISPLAY
+    from utilities.depot_utils import get_fast_balance_and_wallet_info
 
     try:
         user_upgrades = get_all_user_upgrades(user_id)
@@ -736,7 +736,7 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
                     'next_level_stats': next_stats,
                     'next_level_name': next_stats.get('name') if next_stats else None,
                     'upgrade_cost': upgrade_cost,
-                    'can_afford': upgrade_cost is not None and balance >= (upgrade_cost + OPERATIONS_FEE_BUFFER_DISPLAY),
+                    'can_afford': upgrade_cost is not None and balance >= upgrade_cost,
                     'is_max_level': is_max,
                     'is_locked': is_locked,
                     'is_building': is_building,
@@ -800,7 +800,7 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
                 'next_level_stats': next_stats,
                 'next_level_name': next_stats.get('name') if next_stats else None,
                 'upgrade_cost': upgrade_cost,
-                'can_afford': upgrade_cost is not None and balance >= (upgrade_cost + OPERATIONS_FEE_BUFFER_DISPLAY),
+                'can_afford': upgrade_cost is not None and balance >= upgrade_cost,
                 'is_max_level': is_max,
                 'is_locked': False,  # Building exists, so not locked
                 'is_building': is_building,
@@ -916,6 +916,9 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
         'stat_logistics_bonus': 0,
         'stat_charisma_bonus': 0,
 
+        # Build speed (lower = faster, like cost mults)
+        'build_time_mult': 1.0,
+
         # Boolean flags
         'dust_storm_immune': False,
 
@@ -1019,6 +1022,18 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
             elif isinstance(value, bool):
                 effects[key] = current or value
     except ImportError:
+        pass
+
+    # Captain Logistics stat → build speed bonus
+    try:
+        from utilities.postgres_utils import get_commander_stats
+        stats = get_commander_stats(user_id)
+        if stats:
+            logistics = stats.get('logistics', 0) or 0
+            # Logistics 0 = no bonus, 50 = 10% faster, 100 = 20% faster
+            logistics_build_mult = max(0.5, 1.0 - logistics / 500.0)
+            effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * logistics_build_mult
+    except Exception:
         pass
 
     return effects

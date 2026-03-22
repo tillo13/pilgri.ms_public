@@ -30,10 +30,9 @@ DEFAULT_GAS_GWEI = 1.0  # Typical Sepolia gas price
 DEFAULT_GAS_UNITS = 21000 + (250 * 68)  # Base tx + typical message data
 DEFAULT_FEE_MULTIPLIER = 1.0  # Optimal conditions (low gas = no fee)
 
-# Operations fee buffer - add to all purchases to cover blockchain tx costs
-# ~500 display shards covers typical gas, 1000 gives safety margin
-OPERATIONS_FEE_BUFFER_ETH = 0.0001  # 1000 display shards
-OPERATIONS_FEE_BUFFER_DISPLAY = 1000  # For display calculations
+# Operations fee buffer - removed (gas costs covered by project, not players)
+OPERATIONS_FEE_BUFFER_ETH = 0
+OPERATIONS_FEE_BUFFER_DISPLAY = 0
 
 ##############################################################################
 # DISPLAY CONVERSION
@@ -331,12 +330,11 @@ def get_user_wallet_and_balance(session) -> tuple:
         return wallet, current_balance_eth
 
 def check_sufficient_balance(current_balance_eth: float, required_eth: float, include_ops_fee: bool = True) -> tuple:
-    """Check if user has sufficient balance (includes operations fee buffer by default)"""
-    total_needed = required_eth + (OPERATIONS_FEE_BUFFER_ETH if include_ops_fee else 0)
-    if current_balance_eth < total_needed:
+    """Check if user has sufficient balance for a purchase."""
+    if current_balance_eth < required_eth:
         return False, (
-            f'Insufficient shards. Need {eth_to_display(total_needed):.0f} '
-            f'(includes operations fee), have {eth_to_display(current_balance_eth):.0f}'
+            f'Insufficient shards. Need {eth_to_display(required_eth):.0f}, '
+            f'have {eth_to_display(current_balance_eth):.0f}'
         )
     return True, None
 
@@ -397,7 +395,7 @@ def background_blockchain_tx(wallet_address, wallet_private_key, amount_eth, rea
         except Exception as e:
             logger.error(f"❌ Background tx error for {reason}: {e}")
 
-    threading.Thread(target=_send, daemon=True).start()
+    threading.Thread(target=_send).start()
 
 def record_purchase(user_id, wallet_address, purchase_type, amount_eth, tx_result, 
                    item_details=None, related_asset_id=None) -> int:
@@ -866,7 +864,7 @@ def start_video_generation(session, flux, app_config, animate_fn):
             logger.error(f"🎬 ❌ Video generation failed: {e}")
             app_config[status_key].update({'url': None, 'generating': False, 'error': str(e)})
 
-    Thread(target=generate_video, daemon=True).start()
+    Thread(target=generate_video).start()
     return {**result, 'status_key': status_key}
 
 
@@ -897,7 +895,7 @@ def start_deploy_video_generation(session, app_config, flux, animate_fn, logger)
             logger.error(f"Video generation failed: {e}")
             app_config['video_status'].update({'url': None, 'generating': False})
 
-    Thread(target=generate_video, daemon=True).start()
+    Thread(target=generate_video).start()
     return {'success': True}
 
 

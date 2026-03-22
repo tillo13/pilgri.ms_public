@@ -30,80 +30,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ============================================================================
-// SIGNAL DECODER
-// ============================================================================
-
-async function submitSignalDecoder() {
-    const input = document.getElementById('signalDecoderInput');
-    const status = document.getElementById('signalDecoderStatus');
-    const result = document.getElementById('signalDecoderResult');
-    const submit = document.getElementById('signalDecoderSubmit');
-
-    const code = input.value.trim();
-    if (!code) return;
-
-    const isValidTxHash = /^0x[a-fA-F0-9]{64}$/.test(code);
-    const testCodes = ['0x123', '0x_test_bond', '0x_test_waiting'];
-    const isTestMode = testCodes.includes(code.toLowerCase());
-
-    if (!code.startsWith('0x')) {
-        status.textContent = 'FORMAT UNRECOGNIZED';
-        status.style.color = 'var(--color-mars)';
-        result.innerHTML = '<div style="background: rgba(var(--color-mars-rgb), 0.1); border: 1px solid rgba(var(--color-mars-rgb), 0.3); padding: 12px; border-radius: var(--radius-sm); color: var(--color-mars);"><em>"This does not match the ledger format..."</em></div>';
-        result.style.display = 'block';
-        return;
-    }
-
-    if (!isValidTxHash && !isTestMode) {
-        status.textContent = 'INCOMPLETE SIGNATURE';
-        status.style.color = 'var(--color-mars)';
-        result.innerHTML = '<div style="background: rgba(var(--color-mars-rgb), 0.1); border: 1px solid rgba(var(--color-mars-rgb), 0.3); padding: 12px; border-radius: var(--radius-sm); color: var(--color-mars);"><em>"The signature appears truncated..."</em></div>';
-        result.style.display = 'block';
-        return;
-    }
-
-    status.textContent = 'SCANNING LEDGER...';
-    status.style.color = 'var(--color-warning)';
-    submit.disabled = true;
-
-    try {
-        const resp = await fetch('/api/signal/decode-tx', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tx_hash: code })
-        });
-        const data = await resp.json();
-
-        if (data.success) {
-            status.textContent = 'TRANSMISSION ACCEPTED';
-            status.style.color = 'var(--color-success)';
-            result.innerHTML = `<div style="background: rgba(var(--color-success-rgb), 0.1); border: 1px solid rgba(var(--color-success-rgb), 0.3); padding: 12px; border-radius: var(--radius-sm);"><div style="color: var(--color-success); font-weight: 600; margin-bottom: 8px;">SEQUENCE VALIDATED</div><p style="margin: 0;"><em>"${data.message}"</em></p>${data.decoded_message ? `<p style="color: var(--color-sepolia); margin: 8px 0 0 0;">Extracted: ${data.decoded_message}</p>` : ''}</div>`;
-            input.value = '';
-        } else {
-            status.textContent = 'TRANSMISSION REJECTED';
-            status.style.color = 'var(--color-mars)';
-            result.innerHTML = `<div style="background: rgba(var(--color-mars-rgb), 0.1); border: 1px solid rgba(var(--color-mars-rgb), 0.3); padding: 12px; border-radius: var(--radius-sm); color: var(--color-mars);"><em>"${data.error || 'The ledger does not recognize this entry...'}"</em></div>`;
-        }
-        result.style.display = 'block';
-    } catch (e) {
-        status.textContent = 'LEDGER UNREACHABLE';
-        status.style.color = 'var(--color-mars)';
-        result.innerHTML = '<div style="background: rgba(var(--color-mars-rgb), 0.1); border: 1px solid rgba(var(--color-mars-rgb), 0.3); padding: 12px; border-radius: var(--radius-sm); color: var(--color-mars);"><em>"Cannot connect to the eternal record..."</em></div>';
-        result.style.display = 'block';
-    }
-
-    submit.disabled = false;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const decoderInput = document.getElementById('signalDecoderInput');
-    if (decoderInput) {
-        decoderInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') submitSignalDecoder();
-        });
-    }
-});
+// Signal decoder is handled by signal.js (loaded on this page)
+// No duplicate decoder code here — DRY!
 
 // ============================================================================
 // SUB-TAB SWITCHING (within Map tab: new/ledger)

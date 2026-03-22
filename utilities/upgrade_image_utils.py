@@ -251,7 +251,6 @@ def maybe_generate_upgrade_image(
     thread = threading.Thread(
         target=generate_upgrade_image_background,
         args=(category, item_key, level, previous_url),
-        daemon=True
     )
     thread.start()
 
@@ -446,7 +445,6 @@ def maybe_generate_infrastructure_image(
     thread = threading.Thread(
         target=generate_upgrade_image_background,
         args=(category, item_key, level, previous_url),
-        daemon=True
     )
     thread.start()
 

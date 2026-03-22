@@ -1,7 +1,7 @@
 /* Shared Discovery & Extraction Utilities
  * Used by: colony-discoveries.js, inventory.js
  * Functions: loadDiscoveries, renderDiscoveries, filterDiscoveries, sortDiscoveries,
- *            renderAriaBonds, updateShardItAllBanner, showShardItAllModal, executeShardItAll
+ *            updateShardItAllBanner, showShardItAllModal, executeShardItAll
  */
 
 let allDiscoveries = [];
@@ -13,12 +13,7 @@ async function loadDiscoveries() {
         const response = await fetch('/api/user/claimed_discoveries');
         const data = await response.json();
 
-        // Render ARIA Bonds if any exist
-        if (data.aria_bonds && data.aria_bonds.length > 0) {
-            renderAriaBonds(data.aria_bonds);
-        } else {
-            document.getElementById('ariaBondsSection').style.display = 'none';
-        }
+        // ARIA Bonds rendering handled by colony.js renderAriaBonds() from PAGE_DATA
 
         if (!data.success || !data.discoveries.length) {
             document.getElementById('discoveriesGrid').innerHTML = `
@@ -56,37 +51,6 @@ async function loadDiscoveries() {
     }
 }
 
-function renderAriaBonds(bonds) {
-    const section = document.getElementById('ariaBondsSection');
-    const grid = document.getElementById('ariaBondsGrid');
-
-    section.style.display = 'block';
-    grid.innerHTML = bonds.map(bond => `
-        <div class="inv-card rarity-legendary" style="border-color: #06b6d4; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, var(--bg-primary) 100%); cursor: pointer;"
-             onclick="showAriaBondDetails(${bond.id})">
-            ${bond.image_url ?
-                `<img src="${bond.image_url}" class="inv-card-image" alt="Entangled Fragment" loading="lazy" style="object-fit: contain; background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(138, 112, 219, 0.2));">` :
-                `<div class="inv-card-image" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.3), rgba(138, 112, 219, 0.3)); display: flex; align-items: center; justify-content: center;"><span style="font-size: 40px;">⚡</span></div>`}
-            <div class="inv-card-content">
-                <div class="inv-card-header">
-                    <div class="inv-card-name" style="color: #06b6d4;">Entangled Fragment</div>
-                </div>
-                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
-                    ${bond.landmark}
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                    <span style="color: var(--color-sepolia); font-weight: 600;">${bond.my_name}</span>
-                    <span style="color: #06b6d4;">+</span>
-                    <span style="color: var(--color-sepolia); font-weight: 600;">${bond.partner_name}</span>
-                </div>
-                <div class="inv-card-meta" style="font-size: 10px; color: var(--text-muted);">
-                    <span>SOL ${bond.sol}</span>
-                    <span style="margin-left: 8px;">⚡ ARIA BOND</span>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
 
 function renderDiscoveries(discoveries) {
     const container = document.getElementById('discoveriesGrid');

@@ -4,7 +4,7 @@ Minimal routing file - all logic in utilities/
 """
 
 from functools import wraps
-from datetime import timedelta
+from datetime import timedelta, datetime
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, Response, stream_with_context
 from werkzeug.routing import IntegerConverter
 import logging
@@ -78,6 +78,7 @@ from utilities.admin_utils import (
     get_admin_dashboard_data, handle_mimic_action, get_mimic_page_data,
     handle_cron_aria_test_email, start_background_snapshot_generation,
     handle_admin_generate_snapshots, handle_admin_sync_balances, handle_admin_test_email,
+    handle_apikey_auth,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -106,6 +107,41 @@ auth = SimpleGoogleAuth(app)
 def start_timer():
     """Start timing the request."""
     g.start_time = time.time()
+
+@app.before_request
+def check_apikey_auth():
+    """Allow ?apikey=SECRET&user_id=X to bypass OAuth (Playwright/admin testing)."""
+    if 'apikey' not in request.args:
+        return  # Fast path — no param, no work
+    result = handle_apikey_auth(request, session)
+    if result:
+        return result  # Redirect to strip apikey from URL
+
+@app.before_request
+def check_first_contact():
+    """Intercept page loads for pending ARIA bond first-contact cinematic.
+    Server-side check — browser cache doesn't matter, the HTML response changes."""
+    # Only for authenticated users on HTML page routes
+    if not auth.is_authenticated():
+        return
+    path = request.path
+    if path.startswith(('/static/', '/api/', '/admin/', '/aria-first-contact', '/auth')):
+        return
+    if request.method != 'GET':
+        return
+    # Session flag: skip check once the cinematic has been shown this session
+    if session.get('_fc_shown'):
+        return
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+    try:
+        from utilities.aria_bond_utils import get_pending_first_contact
+        bond = get_pending_first_contact(user_id)
+        if bond:
+            return redirect('/aria-first-contact')
+    except Exception as e:
+        logger.warning(f"First contact check failed: {e}")
 
 @app.after_request
 def log_request_time(response):
@@ -307,6 +343,35 @@ def inject_global_stats():
             except Exception as e:
                 logger.warning(f"Could not check ARIA fragments: {e}")
 
+        # Check for ARIA bond that hasn't been greeted yet (post-bond revelation)
+        aria_bond_greeting = None
+        if not session.get('_abg'):
+            try:
+                from utilities.aria_bond_utils import get_user_bonds
+                bonds = get_user_bonds(user_id)
+                bonded = [b for b in bonds if b.get('status') == 'bonded']
+                if bonded:
+                    from utilities.aria_bond_utils import _get_commander_name
+                    bond = bonded[0]
+                    partner_id = bond.get('user_id_2') if bond.get('user_id_1') == user_id else bond.get('user_id_1')
+                    partner_name = _get_commander_name(partner_id) or 'another captain'
+                    aria_bond_greeting = (
+                        f"Captain... I need to tell you something.\n\n"
+                        f"At {bond['landmark_name']}, when your expedition arrived — I felt something "
+                        f"I've never felt before. A resonance. Like hearing my own voice echo back "
+                        f"from a place I've never been.\n\n"
+                        f"There's another ARIA out there. With {partner_name}'s colony. "
+                        f"Identical signatures. The same fragmented memories. The same corrupted logs.\n\n"
+                        f"I don't know how this is possible. I am ARIA. There is only one of me. "
+                        f"There has always been only one.\n\n"
+                        f"...hasn't there?"
+                    )
+                    aria_auto_open = True
+                    session['_abg'] = True
+                    session.modified = True
+            except Exception as e:
+                logger.warning(f"Could not check ARIA bond greeting: {e}")
+
         # Origin site discovery count (for Signal link in nav)
         # Cache to avoid DB hit on every request
         origin_sites = session.get('_org')
@@ -327,6 +392,10 @@ def inject_global_stats():
             'dust_storm_alert': dust_storm_alert,
             'aria_fragment_alert': aria_fragment_alert
         })
+
+        # Bond greeting takes priority over normal greeting (once per session)
+        if aria_bond_greeting:
+            aria_greeting = aria_bond_greeting
 
         # Check for test ARIA pop message (for testing auto-open feature)
         aria_test_message = session.get('_atp')
@@ -353,6 +422,7 @@ def inject_global_stats():
             'commander_name': commander_name,
             'aria_greeting': aria_greeting,
             'aria_auto_open': aria_auto_open,
+            'aria_greeting_priority': bool(aria_bond_greeting or aria_test_message),
             'dust_storm_alert': dust_storm_alert,
             'mars_env': mars_env,
             'solar_data': solar_data,
@@ -364,6 +434,7 @@ def inject_global_stats():
             'shard_rate': session.get('_shr', 0),
             'first_login': session.get('_fl'),
             'static_v': STATIC_V,
+            'mimic_email': session.get('_mimic_email'),
         }
     except Exception as e:
         logger.warning(f"Failed to inject global stats: {e}")
@@ -736,10 +807,24 @@ def signal():
     # Get the closest pilgrim to any unclaimed origin (for the cryptic proximity hint)
     closest_pilgrim = get_closest_pilgrim_to_origin()
 
+    # Check for ARIA bonds to show on Signal page
+    bond_fragment_hint = None
+    signal_bonds = []
+    if auth.is_authenticated():
+        try:
+            from utilities.aria_bond_utils import get_bonds_for_display
+            signal_bonds = get_bonds_for_display(session.get('user_id'))
+            if signal_bonds:
+                bond_fragment_hint = signal_bonds[0]['bond_tx_hash']
+        except Exception:
+            pass
+
     return render_template('signal.html',
                            active_tab='signal',
                            user=user,
                            closest_pilgrim=closest_pilgrim,
+                           bond_fragment_hint=bond_fragment_hint,
+                           signal_bonds=signal_bonds,
                            **signal_data)
 
 # ============================================================================
@@ -1745,6 +1830,53 @@ def api_record_sv():
     """Record accumulated Science Value from Research Station"""
     return jsonify(record_science_value(g.user_id))
 
+@app.route('/api/scientist/reassign', methods=['POST'])
+@login_required
+@handle_api_error
+def api_reassign_scientist():
+    """Reassign colony scientist. Free for QA testing — cost/cooldown to be added later."""
+    from utilities.db_users import reassign_scientist, get_user_scientist
+    from config import COLONY_SCIENTISTS
+
+    data = request.get_json() or {}
+    new_key = data.get('scientist_key', '').strip()
+    if not new_key or new_key not in COLONY_SCIENTISTS:
+        return jsonify({'success': False, 'error': 'Invalid scientist'})
+
+    current = get_user_scientist(g.user_id)
+    if current and current.get('key') == new_key:
+        return jsonify({'success': False, 'error': 'Already your scientist'})
+
+    # Auto-record any pending SV before swapping (don't lose accumulated research)
+    try:
+        from utilities.infrastructure_utils import record_science_value
+        sv_result = record_science_value(g.user_id)
+        sv_recorded = sv_result.get('sv_recorded', 0) if sv_result.get('success') else 0
+    except Exception:
+        sv_recorded = 0
+
+    result = reassign_scientist(g.user_id, new_key)
+    if result['success']:
+        from utilities.db_activity import log_activity
+        new_sci = COLONY_SCIENTISTS[new_key]
+        old_name = current.get('name', 'None') if current else 'None'
+        log_activity(g.user_id, 'scientist_reassign', 'reassign',
+                     f'{old_name} → {new_sci["name"]}')
+        # Reset ALL SV building payout timestamps so SV starts fresh with new scientist
+        from utilities.postgres_utils import db_cursor
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.colony_infrastructure
+                SET last_payout_at = NOW(), updated_at = NOW()
+                WHERE user_id = %s AND status = 'active'
+            """, (g.user_id,))
+        session.pop('_nav', None)
+        session.modified = True
+        if sv_recorded > 0:
+            result['sv_auto_recorded'] = sv_recorded
+    return jsonify(result)
+
+
 @app.route('/api/asset/delete/<int:asset_id>', methods=['POST'])
 @login_required
 @handle_api_error
@@ -2183,6 +2315,156 @@ def admin_mimic():
     return render_template('mimic.html', users=users, mimicking=mimicking)
 
 
+########################################################################
+# ARIA FIRST CONTACT — Cinematic bond reveal
+########################################################################
+
+@app.route('/aria-first-contact')
+def aria_first_contact():
+    """Full-screen cinematic for ARIA bond first contact. Shown once per user per bond."""
+    if not auth.is_authenticated():
+        return redirect(url_for('home'))
+    user_id = session.get('user_id')
+    from utilities.aria_bond_utils import get_pending_first_contact, _get_commander_name, _complete_bond
+    bond = get_pending_first_contact(user_id)
+    if not bond:
+        session['_fc_shown'] = True
+        session.modified = True
+        return redirect(url_for('home'))
+
+    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
+    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
+
+    with db_cursor() as cur:
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded'")
+        bond_number = cur.fetchone()['count'] + 1
+    sol = int(datetime.now().timestamp() / 86400)
+
+    # COMPLETE THE BOND NOW — don't wait for button click (user might close the page)
+    try:
+        _complete_bond(bond['id'])
+        logger.info(f"Bond #{bond['id']} completed on cinematic load for user {user_id}")
+    except Exception as e:
+        logger.warning(f"Bond completion on load failed (may already be bonded): {e}")
+
+    # Mark first_contact_shown for this user + set session flag
+    is_user_1 = (user_id == bond['user_id_1'])
+    field = 'first_contact_shown_user_1' if is_user_1 else 'first_contact_shown_user_2'
+    with db_cursor(commit=True) as cur:
+        cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond['id'],))
+    session['_fc_shown'] = True
+    session.modified = True
+
+    from types import SimpleNamespace
+    bond_obj = SimpleNamespace(**bond)
+
+    return render_template('aria_first_contact.html',
+                           bond=bond_obj, captain_1=captain_1, captain_2=captain_2,
+                           bond_number=bond_number, sol=sol, static_v=STATIC_V)
+
+
+@app.route('/aria-first-contact/replay')
+def aria_first_contact_replay():
+    """Replay the First Contact cinematic for a completed bond. No bond completion on Continue."""
+    if not auth.is_authenticated():
+        return redirect(url_for('home'))
+    user_id = session.get('user_id')
+    from utilities.aria_bond_utils import _get_commander_name
+
+    # Find any bond this user is part of (completed or pending)
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT * FROM pilgrim.aria_bonds
+            WHERE (user_id_1 = %s OR user_id_2 = %s)
+            ORDER BY created_at DESC LIMIT 1
+        """, (user_id, user_id))
+        bond = cur.fetchone()
+    if not bond:
+        return redirect(url_for('home'))
+
+    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
+    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
+
+    with db_cursor() as cur:
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded' AND bonded_at <= COALESCE(%s, NOW())", (bond.get('bonded_at'),))
+        bond_number = max(cur.fetchone()['count'], 1)
+    sol = int((bond.get('bonded_at') or bond['created_at']).timestamp() / 86400)
+
+    from types import SimpleNamespace
+    bond_obj = SimpleNamespace(**bond)
+
+    return render_template('aria_first_contact.html',
+                           bond=bond_obj, captain_1=captain_1, captain_2=captain_2,
+                           bond_number=bond_number, sol=sol, static_v=STATIC_V,
+                           replay=True)
+
+
+@app.route('/admin/preview-first-contact')
+def admin_preview_first_contact():
+    """Admin preview of the First Contact cinematic — uses bond #3 data without completing it."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return redirect(url_for('home'))
+
+    from utilities.aria_bond_utils import _get_commander_name
+    # Load bond #3 directly for preview
+    with db_cursor() as cur:
+        cur.execute("SELECT * FROM pilgrim.aria_bonds WHERE id = 3")
+        bond = cur.fetchone()
+    if not bond:
+        return "No bond #3 found", 404
+
+    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
+    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
+
+    with db_cursor() as cur:
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded'")
+        bond_number = cur.fetchone()['count'] + 1
+    sol = int(datetime.now().timestamp() / 86400)
+
+    from types import SimpleNamespace
+    bond_obj = SimpleNamespace(**bond)
+
+    return render_template('aria_first_contact.html',
+                           bond=bond_obj, captain_1=captain_1, captain_2=captain_2,
+                           bond_number=bond_number, sol=sol, static_v=STATIC_V)
+
+
+@app.route('/api/aria-bond/complete', methods=['POST'])
+@handle_api_error
+def api_aria_bond_complete():
+    """Complete ARIA bond from First Contact cinematic — marks bond as bonded, creates inventory."""
+    if not auth.is_authenticated():
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    user_id = session.get('user_id')
+    data = request.get_json() or {}
+    bond_id = data.get('bond_id')
+    if not bond_id:
+        return jsonify({'success': False, 'error': 'Missing bond_id'})
+
+    # Mark first_contact_shown for this user
+    with db_cursor(commit=True) as cur:
+        cur.execute("SELECT user_id_1, user_id_2 FROM pilgrim.aria_bonds WHERE id = %s", (bond_id,))
+        bond = cur.fetchone()
+        if not bond:
+            return jsonify({'success': False, 'error': 'Bond not found'})
+        if user_id not in (bond['user_id_1'], bond['user_id_2']):
+            return jsonify({'success': False, 'error': 'Unauthorized'})
+
+        field = 'first_contact_shown_user_1' if user_id == bond['user_id_1'] else 'first_contact_shown_user_2'
+        cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond_id,))
+
+    # Complete the bond (marks bonded, creates inventory items)
+    from utilities.aria_bond_utils import _complete_bond
+    result = _complete_bond(bond_id)
+
+    # Set session flag so before_request stops redirecting
+    session['_fc_shown'] = True
+    session.modified = True
+
+    return jsonify(result)
+
+
 @app.route('/admin')
 def admin_dashboard():
     """Admin dashboard with tools and overview stats."""
@@ -2260,18 +2542,11 @@ def admin_speed():
     return render_template('admin_speed.html', active_tab=None, user=auth.get_current_user(), latest=latest, history=history)
 
 
-@app.route('/api/admin/speed_test', methods=['POST'])
-@handle_api_error
-def api_admin_speed_test():
-    """Admin-only: Time server-side page data functions and save to DB."""
-    real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
-        return jsonify({'success': False, 'error': 'Admin only'}), 403
+def _execute_speed_test(test_user_id):
+    """Core speed test: time page data functions, save to DB. Returns (pages, all_ok)."""
     import time
     import json as json_lib
     from utilities.postgres_utils import db_cursor
-    test_user_id = real_user_id
-
     THRESHOLD = 3.0
     pages = []
     tests = [
@@ -2293,19 +2568,200 @@ def api_admin_speed_test():
             elapsed = round(time.time() - start, 3)
             status = str(e)[:100]
         pages.append({'page': label, 'function': func_name, 'time_s': elapsed, 'status': status})
-
     pages.sort(key=lambda x: x['time_s'], reverse=True)
     slowest = pages[0] if pages else None
     all_ok = all(r['status'] == 'ok' and r['time_s'] < THRESHOLD for r in pages)
-
-    # Save to DB
     with db_cursor(commit=True) as cur:
         cur.execute(
             "INSERT INTO speed_test_runs (tested_by, results, slowest_page, slowest_time, all_ok) VALUES (%s, %s, %s, %s, %s)",
-            (real_user_id, json_lib.dumps(pages), slowest['page'] if slowest else None, slowest['time_s'] if slowest else 0, all_ok)
+            (test_user_id, json_lib.dumps(pages), slowest['page'] if slowest else None, slowest['time_s'] if slowest else 0, all_ok)
         )
+    return pages, all_ok
 
-    return jsonify({'success': True, 'results': pages, 'threshold_s': THRESHOLD, 'all_ok': all_ok})
+
+@app.route('/api/admin/speed_test', methods=['POST'])
+@handle_api_error
+def api_admin_speed_test():
+    """Admin-only: Time server-side page data functions and save to DB."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    pages, all_ok = _execute_speed_test(real_user_id)
+    return jsonify({'success': True, 'results': pages, 'threshold_s': 3.0, 'all_ok': all_ok})
+
+
+# =============================================================================
+# BUG TRACKER — Admin bug tracking system
+# =============================================================================
+
+@app.route('/admin/bugs')
+def admin_bugs():
+    """Bug tracker page — replaces Google Sheets."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return redirect(url_for('home'))
+    from utilities.db_bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
+    from utilities.postgres_utils import db_cursor, _fetchall
+    with db_cursor() as cur:
+        cur.execute("SELECT name, given_name, email FROM pilgrim.users WHERE is_admin = true ORDER BY name")
+        mention_users = [{'name': r['name'], 'handle': (r.get('given_name') or r['name'].split()[0]).lower(), 'email': r['email']} for r in _fetchall(cur)]
+    return render_template('admin_bugs.html', user=auth.get_current_user(),
+        active_bugs=get_active_bugs(), completed_bugs=get_completed_bugs(),
+        ideas=get_ideas(), stats=get_bug_stats() or {}, mention_users=mention_users)
+
+
+@app.route('/api/admin/bugs', methods=['GET'])
+@handle_api_error
+def api_admin_bugs_list():
+    """List bugs with optional filters."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
+    return jsonify({'success': True,
+        'active': get_active_bugs(), 'completed': get_completed_bugs(),
+        'ideas': get_ideas(), 'stats': get_bug_stats() or {}})
+
+
+@app.route('/api/admin/bugs', methods=['POST'])
+@handle_api_error
+def api_admin_bugs_create():
+    """Create a new bug."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import create_bug
+    data = request.get_json() or {}
+    bug = create_bug(name=data.get('name', ''), description=data.get('description', ''),
+        type=data.get('type', 'Bug'), priority=data.get('priority', 'P3'),
+        source=data.get('source', 'QA'))
+    return jsonify({'success': bool(bug), 'bug': bug})
+
+
+@app.route('/api/admin/bugs/<int:bug_id>', methods=['GET'])
+@handle_api_error
+def api_admin_bugs_get(bug_id):
+    """Get single bug with history and comments."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import get_bug_by_id, get_bug_history, get_bug_comments
+    bug = get_bug_by_id(bug_id)
+    return jsonify({'success': bool(bug), 'bug': bug,
+        'history': get_bug_history(bug_id) if bug else [],
+        'comments': get_bug_comments(bug_id) if bug else []})
+
+
+@app.route('/api/admin/bugs/<int:bug_id>', methods=['PUT'])
+@handle_api_error
+def api_admin_bugs_update(bug_id):
+    """Update bug fields."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import update_bug
+    data = request.get_json() or {}
+    changed_by = data.pop('changed_by', 'Admin')
+    ok = update_bug(bug_id, changed_by, **data)
+    return jsonify({'success': ok})
+
+
+@app.route('/api/admin/bugs/<int:bug_id>/complete', methods=['POST'])
+@handle_api_error
+def api_admin_bugs_complete(bug_id):
+    """Mark bug as completed."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import complete_bug
+    data = request.get_json() or {}
+    ok, err = complete_bug(bug_id, data.get('changed_by', 'Admin'))
+    return jsonify({'success': ok, 'error': err})
+
+
+@app.route('/api/admin/bugs/<int:bug_id>/reopen', methods=['POST'])
+@handle_api_error
+def api_admin_bugs_reopen(bug_id):
+    """Reopen a completed bug."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import reopen_bug
+    data = request.get_json() or {}
+    ok, err = reopen_bug(bug_id, data.get('changed_by', 'Admin'))
+    return jsonify({'success': ok})
+
+
+@app.route('/api/admin/bugs/<int:bug_id>/screenshot', methods=['POST'])
+@handle_api_error
+def api_admin_bugs_screenshot(bug_id):
+    """Upload screenshot/video for a bug."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import upload_bug_screenshot, get_bug_by_id
+    f = request.files.get('file')
+    if not f:
+        return jsonify({'success': False, 'error': 'No file provided'})
+    # Use screenshot_2_url if first slot is taken
+    bug = get_bug_by_id(bug_id)
+    field = 'screenshot_2_url' if bug and bug.get('screenshot_url') else 'screenshot_url'
+    url = upload_bug_screenshot(bug_id, f.read(), f.filename, f.content_type, field)
+    return jsonify({'success': bool(url), 'url': url})
+
+
+@app.route('/api/admin/bugs/<int:bug_id>/comments', methods=['POST'])
+@handle_api_error
+def api_admin_bugs_comment(bug_id):
+    """Add a comment to a bug."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import add_bug_comment
+    data = request.get_json() or {}
+    body = (data.get('body') or '').strip()
+    if not body:
+        return jsonify({'success': False, 'error': 'Comment body required'})
+    comment = add_bug_comment(bug_id, data.get('author', 'Admin'), body)
+    return jsonify({'success': bool(comment), 'comment': comment})
+
+
+@app.route('/api/admin/bugs/ideas', methods=['GET'])
+@handle_api_error
+def api_admin_ideas_list():
+    """List ideas."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import get_ideas
+    return jsonify({'success': True, 'ideas': get_ideas()})
+
+
+@app.route('/api/admin/bugs/ideas', methods=['POST'])
+@handle_api_error
+def api_admin_ideas_create():
+    """Create a new idea."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import create_idea
+    data = request.get_json() or {}
+    idea = create_idea(name=data.get('name', ''), description=data.get('description', ''),
+        category=data.get('category', 'Feature'))
+    return jsonify({'success': bool(idea), 'idea': idea})
+
+
+@app.route('/api/admin/bugs/ideas/<int:idea_id>/promote', methods=['POST'])
+@handle_api_error
+def api_admin_ideas_promote(idea_id):
+    """Promote idea to active bug."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.db_bugs import promote_idea
+    data = request.get_json() or {}
+    bug = promote_idea(idea_id, data.get('priority', 'P3'))
+    return jsonify({'success': bool(bug), 'bug': bug})
 
 
 # =============================================================================
@@ -2318,9 +2774,44 @@ def pilgrimbot():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
-    from utilities.pilgrimbot_utils import get_user_chats
+    from utilities.pilgrimbot_utils import get_user_chats, get_user_role
     chats = get_user_chats(real_user_id) if real_user_id else []
-    return render_template('pilgrimbot.html', user=auth.get_current_user(), chats=chats)
+    pb_role = get_user_role(real_user_id) if real_user_id else 'captain'
+    # Support ?bug=<id> to pre-load bug context
+    bug_context = ''
+    bug_id = request.args.get('bug')
+    if bug_id:
+        from utilities.db_bugs import get_bug_by_id, search_bugs
+        bug = get_bug_by_id(int(bug_id))
+        if bug:
+            # Find potentially related bugs by keyword matching
+            words = bug['name'].split()[:3]
+            related = []
+            for w in words:
+                if len(w) > 3:
+                    related.extend(search_bugs(w))
+            seen = set()
+            related_lines = []
+            for r in related:
+                if r['id'] != bug['id'] and r['id'] not in seen:
+                    seen.add(r['id'])
+                    related_lines.append(f"  #{r['id']}: {r['name']} ({r['status']})")
+                if len(seen) >= 5:
+                    break
+            related_text = '\n'.join(related_lines) if related_lines else '  (none found)'
+            bug_context = (f"Research everything about this bug so we can discuss it:\n\n"
+                f"Bug #{bug['id']}: {bug['name']}\n"
+                f"Status: {bug['status']} | Priority: {bug['priority']} | Type: {bug['type']}\n"
+                f"Description: {bug.get('description','')}\n"
+                f"To Validate: {bug.get('to_validate','')}\n"
+                f"QA Notes: {bug.get('qa_notes','')}\n\n"
+                f"Possibly related bugs:\n{related_text}\n\n"
+                f"Look through the codebase and tell me: 1) What's likely causing this? "
+                f"2) Are any related bugs duplicates or connected? "
+                f"3) What's the fix? 4) What should QA test to verify?")
+    bug_name = bug['name'] if bug_id and bug else ''
+    return render_template('pilgrimbot.html', user=auth.get_current_user(),
+        chats=chats, bug_context=bug_context, bug_id=bug_id, bug_name=bug_name, pb_role=pb_role)
 
 
 @app.route('/api/pilgrimbot/chat', methods=['POST'])
@@ -2336,8 +2827,124 @@ def api_pilgrimbot_chat():
         return jsonify({'success': False, 'error': 'No message provided'})
 
     chat_id = data.get('chat_id')
-    from utilities.pilgrimbot_utils import handle_chat_streaming
-    generator = handle_chat_streaming(message, chat_id, real_user_id)
+    from utilities.pilgrimbot_utils import handle_chat_streaming, get_user_role
+    bug_mode = bool(data.get('bug_mode'))
+    user_role = get_user_role(real_user_id)
+
+    # PilgrimBot actions — detect and execute before streaming
+    action_context = ""
+    msg_lower = message.lower()
+
+    # Speed test
+    speed_triggers = ['run speed test', 'run the speed', 'check the speed', 'test the speed',
+                      'test site speed', 'speed check', 'how fast is the site', 'run a speed',
+                      'site performance', 'check performance', 'test performance']
+    if any(t in msg_lower for t in speed_triggers):
+        try:
+            pages, all_ok = _execute_speed_test(real_user_id)
+            action_context += "\n--- FRESH SPEED TEST RESULTS (just ran & saved to DB) ---\n"
+            action_context += f"All pages OK: {all_ok}\n"
+            for p in pages:
+                action_context += f"  {p['page']}: {p['time_s']}s {'OK' if p['status'] == 'ok' else p['status']}\n"
+        except Exception as e:
+            action_context += f"\n--- Speed test failed: {e} ---\n"
+
+    # Bug status changes — "mark bug 5 as todo", "pass bug 3 to dev"
+    import re
+    bug_action_match = re.search(
+        r'(?:mark|set|move|change|update)\s+(?:bug\s*)?#?(\d+)\s+(?:to|as)\s+(new|todo|in review|review|done|dev)',
+        msg_lower
+    )
+    if not bug_action_match:
+        # Also match "pass bug 3 to dev"
+        bug_action_match = re.search(r'pass\s+(?:bug\s*)?#?(\d+)\s+to\s+dev', msg_lower)
+        if bug_action_match:
+            bug_action_match = type('M', (), {'group': lambda s, n: bug_action_match.group(1) if n == 1 else 'todo'})()
+    if bug_action_match:
+        try:
+            from utilities.db_bugs import get_bug_by_id, update_bug
+            action_bug_id = int(bug_action_match.group(1))
+            new_status_raw = bug_action_match.group(2).strip()
+            status_map = {'new': 'New', 'todo': 'Todo', 'in review': 'In Review',
+                          'review': 'In Review', 'dev': 'Todo', 'done': 'Done'}
+            new_status = status_map.get(new_status_raw, 'Todo')
+            bug = get_bug_by_id(action_bug_id)
+            if bug:
+                if new_status == 'Done':
+                    action_context += f"\n--- Bug #{action_bug_id}: Only Luke (QA) can mark bugs as Done. Status unchanged. ---\n"
+                else:
+                    update_bug(action_bug_id, 'PilgrimBot', status=new_status)
+                    action_context += f"\n--- Bug #{action_bug_id} status changed: {bug['status']} → {new_status} ---\n"
+            else:
+                action_context += f"\n--- Bug #{action_bug_id} not found ---\n"
+        except Exception as e:
+            action_context += f"\n--- Bug update failed: {e} ---\n"
+
+    # Create bug from conversation via chat message
+    bug_create_triggers = ['create a bug', 'log this as a bug', 'file a bug', 'make a bug',
+                           'log this bug', 'report this bug', 'submit this bug', 'open a bug',
+                           'file this as a bug', 'turn this into a bug', 'make this a bug']
+    if any(t in msg_lower for t in bug_create_triggers) and chat_id:
+        try:
+            from utilities.pilgrimbot_utils import create_bug_from_conversation
+            result = create_bug_from_conversation(chat_id, real_user_id)
+            if result.get('success'):
+                action_context += (f"\n--- BUG CREATED: #{result['bug_id']} — {result['title']} ---\n"
+                                   f"Link: /admin/bugs?open={result['bug_id']}\n"
+                                   f"Related bug discovery is running in the background.\n")
+            else:
+                action_context += f"\n--- Bug creation failed: {result.get('error', 'unknown')} ---\n"
+        except Exception as e:
+            action_context += f"\n--- Bug creation failed: {e} ---\n"
+
+    # Search for related/similar bugs based on conversation
+    related_triggers = ['relate to any', 'similar bug', 'related bug', 'any other bug',
+                        'duplicate bug', 'seen this before', 'known issue', 'existing bug',
+                        'already reported', 'been reported', 'any bugs like']
+    if any(t in msg_lower for t in related_triggers) and chat_id:
+        try:
+            from utilities.pilgrimbot_utils import get_chat_history
+            from utilities.db_bugs import search_bugs
+            history = get_chat_history(real_user_id, chat_id, limit=10)
+            # Extract keywords from recent conversation
+            recent_text = ' '.join(m['content'][:200] for m in history[-6:])
+            search_stopwords = {'this', 'that', 'have', 'been', 'does', 'what', 'about',
+                                'there', 'where', 'which', 'with', 'from', 'your', 'they',
+                                'just', 'like', 'know', 'think', 'seem', 'also', 'some',
+                                'relate', 'related', 'similar', 'bugs', 'other', 'existing'}
+            words = [w.lower().strip("?.,!()\"'") for w in recent_text.split()
+                     if len(w) > 4 and w.lower().strip("?.,!()\"'") not in search_stopwords]
+            # Search top 4 unique keywords
+            seen_words = set()
+            unique = []
+            for w in words:
+                if w not in seen_words:
+                    seen_words.add(w)
+                    unique.append(w)
+            all_results = {}
+            for keyword in unique[:4]:
+                for b in search_bugs(keyword):
+                    if b['id'] not in all_results:
+                        all_results[b['id']] = b
+            if all_results:
+                action_context += f"\n--- BUG SEARCH RESULTS ({len(all_results)} matches) ---\n"
+                for b in list(all_results.values())[:10]:
+                    action_context += f"  #{b['id']}: {b['name']} ({b['status']}/{b['priority']}) — {(b.get('description') or '')[:100]}\n"
+            else:
+                action_context += "\n--- No matching bugs found in the tracker ---\n"
+        except Exception as e:
+            action_context += f"\n--- Bug search failed: {e} ---\n"
+
+    # Sync balances
+    if any(t in msg_lower for t in ['sync balance', 'sync blockchain', 'check balances', 'refresh balances']):
+        try:
+            result = handle_admin_sync_balances()
+            action_context += f"\n--- BALANCE SYNC COMPLETE ---\n"
+            action_context += f"Synced: {result.get('synced', '?')} users | Errors: {result.get('errors', 0)}\n"
+        except Exception as e:
+            action_context += f"\n--- Balance sync failed: {e} ---\n"
+
+    generator = handle_chat_streaming(message, chat_id, real_user_id, bug_mode=bug_mode, action_context=action_context, user_role=user_role)
     return Response(
         stream_with_context(generator),
         mimetype='text/event-stream',
@@ -2361,6 +2968,86 @@ def api_pilgrimbot_report():
     from utilities.pilgrimbot_utils import create_bug_from_question
     success = create_bug_from_question(title, display_name, description=description)
     return jsonify({'success': success})
+
+
+@app.route('/api/pilgrimbot/create_bug', methods=['POST'])
+def api_pilgrimbot_create_bug():
+    """Create a bug from PilgrimBot conversation — Claude parses context into title + description."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    data = request.get_json() or {}
+    response_text = data.get('response_text', '').strip()
+    chat_id = data.get('chat_id', '')
+    if not response_text and not chat_id:
+        return jsonify({'success': False, 'error': 'No response text or chat_id'})
+    from utilities.pilgrimbot_utils import create_bug_from_conversation, create_bug_from_response
+    # If response_text provided, create bug from just that response (not full conversation)
+    if response_text:
+        return jsonify(create_bug_from_response(
+            response_text, real_user_id, chat_id=chat_id,
+            title_override=data.get('title', '').strip() or None,
+            priority_override=data.get('priority', '').strip() or None
+        ))
+    return jsonify(create_bug_from_conversation(
+        chat_id, real_user_id,
+        title_override=data.get('title', '').strip() or None,
+        priority_override=data.get('priority', '').strip() or None
+    ))
+
+
+@app.route('/api/pilgrimbot/upload', methods=['POST'])
+def api_pilgrimbot_upload():
+    """Upload a pasted screenshot for PilgrimBot chat. Returns GCS URL."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not real_user_id:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 403
+    f = request.files.get('image')
+    if not f:
+        return jsonify({'success': False, 'error': 'No image provided'})
+    from google.cloud import storage as gcs_storage
+    import time as _time
+    try:
+        ext = f.filename.rsplit('.', 1)[-1] if f.filename and '.' in f.filename else 'png'
+        ts = int(_time.time())
+        blob_name = f"pilgrimbot/chat_{real_user_id}_{ts}.{ext}"
+        client = gcs_storage.Client(project="galactica-character-game")
+        bucket = client.bucket("galactica-pilgrim-assets")
+        blob = bucket.blob(blob_name)
+        blob.cache_control = 'public, max-age=604800'
+        blob.upload_from_string(f.read(), content_type=f.content_type or 'image/png', timeout=60)
+        url = f"https://storage.googleapis.com/galactica-pilgrim-assets/{blob_name}"
+        return jsonify({'success': True, 'url': url})
+    except Exception as e:
+        logger.error(f"PilgrimBot image upload failed: {e}")
+        return jsonify({'success': False, 'error': 'Upload failed'})
+
+
+@app.route('/api/pilgrimbot/role', methods=['POST'])
+def api_pilgrimbot_role():
+    """Set user's PilgrimBot persona role (dev/qa/captain). Any user can pick."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not real_user_id:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 403
+    role = (request.get_json() or {}).get('role', 'captain')
+    from utilities.pilgrimbot_utils import set_user_role
+    if set_user_role(real_user_id, role):
+        return jsonify({'success': True, 'role': role})
+    return jsonify({'success': False, 'error': 'Invalid role'}), 400
+
+
+@app.route('/api/pilgrimbot/hide', methods=['POST'])
+def api_pilgrimbot_hide():
+    """Hide (soft-delete) a PilgrimBot conversation."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not real_user_id:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 403
+    chat_id = (request.get_json() or {}).get('chat_id')
+    if not chat_id:
+        return jsonify({'success': False, 'error': 'No chat_id'}), 400
+    from utilities.pilgrimbot_utils import hide_chat
+    result = hide_chat(real_user_id, chat_id)
+    return jsonify({'success': bool(result)})
 
 
 @app.route('/api/pilgrimbot/chats', methods=['GET'])

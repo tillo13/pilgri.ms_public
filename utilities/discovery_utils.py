@@ -419,7 +419,12 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
         left_behind_value = sum(d['enhanced_value'] for d in left_behind)
         logger.info(f"Cargo limit: Vehicle capacity {cargo_capacity}, found {len(physical) + len(weightless)} items ({len(weightless)} weightless), left behind {len(left_behind)} items worth {left_behind_value} shards")
 
-    # Combine: all weightless + kept physical items
+    # Weightless items (digital data) still take up cargo space
+    if len(weightless) > cargo_capacity:
+        weightless.sort(key=lambda d: d['enhanced_value'], reverse=True)
+        weightless = weightless[:cargo_capacity]
+
+    # Combine: kept weightless + kept physical items
     discoveries = weightless + physical
 
     logger.info(f"Generated {len(discoveries)} discoveries for expedition {expedition_id} (Mission #{user_expedition_count}, {distance_km}km, cargo: {cargo_capacity}, {len(weightless)} weightless)")
@@ -429,7 +434,7 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
 # ============================================================================
 # ANALYZE & EXTRACT DISCOVERIES
 # ============================================================================
-EXTRACTION_SV_BONUS_RATE = 0.15  # 15% of shard payout awarded as bonus SV
+EXTRACTION_SV_BONUS_RATE = 0.50  # 50% of shard payout awarded as bonus SV (was 15%, bumped per Luke's sign-off)
 
 def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extract_all: bool = True) -> Dict[str, Any]:
     """
@@ -568,6 +573,14 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
         from utilities.db_users import add_passive_sv
         add_passive_sv(user_id, sv_bonus)
         logger.info(f"User {user_id} earned {sv_bonus} bonus SV from extraction")
+
+    # STEP 1c: Check collection milestones (Dr. Bo's research program)
+    milestones_earned = []
+    try:
+        from utilities.sv_milestones import check_and_award_milestones
+        milestones_earned = check_and_award_milestones(user_id)
+    except Exception as e:
+        logger.error(f"Milestone check failed: {e}")
 
     # STEP 2: Connect to Sepolia
     miner = MarsAsteroidMiner()
@@ -757,6 +770,13 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
         from utilities.db_users import add_passive_sv
         add_passive_sv(user_id, sv_bonus)
         logger.info(f"User {user_id} earned {sv_bonus} bonus SV from bulk extraction")
+
+    # STEP 1c: Check collection milestones (Dr. Bo's research program)
+    try:
+        from utilities.sv_milestones import check_and_award_milestones
+        check_and_award_milestones(user_id)
+    except Exception as e:
+        logger.error(f"Milestone check failed: {e}")
 
     # STEP 2: Connect to Sepolia
     miner = MarsAsteroidMiner()

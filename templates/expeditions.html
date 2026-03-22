@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
         chat.dataset.page = 'expeditions';
         {% if just_completed_expedition %}
         // Expedition just completed on page load - ARIA announces it!
-        chat.dataset.greeting = "**Expedition complete!**\n\nYour team returned from {{ just_completed_expedition.destination }}.\n\n{{ just_completed_expedition.discovery_message }}\n\nYou earned **{{ just_completed_expedition.sepolia_earned }}** shards.\n\nReady for another? Check the destinations below.";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "**Expedition complete!**\n\nYour team returned from {{ just_completed_expedition.destination }}.\n\n{{ just_completed_expedition.discovery_message }}\n\nYou earned **{{ just_completed_expedition.sepolia_earned }}** shards.\n\nReady for another? Check the destinations below.";
+        }
         chat.dataset.pageContext = 'User just completed expedition to {{ just_completed_expedition.destination }}. They can now launch a new expedition. Encourage them to pick a new destination from the list. Total completed: {{ expedition_count|default(0) }}.';
         // Auto-open ARIA to announce completion
         setTimeout(function() {
@@ -21,13 +23,17 @@ document.addEventListener('DOMContentLoaded', function() {
         {% elif active_expeditions and active_expeditions|length > 0 %}
         // Tutorial persists until they've completed their first expedition
         {% if expedition_count|default(0) == 0 %}
-        chat.dataset.greeting = "This is the **Mars Map**—real NASA locations from InSight and Perseverance missions.\n\nYou have an **expedition in progress**! When it returns, you'll find discoveries.\n\nWatch the timer and check back when it's complete.";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "This is the **Mars Map**—real NASA locations from InSight and Perseverance missions.\n\nYou have an **expedition in progress**! When it returns, you'll find discoveries.\n\nWatch the timer and check back when it's complete.";
+        }
         {% endif %}
         chat.dataset.pageContext = 'Active expedition to {{ active_expeditions[0].destination_name }}. Total expeditions completed: {{ expedition_count|default(0) }}.';
         {% else %}
         // Tutorial persists until they've completed their first expedition
         {% if expedition_count|default(0) == 0 %}
-        chat.dataset.greeting = "This is the **Mars Map**—real NASA locations from InSight and Perseverance missions.\n\nTo launch an expedition:\n1. **Tap a destination** (green = discovered, brown = new)\n2. Review the cost and travel time\n3. Click **Launch**\n\nStart with somewhere **close** to save shards. Discoveries are waiting!";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "This is the **Mars Map**—real NASA locations from InSight and Perseverance missions.\n\nTo launch an expedition:\n1. **Tap a destination** (green = discovered, brown = new)\n2. Review the cost and travel time\n3. Click **Launch**\n\nStart with somewhere **close** to save shards. Discoveries are waiting!";
+        }
         {% endif %}
         chat.dataset.pageContext = 'No active expedition. Commander can launch a new one. Total completed: {{ expedition_count|default(0) }}.';
         {% endif %}
@@ -61,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/static/js/expeditions-launch.js?v={{ static_v }}" defer></script>
 <script src="/static/js/expeditions-rewards.js?v={{ static_v }}" defer></script>
 <script src="/static/js/expeditions-page.js?v={{ static_v }}" defer></script>
+<script src="/static/js/signal.js?v={{ static_v }}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -176,6 +183,23 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
         <span><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #fbbf24; border: 2px solid #f59e0b;"></span> Origin Site</span>
     </div>
+    <!-- Vehicle Range Selector -->
+    {% if owned_vehicles and owned_vehicles|length > 0 %}
+    <div class="vehicle-range-bar">
+        <button class="vehicle-range-btn active" data-vehicle="all" onclick="setVehicleRange(this, 'all')">
+            All
+        </button>
+        {% for v in owned_vehicles %}
+        <button class="vehicle-range-btn {% if not v.available %}in-use{% endif %}"
+                data-vehicle="{{ v.vehicle_type }}"
+                data-range="{{ v.effective_range_km }}"
+                onclick="setVehicleRange(this, '{{ v.vehicle_type }}')">
+            {{ v.name }} <span class="range-km">{{ "{:,}".format(v.effective_range_km) }} km</span>
+            {% if not v.available %}<span class="in-use-label">In Use</span>{% endif %}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
     <div id="mars-map"></div>
 </details>
 
@@ -300,7 +324,12 @@ document.addEventListener('DOMContentLoaded', function() {
         "mountain_type": "{{ icons.mountain_type }}",
         "env_sun_power": "{{ icons.env_sun_power }}",
         "link_chain": "{{ icons.link_chain }}"
-    }
+    },
+    "vehicles": [
+        {% for v in owned_vehicles %}
+        {"type": "{{ v.vehicle_type }}", "name": "{{ v.name }}", "range_km": {{ v.effective_range_km }}, "available": {{ 'true' if v.available else 'false' }}}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
 }
 </script>
 
@@ -630,6 +659,21 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </details>
 
+    <!-- ARIA Bonds Section -->
+    {% if signal_bonds|default([])|length > 0 %}
+    <details class="dashboard-card" open style="margin-bottom: 16px; border-left: 3px solid #a855f7;">
+        <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+            <span style="color: #a855f7;">&#9830;</span>
+            <span style="color: #a855f7;">ARIA Bonds</span>
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">Entangled Crystal Fragments</span>
+        </summary>
+        <div style="margin-top: 16px;">
+            {% set decoder_input_id = 'decoderInput' %}
+            {% include 'partials/aria_bonds_section.html' %}
+        </div>
+    </details>
+    {% endif %}
+
     <!-- Decoder Terminal -->
     <details class="dashboard-card" open style="margin-bottom: 16px;">
         <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
@@ -646,14 +690,14 @@ document.addEventListener('DOMContentLoaded', function() {
             <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3); border-radius: var(--radius-md); padding: 16px; font-family: var(--font-mono);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 11px;">
                     <span style="color: var(--color-sepolia);">ARIA://INPUT&gt;</span>
-                    <span id="signalDecoderStatus" style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">LISTENING</span>
+                    <span class="decoder-status" id="decoderStatus">LISTENING</span>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="signalDecoderInput" placeholder="..." autocomplete="off" spellcheck="false"
+                    <input type="text" id="decoderInput" class="decoder-input" placeholder="..." autocomplete="off" spellcheck="false"
                            style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;">
-                    <button id="signalDecoderSubmit" onclick="submitSignalDecoder()" style="background: rgba(var(--color-sepolia-rgb), 0.2); border: 1px solid var(--color-sepolia); border-radius: var(--radius-sm); padding: 10px 16px; color: var(--color-sepolia); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; cursor: pointer;">TRANSMIT</button>
+                    <button id="decoderSubmit" class="decoder-submit" style="background: rgba(var(--color-sepolia-rgb), 0.2); border: 1px solid var(--color-sepolia); border-radius: var(--radius-sm); padding: 10px 16px; color: var(--color-sepolia); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; cursor: pointer;">TRANSMIT</button>
                 </div>
-                <div id="signalDecoderResult" style="display: none; margin-top: 12px; padding: 12px; border-radius: var(--radius-sm);"></div>
+                <div id="decoderResult" class="decoder-result hidden"></div>
             </div>
         </div>
     </details>

@@ -310,11 +310,31 @@ async function checkInfrastructureIncome() {
                 }
             }
 
+            // Environmental Impact row (dust, temperature, latitude factors)
+            const envRow = $('envImpactRow');
+            const envFactors = rb.mars_env_factors;
+            if (envRow && envFactors) {
+                envRow.style.display = 'block';
+                const combinedPct = Math.round(envFactors.combined * 100);
+                $('envCombinedMult').textContent = combinedPct + '% effective';
+                const detailEl = $('envFactorsDetail');
+                if (detailEl) {
+                    const tags = [
+                        {label: 'Dust', value: Math.round(envFactors.dust * 100) + '%', note: envFactors.dust_condition},
+                        {label: 'Temp', value: Math.round(envFactors.temperature * 100) + '%', note: envFactors.temp_celsius + '°C'},
+                        {label: 'Latitude', value: Math.round(envFactors.latitude * 100) + '%', note: Math.abs(data.latitude || 0).toFixed(1) + '°'},
+                    ];
+                    detailEl.innerHTML = tags.map(t =>
+                        `<span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(var(--color-mars-rgb),0.15);color:var(--text-secondary);">${t.label}: ${t.value} <span style="opacity:0.7">(${t.note})</span></span>`
+                    ).join('');
+                }
+            }
+
             // Effective rate (the actual average this period)
             const effectiveEl = $('effectiveRate');
             if (effectiveEl) effectiveEl.textContent = (rb.actual_avg_rate || 0).toFixed(1) + '/hr';
 
-            // Day/night efficiency
+            // Day/night efficiency (now pure day/night cycle, env separated out)
             const dayNightEl = $('dayNightEfficiency');
             if (dayNightEl) dayNightEl.textContent = (rb.day_night_efficiency || 100) + '%';
 

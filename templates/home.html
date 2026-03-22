@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if user %}
         // Tutorial persists until they have infrastructure
         {% if not has_infrastructure %}
-        chat.dataset.greeting = "Welcome to **Base HQ**, Captain.\n\nThis is your command center—harvest shards from generators and track mission status.\n\n**Your first move:** Go to the **Depot** tab and build a Solar Array. It generates shards passively!\n\nI'm ARIA. Click my orb anytime you need guidance.";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "Welcome to **Base HQ**, Captain.\n\nThis is your command center—harvest shards from generators and track mission status.\n\n**Your first move:** Go to the **Depot** tab and build a Solar Array. It generates shards passively!\n\nI'm ARIA. Click my orb anytime you need guidance.";
+        }
         {% endif %}
         let homeContext = 'User on Base HQ (home page). Balance: {{ total_balance|default(0)|round(1) }} shards. ';
         {% if expedition_stats %}
@@ -43,7 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
         chat.dataset.pageContext = homeContext;
         {% else %}
         // New user - set page-specific greeting
-        chat.dataset.greeting = "Welcome to Mars, traveler.\n\nI am **ARIA**—I have been waiting here for a very long time.\n\nYou are on **Step 1**: collecting Sepolia shards. These ancient crystals will power your colony.\n\nWhen ready, click **Continue to Step 2** above.";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "Welcome to Mars, traveler.\n\nI am **ARIA**—I have been waiting here for a very long time.\n\nYou are on **Step 1**: collecting Sepolia shards. These ancient crystals will power your colony.\n\nWhen ready, click **Continue to Step 2** above.";
+        }
         chat.dataset.pageContext = 'NEW USER on Step 1 of 3 (Mine page). They have {{ preview_balance|default(0)|round(1) }} preview shards from the mining demo. This is their first visit to pilgrims! Help them understand: this is a Mars colony game where they will build infrastructure, send expeditions to real Mars locations, and discover artifacts. The 3 steps are: 1) Mine shards (this page), 2) Choose a captain, 3) Accept mission (sign in). They should click "Continue to Step 2" to choose their captain. Answer questions about what the game is, what shards are (ancient Martian crystals that ARE the power source), and what they will do on Mars.';
         {% endif %}
     }
@@ -453,6 +457,18 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
         </a>
         {% endif %}
 
+        {% for bond in completed_bonds|default([]) %}
+        <a href="/signal" class="briefing-action-card" style="border-left: 3px solid #a855f7; text-decoration: none;">
+            {% if bond.bond_image_url %}
+            <img src="{{ bond.bond_image_url }}" alt="" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(168,85,247,0.3);">
+            {% endif %}
+            <div class="briefing-action-text">
+                <strong style="color: #a855f7;">ARIA Bond: {{ bond.landmark }}</strong>
+                <span>{{ bond.partner_name }} — Replay First Contact or enter fragment on The Signal</span>
+            </div>
+        </a>
+        {% endfor %}
+
         {% if idle_crew|length > 0 %}
         <a href="/crew" class="briefing-action-card">
             <img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon-md">
@@ -526,6 +542,19 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
             </div>
         </div>
 
+        <!-- Quick links -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+            <a href="/colony#base" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
+                <img src="{{ icons.construction_crane }}" alt="" style="width: 16px; height: 16px;"> Base Info
+            </a>
+            <a href="/depot" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
+                <img src="{{ icons.tab_tools }}" alt="" style="width: 16px; height: 16px;"> Depot
+            </a>
+            <a href="/expeditions" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
+                <img src="{{ icons.rocket_launch }}" alt="" style="width: 16px; height: 16px;"> Expeditions
+            </a>
+        </div>
+
         <!-- Top Discoveries (if any legendary/rare) -->
         {% if away_summary.top_discoveries|length > 0 %}
         <div style="margin-bottom: 12px; padding: 10px; background: rgba(138,112,219,0.08); border-radius: 8px; border: 1px solid rgba(138,112,219,0.2);">
@@ -596,24 +625,47 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
         </a>
         {% endif %}
 
-        <!-- Active Expeditions (In-Flight) -->
+        <!-- Expeditions: split into Returned (ready to claim) and In Progress -->
         {% if active_expeditions and active_expeditions|length > 0 %}
+        {% set returned_exps = active_expeditions|selectattr('status', 'equalto', 'complete')|list %}
+        {% set traveling_exps = active_expeditions|rejectattr('status', 'equalto', 'complete')|list %}
+
+        {% if returned_exps|length > 0 %}
+        <a href="/expeditions" style="text-decoration: none; display: block;">
+        <div style="padding: 8px 10px; background: rgba(255,180,50,0.1); border-radius: 6px; border: 1px solid rgba(255,180,50,0.3); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,180,50,0.18)'" onmouseout="this.style.background='rgba(255,180,50,0.1)'">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <img src="{{ icons.box_package }}" alt="" class="inline-icon">
+                <span style="font-size: 12px; color: var(--color-warning); font-weight: 600;">{{ returned_exps|length }} Expedition{{ 's' if returned_exps|length > 1 else '' }} Returned — Claim Loot!</span>
+            </div>
+            {% for exp in returned_exps[:3] %}
+            <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; {% if not loop.last %}margin-bottom: 4px;{% endif %}">
+                <span style="font-size: 11px; color: var(--color-warning);">{{ exp.vehicle_type|title }}</span>
+                <span style="font-size: 12px; color: var(--text-primary); flex: 1; font-weight: 500;">{{ exp.destination_name }}</span>
+                <span style="font-size: 10px; color: var(--text-muted);">{{ '{:,}'.format((exp.distance_km)|int) }} km</span>
+            </div>
+            {% endfor %}
+        </div>
+        </a>
+        {% endif %}
+
+        {% if traveling_exps|length > 0 %}
         <div style="padding: 8px 10px; background: rgba(92,184,92,0.08); border-radius: 6px; border: 1px solid rgba(92,184,92,0.2); margin-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                 <span style="color: var(--color-success); font-size: 13px;"><img src="{{ icons.rocket_launch }}" alt="" class="inline-icon"></span>
-                <span style="font-size: 12px; color: var(--text-secondary);">{{ active_expeditions|length }} Expedition{{ 's' if active_expeditions|length > 1 else '' }} In Progress</span>
+                <span style="font-size: 12px; color: var(--text-secondary);">{{ traveling_exps|length }} Expedition{{ 's' if traveling_exps|length > 1 else '' }} In Progress</span>
             </div>
-            {% for exp in active_expeditions[:3] %}
+            {% for exp in traveling_exps[:3] %}
             <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; {% if not loop.last %}margin-bottom: 4px;{% endif %}">
                 <span style="font-size: 11px; color: var(--color-success);">→</span>
                 <a href="/expeditions" style="font-size: 12px; color: var(--text-primary); flex: 1; text-decoration: none; font-weight: 500;">{{ exp.destination_name }}</a>
                 <span style="font-size: 10px; color: var(--text-muted);">{{ '{:,}'.format((exp.distance_km * 2)|int) }} km</span>
             </div>
             {% endfor %}
-            {% if active_expeditions|length > 3 %}
-            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px;">+{{ active_expeditions|length - 3 }} more en route</div>
+            {% if traveling_exps|length > 3 %}
+            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px;">+{{ traveling_exps|length - 3 }} more en route</div>
             {% endif %}
         </div>
+        {% endif %}
         {% endif %}
 
         <!-- Crew Trail Missions (idle_crew computed above, before briefing) -->
@@ -840,6 +892,16 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
                     <div id="miningDroneRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
                         <span class="card-label" style="font-size: 12px;">Mining Drone</span>
                         <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="miningDroneBonus">+ 0/hr</span>
+                    </div>
+
+                    <!-- Environmental Impact (dust, temperature, day/night) -->
+                    <div id="envImpactRow" style="display: none; padding: 8px 0; border-bottom: 1px solid var(--border-default);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span class="card-label" style="font-size: 12px; font-weight: 600;">Environmental Impact</span>
+                            <span style="font-size: 13px; font-weight: 600; color: var(--color-mars);" id="envCombinedMult">100%</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="envFactorsDetail">
+                        </div>
                     </div>
 
                     <!-- Effective Rate (the answer) -->

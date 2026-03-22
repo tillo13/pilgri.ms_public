@@ -16,10 +16,7 @@ function switchInventoryTab(tab) {
 
 
 // Show ARIA Bond details modal
-function showAriaBondDetails(bondId) {
-    // For now, just show a toast - can expand to full modal later
-    showToast('Entangled Fragment - a permanent bond between two ARIAs', 'info');
-}
+
 
 // Load Equipment
 async function loadEquipment() {

@@ -306,13 +306,15 @@ def unlock_discoveries_by_distance(expedition_id: int, current_distance_km: floa
         return 0
 
 def claim_expedition_discovery(discovery_id: int, user_id: int) -> bool:
-    """Mark discovery as claimed"""
+    """Mark discovery as claimed — only if expedition has returned (complete/recalled)"""
     from utilities.db_users import update_user_activity
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.expedition_discoveries SET claimed_by_user = true, claimed_at = NOW()
-                WHERE id = %s AND expedition_id IN (SELECT id FROM pilgrim.expeditions WHERE user_id = %s) AND claimed_by_user = false
+                WHERE id = %s AND expedition_id IN (
+                    SELECT id FROM pilgrim.expeditions WHERE user_id = %s AND status IN ('complete', 'recalled')
+                ) AND claimed_by_user = false
             """, (discovery_id, user_id))
             if cur.rowcount > 0:
                 update_user_activity(user_id)
@@ -332,12 +334,12 @@ def claim_all_pending_discoveries(user_id: int, expedition_id: int = None) -> Di
     from utilities.db_users import update_user_activity
     try:
         with db_cursor(commit=True) as cur:
-            # Build WHERE clause based on whether expedition_id is provided
+            # Build WHERE clause — only allow claiming from returned expeditions
             if expedition_id:
-                where_clause = "e.user_id = %s AND e.id = %s AND ed.claimed_by_user = false AND ed.unlocked_at IS NOT NULL"
+                where_clause = "e.user_id = %s AND e.id = %s AND e.status IN ('complete', 'recalled') AND ed.claimed_by_user = false AND ed.unlocked_at IS NOT NULL"
                 params = (user_id, expedition_id)
             else:
-                where_clause = "e.user_id = %s AND ed.claimed_by_user = false AND ed.unlocked_at IS NOT NULL"
+                where_clause = "e.user_id = %s AND e.status IN ('complete', 'recalled') AND ed.claimed_by_user = false AND ed.unlocked_at IS NOT NULL"
                 params = (user_id,)
 
             # First get the count and total value

@@ -99,8 +99,6 @@ def get_item_availability(item_id: str, user_id: int, user_balance: float) -> Di
     Get full availability status for an item
     Returns dict with can_afford, requirements_met, can_buy_more, etc.
     """
-    from utilities.depot_utils import OPERATIONS_FEE_BUFFER_DISPLAY
-
     item = get_shop_item(item_id)
     if not item:
         return {'exists': False}
@@ -108,16 +106,12 @@ def get_item_availability(item_id: str, user_id: int, user_balance: float) -> Di
     owned_items = get_user_owned_items(user_id)
     cost = item['cost_display']
 
-    # Include operations fee in affordability check
-    total_needed = cost + OPERATIONS_FEE_BUFFER_DISPLAY
-    can_afford = user_balance >= total_needed
+    can_afford = user_balance >= cost
     reqs_met, missing_reqs = check_requirements_met(item_id, owned_items)
     can_buy_more, current_owned, max_owned = check_max_owned(item_id, owned_items)
 
     can_purchase = can_afford and reqs_met and can_buy_more
-
-    # Calculate distance to affordability (including ops fee)
-    shortfall = max(0, total_needed - user_balance)
+    shortfall = max(0, cost - user_balance)
 
     return {
         'exists': True,
@@ -154,7 +148,6 @@ def get_shop_catalog_for_user(user_id: int, user_balance: float) -> Dict:
     Perfect for rendering the shop UI. Includes build status for owned items.
     """
     from config import get_build_time_seconds
-    from utilities.depot_utils import OPERATIONS_FEE_BUFFER_DISPLAY
 
     # Get all upgrades with status info
     all_upgrades = get_user_upgrades(user_id)
@@ -173,9 +166,7 @@ def get_shop_catalog_for_user(user_id: int, user_balance: float) -> Dict:
         category = item['category']
 
         cost = item['cost_display']
-        # Include operations fee in affordability check
-        total_needed = cost + OPERATIONS_FEE_BUFFER_DISPLAY
-        can_afford = user_balance >= total_needed
+        can_afford = user_balance >= cost
         reqs_met, missing_reqs = check_requirements_met(item_id, owned_items)
         can_buy_more, current_owned, max_owned = check_max_owned(item_id, owned_items)
 
@@ -594,9 +585,46 @@ def get_user_equipment_data(user_id: int) -> Dict:
                         'requirements_met': reqs_met
                     })
 
+        # Include upgrade catalog equipment (scanner, cargo, life_support, generator, suit)
+        # These are in the NEW upgrade system, not the old SHOP_CATALOG
+        try:
+            from utilities.upgrades_utils import get_all_user_upgrades, get_upgrade_stats
+            from config_upgrades import UPGRADE_CATALOG
+            user_upgrades = get_all_user_upgrades(user_id)
+            for category_key, items in UPGRADE_CATALOG.items():
+                if category_key == 'vehicles':
+                    continue  # Vehicles shown separately in Assets tab
+                for item_key, item_config in items.items():
+                    level = user_upgrades.get(category_key, {}).get(item_key, 0)
+                    if level == 0:
+                        continue
+                    stats = get_upgrade_stats(category_key, item_key, level)
+                    # Build effects dict from stats (exclude meta fields)
+                    effects = {k: v for k, v in (stats or {}).items()
+                               if k not in ('name', 'cost', 'image_url', 'build_time_days')}
+                    owned.append({
+                        'id': f'{category_key}_{item_key}',
+                        'name': f"{item_config['name']} Lv{level}",
+                        'icon': item_config.get('icon', ''),
+                        'category': category_key,
+                        'description': item_config.get('description', ''),
+                        'cost': stats.get('cost', 0) if stats else 0,
+                        'quantity': 1,
+                        'max_owned': 1,
+                        'effects': effects,
+                        'image_url': stats.get('image_url') if stats else None,
+                        'status': 'active',
+                        'ready_at': None,
+                        'seconds_remaining': 0,
+                        'level': level,
+                        'level_name': stats.get('name', f'Lv{level}') if stats else f'Lv{level}',
+                    })
+        except Exception as e:
+            logger.warning(f"Failed to add upgrade catalog equipment: {e}")
+
         # Sort owned by category then cost
-        category_order = ['rover', 'scanner', 'cargo', 'power', 'research', 'survival', 'suit', 'drone']
-        owned.sort(key=lambda x: (category_order.index(x['category']) if x['category'] in category_order else 99, x['cost']))
+        category_order = ['rover', 'scanner', 'cargo', 'power', 'research', 'survival', 'suit', 'drone', 'equipment', 'storage']
+        owned.sort(key=lambda x: (category_order.index(x['category']) if x['category'] in category_order else 99, x.get('cost', 0)))
 
         return {
             'success': True,

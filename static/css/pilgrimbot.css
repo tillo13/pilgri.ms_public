@@ -52,9 +52,27 @@
     border-radius: 8px;
     cursor: pointer;
     margin-bottom: 4px;
+    position: relative;
 }
 .pb-chat-item:hover { background: rgba(255,255,255,0.08); }
 .pb-chat-item.active { background: rgba(255,255,255,0.12); }
+
+.pb-chat-hide {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.3);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    border-radius: 4px;
+    display: none;
+}
+.pb-chat-item:hover .pb-chat-hide { display: block; }
+.pb-chat-hide:hover { color: #fff; background: rgba(255,255,255,0.15); }
 
 .pb-chat-title {
     color: #fff;
@@ -69,6 +87,31 @@
     font-size: 11px;
     margin-top: 2px;
 }
+
+/* === Role picker === */
+
+.pb-role-picker {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.pb-role-picker label {
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    display: block;
+    margin-bottom: 4px;
+}
+.pb-role-picker select {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.3);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: outline 0.3s;
+}
+.pb-role-picker select:focus { outline: 1px solid rgba(255,255,255,0.3); }
 
 /* === Main chat area === */
 
@@ -369,122 +412,133 @@
 }
 .pb-feedback-link:hover { color: #ffa07a; }
 
-/* === Report modal === */
+/* === Bug mode action bar === */
 
-.pb-modal-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(4px);
-    z-index: 2000;
+.pb-bug-bar {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background: rgba(96,165,250,0.06);
+}
+
+.pb-bug-bar-inner {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 12px;
+    padding: 10px 24px;
+    flex-wrap: wrap;
 }
 
-.pb-modal {
-    background: #1e1e36;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 16px;
-    padding: 28px;
-    max-width: 520px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-
-.pb-modal-header {
-    font-size: 18px;
-    font-weight: 600;
-    color: #fff;
-    margin-bottom: 20px;
-}
-
-.pb-modal-label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
+.pb-bug-back {
     color: rgba(255,255,255,0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    white-space: nowrap;
+}
+.pb-bug-back:hover { color: #fff; }
+
+.pb-bug-tag {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 600;
+    color: #60a5fa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.pb-modal-input,
-.pb-modal-textarea {
-    width: 100%;
+.pb-bug-actions { display: flex; gap: 8px; }
+
+.pb-bug-action {
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.15);
     color: #fff;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-    margin-bottom: 16px;
-    outline: none;
-    transition: border-color 0.2s;
-    box-sizing: border-box;
-}
-
-.pb-modal-input:focus,
-.pb-modal-textarea:focus {
-    border-color: rgba(255,255,255,0.35);
-}
-
-.pb-modal-textarea {
-    resize: vertical;
-    min-height: 100px;
-    max-height: 250px;
-    line-height: 1.5;
-}
-
-.pb-modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-
-.pb-modal-cancel,
-.pb-modal-submit {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
+    padding: 6px 14px;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 12px;
     font-weight: 600;
-    font-size: 14px;
-    transition: background 0.2s;
+    transition: background 0.15s;
+}
+.pb-bug-action:hover { background: rgba(255,255,255,0.15); }
+.pb-bug-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.pb-bug-action-new { background: rgba(251,191,36,0.15); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+.pb-bug-action-new:hover { background: rgba(251,191,36,0.25); }
+.pb-bug-action-dev { background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.3); color: #60a5fa; }
+.pb-bug-action-dev:hover { background: rgba(96,165,250,0.25); }
+.pb-bug-action-done { background: rgba(74,222,128,0.15) !important; border-color: rgba(74,222,128,0.3) !important; color: #4ade80 !important; }
+
+/* === Tool call visibility (file reads in bug mode) === */
+
+.pb-tool-calls {
+    padding: 4px 0 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 8px;
+}
+.pb-tool-line {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    padding: 2px 0;
+    font-family: monospace;
+}
+.pb-tool-line::before {
+    content: '\25B6  ';
+    font-size: 8px;
+    color: rgba(96,165,250,0.6);
+}
+.pb-tool-miss { color: rgba(255,255,255,0.2); }
+.pb-tool-miss::before { color: rgba(239,68,68,0.5); }
+
+/* === Smart follow-up suggestions === */
+
+.pb-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 0;
+    animation: pbSlideIn 0.2s ease-out;
 }
 
-.pb-modal-cancel {
-    background: rgba(255,255,255,0.08);
-    color: rgba(255,255,255,0.6);
+.pb-suggestion-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.7);
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
 }
-.pb-modal-cancel:hover { background: rgba(255,255,255,0.15); }
-
-.pb-modal-submit {
-    background: #c0392b;
+.pb-suggestion-btn:hover {
+    background: rgba(255,255,255,0.12);
     color: #fff;
+    border-color: rgba(255,255,255,0.25);
 }
-.pb-modal-submit:hover { background: #e74c3c; }
-.pb-modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.pb-modal-status {
-    font-size: 13px;
-    margin-top: 12px;
-    text-align: center;
-    min-height: 18px;
-}
+/* Save to bug link in message footer */
+.pb-save-link { color: #60a5fa !important; }
+.pb-save-link:hover { color: #93c5fd !important; }
 
 /* === Mobile === */
 
 @media (max-width: 768px) {
+    .pilgrimbot-layout { top: 90px; }
     .pb-sidebar { display: none; }
     .pb-messages { padding: 16px; gap: 12px; }
     .pb-msg { max-width: 90%; font-size: 15px; }
-    .pb-input-area { padding: 12px 16px 16px; }
+    .pb-input-area { padding: 12px 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .pb-input-wrap { max-width: 100%; }
     .pb-input-wrap textarea { font-size: 16px; }
+    .pb-bug-bar-inner { padding: 8px 16px; }
+    .pb-bug-tag { font-size: 12px; }
+    .pb-bug-actions { flex-wrap: wrap; }
+    .pb-suggestions { gap: 6px; }
+    .pb-suggestion-btn { font-size: 11px; padding: 6px 10px; }
 }
 
 @media (max-width: 480px) {
+    .pilgrimbot-layout { top: 88px; }
     .pb-messages { padding: 10px; }
-    .pb-msg { max-width: 95%; }
+    .pb-msg { max-width: 95%; padding: 10px 12px; }
+    .pb-input-area { padding: 10px 12px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+    .pb-bug-bar-inner { padding: 6px 12px; gap: 8px; }
+    .pb-bug-tag { max-width: 150px; }
 }

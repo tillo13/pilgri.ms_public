@@ -212,7 +212,7 @@ def execute_claim_sepolia(user_id: int) -> Dict:
             except Exception as e:
                 logger.error(f"❌ Background claim exception for user {user_id}: {e}")
 
-        thread = threading.Thread(target=process_claim, daemon=True)
+        thread = threading.Thread(target=process_claim)
         thread.start()
 
         # Return immediately with success message

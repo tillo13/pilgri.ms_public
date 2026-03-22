@@ -82,12 +82,29 @@ def _get_mars_environment_multiplier(latitude: float) -> float:
     Uses current conditions at claim time. Scientifically accurate:
     dust storms peak at Ls 180-330, temps vary by season/time/latitude.
     """
+    factors = _get_mars_environment_factors(latitude)
+    return round(factors['dust'] * factors['temperature'], 3)
+
+
+def _get_mars_environment_factors(latitude: float) -> dict:
+    """Get individual Mars environment factors for UI breakdown.
+
+    Returns dict with dust, temperature, latitude factors and combined multiplier.
+    """
     from utilities.mars_environment_utils import get_mars_environment
     env = get_mars_environment(base_lat=latitude)
     dust_factor = env['dust']['solar_efficiency'] / 100.0  # 0.20 to 0.98
     temp = env['temperature']['current']  # -110 to -10 typical
     temp_factor = 1.0 + (temp + 60) / 500.0  # 0.90 at -110°C, 1.10 at -10°C
-    return round(dust_factor * temp_factor, 3)
+    lat_factor = math.cos(math.radians(abs(latitude)))  # 0.0 to 1.0
+    return {
+        'dust': round(dust_factor, 3),
+        'temperature': round(temp_factor, 3),
+        'latitude': round(lat_factor, 3),
+        'dust_condition': env['dust']['condition'],
+        'temp_celsius': env['temperature']['current'],
+        'combined': round(dust_factor * temp_factor, 3),
+    }
 
 
 def calculate_generation_rate(structure_type, latitude, longitude, level: int = 1):
@@ -174,7 +191,11 @@ def start_construction(user_id, structure_type, latitude, longitude):
         return {'success': False, 'error': f'Missing prerequisites: {", ".join(missing)}'}
 
     generation_rate = calculate_generation_rate(structure_type, latitude, longitude)
-    ready_at = datetime.now() + timedelta(seconds=definition['build_time_seconds'])
+    # Apply build speed bonuses (Logistics stat, future tech/infra effects)
+    from utilities.upgrades_utils import get_user_upgrade_effects
+    build_mult = get_user_upgrade_effects(user_id).get('build_time_mult', 1.0)
+    adjusted_seconds = max(60, definition['build_time_seconds'] * build_mult)  # Floor: 1 min
+    ready_at = datetime.now() + timedelta(seconds=adjusted_seconds)
 
     # Initialize new_balance - will be set properly in payment block if cost > 0
     new_balance = None
@@ -189,14 +210,10 @@ def start_construction(user_id, structure_type, latitude, longitude):
         current_balance = float(wallet.get('current_balance_eth', 0))
         cost_eth = float(definition['cost_sepolia'])
 
-        # Include operations fee buffer in affordability check
-        from utilities.depot_utils import OPERATIONS_FEE_BUFFER_ETH
-        total_needed_eth = cost_eth + OPERATIONS_FEE_BUFFER_ETH
-
-        if current_balance < total_needed_eth:
+        if current_balance < cost_eth:
             return {
                 'success': False,
-                'error': f"Insufficient shards. Need {total_needed_eth * 10000000:.0f} (includes operations fee), have {current_balance * 10000000:.0f}"
+                'error': f"Insufficient shards. Need {cost_eth * 10000000:.0f}, have {current_balance * 10000000:.0f}"
             }
         
         # Immediate DB balance deduction
@@ -294,7 +311,7 @@ def start_construction(user_id, structure_type, latitude, longitude):
                 logger.error(f"Failed to send async infrastructure reward: {e}")
 
         # Start the reward in a background thread
-        thread = threading.Thread(target=send_reward_async, daemon=True)
+        thread = threading.Thread(target=send_reward_async)
         thread.start()
 
         # Tell the user the reward is coming (optimistic response)
@@ -567,6 +584,13 @@ def calculate_accumulated_income(user_id):
         if structure['structure_type'] == 'solar_array':
             day_fraction, night_fraction = calculate_daylight_fraction(capped_hours, coords['longitude'])
             env_mult = _get_mars_environment_multiplier(coords['latitude'])
+            # Maintenance Drone reduces dust penalty by 50% (keeps panels cleaner)
+            if has_maintenance_drone:
+                factors = _get_mars_environment_factors(coords['latitude'])
+                dust = factors['dust']
+                # Halve the dust penalty: dust_factor goes from 0.7 to 0.85
+                improved_dust = dust + (1.0 - dust) * 0.5
+                env_mult = round(improved_dust * factors['temperature'], 3)
             effective_rate = hourly_rate * (day_fraction + night_fraction * night_multiplier) * env_mult
             accumulated = effective_rate * capped_hours
 
@@ -636,6 +660,21 @@ def calculate_accumulated_income(user_id):
         drone_income = passive_income_base * avg_capped_hours
         total_accumulated += drone_income
 
+    # 4. Scientist shard generation bonus (analysis stat → % boost)
+    #    +2% per analysis point, max +100% at 50 analysis
+    #    Added per bug #1030 — Luke approved adding this mechanic
+    scientist_shard_mult = 1.0
+    try:
+        from utilities.postgres_utils import get_user_scientist
+        scientist = get_user_scientist(user_id)
+        if scientist:
+            analysis_stat = scientist.get('stats', {}).get('analysis', 0)
+            scientist_shard_mult = 1.0 + (min(analysis_stat, 50) * 0.02)  # +2% per point, cap at +100%
+            if scientist_shard_mult > 1.0:
+                total_accumulated *= scientist_shard_mult
+    except Exception:
+        pass
+
     # ========================================================================
     # CALCULATE RATE BREAKDOWN FOR UI
     # This makes it easy for the frontend to show the math step-by-step
@@ -650,19 +689,26 @@ def calculate_accumulated_income(user_id):
     actual_avg_rate = round(total_accumulated / avg_hours, 1) if avg_hours > 0 else 0
 
     # Calculate day/night efficiency and environment multiplier for solar
-    day_night_efficiency = 1.0
+    day_night_efficiency = 1.0  # Pure day/night cycle (without env baked in)
     mars_env_multiplier = 1.0
+    mars_env_factors = None
     if details:
         solar_details = [d for d in details if d.get('day_night')]
         if solar_details:
-            day_night_efficiency = sum(d['day_night']['effective_multiplier'] for d in solar_details) / len(solar_details)
             mars_env_multiplier = solar_details[0]['day_night'].get('env_multiplier', 1.0)
+            # Separate day/night from env: effective_multiplier = day_night_only × env_mult
+            # So day_night_only = effective_multiplier / env_mult
+            env_m = mars_env_multiplier if mars_env_multiplier > 0 else 1.0
+            avg_effective = sum(d['day_night']['effective_multiplier'] for d in solar_details) / len(solar_details)
+            day_night_efficiency = round(avg_effective / env_m, 3) if env_m > 0 else avg_effective
+            # Get individual env factors for UI breakdown
+            mars_env_factors = _get_mars_environment_factors(coords['latitude'])
 
-    # Effective base rate (after day/night but before upgrades)
-    effective_base_rate = round(base_hourly_rate * day_night_efficiency, 1)
+    # Effective base rate (after day/night + environment but before upgrades)
+    effective_base_rate = round(base_hourly_rate * day_night_efficiency * mars_env_multiplier, 1)
 
-    # Theoretical max rate (if 100% daytime, with all bonuses)
-    theoretical_max_rate = round((base_hourly_rate * passive_income_mult * all_generation_mult) + passive_income_base, 1)
+    # Theoretical max rate (if 100% daytime, with all bonuses including scientist)
+    theoretical_max_rate = round(((base_hourly_rate * passive_income_mult * all_generation_mult) + passive_income_base) * scientist_shard_mult, 1)
 
     # ========================================================================
     # BUILD GENERATORS BREAKDOWN FOR UI
@@ -740,15 +786,17 @@ def calculate_accumulated_income(user_id):
             'tech_passive_mult': tech_passive_mult,  # Tech-tree-only component (for UI visibility)
             'all_generation_mult': all_generation_mult,
             'passive_income_base': passive_income_base,
+            'scientist_shard_mult': scientist_shard_mult,  # Analysis stat → shard gen boost
         },
         # Rate breakdown for UI (NEW)
         'rate_breakdown': {
             'base_hourly_rate': round(base_hourly_rate, 1),  # Raw infrastructure rate
-            'day_night_efficiency': round(day_night_efficiency * 100, 0),  # As percentage
+            'day_night_efficiency': round(day_night_efficiency * 100, 0),  # Pure day/night cycle %
             'effective_base_rate': effective_base_rate,  # After day/night + environment
             'theoretical_max_rate': theoretical_max_rate,  # Max possible with all bonuses
             'actual_avg_rate': actual_avg_rate,  # What you're actually getting this period
-            'mars_env_multiplier': round(mars_env_multiplier * 100, 0),  # Environment % (dust + temp)
+            'mars_env_multiplier': round(mars_env_multiplier * 100, 0),  # Combined env % (dust × temp)
+            'mars_env_factors': mars_env_factors,  # Individual: dust, temperature, latitude, condition
         },
         'generators_breakdown': generators_breakdown,  # List of generating structures with rates
         'latitude': coords['latitude'],
@@ -903,17 +951,19 @@ def record_science_value(user_id):
     from utilities.postgres_utils import add_passive_sv, get_db_connection
     add_passive_sv(user_id, sv_amount)
 
-    # Reset last_payout_at on research_station so SV doesn't re-accumulate from the same period
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE pilgrim.colony_infrastructure
-        SET last_payout_at = NOW(), updated_at = NOW()
-        WHERE user_id = %s AND structure_type = 'research_station' AND status = 'active'
-    """, (user_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
+    # Reset last_payout_at on ALL SV-generating buildings so SV doesn't re-accumulate
+    # (research_station + xenobiology_lab + any future SV generators)
+    sv_building_types = [stype for stype, cat in INFRASTRUCTURE_CATALOG.items()
+                         if any(lv.get('science_generation_rate', 0) > 0
+                                for lv in cat.get('levels', {}).values())]
+    if sv_building_types:
+        from utilities.postgres_utils import db_cursor as _db_cursor
+        with _db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.colony_infrastructure
+                SET last_payout_at = NOW(), updated_at = NOW()
+                WHERE user_id = %s AND structure_type = ANY(%s) AND status = 'active'
+            """, (user_id, sv_building_types))
 
     logger.info(f"🔬 User {user_id} recorded {sv_amount:.1f} SV")
 

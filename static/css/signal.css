@@ -1,5 +1,11 @@
 /* Signal Page Styles */
 
+/* Hide scrollbar on signal page — content still scrolls but bar is invisible for cleaner look */
+body.page-signal::-webkit-scrollbar,
+body.page-signal .main-content::-webkit-scrollbar { display: none; }
+body.page-signal,
+body.page-signal .main-content { scrollbar-width: none; -ms-overflow-style: none; }
+
 /* Signal Hero */
 .signal-hero-bg {
     background: linear-gradient(135deg,

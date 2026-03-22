@@ -3,13 +3,14 @@
 {% block title %}PilgrimBot{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/pilgrimbot.css?v=5">
+<link rel="stylesheet" href="/static/css/pilgrimbot.css?v=15">
 {% endblock %}
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
     .bottom-nav { display: none !important; }
+    .aria-orb { display: none !important; }
     .mars-container { padding-bottom: 0 !important; }
     .main-content { padding: 0 !important; max-width: none !important; }
 </style>
@@ -26,15 +27,25 @@
         <div class="pb-chat-list" id="pbChatList">
             {% for chat in chats %}
             <div class="pb-chat-item" data-chat-id="{{ chat.chat_id }}">
+                <button class="pb-chat-hide" title="Hide conversation">&times;</button>
                 <div class="pb-chat-title">{{ chat.title }}</div>
                 <div class="pb-chat-meta">{{ chat.message_count }} messages</div>
             </div>
             {% endfor %}
         </div>
+        <div class="pb-role-picker">
+            <label>My role:</label>
+            <select id="pbRoleSelect">
+                <option value="captain"{% if pb_role == 'captain' %} selected{% endif %}>Captain (player)</option>
+                <option value="qa"{% if pb_role == 'qa' %} selected{% endif %}>QA Tester</option>
+                <option value="dev"{% if pb_role == 'dev' %} selected{% endif %}>Developer</option>
+            </select>
+        </div>
     </div>
 
     <!-- Main chat area -->
     <div class="pb-main">
+        <div class="pb-bug-bar" id="pbBugBar" style="display:none;"></div>
         <div class="pb-messages" id="pbMessages">
             <div class="pb-welcome" id="pbWelcome">
                 <h2>Ask me anything about how Pilgrims works</h2>
@@ -59,9 +70,13 @@
 
 <script>
     window.PB_USER_NAME = {{ (user.name.split()[0] | tojson) if user and user.name else '"Captain"' }};
+    window.PB_ROLE = {{ (pb_role or 'captain') | tojson }};
+    {% if bug_context %}window.PB_BUG_CONTEXT = {{ bug_context | tojson }};{% endif %}
+    {% if bug_id %}window.PB_BUG_ID = {{ bug_id }};{% endif %}
+    {% if bug_name %}window.PB_BUG_NAME = {{ bug_name | tojson }};{% endif %}
 </script>
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/pilgrimbot.js?v=5" defer></script>
+<script src="/static/js/pilgrimbot.js?v=15" defer></script>
 {% endblock %}

@@ -50,11 +50,11 @@ def get_scientist_branch_bonuses(scientist_key):
     bonuses = {}
     for branch, scientists in SCIENTIST_BRANCHES.items():
         if scientist_key in scientists:
-            bonuses[branch] = {'speed_mult': 1.25, 'cost_mult': 0.80, 'label': '25% faster, 20% cheaper'}
+            bonuses[branch] = {'speed_mult': 1.25, 'cost_mult': 0.80, 'label': '25% faster research, 20% cheaper'}
             break
     secondary = SCIENTIST_SECONDARY_BRANCHES.get(scientist_key)
     if secondary and secondary not in bonuses:
-        bonuses[secondary] = {'speed_mult': 1.15, 'cost_mult': 1.0, 'label': '15% faster'}
+        bonuses[secondary] = {'speed_mult': 1.15, 'cost_mult': 1.0, 'label': '15% faster research'}
     return bonuses
 
 

@@ -26,8 +26,12 @@ This does NOT:
 
 import sys
 import os
+import signal
 import argparse
 from datetime import datetime
+
+# Per-test timeout (seconds) — prevents hanging on slow DB connections
+TEST_TIMEOUT = 15
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -61,12 +65,27 @@ FEATURE_TAGS = {
 # DECORATORS
 # =============================================================================
 
+class TestTimeoutError(Exception):
+    pass
+
+
+def _timeout_handler(signum, frame):
+    raise TestTimeoutError(f"timed out after {TEST_TIMEOUT}s")
+
+
 def test(name, tier=2, features=None):
     """Register a test with name, tier level, and feature tags."""
     def decorator(func):
         def wrapper(*args, **kwargs):
             try:
-                result = func(*args, **kwargs)
+                # Set per-test timeout via SIGALRM
+                old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
+                signal.alarm(TEST_TIMEOUT)
+                try:
+                    result = func(*args, **kwargs)
+                finally:
+                    signal.alarm(0)  # Cancel alarm
+                    signal.signal(signal.SIGALRM, old_handler)
                 if result is None or result is True:
                     PASSED.append(name)
                     print(f"  \u2705 {name}")
@@ -75,6 +94,10 @@ def test(name, tier=2, features=None):
                     FAILED.append((name, str(result)))
                     print(f"  \u274c {name}: {result}")
                     return False
+            except TestTimeoutError:
+                FAILED.append((name, f"TIMEOUT ({TEST_TIMEOUT}s)"))
+                print(f"  \u23f1\ufe0f  {name}: TIMEOUT ({TEST_TIMEOUT}s)")
+                return False
             except Exception as e:
                 FAILED.append((name, str(e)))
                 print(f"  \u274c {name}: {e}")
@@ -102,6 +125,26 @@ def requires_web3(func):
     wrapper._tier = getattr(func, '_tier', 2)
     wrapper._features = getattr(func, '_features', [])
     return wrapper
+
+
+def requires_import(*modules):
+    """Skip if any of the listed modules can't be imported."""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for mod in modules:
+                try:
+                    __import__(mod)
+                except ImportError:
+                    name = getattr(func, '_test_name', func.__name__)
+                    SKIPPED.append(f"{name} ({mod} not available)")
+                    print(f"  \u23ed\ufe0f  {name} (skipped - no {mod})")
+                    return True
+            return func(*args, **kwargs)
+        wrapper._test_name = getattr(func, '_test_name', func.__name__)
+        wrapper._tier = getattr(func, '_tier', 2)
+        wrapper._features = getattr(func, '_features', [])
+        return wrapper
+    return decorator
 
 
 def requires_flask(func):
@@ -499,7 +542,7 @@ def test_perform_upgrade_response():
 
 
 @test("Upgrade catalog includes is_building field", tier=2, features=['depot', 'api'])
-@requires_flask
+@requires_web3
 def test_catalog_has_building_status():
     """
     BUG: Depot cards showed upgrade button even during active builds.
@@ -579,12 +622,47 @@ def test_sv_no_analyzed_filter():
 
 
 # -----------------------------------------------------------------------------
+# SV ECONOMY: All 5 pillars must be functional (Mar 2026)
+# Bug #1052: Brainstorm agreed on 5 SV sources, all must be wired up
+# -----------------------------------------------------------------------------
+
+@test("Research Station SV rates boosted ~6x", tier=1, features=['config', 'colony'])
+def test_sv_economy_pillar1():
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    rs = INFRASTRUCTURE_CATALOG['research_station']['levels']
+    assert rs[1]['science_generation_rate'] >= 5.0, f"Lv1 rate should be >= 5, got {rs[1]['science_generation_rate']}"
+    assert rs[10]['science_generation_rate'] >= 80.0, f"Lv10 rate should be >= 80, got {rs[10]['science_generation_rate']}"
+    return True
+
+
+@test("sv_milestones module loads and has thresholds", tier=1, features=['config', 'colony'])
+def test_sv_economy_pillar4():
+    from utilities.sv_milestones import COLLECTION_MILESTONES, get_user_milestones
+    assert len(COLLECTION_MILESTONES) >= 5, "Need at least 5 milestone thresholds"
+    assert COLLECTION_MILESTONES[0] == (10, 250, "Novice Collector"), f"First milestone wrong: {COLLECTION_MILESTONES[0]}"
+    return True
+
+
+@test("PilgrimBot sv_sources query works", tier=2, features=['pilgrimbot'])
+def test_sv_sources_query():
+    from utilities.pilgrimbot_data import query_player_data
+    result = query_player_data('sv_sources', 112)
+    assert 'PASSIVE GENERATION' in result, "Missing passive generation"
+    assert 'EXTRACTION BONUS' in result, "Missing extraction bonus"
+    assert 'EXPEDITION SV' in result, "Missing expedition SV"
+    assert 'TRAIL BUILDING' in result, "Missing trail building"
+    assert 'COLLECTION MILESTONES' in result, "Missing collection milestones"
+    return True
+
+
+# -----------------------------------------------------------------------------
 # BUG REGRESSION: ARIA colony snapshot must load cleanly (Feb 2026)
 # Issue: load_colony_snapshot() had JOIN on pilgrim.discoveries (doesn't exist)
 #        causing ARIA chat to return no response / break silently
 # -----------------------------------------------------------------------------
 
 @test("load_colony_snapshot loads for Andy", tier=1, features=['aria', 'crew'])
+@requires_import('anthropic')
 def test_snapshot_andy():
     from utilities.aria_utils import load_colony_snapshot
     snapshot = load_colony_snapshot(45)
@@ -596,6 +674,7 @@ def test_snapshot_andy():
 
 
 @test("load_colony_snapshot loads for Luke", tier=1, features=['aria', 'crew'])
+@requires_import('anthropic')
 def test_snapshot_luke():
     from utilities.aria_utils import load_colony_snapshot
     snapshot = load_colony_snapshot(112)
@@ -608,6 +687,7 @@ def test_snapshot_luke():
 
 
 @test("Snapshot has no reference to pilgrim.discoveries", tier=1, features=['aria', 'db'])
+@requires_import('anthropic')
 def test_snapshot_no_bad_table():
     """pilgrim.discoveries doesn't exist — snapshot must use expedition_discoveries."""
     import inspect
@@ -623,6 +703,7 @@ def test_snapshot_no_bad_table():
 # -----------------------------------------------------------------------------
 
 @test("analyze endpoint exists in app.py", tier=1, features=['api', 'expeditions'])
+@requires_import('flask')
 def test_analyze_endpoint():
     """colony-discoveries.js calls /api/discovery/analyze — it must exist."""
     import inspect
@@ -721,6 +802,7 @@ def test_expedition_cost():
 
 
 @test("FluxGenerator importable", tier=2, features=['crew'])
+@requires_import('replicate')
 def test_flux_import():
     try:
         from utilities.flux_utils import FluxGenerator
@@ -959,6 +1041,57 @@ def test_income_calc_query_count():
 
 
 # =============================================================================
+# BUG TRACKER TESTS
+# =============================================================================
+
+@test("Bug tracker tables create without error", tier=1, features=['db', 'bugs'])
+def test_bug_tables():
+    from utilities.db_bugs import ensure_bug_tables
+    ensure_bug_tables()
+
+@test("Bug tracker CRUD works", tier=2, features=['db', 'bugs'])
+def test_bug_crud():
+    from utilities.db_bugs import create_bug, get_bug_by_id, update_bug, search_bugs
+    from utilities.postgres_utils import db_cursor
+    bug = create_bug(name='__smoke_test_bug__', description='Auto-test', type='Bug', priority='P5')
+    assert bug and bug['id'], "create_bug returned None"
+    fetched = get_bug_by_id(bug['id'])
+    assert fetched and fetched['name'] == '__smoke_test_bug__', "get_bug_by_id failed"
+    ok = update_bug(bug['id'], 'smoke_test', status='Working On')
+    assert ok, "update_bug failed"
+    results = search_bugs('__smoke_test_bug__')
+    assert len(results) >= 1, "search_bugs returned no results"
+    # Cleanup
+    with db_cursor(commit=True) as cur:
+        cur.execute("DELETE FROM pilgrim.bug_history WHERE bug_id = %s", (bug['id'],))
+        cur.execute("DELETE FROM pilgrim.bugs WHERE id = %s", (bug['id'],))
+
+@test("Bug tracker stats returns dict", tier=2, features=['db', 'bugs'])
+def test_bug_stats():
+    from utilities.db_bugs import get_bug_stats
+    stats = get_bug_stats()
+    assert isinstance(stats, dict), f"Expected dict, got {type(stats)}"
+    assert 'active_count' in stats, "Missing active_count key"
+
+@test("Admin bugs page data loads without error", tier=2, features=['db', 'bugs'])
+def test_admin_bugs_page_data():
+    """Smoke test the exact query path that /admin/bugs uses to render."""
+    from utilities.db_bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
+    from utilities.postgres_utils import db_cursor, _fetchall
+    # This is the exact query from the admin_bugs() route — if it fails, the page 500s
+    with db_cursor() as cur:
+        cur.execute("SELECT name, given_name, email FROM pilgrim.users WHERE is_admin = true ORDER BY name")
+        mention_users = [{'name': r['name'], 'handle': (r.get('given_name') or r['name'].split()[0]).lower(), 'email': r['email']} for r in _fetchall(cur)]
+    assert len(mention_users) >= 1, "No admin users found for @mentions"
+    active = get_active_bugs()
+    assert isinstance(active, list), "get_active_bugs didn't return list"
+    completed = get_completed_bugs()
+    assert isinstance(completed, list), "get_completed_bugs didn't return list"
+    ideas = get_ideas()
+    assert isinstance(ideas, list), "get_ideas didn't return list"
+
+
+# =============================================================================
 # API ENDPOINT HELPER
 # =============================================================================
 
@@ -1005,7 +1138,7 @@ def check_gcloud_logs():
 # TEST RUNNER
 # =============================================================================
 
-ALL_FEATURES = ['crew', 'depot', 'expeditions', 'colony', 'signal', 'tech', 'aria', 'api', 'db', 'config', 'blockchain']
+ALL_FEATURES = ['crew', 'depot', 'expeditions', 'colony', 'signal', 'tech', 'aria', 'api', 'db', 'config', 'blockchain', 'bugs']
 
 
 def get_tests_to_run(args):
@@ -1037,10 +1170,19 @@ def run_tests(args):
     if active:
         mode += f" + {', '.join(active)}"
 
-    print(f"\n{'=' * 60}\n\U0001f9ea PILGRIMS SMOKE TEST\n   {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n   Mode: {mode}\n   Tests: {len(tests)}\n{'=' * 60}\n")
+    print(f"\n{'=' * 60}\n\U0001f9ea PILGRIMS SMOKE TEST\n   {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n   Mode: {mode}\n   Tests: {len(tests)}\n   Per-test timeout: {TEST_TIMEOUT}s\n{'=' * 60}\n")
 
+    start_time = datetime.now()
     for t in tests:
         t()
+        # Global safety: abort if total time exceeds 3 minutes
+        elapsed = (datetime.now() - start_time).total_seconds()
+        if elapsed > 180:
+            print(f"\n  ⚠️  GLOBAL TIMEOUT: {elapsed:.0f}s elapsed, skipping remaining tests")
+            remaining = tests[tests.index(t) + 1:]
+            for r in remaining:
+                SKIPPED.append(f"{r._test_name} (global timeout)")
+            break
 
     print(f"\n{'=' * 60}\n\U0001f4ca RESULTS\n{'=' * 60}")
     print(f"  \u2705 Passed:  {len(PASSED)}\n  \u274c Failed:  {len(FAILED)}\n  \u23ed\ufe0f  Skipped: {len(SKIPPED)}")

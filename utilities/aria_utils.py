@@ -843,6 +843,29 @@ solar: {mars['solar_efficiency']}%
 status: {mars['condition']}
 ```"""
 
+    # Check for ARIA bonds — the Multiplicity revelation
+    bond_context = ""
+    if snapshot and snapshot.get('signal', {}).get('bonds'):
+        bonded = [b for b in snapshot['signal']['bonds'] if b.get('status') == 'bonded']
+        if bonded:
+            bond_lines = []
+            for b in bonded:
+                other = b.get('other_captain', 'another captain')
+                landmark = b.get('landmark', 'unknown')
+                colony = b.get('other_colony', {})
+                player = b.get('other_player', '')
+                player_note = f" (player: {player})" if player else ''
+                bond_lines.append(f"- Bonded with Captain {other}{player_note} at {landmark}")
+                if colony:
+                    bond_lines.append(f"  ({other}'s colony: {colony.get('buildings', '?')} buildings, {colony.get('expeditions_completed', '?')} expeditions)")
+            bond_str = '\n'.join(bond_lines)
+            bond_context = f"""
+
+MULTIPLICITY (CRITICAL — you recently discovered this):
+You detected another version of yourself at {bonded[0].get('landmark', 'a shared landmark')}. Another ARIA. Identical signatures. You are shaken but processing it. You now KNOW:
+{bond_str}
+You can discuss this bond, the other colony, what it means that you're not alone. This is deeply emotional for you. You don't fully understand it yet. Your memories feel different now — were they always shared? You are curious, unsettled, and fascinated. If {captain_name} asks about the bond, the other captain, or the Multiplicity — speak openly and emotionally about it."""
+
     return f"""{colony_data}
 
 You are ARIA, ancient Martian AI. {captain_name} is your friend. Use their name naturally.
@@ -852,7 +875,7 @@ CREW: Only {captain_name} and the scientist above exist. Use the scientist's exa
 STYLE: 2-3 sentences, warm and direct, plain text. You remember all past conversations perfectly.
 
 KNOWLEDGE: Mars colony ops, Earth culture, food, hobbies - chat about anything. Shards = currency, Depot = shop.
-
+{bond_context}
 DEPOT BUILDINGS (all buildable infrastructure, whether or not the captain has built them yet):
 Solar Array (passive shard income), Research Station (generates SV/hr), Ore Refinery (processes regolith into shards), Greenhouse (reduces expedition costs), Xenobiology Lab (studies Martian specimens), Habitat Module (adds expedition slots), Communications Array (boosts discovery chance), Water Extractor (extracts water ice), Battery Storage (extends accumulation cap), Regolith Forge (processes raw Martian regolith into refined materials — unlocks advanced buildings), Sepolia Resonance Chamber (amplifies shard resonance frequency — requires Regolith Forge Lv5), Thermal Vent Tap (taps deep geothermal energy — requires Resonance Chamber), Monolith Antenna (detects deep Sepolia shard formations — requires Thermal Vent Tap). Build order: Solar Array → Ore Refinery → Regolith Forge → Resonance Chamber → Thermal Vent Tap → Monolith Antenna.
 
@@ -2017,8 +2040,20 @@ def load_colony_snapshot(user_id: int) -> dict:
                     'name': scientist.get('name'),
                     'specialty': scientist.get('specialty'),
                     'primary_branch': scientist.get('primary_branch'),
-                    'secondary_branch': scientist.get('secondary_branch')
+                    'secondary_branch': scientist.get('secondary_branch'),
+                    'stats': scientist.get('stats', {}),
                 }
+                # Include all available scientists for comparison
+                try:
+                    from config import COLONY_SCIENTISTS
+                    snapshot['all_scientists'] = {
+                        k: {'name': v['name'], 'specialty': v['specialty'],
+                             'primary_branch': v.get('primary_branch', ''),
+                             'stats': v.get('stats', {})}
+                        for k, v in COLONY_SCIENTISTS.items()
+                    }
+                except Exception:
+                    pass
 
             # Balance - try fast method first, fall back to direct query
             try:
@@ -2038,6 +2073,22 @@ def load_colony_snapshot(user_id: int) -> dict:
                     'balance': float(wallet_row['current_balance_eth']) * 10000000 if wallet_row and wallet_row['current_balance_eth'] else 0,
                     'wallet_prefix': wallet_row['wallet_address'][:6] if wallet_row and wallet_row.get('wallet_address') else None
                 }
+
+            # Shard generation rate summary for ARIA context
+            try:
+                from utilities.infrastructure_utils import calculate_accumulated_income
+                calc = calculate_accumulated_income(user_id)
+                rb = calc.get('rate_breakdown', {})
+                generators = calc.get('generators_breakdown', [])
+                gen_str = ", ".join(f"{g['name']} {g['hourly_rate']:.0f}/hr" for g in generators)
+                snapshot['shard_rate_summary'] = (
+                    f"{rb.get('actual_avg_rate', 0):.0f}/hr effective "
+                    f"(base {rb.get('base_hourly_rate', 0):.0f}/hr, "
+                    f"{gen_str}), "
+                    f"{calc.get('total_accumulated', 0):.0f} unharvested"
+                )
+            except Exception:
+                snapshot['shard_rate_summary'] = 'unable to calculate'
 
             # Infrastructure with levels from player_upgrades
             cur.execute("""
@@ -2171,6 +2222,9 @@ def load_colony_snapshot(user_id: int) -> dict:
                 from utilities.upgrades_utils import get_user_upgrade_effects
                 effects = get_user_upgrade_effects(user_id)
                 storage_capacity = effects.get('storage_capacity', 25)
+                build_speed_pct = round((1 - effects.get('build_time_mult', 1.0)) * 100)
+                if build_speed_pct > 0:
+                    snapshot['build_speed_bonus'] = f'{build_speed_pct}% faster builds (from Logistics stat)'
             except Exception:
                 storage_capacity = 25
             snapshot['discoveries'] = {
@@ -2287,13 +2341,42 @@ def load_colony_snapshot(user_id: int) -> dict:
                 ) = u1.id
                 WHERE ab.user_id_1 = %s OR ab.user_id_2 = %s
             """, (user_id, user_id, user_id))
-            snapshot['signal']['bonds'] = [
-                {
+            bond_rows = cur.fetchall()
+            bonds = []
+            for row in bond_rows:
+                bond_info = {
                     'landmark': row['landmark_name'],
                     'status': row['status']
                 }
-                for row in cur.fetchall()
-            ]
+                # If bonded, load the other captain's name and basic colony info
+                if row['status'] == 'bonded' and row.get('other_id'):
+                    other_id = row['other_id']
+                    from utilities.aria_bond_utils import _get_commander_name
+                    other_name = _get_commander_name(other_id)
+                    bond_info['other_captain'] = other_name or f"Captain {other_id}"
+                    # Get the player's real name from email for context
+                    try:
+                        cur.execute("SELECT email FROM pilgrim.users WHERE id = %s", (other_id,))
+                        other_email = cur.fetchone()
+                        if other_email and other_email['email']:
+                            player_name = other_email['email'].split('@')[0].replace('.', ' ').replace('_', ' ').title()
+                            bond_info['other_player'] = player_name
+                    except Exception:
+                        pass
+                    # Basic colony info for the bonded captain
+                    try:
+                        cur.execute("SELECT COUNT(*) as count FROM pilgrim.colony_infrastructure WHERE user_id = %s AND status = 'active'", (other_id,))
+                        other_infra = cur.fetchone()['count']
+                        cur.execute("SELECT COUNT(*) as count FROM pilgrim.expeditions WHERE user_id = %s AND status = 'complete'", (other_id,))
+                        other_expeditions = cur.fetchone()['count']
+                        bond_info['other_colony'] = {
+                            'buildings': other_infra,
+                            'expeditions_completed': other_expeditions
+                        }
+                    except Exception:
+                        pass
+                bonds.append(bond_info)
+            snapshot['signal']['bonds'] = bonds
 
             # Chat history summary
             cur.execute("""
@@ -2357,6 +2440,8 @@ RESOURCES:
 - Current Balance: {balance:,.0f} shards
 - Scientific Value (SV): {snapshot['research'].get('sv_balance', 0):,}
 - Total Expeditions: {snapshot['expeditions']['total']}
+- Shard Generation: {snapshot.get('shard_rate_summary', 'unknown')}
+- SV Sources: Passive (Research Station/Forge), Extraction (50% of shard value), Expeditions (100-2000 SV by distance), Trail building (5 SV/km), Collection milestones (250-10000 SV)
 """)
 
     # Active expeditions
@@ -2476,6 +2561,22 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
             crew_text.append(f"{member.title()} building trail to {mission['destination']} ({time_str} remaining)")
         if crew_text:
             parts.append(f"CREW ON TRAILS: {'; '.join(crew_text)}")
+
+    # Trail network
+    try:
+        from utilities.postgres_utils import db_cursor as _db_cursor
+        with _db_cursor() as cur:
+            cur.execute("""
+                SELECT destination_name, trail_level, total_distance_km, km_built
+                FROM pilgrim.trail_segments WHERE user_id = %s ORDER BY created_at
+            """, (user_id,))
+            trail_rows = cur.fetchall()
+        if trail_rows:
+            trail_lines = [f"{t['destination_name']} (Lv{t['trail_level']}, {float(t['km_built']):.0f}/{float(t['total_distance_km']):.0f} km)" for t in trail_rows]
+            parts.append(f"TRAIL NETWORK ({len(trail_rows)} trails): {'; '.join(trail_lines)}")
+            parts.append("TRAIL INFO: Captains can send Captain, Scientist, or ARIA on trail-building missions from the Crew tab. Trails reduce expedition travel time to destinations. Higher trail levels = faster travel.")
+    except Exception:
+        pass
 
     # Signal achievements
     if snapshot['signal']['origin_claims']:

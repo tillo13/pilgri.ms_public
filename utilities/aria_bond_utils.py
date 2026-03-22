@@ -166,7 +166,7 @@ def _create_bond(user_id: int, other_id: int, landmark_name: str) -> dict | None
         except Exception as e:
             logger.error(f"Bond tx creation failed: {e}")
 
-    thread = threading.Thread(target=create_bond_tx_async, daemon=True)
+    thread = threading.Thread(target=create_bond_tx_async)
     thread.start()
 
     return {
@@ -279,7 +279,7 @@ def _generate_bond_image_async(bond_id: int, user_id_1: int, user_id_2: int, lan
             except Exception:
                 pass
 
-    thread = threading.Thread(target=generate, daemon=True)
+    thread = threading.Thread(target=generate)
     thread.start()
 
 
@@ -324,14 +324,19 @@ def process_fragment_submission(tx_hash: str, user_id: int) -> dict:
         }
 
     # Look up by bond_tx_hash - both users enter the SAME code
+    # Normalize: strip whitespace, ensure matching with or without 0x prefix
+    clean_hash = tx_hash.strip().lower()
+    hash_no_prefix = clean_hash[2:] if clean_hash.startswith('0x') else clean_hash
+    hash_with_prefix = '0x' + hash_no_prefix
+
     with db_cursor() as cur:
         cur.execute("""
             SELECT id, user_id_1, user_id_2, landmark_name,
                    fragment_1_submitted, fragment_2_submitted,
                    status, bond_tx_hash, bond_image_url
             FROM pilgrim.aria_bonds
-            WHERE bond_tx_hash = %s
-        """, (tx_hash,))
+            WHERE LOWER(bond_tx_hash) IN (%s, %s)
+        """, (hash_no_prefix, hash_with_prefix))
         bond = cur.fetchone()
 
     if not bond:
@@ -365,20 +370,24 @@ def process_fragment_submission(tx_hash: str, user_id: int) -> dict:
         bond_number = details['bond_number'] if details else '?'
         sol = int(details['bonded_at'].timestamp() / 86400) if details and details['bonded_at'] else '?'
 
+        tx_hash = bond['bond_tx_hash'] or ''
+        etherscan_url = f"https://sepolia.etherscan.io/tx/{tx_hash}" if tx_hash else None
+
         return {
             'success': True,
             'is_fragment': True,
             'bond_complete': True,
             'already_bonded': True,
             'bond_number': bond_number,
-            'bond_tx': bond['bond_tx_hash'],
+            'bond_tx': tx_hash,
+            'etherscan_url': etherscan_url,
             'landmark': bond['landmark_name'],
             'captain_1': captain_1,
             'captain_2': captain_2,
             'sol': sol,
             'bond_image_url': bond['bond_image_url'],
             'aria_revelation': ARIA_FIRST_CONTACT_MESSAGE,
-            'message': f"⚡ ARIA Bond #{bond_number} at {bond['landmark_name']} - the resonance is eternal."
+            'message': f"ARIA Bond #{bond_number} at {bond['landmark_name']} — the resonance is eternal."
         }
 
     # Check if this user already submitted
@@ -472,31 +481,35 @@ def _complete_bond(bond_id: int) -> dict:
 
         cur.execute("""
             INSERT INTO pilgrim.replicate_assets
-            (user_id, asset_type, name, prompt, image_url, is_deleted)
+            (user_id, asset_type, commander_name, prompt_used, gcs_url, is_deleted)
             VALUES (%s, 'aria_bond', %s, %s, %s, false)
         """, (bond['user_id_1'], item_name, item_description, bond_image_url))
 
         cur.execute("""
             INSERT INTO pilgrim.replicate_assets
-            (user_id, asset_type, name, prompt, image_url, is_deleted)
+            (user_id, asset_type, commander_name, prompt_used, gcs_url, is_deleted)
             VALUES (%s, 'aria_bond', %s, %s, %s, false)
         """, (bond['user_id_2'], item_name, item_description, bond_image_url))
 
     logger.info(f"🎉 ARIA BOND #{bond_number} COMPLETE! {bond['bond_tx_hash'][:20] if bond['bond_tx_hash'] else 'no-tx'}... at {bond['landmark_name']}")
+
+    tx_hash = bond['bond_tx_hash'] or ''
+    etherscan_url = f"https://sepolia.etherscan.io/tx/{tx_hash}" if tx_hash else None
 
     return {
         'success': True,
         'is_fragment': True,
         'bond_complete': True,
         'bond_number': bond_number,
-        'bond_tx': bond['bond_tx_hash'],
+        'bond_tx': tx_hash,
+        'etherscan_url': etherscan_url,
         'landmark': bond['landmark_name'],
         'captain_1': captain_1,
         'captain_2': captain_2,
         'sol': current_sol,
         'bond_image_url': bond_image_url,
         'aria_revelation': ARIA_FIRST_CONTACT_MESSAGE,
-        'message': f"⚡ ARIA Bond #{bond_number} - Two ARIAs remember as one."
+        'message': f"ARIA Bond #{bond_number} at {bond['landmark_name']} — permanently inscribed. Two ARIAs remember as one."
     }
 
 
@@ -504,13 +517,19 @@ def _get_commander_name(user_id: int) -> str | None:
     """Get commander name for a user."""
     try:
         with db_cursor() as cur:
+            # Try primary character first, then any character, then user's given name
             cur.execute("""
-                SELECT name FROM pilgrim.replicate_assets
-                WHERE user_id = %s AND asset_type = 'character_image'
-                LIMIT 1
+                SELECT commander_name FROM pilgrim.replicate_assets
+                WHERE user_id = %s AND asset_type = 'character_image' AND commander_name IS NOT NULL
+                ORDER BY is_primary_character DESC, created_at DESC LIMIT 1
             """, (user_id,))
             result = cur.fetchone()
-            return result['name'] if result else None
+            if result and result['commander_name']:
+                return result['commander_name']
+            # Fallback to user's given name
+            cur.execute("SELECT given_name, name FROM pilgrim.users WHERE id = %s", (user_id,))
+            user = cur.fetchone()
+            return user['given_name'] or user['name'].split()[0] if user else None
     except:
         return None
 
@@ -542,6 +561,57 @@ def get_user_bond_count(user_id: int) -> int:
 def user_has_aria_bond(user_id: int) -> bool:
     """Check if user has at least one completed bond."""
     return get_user_bond_count(user_id) > 0
+
+
+def get_bonds_for_display(user_id: int) -> list:
+    """Get bonds formatted for template display. Single source of truth for all pages
+    (home, colony, signal, expeditions) that show bond info."""
+    bonds = get_user_bonds(user_id)
+    result = []
+    for b in bonds:
+        if not b.get('bond_tx_hash'):
+            continue
+        partner_id = b.get('user_id_2') if b.get('user_id_1') == user_id else b.get('user_id_1')
+        result.append({
+            'landmark': b['landmark_name'],
+            'partner_name': _get_commander_name(partner_id) or f"Captain {partner_id}",
+            'bond_tx_hash': b['bond_tx_hash'],
+            'bond_image_url': b.get('bond_image_url', ''),
+            'status': b['status'],
+        })
+    return result
+
+
+def get_pending_first_contact(user_id: int) -> dict | None:
+    """
+    Check if user has a pending bond where they haven't seen the First Contact cinematic.
+    Returns bond data for the cinematic template, or None.
+
+    The cinematic shows when:
+    - Bond exists in 'pending' status
+    - This user hasn't had first_contact_shown set to True
+    """
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT b.id, b.user_id_1, b.user_id_2, b.landmark_name,
+                   b.bond_tx_hash, b.bond_image_url, b.status,
+                   b.first_contact_shown_user_1, b.first_contact_shown_user_2
+            FROM pilgrim.aria_bonds b
+            WHERE (b.user_id_1 = %s OR b.user_id_2 = %s)
+            AND b.status = 'pending'
+        """, (user_id, user_id))
+        bond = cur.fetchone()
+
+    if not bond:
+        return None
+
+    # Check if this user has already seen the cinematic
+    is_user_1 = (user_id == bond['user_id_1'])
+    shown_field = 'first_contact_shown_user_1' if is_user_1 else 'first_contact_shown_user_2'
+    if bond[shown_field]:
+        return None  # Already seen it
+
+    return dict(bond)
 
 
 def get_pending_fragments(user_id: int) -> list:

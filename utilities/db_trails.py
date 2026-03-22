@@ -175,7 +175,19 @@ def add_km_to_trail(user_id: int, destination_name: str, km_amount: float,
                 """, (user_id, from_landmark, destination_name, total_distance_km, km_amount, km_amount))
 
             row = cur.fetchone()
-            return dict(row) if row else None
+
+        # SV Economy Pillar 5: Award 5 SV per km of trail built
+        if km_amount > 0:
+            try:
+                from utilities.db_users import add_passive_sv
+                trail_sv = int(km_amount * 5)
+                if trail_sv > 0:
+                    add_passive_sv(user_id, trail_sv)
+                    logger.info(f"🛤️ Trail SV: user {user_id} earned {trail_sv} SV from {km_amount:.1f} km built on {destination_name}")
+            except Exception as e:
+                logger.error(f"Failed to award trail SV: {e}")
+
+        return dict(row) if row else None
     except Exception as e:
         logger.error(f"Failed to add km to trail: {e}")
         return None

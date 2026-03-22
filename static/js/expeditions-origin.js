@@ -71,8 +71,13 @@ async function addOriginSiteMarkers() {
             document.head.appendChild(pulseStyle);
         }
 
-        // Show ALL 14 origin sites - no filtering
+        // Show origin sites based on proximity — hidden until detected
+        // Claimed/visited sites always visible, others only within detection range
+        const ORIGIN_DETECTION_KM = 500;  // Show unclaimed sites within 500km
         originSiteData.forEach((site, i) => {
+            const visible = site.is_claimed || site.has_visited || site.can_claim
+                || (site.distance_km && site.distance_km <= ORIGIN_DETECTION_KM);
+            if (!visible) return;  // Skip — too far to detect
             // ALL sites use the same bright gold color
             const fillColor = originColor;
             const borderColor = originBorder;

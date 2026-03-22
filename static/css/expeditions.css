@@ -1,3 +1,26 @@
+/* Vehicle Range Selector */
+.vehicle-range-bar {
+    display: flex; gap: 6px; margin: 8px 0; padding: 6px;
+    background: var(--bg-secondary); border-radius: 10px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.vehicle-range-btn {
+    flex-shrink: 0; padding: 8px 14px; border: 2px solid transparent;
+    background: var(--bg-tertiary); border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    transition: all 0.15s; white-space: nowrap;
+}
+.vehicle-range-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.vehicle-range-btn.active { border-color: var(--color-mars); color: var(--color-mars); background: rgba(224, 96, 48, 0.1); }
+.vehicle-range-btn.in-use { opacity: 0.5; }
+.vehicle-range-btn .range-km { font-size: 11px; color: var(--text-muted); margin-left: 4px; }
+.vehicle-range-btn.active .range-km { color: var(--color-mars); }
+.vehicle-range-btn .in-use-label {
+    display: inline-block; font-size: 9px; background: var(--color-warning);
+    color: #000; padding: 1px 5px; border-radius: 4px; margin-left: 4px;
+    text-transform: uppercase; font-weight: 700;
+}
+
 /* Expedition Page Styles */
 .expedition-status-bar {
     display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;

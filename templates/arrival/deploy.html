@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
         chat.dataset.page = 'deploy';
         {% if has_character %}
         // Final step - encourage them to accept
-        chat.dataset.greeting = "This is the final step.\n\nClick **Accept Mission** to sign in and begin your colony.\n\nYour captain, your shards, your scientist—everything will be saved permanently.\n\nMars awaits, Captain.";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "This is the final step.\n\nClick **Accept Mission** to sign in and begin your colony.\n\nYour captain, your shards, your scientist—everything will be saved permanently.\n\nMars awaits, Captain.";
+        }
         chat.dataset.pageContext = 'NEW USER on final step (Step 3) - Accept Mission page. They have selected a captain with {{ stats.values()|sum }} total power and have {{ "%.1f"|format(current_balance) }} starting shards. {% if scientist %}Their scientist is {{ scientist.name }} ({{ scientist.specialty }}).{% endif %} The user needs to click "Accept Mission" to sign in with Google and officially start their colony. This is the LAST step before they become a full Pilgrim. They can see a preview of what they will do on Mars: build infrastructure, launch expeditions, discover artifacts. Help them understand why they should accept the mission and start their journey.';
         {% else %}
         chat.dataset.pageContext = 'User on Accept Mission page but has no captain selected. They need to go back to the crew page to select a captain first before they can accept the mission.';

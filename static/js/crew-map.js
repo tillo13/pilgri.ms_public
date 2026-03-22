@@ -264,6 +264,10 @@ function openChartTrailModal(trail) {
     document.getElementById('trail-progress-text').textContent = `${kmBuilt.toFixed(3)} / ${totalKm.toFixed(1)} km`;
     document.getElementById('trail-progress-bar').style.width = `${percent}%`;
     document.getElementById('trail-speed-bonus').textContent = `Speed bonus: ${speedMult}×`;
+    // SV earned from trail building (5 SV per km built)
+    const svEarned = Math.floor(kmBuilt * 5);
+    const svEl = document.getElementById('trail-sv-earned');
+    if (svEl) svEl.textContent = `Science Value earned: ${svEarned.toLocaleString()} SV (${kmBuilt.toFixed(1)} km × 5 SV/km)`;
     // Show enough precision for small percentages
     let pctText;
     if (percent >= 1) pctText = percent.toFixed(1);
@@ -332,7 +336,8 @@ function updateCrewModalStatus() {
             const totalEquipBonus = equipmentBonus + consumableBonus;
             const estimatedDuration = getDurationFromBonus(totalEquipBonus + (multiplier - 1) * 100);
             const kmEstimate = (0.15 * multiplier * estimatedDuration / 60).toFixed(3);
-            if (buildRateEl) buildRateEl.textContent = `~${kmEstimate} km`;
+            const svEstimate = Math.floor(parseFloat(kmEstimate) * 5);
+            if (buildRateEl) buildRateEl.textContent = `~${kmEstimate} km (+${svEstimate} SV)`;
             if (deployBtn) {
                 deployBtn.disabled = false;
                 deployBtn.style.opacity = '1';

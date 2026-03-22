@@ -447,7 +447,11 @@ function updateTabDescription(tab) {
 
 window.tabCallbacks.crew = {
     trails: function() {
-        if (!crewTrailMap) setTimeout(initCrewTrailMap, 100);
+        if (!crewTrailMap) {
+            setTimeout(initCrewTrailMap, 100);
+        } else {
+            setTimeout(() => crewTrailMap.invalidateSize(), 100);
+        }
         updateTabDescription('trails');
     },
     captain: function() {

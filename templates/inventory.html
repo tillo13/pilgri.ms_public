@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </button>
     <button class="inventory-tab" data-tab="caches" onclick="switchInventoryTab('caches')">
         <img src="{{ icons.tab_wallet }}" alt="" class="inventory-tab-icon" style="width: 18px; height: 18px;">
-        <span class="inventory-tab-label">Caches</span>
+        <span class="inventory-tab-label">Wallets</span>
     </button>
     <button class="inventory-tab" data-tab="activity" onclick="switchInventoryTab('activity')">
         <img src="{{ icons.activity_income }}" alt="" class="inventory-tab-icon" style="width: 18px; height: 18px;">
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- CACHES Tab -->
+<!-- WALLETS Tab -->
 <div id="tab-caches" class="inventory-tab-content" style="display: none;">
     {% if wallets %}
     <div class="inventory-grid">
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {% else %}
     <div class="empty-state">
         <img src="{{ icons.tab_wallet }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
-        <div class="empty-state-text">No resource caches found</div>
+        <div class="empty-state-text">No wallets found</div>
     </div>
     {% endif %}
 </div>

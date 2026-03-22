@@ -1,13 +1,18 @@
 /**
  * PilgrimBot — Codebase Q&A chat interface
+ * Bug-aware mode: when launched from bug tracker (?bug=<id>), shows
+ * action bar + smart follow-ups so QA can investigate and update bugs.
  */
 
 (function() {
     'use strict';
 
     const USER_NAME = window.PB_USER_NAME || 'Captain';
+    const BUG_ID = window.PB_BUG_ID || null;
+    const BUG_NAME = window.PB_BUG_NAME || '';
     let currentChatId = null;
     let isStreaming = false;
+    let lastResponseText = '';
 
     const messagesEl = document.getElementById('pbMessages');
     const inputEl = document.getElementById('pbInput');
@@ -15,6 +20,158 @@
     const welcomeEl = document.getElementById('pbWelcome');
     const chatListEl = document.getElementById('pbChatList');
     const newChatBtn = document.getElementById('pbNewChat');
+    const bugBarEl = document.getElementById('pbBugBar');
+
+    // === Bug mode bar ===
+
+    if (BUG_ID && bugBarEl) {
+        bugBarEl.style.display = '';
+        bugBarEl.innerHTML =
+            '<div class="pb-bug-bar-inner">' +
+                '<a href="/admin/bugs" class="pb-bug-back">&larr; Bug Tracker</a>' +
+                '<span class="pb-bug-tag">Analyzing Bug #' + BUG_ID + ': ' + escapeHtml(BUG_NAME) + '</span>' +
+                '<div class="pb-bug-actions">' +
+                    '<button class="pb-bug-action" id="pbSaveToBug" title="Save PilgrimBot analysis as a comment on this bug">Save to Bug</button>' +
+                    '<button class="pb-bug-action pb-bug-action-new" id="pbNewBug" title="Create a NEW bug from this conversation">+ New Bug</button>' +
+                    '<button class="pb-bug-action pb-bug-action-dev" id="pbPassToDev" title="Move bug to Todo status for dev to pick up">Pass to Dev</button>' +
+                '</div>' +
+            '</div>';
+        document.getElementById('pbSaveToBug').addEventListener('click', saveToBug);
+        document.getElementById('pbPassToDev').addEventListener('click', passToDev);
+        document.getElementById('pbNewBug').addEventListener('click', createBugFromChat);
+    }
+
+    function saveToBug() {
+        if (!lastResponseText) { showToast('No PilgrimBot response to save yet.', 'error'); return; }
+        const btn = document.getElementById('pbSaveToBug');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        fetch('/api/admin/bugs/' + BUG_ID + '/comments', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({author: 'PilgrimBot', body: lastResponseText})
+        }).then(r => r.json()).then(data => {
+            btn.textContent = data.success ? 'Saved!' : 'Error';
+            setTimeout(() => { btn.textContent = 'Save to Bug'; btn.disabled = false; }, 2000);
+        }).catch(() => {
+            btn.textContent = 'Error';
+            setTimeout(() => { btn.textContent = 'Save to Bug'; btn.disabled = false; }, 2000);
+        });
+    }
+
+    function passToDev() {
+        if (!window.confirm('Move Bug #' + BUG_ID + ' to "Todo" for dev to pick up?')) return;
+        const btn = document.getElementById('pbPassToDev');
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+        // Update status to Todo
+        fetch('/api/admin/bugs/' + BUG_ID, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status: 'Todo', changed_by: USER_NAME})
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                // Also add a comment noting the handoff
+                const note = 'Passed to dev for action. ' +
+                    (lastResponseText ? 'PilgrimBot analysis saved above.' : '');
+                fetch('/api/admin/bugs/' + BUG_ID + '/comments', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({author: USER_NAME, body: note})
+                });
+                btn.textContent = 'Passed to Dev!';
+                btn.classList.add('pb-bug-action-done');
+            } else {
+                btn.textContent = 'Error';
+            }
+            setTimeout(() => {
+                btn.textContent = 'Pass to Dev';
+                btn.disabled = false;
+                btn.classList.remove('pb-bug-action-done');
+            }, 3000);
+        }).catch(() => {
+            btn.textContent = 'Error';
+            setTimeout(() => { btn.textContent = 'Pass to Dev'; btn.disabled = false; }, 2000);
+        });
+    }
+
+    function createBugFromChat() {
+        if (!currentChatId) { showToast('Start a conversation first.', 'error'); return; }
+        showNewBugModal(document.getElementById('pbNewBug'));
+    }
+
+    // === New Bug Modal ===
+    function showNewBugModal(triggerBtn, responseText) {
+        // Remove existing modal if any
+        var old = document.getElementById('pbNewBugModal');
+        if (old) old.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'pbNewBugModal';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML =
+            '<div style="background:var(--bg-primary);border:1px solid var(--border-default);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;">' +
+                '<h3 style="margin:0 0 16px;color:var(--text-primary);">Create New Bug</h3>' +
+                '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Creates a bug based on <strong>this specific response only</strong> (not the full conversation).</p>' +
+                '<label style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Bug Title (optional)</label>' +
+                '<input type="text" id="pbNewBugTitle" placeholder="Leave blank for auto-generated title" style="width:100%;padding:10px;margin:6px 0 12px;background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-size:14px;">' +
+                '<label style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Priority</label>' +
+                '<select id="pbNewBugPriority" style="width:100%;padding:10px;margin:6px 0 12px;background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-size:14px;">' +
+                    '<option value="P1">P1 — Critical</option>' +
+                    '<option value="P2" selected>P2 — Important</option>' +
+                    '<option value="P3">P3 — Nice to have</option>' +
+                '</select>' +
+                (BUG_ID ? '<p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Original bug #' + BUG_ID + ' will stay as-is. This creates a separate bug.</p>' : '') +
+                '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+                    '<button id="pbNewBugCancel" style="padding:8px 20px;background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:8px;color:var(--text-secondary);cursor:pointer;">Cancel</button>' +
+                    '<button id="pbNewBugSubmit" style="padding:8px 20px;background:var(--color-success);border:none;border-radius:8px;color:white;font-weight:600;cursor:pointer;">Create Bug</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+
+        // Focus title input
+        document.getElementById('pbNewBugTitle').focus();
+
+        // Cancel
+        document.getElementById('pbNewBugCancel').addEventListener('click', function() { overlay.remove(); });
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+        // Submit
+        document.getElementById('pbNewBugSubmit').addEventListener('click', function() {
+            var submitBtn = this;
+            var title = document.getElementById('pbNewBugTitle').value.trim();
+            var priority = document.getElementById('pbNewBugPriority').value;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+
+            fetch('/api/pilgrimbot/create_bug', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({response_text: responseText, chat_id: currentChatId, title: title, priority: priority})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    overlay.remove();
+                    showToast('Bug #' + data.bug_id + ' created!', 'success');
+                    appendMessage('assistant', '**New Bug Created:** [#' + data.bug_id + ' — ' + (data.title || title) + '](/admin/bugs?open=' + data.bug_id + ')\n\n*Searching for related bugs in the background.*');
+                    if (triggerBtn) {
+                        triggerBtn.textContent = 'Bug #' + data.bug_id + ' Created!';
+                        setTimeout(function() { triggerBtn.textContent = '+ New Bug from This'; triggerBtn.disabled = false; }, 4000);
+                    }
+                } else {
+                    submitBtn.textContent = data.error || 'Error creating bug';
+                    submitBtn.disabled = false;
+                }
+            }).catch(function() {
+                submitBtn.textContent = 'Error — try again';
+                submitBtn.disabled = false;
+            });
+        });
+
+        // Enter to submit
+        document.getElementById('pbNewBugTitle').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('pbNewBugSubmit').click(); }
+        });
+    }
 
     // === Utilities ===
 
@@ -44,6 +201,59 @@
         });
     }
 
+    // === Smart follow-up suggestions ===
+
+    function getSmartSuggestions() {
+        if (!BUG_ID) return [];
+        const resp = (lastResponseText || '').toLowerCase();
+        const suggestions = [];
+
+        // Always offer test steps — QA's core job
+        suggestions.push({label: 'Write test steps for QA', q: 'Write detailed QA test steps to verify this bug is fixed. Be specific about what to click, type, and expect to see.'});
+
+        // If response mentions files/code, offer deeper dive
+        if (resp.match(/\.py|\.js|\.html|\.css|function|class |def /)) {
+            suggestions.push({label: 'Show me the exact code', q: 'Show me the exact code that needs to change. Give file paths, line numbers, and what the fix looks like.'});
+        } else {
+            suggestions.push({label: 'What files need to change?', q: 'What specific files and functions need to change to fix this? Give me exact file paths and line numbers.'});
+        }
+
+        // If response mentions other bugs or duplicates
+        if (resp.match(/related|duplicate|similar|#\d+/)) {
+            suggestions.push({label: 'Should we merge these bugs?', q: 'Based on the related bugs you found, should any be merged or closed as duplicates? Which ones and why?'});
+        } else {
+            suggestions.push({label: 'Find related bugs', q: 'Are there other bugs in the tracker that might be related or duplicates of this one?'});
+        }
+
+        // Summarize for handoff to dev
+        suggestions.push({label: 'Summarize for dev handoff', q: 'Write a concise dev handoff summary: root cause, suggested fix approach, files to change, and QA test steps. Keep it actionable.'});
+
+        return suggestions;
+    }
+
+    function renderSuggestions() {
+        // Remove existing suggestions
+        const existing = document.querySelector('.pb-suggestions');
+        if (existing) existing.remove();
+        const suggestions = getSmartSuggestions();
+        if (!suggestions.length) return;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'pb-suggestions';
+        suggestions.forEach(s => {
+            const btn = document.createElement('button');
+            btn.className = 'pb-suggestion-btn';
+            btn.textContent = s.label;
+            btn.addEventListener('click', () => {
+                wrap.remove();
+                sendMessage(s.q);
+            });
+            wrap.appendChild(btn);
+        });
+        messagesEl.appendChild(wrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
     // === Message rendering ===
 
     function appendMessage(role, text, timestamp) {
@@ -58,15 +268,9 @@
             ' <span class="pb-msg-time">' + time + '</span></div>' +
             '<div class="pb-msg-content">' + content + '</div>';
 
-        // Add "Create bug/feature" footer to assistant messages with content
+        // Footer: context-aware button
         if (role === 'assistant' && text) {
-            const footer = document.createElement('div');
-            footer.className = 'pb-msg-footer';
-            footer.innerHTML = '<button class="pb-feedback-link">Create bug/feature from this</button>';
-            div.appendChild(footer);
-            footer.querySelector('.pb-feedback-link').addEventListener('click', function() {
-                openReportModal(text);
-            });
+            addFooterToEl(div, text);
         }
 
         messagesEl.appendChild(div);
@@ -92,117 +296,36 @@
         if (el && el.parentNode) el.remove();
     }
 
-    // === Report modal ===
-
-    function openReportModal(responseText) {
-        // Remove existing modal if any
-        const existing = document.getElementById('pbReportModal');
-        if (existing) existing.remove();
-
-        const snippet = responseText.length > 300 ? responseText.slice(0, 300) + '...' : responseText;
-
-        const modal = document.createElement('div');
-        modal.id = 'pbReportModal';
-        modal.className = 'pb-modal-overlay';
-        modal.innerHTML =
-            '<div class="pb-modal">' +
-                '<div class="pb-modal-header">Create Bug / Feature Request</div>' +
-                '<label class="pb-modal-label">Title</label>' +
-                '<input type="text" class="pb-modal-input" id="pbReportTitle" placeholder="Brief description..." maxlength="200">' +
-                '<label class="pb-modal-label">Details</label>' +
-                '<textarea class="pb-modal-textarea" id="pbReportBody" rows="6" placeholder="What should the dev team know?">' +
-                    escapeHtml(snippet) + '</textarea>' +
-                '<div class="pb-modal-actions">' +
-                    '<button class="pb-modal-cancel" id="pbReportCancel">Cancel</button>' +
-                    '<button class="pb-modal-submit" id="pbReportSubmit">Submit</button>' +
-                '</div>' +
-                '<div class="pb-modal-status" id="pbReportStatus"></div>' +
-            '</div>';
-
-        document.body.appendChild(modal);
-
-        // Focus title
-        document.getElementById('pbReportTitle').focus();
-
-        // Close on overlay click
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) closeReportModal();
-        });
-
-        document.getElementById('pbReportCancel').addEventListener('click', closeReportModal);
-        document.getElementById('pbReportSubmit').addEventListener('click', submitReport);
-
-        // Escape to close
-        modal._escHandler = function(e) { if (e.key === 'Escape') closeReportModal(); };
-        document.addEventListener('keydown', modal._escHandler);
-    }
-
-    function closeReportModal() {
-        const modal = document.getElementById('pbReportModal');
-        if (modal) {
-            if (modal._escHandler) document.removeEventListener('keydown', modal._escHandler);
-            modal.remove();
-        }
-    }
-
-    function submitReport() {
-        const title = document.getElementById('pbReportTitle').value.trim();
-        const body = document.getElementById('pbReportBody').value.trim();
-        const status = document.getElementById('pbReportStatus');
-        const btn = document.getElementById('pbReportSubmit');
-
-        if (!title) {
-            status.textContent = 'Please add a title.';
-            status.style.color = '#ffa07a';
-            return;
-        }
-
-        btn.disabled = true;
-        btn.textContent = 'Submitting...';
-        status.textContent = '';
-
-        fetch('/api/pilgrimbot/report', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({title: title, description: body})
-        }).then(r => r.json()).then(data => {
-            if (data.success) {
-                status.textContent = 'Submitted! The dev team will see this.';
-                status.style.color = '#8fd88f';
-                setTimeout(closeReportModal, 1500);
-            } else {
-                status.textContent = data.error || 'Could not submit.';
-                status.style.color = '#ffa07a';
-                btn.disabled = false;
-                btn.textContent = 'Submit';
-            }
-        }).catch(() => {
-            status.textContent = 'Connection error.';
-            status.style.color = '#ffa07a';
-            btn.disabled = false;
-            btn.textContent = 'Submit';
-        });
-    }
-
     // === Send message ===
 
     function sendMessage(text) {
         if (!text || isStreaming) return;
         text = text.trim();
-        if (!text) return;
+        if (!text && !pendingImageUrl) return;
 
         if (welcomeEl) welcomeEl.style.display = 'none';
+        const existingSugg = document.querySelector('.pb-suggestions');
+        if (existingSugg) existingSugg.remove();
 
-        appendMessage('user', text);
+        // Show user message with image if attached
+        var displayText = text;
+        var imageUrl = pendingImageUrl;
+        if (imageUrl) {
+            displayText = (text ? text + '\n\n' : '') + '![screenshot](' + imageUrl + ')';
+        }
+        appendMessage('user', displayText);
         inputEl.value = '';
         inputEl.style.height = 'auto';
+        // Clear image preview
+        if (imagePreviewEl) { imagePreviewEl.remove(); imagePreviewEl = null; }
+        pendingImageUrl = null;
         isStreaming = true;
         sendBtn.disabled = true;
 
         const typingEl = showTyping();
         let gotFirstDelta = false;
 
-        const streamTimeout = setTimeout(() => {
+        let streamTimeout = setTimeout(() => {
             if (!gotFirstDelta && isStreaming) {
                 removeTyping(typingEl);
                 appendMessage('assistant', 'PilgrimBot took too long to respond. Please try again.');
@@ -210,7 +333,6 @@
             }
         }, 30000);
 
-        const userQuestion = text;
         let contentEl = null;
         let fullText = '';
         let assistantEl = null;
@@ -218,7 +340,7 @@
         fetch('/api/pilgrimbot/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: text, chat_id: currentChatId, stream: true})
+            body: JSON.stringify({message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined})
         }).then(response => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -244,19 +366,74 @@
                             const data = JSON.parse(line.slice(6));
                             if (data.type === 'start' && data.chat_id) {
                                 currentChatId = data.chat_id;
-                            } else if (data.type === 'delta' && data.text) {
-                                if (!gotFirstDelta) {
-                                    gotFirstDelta = true;
-                                    clearTimeout(streamTimeout);
-                                    removeTyping(typingEl);
-                                    // Create assistant bubble without footer (added after stream)
+                            } else if (data.type === 'status') {
+                                // Show status message (e.g. "Running calculations...")
+                                removeTyping(typingEl);
+                                if (!assistantEl) {
                                     assistantEl = document.createElement('div');
                                     assistantEl.className = 'pb-msg pb-msg-assistant';
                                     assistantEl.innerHTML =
                                         '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
                                         formatTime(new Date()) + '</span></div>' +
+                                        '<div class="pb-tool-calls"></div>' +
                                         '<div class="pb-msg-content"></div>';
                                     messagesEl.appendChild(assistantEl);
+                                    contentEl = assistantEl.querySelector('.pb-msg-content');
+                                }
+                                let statusEl = assistantEl.querySelector('.pb-tool-calls');
+                                if (statusEl) {
+                                    let sl = document.createElement('div');
+                                    sl.className = 'pb-tool-line';
+                                    sl.style.color = 'var(--color-sepolia)';
+                                    sl.textContent = data.message;
+                                    statusEl.appendChild(sl);
+                                }
+                                clearTimeout(streamTimeout);
+                                streamTimeout = setTimeout(() => { if (!gotFirstDelta && isStreaming) { removeTyping(typingEl); appendMessage('assistant', 'PilgrimBot took too long. Please try again.'); finishStream(''); } }, 45000);
+                            } else if (data.type === 'tool_call') {
+                                // Show file read activity — reset timeout since bot is working
+                                clearTimeout(streamTimeout);
+                                streamTimeout = setTimeout(() => {
+                                    if (!gotFirstDelta && isStreaming) {
+                                        removeTyping(typingEl);
+                                        appendMessage('assistant', 'PilgrimBot took too long. Please try again.');
+                                        finishStream('');
+                                    }
+                                }, 30000);
+                                removeTyping(typingEl);
+                                if (!assistantEl) {
+                                    assistantEl = document.createElement('div');
+                                    assistantEl.className = 'pb-msg pb-msg-assistant';
+                                    assistantEl.innerHTML =
+                                        '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
+                                        formatTime(new Date()) + '</span></div>' +
+                                        '<div class="pb-tool-calls"></div>' +
+                                        '<div class="pb-msg-content"></div>';
+                                    messagesEl.appendChild(assistantEl);
+                                    contentEl = assistantEl.querySelector('.pb-msg-content');
+                                }
+                                let toolEl = assistantEl.querySelector('.pb-tool-calls');
+                                if (toolEl) {
+                                    let toolLine = document.createElement('div');
+                                    toolLine.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
+                                    toolLine.textContent = (data.found ? 'Read ' : 'Not found: ') + data.file;
+                                    toolEl.appendChild(toolLine);
+                                }
+                                messagesEl.scrollTop = messagesEl.scrollHeight;
+                            } else if (data.type === 'delta' && data.text) {
+                                if (!gotFirstDelta) {
+                                    gotFirstDelta = true;
+                                    clearTimeout(streamTimeout);
+                                    removeTyping(typingEl);
+                                    if (!assistantEl) {
+                                        assistantEl = document.createElement('div');
+                                        assistantEl.className = 'pb-msg pb-msg-assistant';
+                                        assistantEl.innerHTML =
+                                            '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
+                                            formatTime(new Date()) + '</span></div>' +
+                                            '<div class="pb-msg-content"></div>';
+                                        messagesEl.appendChild(assistantEl);
+                                    }
                                     contentEl = assistantEl.querySelector('.pb-msg-content');
                                 }
                                 fullText += data.text;
@@ -294,21 +471,94 @@
         if (!el || !text) return;
         const footer = document.createElement('div');
         footer.className = 'pb-msg-footer';
-        footer.innerHTML = '<button class="pb-feedback-link">Create bug/feature from this</button>';
+
+        if (BUG_ID) {
+            // Bug mode: save to existing bug OR create new bug from this response
+            footer.innerHTML =
+                '<button class="pb-feedback-link pb-save-link">Save to Bug #' + BUG_ID + '</button>' +
+                '<button class="pb-feedback-link pb-new-bug-link" style="margin-left: 8px; color: var(--color-success);">+ New Bug from This</button>';
+            footer.querySelector('.pb-save-link').addEventListener('click', function() {
+                const btn = this;
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+                fetch('/api/admin/bugs/' + BUG_ID + '/comments', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({author: 'PilgrimBot', body: text})
+                }).then(r => r.json()).then(data => {
+                    btn.textContent = data.success ? 'Saved!' : 'Error saving';
+                }).catch(() => { btn.textContent = 'Error saving'; });
+            });
+            footer.querySelector('.pb-new-bug-link').addEventListener('click', function() {
+                if (!currentChatId) { showToast('Start a conversation first.', 'error'); return; }
+                showNewBugModal(this, text);
+            });
+        } else {
+            // Normal mode: create new bug from conversation
+            footer.innerHTML =
+                '<button class="pb-feedback-link pb-create-bug-link">+ Create Bug from Chat</button>';
+            footer.querySelector('.pb-create-bug-link').addEventListener('click', function() {
+                if (!currentChatId) { showToast('Start a conversation first.', 'error'); return; }
+                showNewBugModal(this, text);
+            });
+        }
         el.appendChild(footer);
-        footer.querySelector('.pb-feedback-link').addEventListener('click', function() {
-            openReportModal(text);
-        });
     }
 
     function finishStream(text) {
         isStreaming = false;
         sendBtn.disabled = false;
         inputEl.focus();
+        lastResponseText = text;
         refreshChatList();
+
+        // Auto-save first PilgrimBot response to bug as comment
+        if (window.PB_BUG_ID && text && window._pbAutoSave !== false) {
+            fetch('/api/admin/bugs/' + window.PB_BUG_ID + '/comments', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({author: 'PilgrimBot', body: text})
+            });
+            window._pbAutoSave = false; // only auto-save the first response
+        }
+
+        // Show smart follow-up suggestions in bug mode
+        if (BUG_ID && text) {
+            renderSuggestions();
+        }
     }
 
     // === Chat list ===
+
+    function hideChat(chatId, el) {
+        if (!confirm('Hide this conversation? It won\'t appear in the list anymore.')) return;
+        fetch('/api/pilgrimbot/hide', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({chat_id: chatId})
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                el.remove();
+                if (currentChatId === chatId) startNewChat();
+            }
+        }).catch(() => {});
+    }
+
+    function buildChatItem(chat) {
+        const div = document.createElement('div');
+        div.className = 'pb-chat-item' + (chat.chat_id === currentChatId ? ' active' : '');
+        div.dataset.chatId = chat.chat_id;
+        div.innerHTML =
+            '<button class="pb-chat-hide" title="Hide conversation">&times;</button>' +
+            '<div class="pb-chat-title">' + escapeHtml(chat.title) + '</div>' +
+            '<div class="pb-chat-meta">' + chat.message_count + ' messages</div>';
+        div.querySelector('.pb-chat-hide').addEventListener('click', function(e) {
+            e.stopPropagation();
+            hideChat(chat.chat_id, div);
+        });
+        div.addEventListener('click', () => loadChat(chat.chat_id));
+        return div;
+    }
 
     function refreshChatList() {
         fetch('/api/pilgrimbot/chats')
@@ -317,14 +567,7 @@
                 if (!data.success) return;
                 chatListEl.innerHTML = '';
                 data.chats.forEach(chat => {
-                    const div = document.createElement('div');
-                    div.className = 'pb-chat-item' + (chat.chat_id === currentChatId ? ' active' : '');
-                    div.dataset.chatId = chat.chat_id;
-                    div.innerHTML =
-                        '<div class="pb-chat-title">' + escapeHtml(chat.title) + '</div>' +
-                        '<div class="pb-chat-meta">' + chat.message_count + ' messages</div>';
-                    div.addEventListener('click', () => loadChat(chat.chat_id));
-                    chatListEl.appendChild(div);
+                    chatListEl.appendChild(buildChatItem(chat));
                 });
             }).catch(() => {});
     }
@@ -357,6 +600,53 @@
         inputEl.focus();
     }
 
+    // === Paste screenshot support ===
+    var pendingImageUrl = null;
+    var imagePreviewEl = null;
+
+    function showImagePreview(url) {
+        pendingImageUrl = url;
+        if (imagePreviewEl) imagePreviewEl.remove();
+        imagePreviewEl = document.createElement('div');
+        imagePreviewEl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-secondary);border:1px solid var(--border-default);border-radius:8px;margin-bottom:6px;';
+        imagePreviewEl.innerHTML =
+            '<img src="' + url + '" style="height:48px;border-radius:4px;border:1px solid var(--border-default);">' +
+            '<span style="font-size:12px;color:var(--text-secondary);flex:1;">Screenshot attached</span>' +
+            '<button style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;" title="Remove">&times;</button>';
+        imagePreviewEl.querySelector('button').addEventListener('click', function() {
+            pendingImageUrl = null;
+            imagePreviewEl.remove();
+            imagePreviewEl = null;
+        });
+        inputEl.parentNode.insertBefore(imagePreviewEl, inputEl);
+    }
+
+    inputEl.addEventListener('paste', function(e) {
+        var items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                var file = items[i].getAsFile();
+                var formData = new FormData();
+                formData.append('image', file, 'screenshot.png');
+                showToast('Uploading screenshot...', 'info');
+                fetch('/api/pilgrimbot/upload', {
+                    method: 'POST',
+                    body: formData
+                }).then(function(r) { return r.json(); }).then(function(data) {
+                    if (data.success) {
+                        showImagePreview(data.url);
+                        showToast('Screenshot attached — type your question and send', 'success');
+                    } else {
+                        showToast('Upload failed: ' + (data.error || 'unknown'), 'error');
+                    }
+                }).catch(function() { showToast('Screenshot upload failed', 'error'); });
+                break;
+            }
+        }
+    });
+
     // === Event listeners ===
 
     sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
@@ -373,6 +663,55 @@
     });
     document.querySelectorAll('.pb-chat-item').forEach(el => {
         el.addEventListener('click', () => loadChat(el.dataset.chatId));
+        const hideBtn = el.querySelector('.pb-chat-hide');
+        if (hideBtn) {
+            hideBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                hideChat(el.dataset.chatId, el);
+            });
+        }
     });
+
+    // === Role picker ===
+    var roleSelect = document.getElementById('pbRoleSelect');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            fetch('/api/pilgrimbot/role', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({role: this.value})
+            }).then(function(r) { return r.json(); }).then(function(data) {
+                if (data.success) {
+                    roleSelect.style.outline = '2px solid #4a4';
+                    setTimeout(function() { roleSelect.style.outline = ''; }, 1000);
+                }
+            });
+        });
+    }
+
+    // Auto-send bug context if linked from bug tracker
+    // Reuse existing chat for this bug if one exists, otherwise create new (once only)
+    if (window.PB_BUG_CONTEXT && BUG_ID) {
+        var existingBugChat = null;
+        var bugTag = 'Bug #' + BUG_ID + ':';
+        document.querySelectorAll('.pb-chat-item').forEach(function(el) {
+            var titleEl = el.querySelector('.pb-chat-title');
+            if (titleEl && titleEl.textContent.indexOf(bugTag) === 0 && !existingBugChat) {
+                existingBugChat = el.dataset.chatId;
+            }
+        });
+        if (existingBugChat) {
+            // Existing chat found — just load it, never re-send
+            loadChat(existingBugChat);
+        } else {
+            // No chat yet — only auto-send once per bug (sessionStorage prevents re-send on refresh)
+            var sentKey = 'pb_bug_sent_' + BUG_ID;
+            if (!sessionStorage.getItem(sentKey)) {
+                sessionStorage.setItem(sentKey, '1');
+                startNewChat();
+                setTimeout(function() { sendMessage(window.PB_BUG_CONTEXT); }, 100);
+            }
+        }
+    }
 
 })();

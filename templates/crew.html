@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if user %}
         chat.dataset.page = 'crew';
         // First-time tutorial for authenticated users
-        if (!localStorage.getItem('ariaTutorial_crew')) {
+        if (!localStorage.getItem('ariaTutorial_crew') && chat.dataset.greetingPriority !== 'true') {
             chat.dataset.greeting = "This is your **crew manifest**.\n\nYour **captain** leads expeditions—their stats affect discovery chances and costs. Your **scientist** extracts shards from discoveries.\n\n**Trail Missions:** While your vehicles are deployed, send crew on quick surveys to build trails. Trails speed up future expeditions to the same destinations (up to 3× speed!).\n\nTap your captain's portrait to see full details.";
         }
         {% if has_commander %}
@@ -21,12 +21,16 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if has_character %}
         // New user has selected a captain - use different page ID to reset conversation
         chat.dataset.page = 'crew_selected';
-        chat.dataset.greeting = "Excellent choice, Captain.\n\nYour crew awaits your command.\n\nThe stats you see are unique to your captain—they affect expeditions and can be upgraded later. This is just the beginning!\n\nClick **Continue to Step 3** to accept your mission.";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "Excellent choice, Captain.\n\nYour crew awaits your command.\n\nThe stats you see are unique to your captain—they affect expeditions and can be upgraded later. This is just the beginning!\n\nClick **Continue to Step 3** to accept your mission.";
+        }
         chat.dataset.pageContext = 'NEW USER on Step 2 of 3 (Captain page). They have SELECTED a captain with {{ stats.values()|sum }} total power. {% if scientist %}Their scientist is {{ scientist.name }} ({{ scientist.specialty }}).{% endif %} They have {{ "%.1f"|format(preview_balance) }} shards. They are READY to proceed! Help them understand their captain stats mean, what the scientist does, and encourage them to click "Continue to Step 3" to accept their mission. This is almost the finish line!';
         {% else %}
         // New user needs to select a captain
         chat.dataset.page = 'crew_selecting';
-        chat.dataset.greeting = "**Step 2**: Select your captain.\n\nScroll down and **tap a portrait** to choose.\n\nEach captain has unique stats (Leadership, Strategy, Exploration, Logistics, Charisma) that guide your expeditions. You can upgrade these later—this is just the start!";
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "**Step 2**: Select your captain.\n\nScroll down and **tap a portrait** to choose.\n\nEach captain has unique stats (Leadership, Strategy, Exploration, Logistics, Charisma) that guide your expeditions. You can upgrade these later—this is just the start!";
+        }
         chat.dataset.pageContext = 'NEW USER on Step 2 of 3 (Captain page). They have NOT selected a captain yet! They need to TAP on one of the captain portraits in the grid below to select them. Each captain has different stats (Leadership, Strategy, Exploration, Logistics, Charisma) that affect gameplay. Help them understand what stats do: Leadership reduces costs, Strategy speeds discoveries, Exploration finds better items, Logistics improves efficiency, Charisma boosts extraction. They have {{ "%.1f"|format(preview_balance) }} shards ready. Tell them to scroll down and tap a captain to select them!';
         {% endif %}
         {% endif %}

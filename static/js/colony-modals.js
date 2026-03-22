@@ -362,6 +362,16 @@ function showVehicleModal(el) {
         stats.push({ label: '\u2500\u2500\u2500 MAX LEVEL \u2500\u2500\u2500', value: 'Fully upgraded!' });
     }
     if (d.txHash) stats.push({ label: 'Blockchain TX', value: d.txHash.substring(0, 10) + '...' });
+    // Lifetime stats
+    const lifetimeTrips = parseInt(d.lifetimeTrips) || 0;
+    const lifetimeKm = parseInt(d.lifetimeKm) || 0;
+    const lifetimeFinds = parseInt(d.lifetimeFinds) || 0;
+    if (lifetimeTrips > 0) {
+        stats.push({ label: '\u2500\u2500\u2500 LIFETIME STATS \u2500\u2500\u2500', value: '' });
+        stats.push({ label: 'Total Expeditions', value: lifetimeTrips.toLocaleString() });
+        stats.push({ label: 'Distance Traveled', value: lifetimeKm.toLocaleString() + ' km' });
+        stats.push({ label: 'Items Found', value: lifetimeFinds.toLocaleString() });
+    }
     const action = isOnExpedition
         ? { label: 'Track on Map', className: 'btn-purple', onClick: () => { ItemDetailModal.hide(); window.location.href = '/expeditions'; } }
         : { label: 'Upgrade at Depot', className: 'btn-purple', onClick: () => { ItemDetailModal.hide(); window.location.href = '/depot'; } };

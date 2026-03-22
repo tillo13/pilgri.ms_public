@@ -109,6 +109,22 @@ def assign_scientist_to_user(user_id: int, scientist_key: str = None) -> Optiona
         return None
 
 
+def reassign_scientist(user_id: int, new_scientist_key: str) -> dict:
+    """Reassign a user's scientist. Returns success/error dict."""
+    from config import COLONY_SCIENTISTS
+    if new_scientist_key not in COLONY_SCIENTISTS:
+        return {'success': False, 'error': 'Unknown scientist'}
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("UPDATE pilgrim.users SET scientist_key = %s, updated_at = NOW() WHERE id = %s",
+                        (new_scientist_key, user_id))
+            logger.info(f"🔬 Reassigned scientist to '{new_scientist_key}' for user {user_id}")
+            return {'success': True, 'scientist_key': new_scientist_key}
+    except Exception as e:
+        logger.error(f"❌ Failed to reassign scientist: {e}")
+        return {'success': False, 'error': str(e)}
+
+
 def get_user_scientist(user_id: int) -> Optional[Dict]:
     """Get the scientist assigned to a user"""
     from config import COLONY_SCIENTISTS

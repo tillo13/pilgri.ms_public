@@ -4,6 +4,7 @@
 
 let map, expeditionMarkers = [], baseMarker, landmarksData = [], baseCoords = { latitude: 0, longitude: 0 };
 const expeditionTimers = new Map(), discoveryUpdateTimers = new Map();
+let rangeCircle = null;  // Leaflet circle for vehicle range overlay
 
 
 // Get CSS variable values for Leaflet (which needs actual color strings)
@@ -98,6 +99,65 @@ function addExpeditionMarkers() {
     });
 }
 
+
+// Vehicle range circle overlay
+function setVehicleRange(btn, vehicleType) {
+    // Update active button
+    document.querySelectorAll('.vehicle-range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (!map) return;
+
+    // Remove existing circle
+    if (rangeCircle) { map.removeLayer(rangeCircle); rangeCircle = null; }
+
+    // Get marker colors
+    const visitedColor = getCSSColor('--color-marker-visited');
+    const visitedBorder = getCSSColor('--color-marker-visited-border');
+    const unexploredColor = getCSSColor('--color-marker-unexplored');
+    const unexploredBorder = getCSSColor('--color-marker-unexplored-border');
+    const dimColor = '#555';
+    const dimBorder = '#444';
+
+    if (vehicleType === 'all') {
+        // Restore all markers to default
+        expeditionMarkers.forEach((m, i) => {
+            const disc = landmarksData[i].is_discovered;
+            m.setStyle({ fillColor: disc ? visitedColor : unexploredColor, color: disc ? visitedBorder : unexploredBorder, fillOpacity: 0.8, opacity: 1 });
+            m.setRadius(8);
+        });
+        return;
+    }
+
+    const rangeKm = parseInt(btn.dataset.range) || 0;
+
+    // Draw range circle — Leaflet assumes Earth radius, so scale for Mars (3396 vs 6371 km)
+    const marsCorrection = 6371 / 3396;
+    rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
+        radius: rangeKm * 1000 * marsCorrection,
+        color: '#e06030',
+        fillColor: '#e06030',
+        fillOpacity: 0.06,
+        weight: 2,
+        opacity: 0.5,
+        dashArray: '8, 6',
+        interactive: false
+    }).addTo(map);
+
+    // Dim out-of-range landmarks, brighten in-range ones
+    expeditionMarkers.forEach((m, i) => {
+        const dist = landmarksData[i].distance_km;
+        const inRange = dist <= rangeKm;
+        const disc = landmarksData[i].is_discovered;
+        if (inRange) {
+            m.setStyle({ fillColor: disc ? visitedColor : unexploredColor, color: disc ? visitedBorder : unexploredBorder, fillOpacity: 0.95, opacity: 1 });
+            m.setRadius(9);
+        } else {
+            m.setStyle({ fillColor: dimColor, color: dimBorder, fillOpacity: 0.3, opacity: 0.4 });
+            m.setRadius(6);
+        }
+    });
+}
 
 // Build popup content for a marker (called when popup opens)
 function buildMarkerPopup(landmarkIndex) {

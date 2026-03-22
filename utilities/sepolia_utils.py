@@ -102,7 +102,8 @@ ALLOWED_CONTEXTS = [
     "mining_spin", "mining_operation", "shop_purchase", "return_to_hub",
     "infrastructure_reward", "infrastructure_completion", "infrastructure_income",
     "mission_reward", "expedition_reward", "expedition_discovery", "expedition_launch",
-    "discovery_analysis", "origin_claim", "echo_claim", "tech_complete"
+    "discovery_analysis", "origin_claim", "echo_claim", "tech_complete",
+    "aria_bond"
 ]
 
 def validate_pilgrim_security(sender_address: str, amount_eth: float, context: str) -> tuple:

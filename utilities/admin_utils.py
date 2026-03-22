@@ -234,10 +234,20 @@ def handle_mimic_action(session, action, target_user_id, real_user_id):
     if action == 'stop':
         session['user_id'] = real_user_id
         session.pop('_real_uid', None)
+        session.pop('_mimic_email', None)
         _clear_session_caches(session)
     elif action == 'mimic' and target_user_id:
         session['_real_uid'] = real_user_id
         session['user_id'] = int(target_user_id)
+        # Store mimicked user's email for the banner
+        try:
+            from utilities.postgres_utils import db_cursor
+            with db_cursor() as cur:
+                cur.execute("SELECT email FROM pilgrim.users WHERE id = %s", (int(target_user_id),))
+                row = cur.fetchone()
+                session['_mimic_email'] = row['email'] if row else f"User #{target_user_id}"
+        except Exception:
+            session['_mimic_email'] = f"User #{target_user_id}"
         _clear_session_caches(session)
 
 
@@ -246,6 +256,82 @@ def _clear_session_caches(session):
     for key in ('_hyd', '_bal', '_cmd', '_nav', '_adm'):
         session.pop(key, None)
     session.modified = True
+
+
+# --- API Key Auth Bypass (Playwright / Admin testing) ---
+
+_test_api_key = None
+
+def _get_test_api_key():
+    """Lazy-load the test API key from Secret Manager (cached)."""
+    global _test_api_key
+    if _test_api_key is None:
+        try:
+            from utilities.google_auth_utils import get_secret
+            _test_api_key = get_secret("KUMORI_TEST_API_KEY")
+        except Exception:
+            _test_api_key = ""
+            logger.warning("KUMORI_TEST_API_KEY not configured — apikey auth disabled")
+    return _test_api_key
+
+
+def handle_apikey_auth(request, session):
+    """Check for ?apikey=SECRET&user_id=X and set up session if valid.
+
+    Returns None if no action needed, or a redirect Response to strip the
+    apikey from the URL (keeps browser URL clean, session persists).
+    """
+    from flask import redirect
+
+    apikey = request.args.get('apikey')
+    if not apikey:
+        return None
+
+    # Already authed via apikey this session? Skip re-check.
+    if session.get('_apikey_authed') and session.get('user_id'):
+        return None
+
+    secret = _get_test_api_key()
+    if not secret or apikey != secret:
+        logger.warning(f"Invalid apikey attempt from {request.remote_addr}")
+        return None
+
+    user_id = request.args.get('user_id', type=int)
+    if not user_id:
+        return None
+
+    # Look up the user
+    with db_cursor() as cur:
+        cur.execute("SELECT id, email, name, google_id FROM pilgrim.users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+
+    if not user:
+        logger.warning(f"apikey auth: user_id {user_id} not found")
+        return None
+
+    # Set up session exactly like OAuth callback does
+    session.permanent = True
+    session['user'] = {
+        'email': user['email'],
+        'name': user['name'],
+        'google_id': user['google_id'],
+    }
+    session['user_id'] = user['id']
+    session['_apikey_authed'] = True
+    session['_mimic_email'] = f"[API] {user['email']}"
+    _clear_session_caches(session)
+
+    logger.info(f"apikey auth: logged in as user {user_id} ({user['email']})")
+
+    # Strip apikey from URL and redirect (keeps session, cleans URL)
+    from urllib.parse import urlencode, parse_qs, urlparse, urlunparse
+    parsed = urlparse(request.url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    params.pop('apikey', None)
+    params.pop('user_id', None)
+    clean_query = urlencode(params, doseq=True)
+    clean_url = urlunparse(parsed._replace(query=clean_query))
+    return redirect(clean_url)
 
 
 def generate_aria_message():
@@ -434,5 +520,5 @@ def start_background_snapshot_generation():
             import traceback
             traceback.print_exc()
 
-    threading.Thread(target=_run, daemon=True).start()
+    threading.Thread(target=_run).start()
     logger.info("Daily snapshot generation started in background")

@@ -56,16 +56,6 @@
                     <div class="admin-card-title">ARIA Photo Journal</div>
                     <div class="admin-card-desc">Generate ARIA snapshots (cron 6am PST)</div>
                 </div>
-                <div class="admin-card" onclick="syncBalances()" style="cursor: pointer;">
-                    <div class="admin-card-icon"><img src="{{ icons.value_diamond }}" alt="" class="inline-icon-lg"></div>
-                    <div class="admin-card-title">Refresh Shard Balances</div>
-                    <div class="admin-card-desc">Query Sepolia blockchain for all wallets</div>
-                </div>
-                <div class="admin-card" onclick="clearAllAriaChats()" style="cursor: pointer;">
-                    <div class="admin-card-icon"><img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg"></div>
-                    <div class="admin-card-title">Clear ARIA Chats</div>
-                    <div class="admin-card-desc">Delete ALL ARIA conversation history</div>
-                </div>
                 <a href="/admin/speed" class="admin-card">
                     <div class="admin-card-icon">&#9201;</div>
                     <div class="admin-card-title">Page Speed Test</div>
@@ -75,6 +65,11 @@
                     <div class="admin-card-icon"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-lg"></div>
                     <div class="admin-card-title">PilgrimBot</div>
                     <div class="admin-card-desc">Ask the codebase questions about game mechanics</div>
+                </a>
+                <a href="/admin/bugs" class="admin-card">
+                    <div class="admin-card-icon"><img src="{{ icons.tab_signal }}" alt="" class="inline-icon-lg"></div>
+                    <div class="admin-card-title">Bug Tracker</div>
+                    <div class="admin-card-desc">Active bugs, QA workflow, ideas backlog</div>
                 </a>
             </div>
             <!-- Test Email (inline) -->
@@ -518,16 +513,6 @@ async function generateAriaSnapshot() {
     } catch (e) { showStatus('Error: ' + e.message, true); }
 }
 
-async function syncBalances() {
-    showStatus('Syncing blockchain balances...');
-    try {
-        var resp = await fetch('/api/admin/sync_balances', { method: 'POST' });
-        var data = await resp.json();
-        if (data.success) { showStatus('Synced ' + (data.updated || 0) + ' wallet balances!'); }
-        else { showStatus('Error: ' + (data.error || 'Unknown error'), true); }
-    } catch (e) { showStatus('Error: ' + e.message, true); }
-}
-
 async function sendTestEmail() {
     var email = document.getElementById('test-email-address').value || '';
     showStatus('Sending test email to ' + email + '...');
@@ -543,25 +528,5 @@ async function sendTestEmail() {
     } catch (e) { showStatus('Error: ' + e.message, true); }
 }
 
-function clearAllAriaChats() {
-    MarsModal.show({
-        title: 'Clear All ARIA Chats',
-        icon: '<img src="{{ icons.aria_orb }}" alt="" class="inline-icon-lg">',
-        body: '<p style="margin-bottom: 12px;">This will <strong>permanently delete</strong> all ARIA conversation history for <strong>every player</strong>.</p><p style="font-size: 12px; color: #f59e0b;">This action cannot be undone.</p>',
-        footer: '<button onclick="MarsModal.hide()" class="admin-btn" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.2);">Cancel</button> <button onclick="confirmClearAriaChats()" class="admin-btn" style="background: #dc2626;">Delete All Chats</button>',
-        width: 'sm'
-    });
-}
-
-async function confirmClearAriaChats() {
-    MarsModal.hide();
-    showStatus('Clearing all ARIA conversations...');
-    try {
-        var resp = await fetch('/api/admin/clear_aria_chats', { method: 'POST' });
-        var data = await resp.json();
-        if (data.success) { showStatus('Cleared ' + data.deleted_count + ' ARIA messages from all players!'); }
-        else { showStatus('Error: ' + (data.error || 'Unknown error'), true); }
-    } catch (e) { showStatus('Error: ' + e.message, true); }
-}
 </script>
 {% endblock %}

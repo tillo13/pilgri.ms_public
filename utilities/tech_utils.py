@@ -157,7 +157,7 @@ def _auto_complete_research(user_id: int) -> Optional[Dict]:
         except Exception as e:
             logger.error(f"Tech blockchain tx failed: {e}")
 
-    thread = threading.Thread(target=do_blockchain, daemon=True)
+    thread = threading.Thread(target=do_blockchain)
     thread.start()
 
     logger.info(f"Tech auto-completed: user={user_id}, {row['branch']}/{row['tech_key']} @ level {branch_level}")
@@ -174,7 +174,6 @@ def _auto_complete_research(user_id: int) -> Optional[Dict]:
             thread = threading.Thread(
                 target=generate_tech_branch_icons,
                 args=(row['branch'], branch_level + 1, user_id),
-                daemon=True
             )
             thread.start()
         except Exception as img_err:

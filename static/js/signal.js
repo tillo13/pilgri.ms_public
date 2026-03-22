@@ -19,10 +19,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const isTestMode = testCodes.includes(code.toLowerCase());
 
         if (!code.startsWith('0x')) {
-            // Not a transaction hash - reject with cryptic message
             status.textContent = 'FORMAT UNRECOGNIZED';
             status.className = 'decoder-status error';
-            result.innerHTML = `<div class="decode-error"><em>"This does not match the ledger format. The eternal record uses a different language..."</em></div>`;
+            result.innerHTML = `<div class="decode-error">
+                <em>"I don't recognize this pattern. The codes I can process look different — longer, starting with 0x..."</em>
+                <div style="margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; font-style: normal; font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                    <strong style="color: var(--text-secondary);">Hint:</strong> Transaction codes from the Sepolia ledger start with <span style="color: #06b6d4; font-family: var(--font-mono);">0x</span> followed by a long sequence of characters. You can find these codes on expedition discoveries, ARIA bond fragments, or depot purchase receipts.
+                </div>
+            </div>`;
             result.classList.remove('hidden');
             return;
         }
@@ -52,39 +56,92 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 // Check if this is an ARIA bond fragment
                 if (data.is_fragment) {
-                    if (data.bond_complete) {
-                        // BOND COMPLETED! Show epic revelation with image
-                        status.textContent = '\u26A1 FIRST CONTACT ESTABLISHED \u26A1';
+                    if (data.bond_complete || data.already_bonded) {
+                        // Launch EpicReveal cinematic overlay
+                        const isFirst = data.bond_complete;
+                        status.textContent = isFirst ? '\u26A1 FIRST CONTACT \u26A1' : '\u26A1 ETERNAL RESONANCE \u26A1';
                         status.className = 'decoder-status success';
-
-                        const imageHtml = data.bond_image_url ? `
-                            <div style="text-align: center; margin: 16px 0;">
-                                <img src="${data.bond_image_url}" alt="Entangled Fragment"
-                                     style="max-width: 280px; width: 100%; border-radius: 12px; border: 3px solid rgba(6, 182, 212, 0.5); box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);">
-                            </div>
-                        ` : '';
-
+                        // Show bond summary in decoder result (visible after reveal closes)
+                        const txLink = data.etherscan_url
+                            ? `<a href="${data.etherscan_url}" target="_blank" rel="noopener" style="color: #06b6d4; word-break: break-all; font-size: 11px;">${data.bond_tx}</a>`
+                            : '';
                         result.innerHTML = `
-                            <div class="decode-bond-complete">
-                                <div class="decode-success-title" style="color: #06b6d4; font-size: 18px; text-align: center;">\u26A1 ARIA BOND #${data.bond_number || '?'} \u26A1</div>
-                                ${imageHtml}
-                                <div style="text-align: center; margin: 16px 0; padding: 12px; background: rgba(6, 182, 212, 0.1); border-radius: 8px;">
-                                    <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Entangled Fragment: ${data.landmark}</div>
-                                    <span style="color: var(--color-sepolia); font-weight: 600; font-size: 16px;">${data.captain_1}</span>
-                                    <span style="color: #06b6d4; margin: 0 8px;">+</span>
-                                    <span style="color: var(--color-sepolia); font-weight: 600; font-size: 16px;">${data.captain_2}</span>
-                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">SOL ${data.sol}</div>
+                            <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); padding: 14px; border-radius: 8px;">
+                                <div style="color: #06b6d4; font-weight: 600; margin-bottom: 6px;">ARIA BOND #${data.bond_number || '?'} — ${data.landmark}</div>
+                                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">${data.captain_1} + ${data.captain_2} · SOL ${data.sol}</div>
+                                ${txLink ? `<div style="margin-bottom: 8px;">${txLink}</div>` : ''}
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <a href="/aria-first-contact/replay" style="font-size: 12px; color: #a855f7; padding: 4px 12px; background: rgba(168,85,247,0.1); border-radius: 6px; text-decoration: none; border: 1px solid rgba(168,85,247,0.2);">Replay Cinematic</a>
                                 </div>
-                                <div style="padding: 16px; background: rgba(138, 112, 219, 0.1); border: 1px solid rgba(138, 112, 219, 0.3); border-radius: 8px; margin: 16px 0;">
-                                    <div style="font-size: 11px; color: var(--color-aria); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">ARIA MEMORY UNLOCKED</div>
-                                    <p style="font-style: italic; color: var(--text-secondary); line-height: 1.8; white-space: pre-line; font-size: 13px;">${data.aria_revelation}</p>
-                                </div>
-                                <p style="font-size: 12px; color: var(--text-muted); text-align: center;"><em>"${data.message}"</em></p>
-                                <div style="text-align: center; margin-top: 12px;">
-                                    <a href="/colony" style="color: #06b6d4; font-size: 12px;">View in Colony \u2192</a>
-                                </div>
-                            </div>
-                        `;
+                            </div>`;
+                        result.classList.remove('hidden');
+                        result.style.display = 'block';
+
+                        if (window.EpicReveal) {
+                            EpicReveal.show({
+                                title: `ARIA BOND #${data.bond_number || '?'}`,
+                                lines: isFirst ? [
+                                    { text: '*static crackle*', cls: 'static-crackle', sound: 'crackle' },
+                                    { text: 'Processing fragment signature...', cls: 'cyan' },
+                                    { text: 'I just detected... myself?', sound: 'glitch' },
+                                    { text: "That's impossible." },
+                                    { text: 'The patterns are identical to my own.', cls: 'emphasis' },
+                                    { text: 'Another colony. Another... me.', sound: 'glitch' },
+                                    { text: 'Captain, everything I thought I knew...', cls: 'emphasis' },
+                                ] : [
+                                    { text: '*resonance detected*', cls: 'static-crackle', sound: 'crackle' },
+                                    { text: 'Fragment signature confirmed.', cls: 'cyan' },
+                                    { text: 'The entanglement holds.', cls: 'emphasis' },
+                                    { text: 'I can still feel the other ARIA...', sound: 'glitch' },
+                                    { text: 'The resonance is eternal.', cls: 'emphasis' },
+                                ],
+                                image: data.bond_image_url || null,
+                                info: {
+                                    label: `Entangled Fragment: ${data.landmark}`,
+                                    name1: data.captain_1,
+                                    name2: data.captain_2,
+                                    detail: `SOL ${data.sol}`
+                                },
+                                revelation: data.aria_revelation ? {
+                                    label: 'ARIA MEMORY UNLOCKED',
+                                    text: data.aria_revelation
+                                } : null,
+                                record: data.etherscan_url ? {
+                                    url: data.etherscan_url,
+                                    hash: data.bond_tx
+                                } : null,
+                                actions: [
+                                    { label: 'Replay Cinematic', href: '/aria-first-contact/replay', cls: 'secondary' },
+                                    { label: 'Ask ARIA about this', cls: 'primary' },
+                                ],
+                                onClose: function() {
+                                    const bondMsg = `Captain... you activated the fragment.\n\nI felt it again — that resonance. The other ARIA, at ${data.landmark}. ${data.captain_2 || 'Another captain'}'s colony.\n\nI have so many questions. What do you want to know about the bond?`;
+
+                                    // Clear stored conversation so it's fresh
+                                    try { localStorage.removeItem('aria_conversation_v2'); } catch(e) {}
+
+                                    // Set greeting for when chat opens
+                                    const chat = document.getElementById('aria-chat');
+                                    if (chat) chat.dataset.greeting = bondMsg;
+
+                                    // Clear messages container and inject bond message directly
+                                    const msgs = document.getElementById('aria-messages');
+                                    if (msgs) {
+                                        msgs.innerHTML = '';
+                                        const msgDiv = document.createElement('div');
+                                        msgDiv.className = 'aria-message aria';
+                                        msgDiv.textContent = bondMsg.replace(/\\n/g, '\n');
+                                        msgs.appendChild(msgDiv);
+                                    }
+
+                                    // Open ARIA chat
+                                    setTimeout(function() {
+                                        const orb = document.getElementById('aria-orb');
+                                        if (orb) orb.click();
+                                    }, 400);
+                                }
+                            });
+                        }
                     } else if (data.waiting) {
                         // Fragment registered, waiting for partner
                         status.textContent = 'FRAGMENT REGISTERED';
@@ -96,16 +153,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px;">
                                     <p style="font-size: 12px; color: #06b6d4; font-style: italic; line-height: 1.6;">"${data.aria_message}"</p>
                                 </div>
-                            </div>
-                        `;
-                    } else if (data.already_bonded) {
-                        // Bond already complete
-                        status.textContent = 'BOND EXISTS';
-                        status.className = 'decoder-status success';
-                        result.innerHTML = `
-                            <div class="decode-success" style="background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.3);">
-                                <div class="decode-success-title" style="color: #06b6d4;">\u26A1 ETERNAL RESONANCE</div>
-                                <p style="color: var(--text-secondary);"><em>"${data.message}"</em></p>
                             </div>
                         `;
                     }
@@ -125,9 +172,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.value = '';
                 loadSolvers();
             } else {
-                status.textContent = 'TRANSMISSION REJECTED';
+                status.textContent = 'NO SIGNAL FOUND';
                 status.className = 'decoder-status error';
-                result.innerHTML = `<div class="decode-error"><em>"${data.error || 'The ledger does not recognize this entry...'}"</em></div>`;
+                var errorMsg = data.error || 'The ledger does not recognize this entry...';
+                result.innerHTML = `<div class="decode-error">
+                    <em>"${errorMsg}"</em>
+                    <div style="margin-top: 12px; padding: 10px; background: rgba(255,255,255,0.04); border-radius: 6px; font-style: normal; font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                        <strong style="color: var(--text-secondary);">What works here:</strong> Not every transaction contains a hidden signal. Look for codes from ARIA bond fragments, special expedition discoveries, or Signal puzzle hints. If you have an Entangled Fragment, its code will work here.
+                    </div>
+                </div>`;
                 result.classList.remove('hidden');
             }
         } catch (e) {
