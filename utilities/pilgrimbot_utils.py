@@ -793,11 +793,20 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     Deduplicates file reads and forces a final answer when rounds run out."""
     loop_model = model_override or MODEL
     files_already_read = {}  # path -> content (cache to prevent re-reads)
-    for _ in range(max_rounds):
+    for round_num in range(max_rounds):
+        _start = _time.time()
         resp = client_raw.messages.create(
             model=loop_model, max_tokens=3000, temperature=0.7,
             system=system, messages=messages, tools=tools
         )
+        _ms = int((_time.time() - _start) * 1000)
+        feature = f'pilgrimbot_chat_round{round_num}'
+        if loop_model != MODEL:
+            feature = f'pilgrimbot_math_round{round_num}'
+        log_api_usage(model=loop_model, usage=resp.usage, feature=feature,
+                      user_id=str(current_user_id) if current_user_id else None,
+                      duration_ms=_ms)
+
         # Check if Claude wants to use tools
         tool_calls = [b for b in resp.content if b.type == "tool_use"]
         if not tool_calls:
@@ -848,10 +857,15 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     # Max rounds hit — force a final answer
     messages.append({"role": "user", "content": [{"type": "text",
         "text": "You have read enough files. Give your COMPLETE analysis now based on everything you've seen. Do not request more files."}]})
+    _start = _time.time()
     resp = client_raw.messages.create(
         model=MODEL, max_tokens=3000, temperature=0.7,
         system=system, messages=messages
     )
+    _ms = int((_time.time() - _start) * 1000)
+    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_chat_final',
+                  user_id=str(current_user_id) if current_user_id else None,
+                  duration_ms=_ms)
     text = "".join(b.text for b in resp.content if b.type == "text")
     yield ("result", text)
 
