@@ -325,13 +325,24 @@
         const typingEl = showTyping();
         let gotFirstDelta = false;
 
-        let streamTimeout = setTimeout(() => {
-            if (!gotFirstDelta && isStreaming) {
-                removeTyping(typingEl);
-                appendMessage('assistant', 'PilgrimBot took too long to respond. Please try again.');
-                finishStream('');
-            }
-        }, 30000);
+        // Reset timeout on any SSE activity. Opus math questions can take 60-90s.
+        const TIMEOUT_DEFAULT = 45000;
+        const TIMEOUT_THINKING = 120000;  // math/opus gets 2 min
+        let currentTimeoutMs = TIMEOUT_DEFAULT;
+
+        function resetStreamTimeout() {
+            clearTimeout(streamTimeout);
+            streamTimeout = setTimeout(() => {
+                if (!gotFirstDelta && isStreaming) {
+                    removeTyping(typingEl);
+                    appendMessage('assistant', 'PilgrimBot is still thinking — this is taking longer than usual. You can wait or try a simpler question.');
+                    finishStream('');
+                }
+            }, currentTimeoutMs);
+        }
+
+        let streamTimeout = null;
+        resetStreamTimeout();
 
         let contentEl = null;
         let fullText = '';
@@ -388,18 +399,12 @@
                                     sl.textContent = data.message;
                                     statusEl.appendChild(sl);
                                 }
-                                clearTimeout(streamTimeout);
-                                streamTimeout = setTimeout(() => { if (!gotFirstDelta && isStreaming) { removeTyping(typingEl); appendMessage('assistant', 'PilgrimBot took too long. Please try again.'); finishStream(''); } }, 45000);
+                                // Math/calculation status — give extra time for Opus
+                                currentTimeoutMs = TIMEOUT_THINKING;
+                                resetStreamTimeout();
                             } else if (data.type === 'tool_call') {
-                                // Show file read activity — reset timeout since bot is working
-                                clearTimeout(streamTimeout);
-                                streamTimeout = setTimeout(() => {
-                                    if (!gotFirstDelta && isStreaming) {
-                                        removeTyping(typingEl);
-                                        appendMessage('assistant', 'PilgrimBot took too long. Please try again.');
-                                        finishStream('');
-                                    }
-                                }, 30000);
+                                // Bot is actively working — reset timeout
+                                resetStreamTimeout();
                                 removeTyping(typingEl);
                                 if (!assistantEl) {
                                     assistantEl = document.createElement('div');
