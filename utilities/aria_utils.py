@@ -25,7 +25,7 @@ Usage:
 import os
 import logging
 from typing import Dict, Any, Optional, List
-from utilities.claude_utils import create_client, CLAUDE_MODELS
+from utilities.claude_utils import create_client, CLAUDE_MODELS, log_api_usage
 
 logger = logging.getLogger(__name__)
 

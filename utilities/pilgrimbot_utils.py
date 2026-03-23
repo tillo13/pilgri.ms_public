@@ -11,7 +11,8 @@ import uuid
 import subprocess
 from datetime import datetime
 
-from utilities.claude_utils import create_client, CLAUDE_MODELS
+import time as _time
+from utilities.claude_utils import create_client, CLAUDE_MODELS, log_api_usage
 from utilities.postgres_utils import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
@@ -588,6 +589,7 @@ def _find_related_bugs(new_bug_id, title, affected_areas=""):
             f"#{b['id']}: {b['name']} ({b['status']}/{b['priority']}) — {(b.get('description') or '')[:150]}"
             for b in candidates
         )
+        _s = _time.time()
         resp = client.client.messages.create(
             model=MODEL, max_tokens=500, temperature=0,
             system="You identify related software bugs. Return ONLY valid JSON, no markdown.",
@@ -602,6 +604,7 @@ Exclude bugs that just happen to share a common word but are about different iss
 Format: [{{"id": 123, "reason": "one sentence why it's related"}}]
 Return empty array [] if none are truly related."""}]
         )
+        log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_related_bugs', duration_ms=int((_time.time() - _s) * 1000))
         text = resp.content[0].text.strip()
         if text.startswith('```'):
             text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
@@ -636,6 +639,7 @@ def create_bug_from_conversation(chat_id, user_id, title_override=None, priority
         convo_text += f"[{i+1}] {role} ({ts}): {msg['content'][:800]}\n\n"
 
     client = create_client(model=MODEL)
+    _s = _time.time()
     resp = client.client.messages.create(
         model=MODEL, max_tokens=1000, temperature=0,
         system="You extract structured bug reports from QA conversations. Return ONLY valid JSON, no markdown.",
@@ -653,6 +657,7 @@ Return JSON with exactly these fields:
   "affected_areas": "Which game systems/pages are affected (e.g. shard generation, colony page, expeditions)"
 }}"""}]
     )
+    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug', duration_ms=int((_time.time() - _s) * 1000))
     try:
         text = resp.content[0].text.strip()
         if text.startswith('```'):
@@ -702,6 +707,7 @@ def create_bug_from_response(response_text, user_id, chat_id=None, title_overrid
         return {'success': False, 'error': 'No response text'}
 
     client = create_client(model=MODEL)
+    _s = _time.time()
     resp = client.client.messages.create(
         model=MODEL, max_tokens=1000, temperature=0,
         system="You extract structured bug reports from a single PilgrimBot analysis response. Return ONLY valid JSON, no markdown.",
@@ -718,6 +724,7 @@ Return JSON with exactly these fields:
   "evidence": "Key findings from this specific response"
 }}"""}]
     )
+    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug_from_response', duration_ms=int((_time.time() - _s) * 1000))
     try:
         text = resp.content[0].text.strip()
         if text.startswith('```'):

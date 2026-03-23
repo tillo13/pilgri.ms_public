@@ -65,6 +65,77 @@ MODEL_PRICING = {
     'default': {'input': 0.000003, 'output': 0.000015}
 }
 
+CACHE_WRITE_MULTIPLIER = 1.25
+CACHE_READ_MULTIPLIER = 0.1
+WEB_SEARCH_COST = 0.01
+
+APP_NAME = 'galactica'
+
+
+def _get_kumori_connection():
+    """Get a connection to the kumori DB specifically for usage logging."""
+    import psycopg2
+    from utilities.postgres_utils import get_secret
+    host = get_secret('KUMORI_POSTGRES_IP')
+    dbname = get_secret('KUMORI_POSTGRES_DB_NAME')
+    user = get_secret('KUMORI_POSTGRES_USERNAME')
+    password = get_secret('KUMORI_POSTGRES_PASSWORD')
+    return psycopg2.connect(host=host, dbname=dbname, user=user, password=password)
+
+
+def log_api_usage(model, usage, feature=None, streaming=False,
+                  image_count=0, user_id=None, duration_ms=None):
+    """Log an API call to kumori_api_usage in a background thread.
+    Never blocks the caller. Never raises."""
+    import threading
+
+    def _do_log():
+        try:
+            pricing = get_model_pricing(model)
+
+            input_tokens = getattr(usage, 'input_tokens', None) or (usage.get('input_tokens', 0) if isinstance(usage, dict) else 0) or 0
+            output_tokens = getattr(usage, 'output_tokens', None) or (usage.get('output_tokens', 0) if isinstance(usage, dict) else 0) or 0
+            cache_creation = getattr(usage, 'cache_creation_input_tokens', None) or (usage.get('cache_creation_input_tokens', 0) if isinstance(usage, dict) else 0) or 0
+            cache_read = getattr(usage, 'cache_read_input_tokens', None) or (usage.get('cache_read_input_tokens', 0) if isinstance(usage, dict) else 0) or 0
+            thinking = getattr(usage, 'thinking_tokens', None) or (usage.get('thinking_tokens', 0) if isinstance(usage, dict) else 0) or 0
+
+            server_tools = getattr(usage, 'server_tool_use', None) or (usage.get('server_tool_use') if isinstance(usage, dict) else None) or {}
+            web_searches = getattr(server_tools, 'web_search_requests', None) or (server_tools.get('web_search_requests', 0) if isinstance(server_tools, dict) else 0) or 0
+            web_fetches = getattr(server_tools, 'web_fetch_requests', None) or (server_tools.get('web_fetch_requests', 0) if isinstance(server_tools, dict) else 0) or 0
+            code_exec = getattr(server_tools, 'code_execution_requests', None) or (server_tools.get('code_execution_requests', 0) if isinstance(server_tools, dict) else 0) or 0
+
+            cost = (
+                input_tokens * pricing['input']
+                + output_tokens * pricing['output']
+                + cache_creation * pricing['input'] * CACHE_WRITE_MULTIPLIER
+                + cache_read * pricing['input'] * CACHE_READ_MULTIPLIER
+                + thinking * pricing['output']
+                + web_searches * WEB_SEARCH_COST
+            )
+
+            conn = _get_kumori_connection()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO kumori_api_usage
+                        (app_name, feature, model, input_tokens, output_tokens,
+                         cache_creation_tokens, cache_read_tokens, thinking_tokens,
+                         web_search_requests, web_fetch_requests, code_execution_requests,
+                         image_count, estimated_cost_usd, streaming, user_id, duration_ms)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """, (APP_NAME, feature, model, input_tokens, output_tokens,
+                          cache_creation, cache_read, thinking,
+                          web_searches, web_fetches, code_exec,
+                          image_count, cost, streaming, user_id, duration_ms))
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            logger.warning(f"Failed to log API usage: {e}")
+
+    threading.Thread(target=_do_log, daemon=True).start()
+
+
 # Response time expectations (based on testing):
 # - Haiku 3.5: ~0.5s (fastest, simple tasks)
 # - Sonnet 3.5: ~1.4s (best balance)
@@ -156,23 +227,31 @@ class ClaudeClient:
         if enable_beta_features:
             logger.debug("Web search capabilities available (no beta headers required)")
     
-    def _log_tokens(self, method: str, response: Any):
-        """Log token usage and ACCURATE cost estimation."""
+    def _log_tokens(self, method: str, response: Any, duration_ms: int = None):
+        """Log token usage, ACCURATE cost estimation, and API usage tracking."""
         if hasattr(response, 'usage'):
             input_tokens = response.usage.input_tokens
             output_tokens = response.usage.output_tokens
             total_tokens = input_tokens + output_tokens
-            
+
             # Get accurate model-specific pricing
             model_pricing = get_model_pricing(self.model)
             input_cost = input_tokens * model_pricing['input']
             output_cost = output_tokens * model_pricing['output']
             total_cost = input_cost + output_cost
-            
+
             logger.info(
                 f"{method} | Model: {self.model} | "
                 f"Tokens: {input_tokens}→{output_tokens} (Total: {total_tokens}) | "
                 f"Cost: ${total_cost:.6f}"
+            )
+
+            log_api_usage(
+                model=self.model,
+                usage=response.usage,
+                feature=method,
+                streaming=False,
+                duration_ms=duration_ms,
             )
     
     def _get_media_type(self, file_path: str) -> str:
@@ -214,8 +293,8 @@ class ClaudeClient:
             
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
-            
-            self._log_tokens("generate_text", message)
+
+            self._log_tokens("generate_text", message, duration_ms=int(elapsed_time * 1000))
             logger.info(f"Text generation completed in {elapsed_time:.2f}s")
             
             return response_text
@@ -307,7 +386,7 @@ class ClaudeClient:
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
             
-            self._log_tokens("process_image_url", message)
+            self._log_tokens("process_image_url", message, duration_ms=int(elapsed_time * 1000))
             logger.info(f"Image URL processing completed in {elapsed_time:.2f}s")
             
             return response_text
@@ -363,7 +442,7 @@ class ClaudeClient:
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
             
-            self._log_tokens("process_image_base64", message)
+            self._log_tokens("process_image_base64", message, duration_ms=int(elapsed_time * 1000))
             logger.info(f"Base64 image processing completed in {elapsed_time:.2f}s")
             
             return response_text
@@ -414,7 +493,7 @@ class ClaudeClient:
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
             
-            self._log_tokens("chat", message)
+            self._log_tokens("chat", message, duration_ms=int(elapsed_time * 1000))
             logger.info(f"Chat completed in {elapsed_time:.2f}s | Messages: {len(messages)}")
             
             return response_text
@@ -550,19 +629,27 @@ class ClaudeClient:
                     elif event.type == 'message_stop':
                         # Stream completed
                         elapsed_time = time.time() - start_time
-                        
+
                         # Log final performance with ACCURATE pricing
                         total_tokens = total_input_tokens + total_output_tokens
                         model_pricing = get_model_pricing(self.model)
                         total_cost = (total_input_tokens * model_pricing['input']) + (total_output_tokens * model_pricing['output'])
-                        
+
                         logger.info(
                             f"stream_chat | Model: {self.model} | "
                             f"Tokens: {total_input_tokens}→{total_output_tokens} (Total: {total_tokens}) | "
                             f"Cost: ${total_cost:.6f} | "
                             f"Time: {elapsed_time:.2f}s"
                         )
-                        
+
+                        log_api_usage(
+                            model=self.model,
+                            usage={'input_tokens': total_input_tokens, 'output_tokens': total_output_tokens},
+                            feature='stream_chat',
+                            streaming=True,
+                            duration_ms=int(elapsed_time * 1000),
+                        )
+
                         yield {
                             "type": "stop",
                             "stop_reason": event.message.stop_reason if hasattr(event, 'message') else None
@@ -1000,11 +1087,20 @@ Write a brief narrative in ARIA's voice describing this moment, like an Instagra
 
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
+        _start = time.time()
         response = client.messages.create(
             model="claude-3-haiku-20240307",  # Fast and cheap
             max_tokens=200,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}]
+        )
+        _elapsed = time.time() - _start
+
+        log_api_usage(
+            model="claude-3-haiku-20240307",
+            usage=response.usage,
+            feature='aria_snapshot_narrative',
+            duration_ms=int(_elapsed * 1000),
         )
 
         if response.content and len(response.content) > 0:
@@ -1356,11 +1452,20 @@ Return ONLY valid JSON."""
         # Use direct Anthropic client (lightweight call)
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
+        _start = time.time()
         response = client.messages.create(
             model="claude-3-haiku-20240307",
             max_tokens=800,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}]
+        )
+        _elapsed = time.time() - _start
+
+        log_api_usage(
+            model="claude-3-haiku-20240307",
+            usage=response.usage,
+            feature='aria_snapshot_prompt',
+            duration_ms=int(_elapsed * 1000),
         )
 
         if response.content and len(response.content) > 0:
@@ -1483,10 +1588,20 @@ def brainstorm_chat(message, context, history):
     messages = [{"role": msg['role'], "content": msg['content']} for msg in history[-10:]]
     messages.append({"role": "user", "content": message})
 
+    _start = time.time()
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
         max_tokens=1000,
         system=context,
         messages=messages
     )
+    _elapsed = time.time() - _start
+
+    log_api_usage(
+        model="claude-sonnet-4-20250514",
+        usage=response.usage,
+        feature='brainstorm_chat',
+        duration_ms=int(_elapsed * 1000),
+    )
+
     return response.content[0].text

@@ -1268,6 +1268,7 @@
   "utilities/claude_utils.py": {
     "description": "Claude API Utilities - Production Optimized with Accurate Pricing",
     "exports": [
+      "log_api_usage — Log an API call to kumori_api_usage in a background thread.",
       "get_model_pricing — Get accurate pricing per token for different Claude models",
       "class ClaudeClient",
       "create_client — Create a Claude client with sensible defaults.",
@@ -1281,8 +1282,7 @@
       "generate_conversation_summary — Generate a summary of the conversation using Claude",
       "generate_scientist_quote — Generate a personalized scientist quote for email notifications.",
       "generate_commander_quote — Generate a personalized commander quote for email notifications.",
-      "get_claude_response_for_shared_chat — Get Claude response for shared chat with collaborative context",
-      "generate_aria_snapshot_narrative — Generate an ARIA-voice narrative for a photo journal snapshot."
+      "get_claude_response_for_shared_chat — Get Claude response for shared chat with collaborative context"
     ]
   },
   "utilities/db_activity.py": {
