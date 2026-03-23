@@ -371,6 +371,64 @@ def load_math_registry():
     return {}
 
 
+def find_relevant_math(message, max_formulas=5):
+    """Keyword-match the question to only the relevant math_registry sections.
+    Returns a slim dict with only matching formulas + referenced constants.
+    Same pattern as codemap file matching — avoids dumping 48KB into context."""
+    registry = load_math_registry()
+    if not registry:
+        return None
+
+    msg_lower = message.lower()
+    words = set(w.strip("?.,!()\"'") for w in msg_lower.split() if len(w) > 2)
+
+    # Score each formula by keyword overlap with name + description + key
+    scored = []
+    for key, formula in registry.get('formulas', {}).items():
+        searchable = f"{key} {formula.get('name', '')} {formula.get('description', '')}".lower()
+        # Split formula key parts: "shard_generation.effective_rate" -> ["shard", "generation", "effective", "rate"]
+        key_words = set(key.replace('.', ' ').replace('_', ' ').split())
+        score = 0
+        for w in words:
+            if w in searchable:
+                score += 2
+            # Partial match on key words (e.g. "shards" matches "shard")
+            for kw in key_words:
+                if w.startswith(kw[:4]) or kw.startswith(w[:4]):
+                    score += 1
+        if score > 0:
+            scored.append((score, key, formula))
+
+    if not scored:
+        # No match — return just constants as a lightweight fallback
+        return {'constants': registry.get('constants', {})}
+
+    scored.sort(key=lambda x: -x[0])
+    top = scored[:max_formulas]
+
+    # Build slim result with only matched formulas
+    result = {'formulas': {}}
+    for _, key, formula in top:
+        result['formulas'][key] = formula
+
+    # Include only constants referenced by matched formulas
+    all_text = json.dumps(result['formulas']).upper()
+    relevant_constants = {}
+    for cname, cval in registry.get('constants', {}).items():
+        if cname.upper() in all_text:
+            relevant_constants[cname] = cval
+    if relevant_constants:
+        result['constants'] = relevant_constants
+
+    # Include tables if formula references them
+    for table_key in ['terrain_modifiers', 'vehicle_stats', 'payout_multipliers', 'stat_divisor_reference']:
+        if table_key.upper().replace('_', '') in all_text.replace('_', '') or table_key in all_text.lower():
+            if table_key in registry:
+                result[table_key] = registry[table_key]
+
+    return result
+
+
 def find_relevant_files(question, max_files=4):
     """Use codemap to find the most relevant files for a question."""
     codemap = load_codemap()
@@ -967,21 +1025,31 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
                          'effective rate', 'generation rate', 'how much', 'per hour']
         is_math_question = any(t in msg_lower for t in math_triggers)
 
+        # Math questions: Sonnet + targeted formulas instead of Opus + full 48KB dump.
+        # Sonnet is strong at math, way cheaper/faster than Opus, and with precise
+        # context from find_relevant_math() it has everything it needs.
         chat_model = MODEL
         if is_math_question:
-            chat_model = CLAUDE_MODELS.get("opus-4.6", "claude-opus-4-6")
-            logger.info(f"Math question detected — upgrading to Opus 4.6: {message[:80]}")
+            chat_model = CLAUDE_MODELS.get("sonnet-4.5", "claude-sonnet-4-5-20250929")
+            logger.info(f"Math question detected — using Sonnet: {message[:80]}")
 
         client = create_client(model=chat_model)
 
         yield f"data: {json.dumps({'type': 'start', 'chat_id': chat_id})}\n\n"
 
         if is_math_question:
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Running calculations...'})}\n\n"
-            # Load math registry — authoritative formula reference
-            math_registry = load_math_registry()
-            if math_registry:
-                system += f"\n\nMATH REGISTRY (authoritative formulas — use these EXACT formulas, never guess or re-derive from code):\n{json.dumps(math_registry)}"
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Looking up formulas...'})}\n\n"
+            # Targeted math lookup — only inject relevant formulas + constants
+            relevant_math = find_relevant_math(message)
+            if relevant_math and relevant_math.get('formulas'):
+                system += f"\n\nMATH REGISTRY (authoritative formulas — use these EXACT formulas, never guess or re-derive from code):\n{json.dumps(relevant_math)}"
+                logger.info(f"Math: targeted {len(relevant_math['formulas'])} formulas ({len(json.dumps(relevant_math))} chars)")
+            else:
+                # Generic math question with no keyword matches — send full registry
+                full = load_math_registry()
+                if full:
+                    system += f"\n\nMATH REGISTRY (authoritative formulas — use these EXACT formulas, never guess or re-derive from code):\n{json.dumps(full)}"
+                    logger.info(f"Math: full registry fallback ({len(json.dumps(full))} chars)")
             # Force query player data upfront so the model has real numbers
             try:
                 shard_data = query_player_data('shard_generation', user_id)

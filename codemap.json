@@ -1724,10 +1724,10 @@
       "read_local_file — Read a code file from the local codebase.",
       "load_codemap — Load codemap.json from the local project.",
       "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
+      "find_relevant_math — Keyword-match the question to only the relevant math_registry sections.",
       "find_relevant_files — Use codemap to find the most relevant files for a question.",
       "load_dynamic_context — Load extra context from DB when message mentions specific topics.",
-      "create_bug_from_question — Save a bug/feature report via the unified bug tracker.",
-      "create_bug_from_conversation — Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it."
+      "create_bug_from_question — Save a bug/feature report via the unified bug tracker."
     ],
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
   },
@@ -2521,7 +2521,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
