@@ -71,13 +71,9 @@ async function addOriginSiteMarkers() {
             document.head.appendChild(pulseStyle);
         }
 
-        // Show origin sites based on proximity — hidden until detected
-        // Claimed/visited sites always visible, others only within detection range
-        const ORIGIN_DETECTION_KM = 500;  // Show unclaimed sites within 500km
+        // Show ALL 14 origin sites — always visible, always pulsing
+        // The Signal is the endgame; players must know the nodes exist
         originSiteData.forEach((site, i) => {
-            const visible = site.is_claimed || site.has_visited || site.can_claim
-                || (site.distance_km && site.distance_km <= ORIGIN_DETECTION_KM);
-            if (!visible) return;  // Skip — too far to detect
             // ALL sites use the same bright gold color
             const fillColor = originColor;
             const borderColor = originBorder;
@@ -217,20 +213,38 @@ function buildOriginSitePopup(siteIndex) {
         </div>`;
     }
 
-    // Too far
-    return `<div class="map-popup">
-        <div class="map-popup-title" style="color: #a855f7;">
-            📡 ${site.mission_name}
+    // Unclaimed / not yet in range — mysterious, matches Signal page node language
+    const nodeId = site.node_id || 'NODE-??????';
+    const strength = site.signal_strength || 'Faint';
+    const strengthColors = { 'Strong': '#f59e0b', 'Faint': '#a78bfa', 'Fragmented': '#06b6d4' };
+    const strengthColor = strengthColors[strength] || '#a78bfa';
+
+    // Proximity hint — cryptic breadcrumb if they've been within 500km
+    let proximityHint = '';
+    if (site.distance_km && site.distance_km <= 500) {
+        proximityHint = `<div style="font-size: 10px; color: ${strengthColor}; text-align: center; font-style: italic; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(107, 114, 128, 0.2);">
+            "Something stirred during a recent journey... a faint resonance, ${Math.round(site.distance_km / 50) * 50}+ clicks out."
+        </div>`;
+    } else if (site.distance_km && site.distance_km <= 1000) {
+        proximityHint = `<div style="font-size: 10px; color: var(--text-muted); text-align: center; font-style: italic; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(107, 114, 128, 0.2);">
+            "A distant echo. Too far to read, but... it's there."
+        </div>`;
+    }
+
+    return `<div class="map-popup" style="border: 1px solid ${strengthColor}40;">
+        <div class="map-popup-title" style="color: ${strengthColor}; font-family: var(--font-mono, monospace); font-size: 13px; letter-spacing: 1px;">
+            ${nodeId}
         </div>
-        <div style="color: #f59e0b; font-size: 12px; text-align: center; margin: 8px 0;">TOO FAR</div>
-        <div class="map-popup-details">
-            <b>Site:</b> ${site.site_code}<br>
-            <b>Your closest:</b> ${site.distance_km}km<br>
-            <span style="font-size: 0.75em; color: var(--text-muted)">via ${site.closest_expedition?.name || 'expedition'}</span>
+        <div style="text-align: center; margin: 4px 0;">
+            <span style="font-size: 9px; font-weight: 600; letter-spacing: 1px; color: ${strengthColor}; text-transform: uppercase;">Signal: ${strength}</span>
         </div>
-        <div style="font-size: 0.75em; color: var(--text-muted); margin-top: 8px; text-align: center;">
-            Need expedition ${Math.abs(site.unlock_radius_km - site.distance_km).toFixed(0)}km closer to claim
+        <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin: 8px 0; font-style: italic;">
+            "Dormant. Awaiting contact."
         </div>
+        <div style="font-size: 9px; color: var(--text-muted); text-align: center; text-transform: uppercase; letter-spacing: 1px;">
+            Awaiting Founder
+        </div>
+        ${proximityHint}
     </div>`;
 }
 

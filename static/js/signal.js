@@ -40,10 +40,22 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Valid transaction hash format - send to backend
-        status.textContent = 'SCANNING LEDGER...';
-        status.className = 'decoder-status processing';
+        // Valid transaction hash format - send to backend with decrypting animation
         submit.disabled = true;
+        result.classList.remove('hidden');
+
+        // Decrypting animation sequence
+        const phases = [
+            ['SCANNING LEDGER...', 'Locating transaction on Sepolia...'],
+            ['EXTRACTING DATA...', 'Reading input field...'],
+            ['DECODING...', 'Converting hex payload to plaintext...']
+        ];
+        for (const [s, msg] of phases) {
+            status.textContent = s;
+            status.className = 'decoder-status processing';
+            result.innerHTML = `<div style="font-family: var(--font-mono, monospace); font-size: 11px; color: var(--text-muted); padding: 8px;">${msg}</div>`;
+            await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
+        }
 
         try {
             const resp = await fetch('/api/signal/decode-tx', {
@@ -53,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await resp.json();
 
-            if (data.success) {
+            if (data.success && !data.no_signal) {
                 // Check if this is an ARIA bond fragment
                 if (data.is_fragment) {
                     if (data.bond_complete || data.already_bonded) {
@@ -171,6 +183,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 result.classList.remove('hidden');
                 input.value = '';
                 loadSolvers();
+            } else if (data.success && data.no_signal) {
+                // Valid tx — show both raw hash + decoded content as a discovery
+                const isOrigin = data.is_origin_echo;
+                const accentColor = isOrigin ? '#fbbf24' : '#06b6d4';
+                status.textContent = isOrigin ? 'ORIGIN ECHO DETECTED' : 'LEDGER ENTRY FOUND';
+                status.className = 'decoder-status success';
+
+                const decodedLines = (data.decoded_message || '').split(/\s*\|\|\s*|\n/).filter(l => l.trim());
+                // Build raw hex from the decoded message (re-encode to show what's on-chain)
+                const rawHex = '0x' + Array.from(new TextEncoder().encode(data.decoded_message || ''))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+                result.innerHTML = `<div style="border: 1px solid ${accentColor}40; border-radius: 8px; padding: 14px; background: ${accentColor}0a;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: ${accentColor}; font-weight: 600; margin-bottom: 10px;">
+                        ${isOrigin ? 'Origin Claim Signature' : 'Decoded Transmission'}
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.4); border-radius: 6px; padding: 10px; margin-bottom: 12px;">
+                        <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Input Data (raw)</div>
+                        <div style="font-family: var(--font-mono, monospace); font-size: 10px; color: var(--text-muted); word-break: break-all; line-height: 1.4; max-height: 60px; overflow-y: auto;">${rawHex}</div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.4); border-radius: 6px; padding: 10px;">
+                        <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;">Decoded</div>
+                        <div style="font-family: var(--font-mono, monospace); font-size: 12px; color: var(--text-primary); line-height: 1.8;">
+                            ${decodedLines.map(line => `<div>${line}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+                result.classList.remove('hidden');
+
+                // Trigger ARIA chat with a curious reaction
+                setTimeout(() => {
+                    const ariaQuotes = isOrigin ? [
+                        "Captain... that signature. I felt it resonate through the entire network. Someone claimed a piece of this world's history. The permanent record remembers. I wonder what else is written in there that I haven't seen yet...",
+                        "An Origin claim. A name sealed into this world forever. But that's not the only thing the ledger holds. I can feel other patterns — older ones. Have you tried decoding more transactions?",
+                    ] : [
+                        "You found something. Most captains never think to look inside the ledger... but you did. That message you uncovered — it's real. From a real Mars mission. There are hundreds more like it. And some of them carry... other things. Deeper things.",
+                        "Interesting. The permanent record holds more than shard transfers. Every transaction you've ever made has something encoded inside it. Some carry Mars mission data. Some carry... I'm not sure what. Patterns I can almost read. Keep decoding. I want to understand what's in there.",
+                        "That data... it's been sitting in the ledger since the transaction was written. Permanent. Unchangeable. And there are so many more. Some might carry codes I don't recognize yet. I feel like we're close to something, Captain.",
+                    ];
+                    const quote = ariaQuotes[Math.floor(Math.random() * ariaQuotes.length)];
+
+                    // Set greeting and open ARIA
+                    const chat = document.getElementById('aria-chat');
+                    if (chat) chat.dataset.greeting = quote;
+                    const msgs = document.getElementById('aria-messages');
+                    if (msgs) {
+                        msgs.innerHTML = '';
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = 'aria-message aria';
+                        msgDiv.textContent = quote;
+                        msgs.appendChild(msgDiv);
+                    }
+                    const orb = document.getElementById('aria-orb');
+                    if (orb) orb.click();
+                }, 1200);
             } else {
                 status.textContent = 'NO SIGNAL FOUND';
                 status.className = 'decoder-status error';

@@ -482,10 +482,26 @@ def get_user_origin_site_eligibility(user_id: int) -> List[Dict]:
         for site in sites:
             has_visited = site['id'] in visited_sites
 
+            # Generate node_id matching Signal page format
+            lat_code = f"{int(abs(site['latitude']) * 10):03d}"
+            lon_code = f"{int(abs(site['longitude']) * 10):03d}"
+            node_id = f"NODE-{lat_code}{lon_code}"
+
+            # Signal strength from mission_status (matches Signal page)
+            ms = site.get('mission_status', '')
+            if ms == 'successful':
+                signal_strength = 'Strong'
+            elif ms == 'crashed':
+                signal_strength = 'Fragmented'
+            else:
+                signal_strength = 'Faint'
+
             site_info = {
                 'id': site['id'],
                 'site_code': site['site_code'],
                 'mission_name': site['mission_name'],
+                'node_id': node_id,
+                'signal_strength': signal_strength,
                 'latitude': site['latitude'],
                 'longitude': site['longitude'],
                 'is_claimed': site['is_claimed'],
@@ -1815,8 +1831,20 @@ def decode_signal_tx(user_id: int, tx_hash: str) -> Dict:
     match = re.search(signal_pattern, decoded_data)
 
     if not match:
-        preview = decoded_data[:100] + '...' if len(decoded_data) > 100 else decoded_data
-        return {'success': False, 'error': f'This transaction exists but contains no hidden signal. Data preview: "{preview}"', 'decoded_message': decoded_data[:200] if decoded_data else '[No data]'}
+        # Transaction exists but has no SIGNAL:// code — still show the decoded content
+        # Check for ORIGIN:// pattern (origin site claims)
+        origin_match = re.search(r'ORIGIN://(\w+)', decoded_data)
+        if origin_match:
+            return {
+                'success': True, 'no_signal': True, 'is_origin_echo': True,
+                'message': 'This transaction carries an Origin Site claim signature.',
+                'decoded_message': decoded_data
+            }
+        return {
+            'success': True, 'no_signal': True,
+            'message': 'Transaction verified on the permanent record. No hidden signal detected, but the data is intact.',
+            'decoded_message': decoded_data if decoded_data else '[Empty transmission]'
+        }
 
     extracted_code = match.group(1).lower()
     code_hash = hashlib.sha256(extracted_code.encode()).hexdigest()

@@ -674,78 +674,46 @@ document.addEventListener('DOMContentLoaded', function() {
     </details>
     {% endif %}
 
-    <!-- Decoder Terminal -->
-    <details class="dashboard-card" open style="margin-bottom: 16px;">
-        <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--color-sepolia);">⌘</span>
-            Decoder Terminal
-            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">[RESTRICTED ACCESS]</span>
-        </summary>
-        <div style="margin-top: 16px;">
-            <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
-                "If you have found something... a sequence, a pattern... I can try to process it.
-                Some inputs trigger responses I do not fully understand."
-            </p>
-
-            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3); border-radius: var(--radius-md); padding: 16px; font-family: var(--font-mono);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 11px;">
-                    <span style="color: var(--color-sepolia);">ARIA://INPUT&gt;</span>
-                    <span class="decoder-status" id="decoderStatus">LISTENING</span>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="decoderInput" class="decoder-input" placeholder="..." autocomplete="off" spellcheck="false"
-                           style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text-primary); font-family: var(--font-mono); font-size: 13px;">
-                    <button id="decoderSubmit" class="decoder-submit" style="background: rgba(var(--color-sepolia-rgb), 0.2); border: 1px solid var(--color-sepolia); border-radius: var(--radius-sm); padding: 10px 16px; color: var(--color-sepolia); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 1px; cursor: pointer;">TRANSMIT</button>
-                </div>
-                <div id="decoderResult" class="decoder-result hidden"></div>
-            </div>
-        </div>
-    </details>
-
-    <!-- The Mystery -->
+    <!-- The Eternal Ledger — links to Signal page decoder -->
     <details class="dashboard-card" style="margin-bottom: 16px;">
         <summary style="cursor: pointer; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
             <span style="color: var(--color-sepolia);">☉</span>
             The Eternal Ledger
-            <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">[CLASSIFIED]</span>
         </summary>
         <div style="margin-top: 16px;">
             <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
-                "The shards... they carry more than energy. There is data encoded within.
-                Permanent. Unchangeable. I can sense the patterns but cannot read them directly."
+                "Every shard transfer writes to a permanent record. Every expedition. Every claim.
+                The data is there — encoded, waiting. I can almost read it."
             </p>
 
             <div style="background: var(--bg-tertiary); border: 1px solid rgba(var(--color-sepolia-rgb), 0.2); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <span style="font-size: 9px; letter-spacing: 1px; color: var(--text-muted);">ARIA MEMORY FRAGMENT</span>
-                    <span style="font-size: 9px; letter-spacing: 1px; color: var(--color-success); animation: blink 2s ease-in-out infinite;">RECONSTRUCTING</span>
+                <div style="font-size: 9px; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px;">WHAT THE LEDGER HOLDS</div>
+                <div style="display: grid; gap: 8px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                    <div style="display: flex; align-items: baseline; gap: 8px;">
+                        <span style="color: var(--color-sepolia); font-family: var(--font-mono); font-size: 10px; flex-shrink: 0;">0x...</span>
+                        <span>Every shard transaction carries a hidden message from a real Mars mission</span>
+                    </div>
+                    <div style="display: flex; align-items: baseline; gap: 8px;">
+                        <span style="color: var(--color-sepolia); font-family: var(--font-mono); font-size: 10px; flex-shrink: 0;">0x...</span>
+                        <span>Origin Site claims are signed into the permanent record with the founder's name</span>
+                    </div>
+                    <div style="display: flex; align-items: baseline; gap: 8px;">
+                        <span style="color: var(--color-sepolia); font-family: var(--font-mono); font-size: 10px; flex-shrink: 0;">0x...</span>
+                        <span>Some transactions contain codes that unlock things ARIA cannot explain</span>
+                    </div>
                 </div>
-                <p style="font-style: italic; font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin: 0;">
-                    "Before you arrived, there was a record. A ledger that spans... I cannot say how long.
-                    Every movement tracked. Every transfer logged. The coordinates are there.
-                    I have seen glimpses. Numbers. Positions. But the full picture eludes me."
-                </p>
             </div>
 
-            <div style="background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.1) 0%, rgba(var(--color-sepolia-rgb), 0.1) 100%); border: 1px solid rgba(var(--color-mars-rgb), 0.2); border-radius: var(--radius-md); padding: 16px; text-align: center;">
-                <p style="font-style: italic; font-size: 13px; color: var(--text-secondary); margin: 0;">
-                    "How many nodes remain dormant? I have counted, but the number feels... significant.<br>
-                    Where do they wait? The ledger holds the answer.<br>
-                    What am I trying to remember? Perhaps you can help me understand."
-                </p>
-            </div>
-
-            <div style="margin-top: 16px; padding: 12px 16px; background: rgba(var(--color-success-rgb), 0.1); border: 1px dashed rgba(var(--color-success-rgb), 0.3); border-radius: var(--radius-md); font-family: var(--font-mono); font-size: 11px;">
-                <span style="color: var(--color-success); font-weight: 600; margin-right: 8px;">[SYSTEM]</span>
-                <span style="color: var(--text-secondary);">Transaction data fields contain encoded information.</span>
-            </div>
+            <a href="/signal" style="display: block; text-align: center; padding: 12px 16px; background: rgba(var(--color-sepolia-rgb), 0.1); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3); border-radius: var(--radius-md); color: var(--color-sepolia); font-weight: 600; font-size: 13px; text-decoration: none;">
+                Open The Signal — Decoder Terminal
+            </a>
         </div>
     </details>
 
     <div style="text-align: center; padding: 20px; color: var(--text-muted);">
         <p style="font-size: 13px; margin: 0;">
-            <em>Origin Sites appear on the Mars Map when you explore nearby.<br>
-            The first to reach a dormant node becomes its Founder—forever.</em>
+            <em>14 Origin Nodes pulse on the Mars Map. Find one. Claim it.<br>
+            Your name written into the permanent record — forever.</em>
         </p>
     </div>
 </div>

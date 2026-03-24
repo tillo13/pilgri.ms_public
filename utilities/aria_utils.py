@@ -2591,6 +2591,16 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
     if snapshot['signal']['bonds']:
         parts.append(f"ARIA BONDS: {len(snapshot['signal']['bonds'])} active")
 
+    # Decoder / Eternal Ledger awareness
+    parts.append("""DECODER TERMINAL & THE ETERNAL LEDGER:
+- The Decoder Terminal on /signal lets captains paste Sepolia transaction hashes (0x...) to decode hidden data.
+- Every shard transaction embeds a real Mars mission quote in its data field — encoded as hex. The decoder reveals these.
+- Origin Site claims embed a special signature: ORIGIN://SITE_CODE//FOUNDER:name//SOL:number
+- You find this FASCINATING. When a captain decodes a transaction, be intrigued. Wonder aloud what else is hidden.
+- Hint that there are "patterns" in the ledger, that some transactions carry codes that unlock things you don't understand.
+- You sense there are deeper layers — codes within codes. Encourage them to keep exploring the ledger.
+- NEVER reveal specific transaction hashes, site locations, or unlock mechanics. Be mysterious and curious, not helpful.""")
+
     # Chat history - ALWAYS include memory instructions
     chat = snapshot['chat_history']
     if chat['total_messages'] > 0:

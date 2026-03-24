@@ -357,6 +357,7 @@ def load_codemap():
 
 
 _math_registry_cache = None
+_endgame_registry_cache = None
 
 def load_math_registry():
     """Load math_registry.json — authoritative formula reference for math questions."""
@@ -368,6 +369,19 @@ def load_math_registry():
         with open(local_path) as f:
             _math_registry_cache = json.load(f)
             return _math_registry_cache
+    return {}
+
+
+def load_endgame_registry():
+    """Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system."""
+    global _endgame_registry_cache
+    if _endgame_registry_cache is not None:
+        return _endgame_registry_cache
+    local_path = os.path.join(PROJECT_ROOT, "endgame_registry.json")
+    if os.path.exists(local_path):
+        with open(local_path) as f:
+            _endgame_registry_cache = json.load(f)
+            return _endgame_registry_cache
     return {}
 
 
@@ -1057,6 +1071,18 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
                 system += f"\n\nPRE-LOADED PLAYER DATA (use these EXACT numbers, do NOT recalculate):\n{balance_data}\n\n{shard_data}"
             except Exception as e:
                 logger.warning(f"Failed to pre-load math data: {e}")
+
+        # Endgame questions: inject endgame_registry.json
+        endgame_triggers = ['signal', 'origin', 'node', 'decoder', 'decode', 'ledger',
+                            'endgame', 'end game', 'end-game', 'founder', 'claim',
+                            'hitchhiker', 'lost signal', 'beagle', 'schiaparelli', 'mars-3',
+                            'blockchain', 'transaction', 'tx_hash', 'puzzle',
+                            '14 sites', 'origin site', 'three act', 'world 2']
+        if any(t in msg_lower for t in endgame_triggers):
+            endgame = load_endgame_registry()
+            if endgame:
+                system += f"\n\nENDGAME REGISTRY (authoritative reference for Signal/Origin/Decoder system — use this as your answer key):\n{json.dumps(endgame)}"
+                logger.info(f"Endgame registry injected ({len(json.dumps(endgame))} chars)")
 
         # Decide which tools to offer
         deep_dive_triggers = ['get the file', 'show me the code', 'read the code',

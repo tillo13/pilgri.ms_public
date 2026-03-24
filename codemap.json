@@ -1724,10 +1724,10 @@
       "read_local_file — Read a code file from the local codebase.",
       "load_codemap — Load codemap.json from the local project.",
       "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
+      "load_endgame_registry — Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system.",
       "find_relevant_math — Keyword-match the question to only the relevant math_registry sections.",
       "find_relevant_files — Use codemap to find the most relevant files for a question.",
-      "load_dynamic_context — Load extra context from DB when message mentions specific topics.",
-      "create_bug_from_question — Save a bug/feature report via the unified bug tracker."
+      "load_dynamic_context — Load extra context from DB when message mentions specific topics."
     ],
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
   },
@@ -2430,6 +2430,7 @@
   "static/js/signal.js": {
     "description": "Signal Page - Decoder Terminal & Solvers",
     "exports": [
+      "decodedLines",
       "loadSolvers",
       "showLegendaryModal"
     ]
@@ -2443,7 +2444,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

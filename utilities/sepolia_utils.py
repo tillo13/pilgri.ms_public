@@ -692,17 +692,21 @@ class MarsAsteroidMiner:
                 return {'success': False, 'error': 'Transaction not found on Sepolia'}
 
             # Decode the input data (hex -> string)
+            # Web3 may return HexBytes — convert to hex string first
             input_data = tx.get('input', '0x')
+            if hasattr(input_data, 'hex'):
+                input_data = '0x' + input_data.hex()
+            else:
+                input_data = str(input_data)
             decoded_data = ''
 
             if input_data and input_data != '0x':
                 try:
-                    # Remove 0x prefix and decode hex to string
                     hex_str = input_data[2:] if input_data.startswith('0x') else input_data
                     decoded_data = bytes.fromhex(hex_str).decode('utf-8', errors='ignore')
                 except Exception as e:
                     logger.warning(f"Could not decode tx data: {e}")
-                    decoded_data = f"[Raw hex: {input_data[:50]}...]"
+                    decoded_data = f"[Could not decode data]"
 
             return {
                 'success': True,
