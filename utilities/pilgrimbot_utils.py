@@ -866,6 +866,7 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     loop_model = model_override or MODEL
     files_already_read = {}  # path -> content (cache to prevent re-reads)
     for round_num in range(max_rounds):
+        yield ("status", {"message": f"Analyzing{'.' * (round_num + 1)}"})
         _start = _time.time()
         resp = client_raw.messages.create(
             model=loop_model, max_tokens=3000, temperature=0.7,
@@ -1104,7 +1105,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             client.client, api_messages, system, active_tools,
             current_user_id=user_id, model_override=chat_model
         ):
-            if event_type == "tool_call":
+            if event_type == "status":
+                yield f"data: {json.dumps({'type': 'status', 'message': data['message']})}\n\n"
+            elif event_type == "tool_call":
                 yield f"data: {json.dumps({'type': 'tool_call', 'file': data['file'], 'found': data['found']})}\n\n"
             elif event_type == "result":
                 full_response = data
