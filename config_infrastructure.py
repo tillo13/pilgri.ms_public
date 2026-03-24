@@ -596,6 +596,7 @@ INFRASTRUCTURE_CATALOG = {
         'description': 'Processes raw Martian regolith into refined materials',
         'icon': '\u2692\ufe0f',  # ⚒️
         'category': 'extraction',
+        'generates_resource': 'sepolia',
         'max_level': 10,
         'default_level': 0,
         'requirements': ['refinery'],
@@ -659,6 +660,7 @@ INFRASTRUCTURE_CATALOG = {
         'description': 'Amplifies Sepolia shard resonance frequencies',
         'icon': '\U0001f4a0',  # 💠
         'category': 'power',
+        'generates_resource': 'sepolia',
         'max_level': 10,
         'default_level': 0,
         'requirements': ['regolith_forge'],
@@ -732,6 +734,7 @@ INFRASTRUCTURE_CATALOG = {
         'description': 'Taps deep thermal vents for constant Sepolia shard excitation',
         'icon': '\U0001f30b',  # 🌋
         'category': 'extraction',
+        'generates_resource': 'sepolia',
         'max_level': 10,
         'default_level': 0,
         'requirements': ['resonance_chamber'],

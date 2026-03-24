@@ -377,6 +377,7 @@
                             const data = JSON.parse(line.slice(6));
                             if (data.type === 'start' && data.chat_id) {
                                 currentChatId = data.chat_id;
+                                resetStreamTimeout();
                             } else if (data.type === 'status') {
                                 // Show status message (e.g. "Running calculations...")
                                 removeTyping(typingEl);

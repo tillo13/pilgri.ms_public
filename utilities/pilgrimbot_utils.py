@@ -960,6 +960,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
     title = generate_title(message) if not history else None
     save_message(user_id, chat_id, "user", message, title=title)
 
+    # Send start event FIRST so frontend gets an immediate SSE chunk (resets 45s timeout)
+    yield f"data: {json.dumps({'type': 'start', 'chat_id': chat_id})}\n\n"
+
     # Extract search terms from message for smart file reading
     msg_stopwords = {"have", "been", "this", "that", "with", "from", "what", "does",
                      "will", "would", "could", "about", "there", "their", "also",
@@ -982,6 +985,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         content = read_local_file(fpath, search_terms=extra_terms)
         if content:
             code_context += f"\n--- {fpath} ---\n{content}\n"
+
+    # Keepalive after file reads — resets frontend timeout
+    yield f"data: {json.dumps({'type': 'status', 'message': 'Preparing...'})}\n\n"
 
     # Build system prompt — role-based persona
     show_code = user_role == 'dev' or bug_mode
@@ -1050,8 +1056,6 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
         client = create_client(model=chat_model)
 
-        yield f"data: {json.dumps({'type': 'start', 'chat_id': chat_id})}\n\n"
-
         if is_math_question:
             yield f"data: {json.dumps({'type': 'status', 'message': 'Looking up formulas...'})}\n\n"
             # Targeted math lookup — only inject relevant formulas + constants
@@ -1090,6 +1094,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
                               'look at the code', 'check the file', 'fetch the file',
                               'go get', 'deep dive', 'show the exact code', 'prove it']
         use_file_tools = bug_mode and any(t in msg_lower for t in deep_dive_triggers)
+
+        # Keepalive before API call — resets frontend timeout after all context loading
+        yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing...'})}\n\n"
 
         # Always include player data tool — Claude decides when to use it
         active_tools = [PLAYER_DATA_TOOL]

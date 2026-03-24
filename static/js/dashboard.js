@@ -310,6 +310,17 @@ async function checkInfrastructureIncome() {
                 }
             }
 
+            // Scientist bonus row (analysis stat → shard gen boost)
+            const scientistRow = $('scientistBonusRow');
+            if (scientistRow) {
+                if (bonuses.scientist_shard_mult > 1.0) {
+                    scientistRow.style.display = 'flex';
+                    $('scientistBonusMult').textContent = '× ' + bonuses.scientist_shard_mult.toFixed(2);
+                } else {
+                    scientistRow.style.display = 'none';
+                }
+            }
+
             // Environmental Impact row (dust, temperature, latitude factors)
             const envRow = $('envImpactRow');
             const envFactors = rb.mars_env_factors;

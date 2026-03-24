@@ -894,6 +894,12 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
                         <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="miningDroneBonus">+ 0/hr</span>
                     </div>
 
+                    <!-- Scientist Bonus (analysis stat → shard gen boost) -->
+                    <div id="scientistBonusRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Scientist Bonus</span>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="scientistBonusMult">× 1.0</span>
+                    </div>
+
                     <!-- Environmental Impact (dust, temperature, day/night) -->
                     <div id="envImpactRow" style="display: none; padding: 8px 0; border-bottom: 1px solid var(--border-default);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
