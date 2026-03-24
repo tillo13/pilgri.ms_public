@@ -45,11 +45,14 @@ OPACITY_CONDITIONS = [
 
 def get_mars_sol_number(reference_date: datetime = None) -> int:
     """
-    Calculate Mars Sol number from a reference point.
+    Calculate game Sol number — days since the first captain landed on Mars.
 
-    Uses MSD (Mars Sol Date) calculation - days since Dec 29, 1873.
-    For game purposes, we offset to make it feel like future Mars time.
+    Sol 1 = October 3, 2025 (first account created). Uses real Mars Sol Date
+    math internally, then offsets so the game epoch starts at Sol 1.
     """
+    # MSD on Oct 3, 2025 (first account: Andy Tillo) = 53946
+    GAME_EPOCH_MSD = 53945  # offset so Oct 3 = Sol 1
+
     if reference_date is None:
         reference_date = datetime.utcnow()
 
@@ -69,8 +72,8 @@ def get_mars_sol_number(reference_date: datetime = None) -> int:
     # Mars Sol Date (MSD)
     MSD = (JD - 2451549.5) / 1.02749125 + 44796.0
 
-    # Return as integer sol
-    return int(MSD)
+    # Return game-epoch sol (Sol 1 = first landing)
+    return max(1, int(MSD) - GAME_EPOCH_MSD)
 
 
 def get_mars_season(sol_of_year: int) -> dict:

@@ -414,16 +414,6 @@ def inject_global_stats():
         except Exception as e:
             logger.warning(f"Could not get SV balance: {e}")
 
-        # Override Sol with per-player sol (Mars days since account creation)
-        first_login = session.get('_fl')
-        if first_login and mars_env:
-            try:
-                fl = first_login if isinstance(first_login, datetime) else datetime.fromisoformat(str(first_login).replace('Z', '+00:00')).replace(tzinfo=None)
-                elapsed_seconds = (datetime.utcnow() - fl).total_seconds()
-                mars_env['sol'] = max(1, int(elapsed_seconds / (24.6597 * 3600)))
-            except Exception:
-                pass  # Keep global MSD as fallback
-
         return {
             'total_balance': total_balance,
             'inventory_count': nav_stats.get('inventory_count', 0),

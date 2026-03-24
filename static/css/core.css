@@ -8,7 +8,7 @@
        SAFE AREA INSETS (Android/iOS bottom nav handling)
        Per Chrome edge-to-edge guide: https://developer.chrome.com/docs/css-ui/edge-to-edge
        ========================================================================== */
-    --safe-area-max-inset-bottom: env(safe-area-max-inset-bottom, 36px);
+    --sai-bottom: env(safe-area-inset-bottom, 0px);
     --bottom-nav-height: 60px; /* min-height of nav-item */
 
     /* Typography */
@@ -417,7 +417,7 @@ img[loading="lazy"].loaded, img[loading="lazy"]:not([src=""]) { opacity: 1; }
 .main-content {
     flex: 1;
     /* Bottom padding accounts for bottom-nav height + max safe area */
-    padding: 70px 15px calc(var(--bottom-nav-height) + var(--safe-area-max-inset-bottom) + 30px);
+    padding: 70px 15px calc(var(--bottom-nav-height) + var(--sai-bottom) + 30px);
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
@@ -539,20 +539,19 @@ img[loading="lazy"].loaded, img[loading="lazy"]:not([src=""]) { opacity: 1; }
 .menu-signal:hover { background: rgba(100, 100, 255, 0.1); }
 .signal-count { margin-left: auto; font-size: 12px; opacity: 0.7; font-weight: 600; }
 
-/* BOTTOM NAV - Chrome edge-to-edge optimized pattern */
+/* BOTTOM NAV - works on iOS Safari + Chrome + Android */
 .bottom-nav {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 0px) - var(--safe-area-max-inset-bottom));
+    bottom: 0;
     left: 0;
     right: 0;
-    height: var(--bottom-nav-height);
     background: var(--bg-card);
     border-top: 1px solid var(--border-default);
     box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
     display: flex;
     justify-content: space-around;
     padding: 8px 0;
-    padding-bottom: var(--safe-area-max-inset-bottom);
+    padding-bottom: var(--sai-bottom);
     z-index: 1000;
     transition: background 0.3s ease, border-color 0.3s ease;
 }
@@ -950,7 +949,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
     .login-btn-desktop { display: inline-flex; font-size: 11px; padding: 4px 8px; } /* Show on mobile next to theme toggle */
     .nav-user { grid-column: 3; justify-self: end; }
     .user-menu { position: fixed; top: 60px; right: 10px; min-width: 280px; max-width: calc(100vw - 20px); }
-    .main-content { padding: 70px 15px calc(var(--bottom-nav-height) + var(--safe-area-max-inset-bottom) + 30px); }
+    .main-content { padding: 70px 15px calc(var(--bottom-nav-height) + var(--sai-bottom) + 30px); }
     h1 { font-size: 1.8em; }
     .card, .dashboard-card, .profile-card { padding: 16px; }
     .toast-container { top: 10px; right: 10px; left: 10px; max-width: none; }
@@ -2579,7 +2578,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 /* Phone landscape: Maximize vertical space */
 @media (max-width: 768px) and (orientation: landscape) {
     .main-content {
-        padding: 60px 15px calc(var(--bottom-nav-height) + var(--safe-area-max-inset-bottom) + 10px);
+        padding: 60px 15px calc(var(--bottom-nav-height) + var(--sai-bottom) + 10px);
     }
 
     .top-nav {
@@ -2588,7 +2587,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 
     .bottom-nav {
         padding: 4px 0;
-        padding-bottom: var(--safe-area-max-inset-bottom);
+        padding-bottom: var(--sai-bottom);
     }
 
     .nav-item {

@@ -1648,7 +1648,7 @@
   "utilities/mars_environment_utils.py": {
     "description": "Mars Environment Utilities - Scientifically Accurate Mars Conditions",
     "exports": [
-      "get_mars_sol_number — Calculate Mars Sol number from a reference point.",
+      "get_mars_sol_number — Calculate game Sol number — days since the first captain landed on Mars.",
       "get_mars_season — Determine Mars season based on solar longitude (Ls).",
       "get_sol_time — Calculate current time of sol (Mars day/night cycle).",
       "calculate_temperature — Calculate Mars surface temperature based on location, season, and time.",
@@ -2443,7 +2443,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
