@@ -8,44 +8,7 @@
 {% block extra_js %}
 <script>
 window.BRAINSTORM_PAGE_KEY = 'signal';
-window.BRAINSTORM_CONFIG = {
-    apiEndpoint: '/api/brainstorm/signal-chat',
-    context: `You are PilgrimBot, helping brainstorm the Signal / Origin Site endgame system for Pilgrims, a Mars colony game.
-
-=== THE SIGNAL IS THE GAME ===
-14 Origin Sites at real Mars landing locations are the ENDGAME — like finding all Triforces in Zelda. Finding one should take weeks/months. Finding all 14 could take years. This is the elevator pitch: "Explore Mars. Find ancient signals left by The Architects. Be the first to claim a legendary site."
-
-=== CURRENT PROBLEM ===
-Nobody can find them. Luke (82 expeditions) closest approach = 585km. Andy only found Curiosity because his base was next to it. Detection is 42km radius, destination-only (doesn't check expedition PATH). Mars surface coverage = 0.027%. Expected expeditions to find one by chance = ~3,700.
-
-=== THE VISION ===
-1. Progressive hints as expeditions get closer (500km faint echoes → 200km strange readings → 100km signal lock → 50km ARIA whispers → 42km DISCOVERY)
-2. Path-based detection (check along expedition route, not just destination) — point_to_path_distance() exists but isn't used
-3. Discovery = cinematic event rivaling ARIA bond reveals
-4. Signal artifacts and collectibles as expeditions get warmer
-5. Finding all 14 unlocks "World 2" — new planet, new chapter
-6. Three-Act unlock for 3 Lost Signal Sites (Mars-3, Beagle-2, Schiaparelli)
-
-=== 14 ORIGIN SITES ===
-Viking 1 & 2 (1976), Pathfinder (1997), Spirit & Opportunity (2004), Phoenix (2008), Curiosity (2012, CLAIMED by Andy), InSight (2018), Perseverance (2021), Zhurong (2021), Mars-2 (1971, crashed), Mars-3 (1971, lost signal), Beagle-2 (2003, lost signal), Schiaparelli (2016, crashed)
-
-=== KEY CODE ===
-- signal_utils.py: check_origin_site_proximity() — 42km destination-only check
-- mars_math.py: point_to_path_distance() — exists but NOT used for origin detection
-- expedition_utils.py: check_signal_events() — triggers on expedition completion
-- expeditions-origin.js: map popups and claiming UI
-
-The system has THREE layers that connect:
-1. ORIGIN SITES (physical hunt — explore, proximity detection, claim)
-2. DECODER/LEDGER (ARG meta-game — decode blockchain txs, find hidden SIGNAL:// codes, solve puzzles)
-3. LOST SIGNAL SITES (the bridge — 3 sites that may require founder tx_hashes OR proximity, TBD)
-
-Key implementation gaps: signal_puzzles table has HITCHHIKER puzzle but no route calls decode_signal_puzzle(). No txs embed SIGNAL://UNLOCK: codes. Three-Act Lost Sites system is brainstorm-only. decode_signal_puzzle() is dead code.
-
-Help brainstorm ideas, challenge proposals, suggest implementation details, or explore narrative possibilities.`
-};
 </script>
-<script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
 <script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
 {% endblock %}
 
@@ -940,39 +903,17 @@ Help brainstorm ideas, challenge proposals, suggest implementation details, or e
     </div>
 
     <!-- ═══════════════════════════════════════════════════════ -->
-    <!-- PILGRIMBOT CHAT WIDGET -->
+    <!-- PILGRIMBOT BRAINSTORM LINK -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <div class="chat-widget" id="brainstorm-chat">
-        <div class="chat-header">
-            <div class="chat-header-icon">&#x1F9E0;</div>
-            <div class="chat-header-text">
-                <h3>Brainstorm with PilgrimBot</h3>
-                <p>Ask about the Signal system, Origin Sites, progressive discovery, or World 2</p>
-            </div>
-        </div>
-
-        <div class="chat-messages" id="chat-messages">
-            <div class="chat-message assistant">
-                <div class="chat-avatar">&#x1F9E0;</div>
-                <div class="chat-bubble">
-                    I have full context on the Signal endgame system — the 14 Origin Sites, progressive discovery tiers,
-                    path detection math, the Three-Act Lost Sites, and the World 2 vision. Ask me anything or throw ideas at me.
-                </div>
-            </div>
-        </div>
-
-        <div class="chat-suggestions">
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">How would path-based detection work?</span>
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">What should ARIA say at 200km?</span>
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">How does this scale to 10,000 players?</span>
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">What's the Beagle-2 story ARIA tells?</span>
-        </div>
-
-        <div class="chat-input-area">
-            <textarea class="chat-input" id="chat-input" placeholder="Ask a question or share an idea..." rows="1"
-                onkeydown="handleKeyDown(event)"></textarea>
-            <button class="chat-send" id="chat-send" onclick="sendMessage()">Send</button>
-        </div>
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), var(--bg-secondary)); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#x1F9E0;</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">Brainstorm with PilgrimBot</h3>
+        <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 13px;">
+            Full PilgrimBot — streaming, markdown, code context, bug creation, endgame registry
+        </p>
+        <a href="/pilgrimbot?brainstorm=signal" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; background: var(--color-sepolia); color: white;">
+            Open PilgrimBot — Signal & Endgame
+        </a>
     </div>
 
 </div>

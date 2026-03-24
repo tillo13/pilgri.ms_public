@@ -2762,6 +2762,28 @@ def pilgrimbot():
     from utilities.pilgrimbot_utils import get_user_chats, get_user_role
     chats = get_user_chats(real_user_id) if real_user_id else []
     pb_role = get_user_role(real_user_id) if real_user_id else 'captain'
+    # Support ?brainstorm=<page> to pre-load brainstorm context
+    brainstorm_page = request.args.get('brainstorm')
+    brainstorm_context = ''
+    brainstorm_name = ''
+    if brainstorm_page:
+        brainstorm_titles = {
+            'signal': 'Signal & Endgame — Origin Sites, Decoder Terminal, Lost Sites',
+            'tech-tree': 'Tech Tree — research branches, progression, unlocks',
+            'trail-network': 'Trail Network — crew trails, speed caches, path building',
+            'icon-redesign': 'Icon Redesign — UI icons, 10-level upgrade visuals',
+            'aria-meetings': 'ARIA Meetings — bond system, multiplicity, cross-colony',
+            'sv-economy': 'SV Economy — science value generation & spending',
+            'progression': 'Progression Tree — Lab + Depot + Infrastructure',
+        }
+        brainstorm_name = brainstorm_titles.get(brainstorm_page, brainstorm_page)
+        brainstorm_context = (
+            f"We're brainstorming: {brainstorm_name}\n"
+            f"Brainstorm page: /brainstorm/{brainstorm_page}\n\n"
+            f"Help brainstorm ideas, challenge proposals, suggest implementation, or explore narrative possibilities.\n"
+            f"When actionable bugs or features surface, offer to create them in the bug tracker.\n"
+            f"Reference the brainstorm page URL in any bugs you suggest.")
+
     # Support ?bug=<id> to pre-load bug context
     bug_context = ''
     bug_id = request.args.get('bug')
@@ -2795,8 +2817,11 @@ def pilgrimbot():
                 f"2) Are any related bugs duplicates or connected? "
                 f"3) What's the fix? 4) What should QA test to verify?")
     bug_name = bug['name'] if bug_id and bug else ''
+    # Combine brainstorm + bug context (brainstorm as initial message, bug as pre-load)
+    combined_context = brainstorm_context or bug_context
     return render_template('pilgrimbot.html', user=auth.get_current_user(),
-        chats=chats, bug_context=bug_context, bug_id=bug_id, bug_name=bug_name, pb_role=pb_role)
+        chats=chats, bug_context=combined_context, bug_id=bug_id, bug_name=bug_name or brainstorm_name,
+        pb_role=pb_role, brainstorm_page=brainstorm_page)
 
 
 @app.route('/api/pilgrimbot/chat', methods=['POST'])
