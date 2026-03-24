@@ -52,7 +52,7 @@ function initFleetReviewButtons() {
     document.querySelectorAll('.fleet-review-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const expeditionId = parseInt(btn.dataset.expeditionId) || 0;
-            if (expeditionId > 0 && expeditionId < 900) {
+            if (expeditionId > 0) {
                 showExpeditionHaulModal(expeditionId, true);
             } else {
                 showFleetHaulModalFallback(btn.dataset);

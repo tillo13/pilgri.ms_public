@@ -67,7 +67,8 @@ def get_user_active_expeditions(user_id: int) -> List[Dict]:
         with db_cursor() as cur:
             cur.execute("""
                 SELECT e.*, mm.link as destination_link,
-                       COALESCE(unclaimed.count, 0) as unclaimed_count
+                       COALESCE(unclaimed.count, 0) as unclaimed_count,
+                       COALESCE(total_disc.count, 0) as total_discovery_count
                 FROM pilgrim.expeditions e
                 LEFT JOIN pilgrim.mars_mappings mm ON LOWER(e.destination_name) = LOWER(mm.name)
                 LEFT JOIN (
@@ -76,6 +77,11 @@ def get_user_active_expeditions(user_id: int) -> List[Dict]:
                     WHERE claimed_by_user = false
                     GROUP BY expedition_id
                 ) unclaimed ON unclaimed.expedition_id = e.id
+                LEFT JOIN (
+                    SELECT expedition_id, COUNT(*) as count
+                    FROM pilgrim.expedition_discoveries
+                    GROUP BY expedition_id
+                ) total_disc ON total_disc.expedition_id = e.id
                 WHERE e.user_id = %s
                   AND (e.status IN ('traveling', 'recalled') OR (e.status = 'complete' AND COALESCE(unclaimed.count, 0) > 0))
                 ORDER BY e.departed_at DESC

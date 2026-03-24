@@ -631,21 +631,25 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
         {% set traveling_exps = active_expeditions|rejectattr('status', 'equalto', 'complete')|list %}
 
         {% if returned_exps|length > 0 %}
-        <a href="/expeditions" style="text-decoration: none; display: block;">
-        <div style="padding: 8px 10px; background: rgba(255,180,50,0.1); border-radius: 6px; border: 1px solid rgba(255,180,50,0.3); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,180,50,0.18)'" onmouseout="this.style.background='rgba(255,180,50,0.1)'">
+        <div style="padding: 8px 10px; background: rgba(255,180,50,0.1); border-radius: 6px; border: 1px solid rgba(255,180,50,0.3); margin-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                 <img src="{{ icons.box_package }}" alt="" class="inline-icon">
                 <span style="font-size: 12px; color: var(--color-warning); font-weight: 600;">{{ returned_exps|length }} Expedition{{ 's' if returned_exps|length > 1 else '' }} Returned — Claim Loot!</span>
             </div>
             {% for exp in returned_exps[:3] %}
-            <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; {% if not loop.last %}margin-bottom: 4px;{% endif %}">
+            <div class="fleet-review-btn" data-expedition-id="{{ exp.id }}" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; cursor: pointer; transition: background 0.2s; {% if not loop.last %}margin-bottom: 4px;{% endif %}" onmouseover="this.style.background='rgba(255,180,50,0.15)'" onmouseout="this.style.background='var(--bg-secondary)'">
                 <span style="font-size: 11px; color: var(--color-warning);">{{ exp.vehicle_type|title }}</span>
                 <span style="font-size: 12px; color: var(--text-primary); flex: 1; font-weight: 500;">{{ exp.destination_name }}</span>
-                <span style="font-size: 10px; color: var(--text-muted);">{{ '{:,}'.format((exp.distance_km)|int) }} km</span>
+                <span style="font-size: 10px; color: var(--text-muted);">{{ exp.total_discovery_count }} find{{ 's' if exp.total_discovery_count != 1 else '' }}</span>
+                {% if exp.sepolia_earned %}
+                <span style="font-size: 10px; color: var(--color-warning); font-weight: 600;">{{ '{:,}'.format((exp.sepolia_earned)|int) }} <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"></span>
+                {% endif %}
             </div>
             {% endfor %}
+            {% if returned_exps|length > 3 %}
+            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px;">+{{ returned_exps|length - 3 }} more returned</div>
+            {% endif %}
         </div>
-        </a>
         {% endif %}
 
         {% if traveling_exps|length > 0 %}
