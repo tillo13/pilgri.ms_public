@@ -350,11 +350,13 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
         nearest_feature = min(nearby_features,
                             key=lambda f: math.sqrt((float(f['latitude'])-lat)**2 + (float(f['longitude'])-lon)**2))
 
-        # Filter items: exclude already-found legendaries and already-found rare items (no duplicates)
+        # Filter items: use CHECKPOINT distance (not total expedition distance) for min/max range
+        # This ensures long expeditions can still find items near base camp
+        checkpoint_km = checkpoint['distance_km']
         matching_items = [item for item in geographically_valid_items
                          if matches_terrain_feature(nearest_feature['type'], item['preferred_mars_features'])
-                         and item['min_distance_km'] <= distance_km
-                         and (item['max_distance_km'] is None or distance_km <= item['max_distance_km'])
+                         and item['min_distance_km'] <= checkpoint_km
+                         and (item['max_distance_km'] is None or checkpoint_km <= item['max_distance_km'])
                          and not (legendary_found and item['rarity'] == 'legendary')
                          and not (item['rarity'] == 'rare' and item['id'] in rare_items_found)]
 
@@ -406,28 +408,16 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
         cargo_capacity += distance_cargo_bonus
         logger.info(f"Distance cargo bonus: +{distance_cargo_bonus} slots (total {cargo_capacity}) for {distance_km}km expedition")
 
-    # Separate weightless items (digital data) from physical items
-    weightless = [d for d in discoveries if d.get('weight_kg', 1.0) == 0]
-    physical = [d for d in discoveries if d.get('weight_kg', 1.0) > 0]
-
-    # Only physical items count against cargo capacity
-    if len(physical) > cargo_capacity:
-        # Sort by value (highest first) and keep only what fits in cargo
-        physical.sort(key=lambda d: d['enhanced_value'], reverse=True)
-        left_behind = physical[cargo_capacity:]
-        physical = physical[:cargo_capacity]
+    # Enforce cargo capacity: total discoveries (all types) capped by vehicle capacity
+    # Sort by value (highest first) so we keep the best finds
+    if len(discoveries) > cargo_capacity:
+        discoveries.sort(key=lambda d: d['enhanced_value'], reverse=True)
+        left_behind = discoveries[cargo_capacity:]
+        discoveries = discoveries[:cargo_capacity]
         left_behind_value = sum(d['enhanced_value'] for d in left_behind)
-        logger.info(f"Cargo limit: Vehicle capacity {cargo_capacity}, found {len(physical) + len(weightless)} items ({len(weightless)} weightless), left behind {len(left_behind)} items worth {left_behind_value} shards")
+        logger.info(f"Cargo limit: Vehicle capacity {cargo_capacity}, found {cargo_capacity + len(left_behind)} items, left behind {len(left_behind)} items worth {left_behind_value} shards")
 
-    # Weightless items (digital data) still take up cargo space
-    if len(weightless) > cargo_capacity:
-        weightless.sort(key=lambda d: d['enhanced_value'], reverse=True)
-        weightless = weightless[:cargo_capacity]
-
-    # Combine: kept weightless + kept physical items
-    discoveries = weightless + physical
-
-    logger.info(f"Generated {len(discoveries)} discoveries for expedition {expedition_id} (Mission #{user_expedition_count}, {distance_km}km, cargo: {cargo_capacity}, {len(weightless)} weightless)")
+    logger.info(f"Generated {len(discoveries)} discoveries for expedition {expedition_id} (Mission #{user_expedition_count}, {distance_km}km, cargo: {cargo_capacity})")
     return discoveries
 
 
