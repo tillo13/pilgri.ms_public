@@ -1,9 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Signal System — Brainstorm{% endblock %}
+{% block title %}Signal System — Endgame Design — Pilgrims{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
-<link rel="stylesheet" href="/static/css/brainstorm-signal.css?v={{ static_v }}">
 {% endblock %}
 
 {% block extra_js %}
@@ -11,29 +10,32 @@
 window.BRAINSTORM_PAGE_KEY = 'signal';
 window.BRAINSTORM_CONFIG = {
     apiEndpoint: '/api/brainstorm/signal-chat',
-    context: `You are PilgrimBot, helping brainstorm the Signal / ARG system for Pilgrims, a Mars colony game.
+    context: `You are PilgrimBot, helping brainstorm the Signal / Origin Site endgame system for Pilgrims, a Mars colony game.
 
-=== SIGNAL SYSTEM CONTEXT ===
+=== THE SIGNAL IS THE GAME ===
+14 Origin Sites at real Mars landing locations are the ENDGAME — like finding all Triforces in Zelda. Finding one should take weeks/months. Finding all 14 could take years. This is the elevator pitch: "Explore Mars. Find ancient signals left by The Architects. Be the first to claim a legendary site."
 
-The Signal system is a blockchain easter egg layer: every Sepolia transaction carries a cryptic Mars mission message in its hex-encoded input data. 208 messages across 10 real Mars missions. Players who inspect Etherscan discover a hidden narrative.
+=== CURRENT PROBLEM ===
+Nobody can find them. Luke (82 expeditions) closest approach = 585km. Andy only found Curiosity because his base was next to it. Detection is 42km radius, destination-only (doesn't check expedition PATH). Mars surface coverage = 0.027%. Expected expeditions to find one by chance = ~3,700.
 
-=== THE 3 LOST SIGNAL SITES ===
+=== THE VISION ===
+1. Progressive hints as expeditions get closer (500km faint echoes → 200km strange readings → 100km signal lock → 50km ARIA whispers → 42km DISCOVERY)
+2. Path-based detection (check along expedition route, not just destination) — point_to_path_distance() exists but isn't used
+3. Discovery = cinematic event rivaling ARIA bond reveals
+4. Signal artifacts and collectibles as expeditions get warmer
+5. Finding all 14 unlocks "World 2" — new planet, new chapter
+6. Three-Act unlock for 3 Lost Signal Sites (Mars-3, Beagle-2, Schiaparelli)
 
-14 Origin Sites exist (real Mars landing locations). 11 are claimable by proximity. 3 are "Lost Signals" — Mars-3, Beagle-2, Schiaparelli — missions that never transmitted usable data, so they have no blockchain messages and can't be found through the normal detective path.
+=== 14 ORIGIN SITES ===
+Viking 1 & 2 (1976), Pathfinder (1997), Spirit & Opportunity (2004), Phoenix (2008), Curiosity (2012, CLAIMED by Andy), InSight (2018), Perseverance (2021), Zhurong (2021), Mars-2 (1971, crashed), Mars-3 (1971, lost signal), Beagle-2 (2003, lost signal), Schiaparelli (2016, crashed)
 
-=== THREE-ACT UNLOCK DESIGN ===
+=== KEY CODE ===
+- signal_utils.py: check_origin_site_proximity() — 42km destination-only check
+- mars_math.py: point_to_path_distance() — exists but NOT used for origin detection
+- expedition_utils.py: check_signal_events() — triggers on expedition completion
+- expeditions-origin.js: map popups and claiming UI
 
-Act 1 (First Voice): First origin site founder's tx hash unlocks Mars-3
-Act 2 (Last Voice): Last of 11 origin sites founder's tx hash unlocks Schiaparelli (all 11 must be claimed first)
-Act 3 (ARIA Remembers Him): Give ARIA both tx hashes in chat. She tells the story of Beagle 2 — the lander she watched for 12 years, intact but unable to call home. She generates the final unlock code. Tearjerker moment.
-
-=== KEY FILES ===
-- signal_utils.py: decode_lost_signal_site(), decode_signal_transaction(), get_signal_page_data()
-- sepolia_utils.py: fetch_and_decode_transaction()
-- expeditions-origin.js: map popup for origin sites
-- docs/signal.md: full design doc (this page renders it)
-
-Help brainstorm ideas, poke holes in the design, suggest implementation details, or explore narrative possibilities.`
+Help brainstorm ideas, challenge proposals, suggest implementation details, or explore narrative possibilities.`
 };
 </script>
 <script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
@@ -43,47 +45,724 @@ Help brainstorm ideas, poke holes in the design, suggest implementation details,
 {% block content %}
 <div class="brainstorm-container">
 
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
-        <span class="status-badge status-active">Secret</span>
-        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Signal System Brainstorm</h1>
-        <p style="color: var(--text-muted); font-size: 14px; margin: 0;">
-            Mars Mission Messages, Blockchain Easter Eggs, Lost Signal Unlock Design
-            <br><em>Source: docs/signal.md</em>
-        </p>
+        <span class="status-badge status-active">Endgame Design</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">The Signal</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Origin Site Discovery System — The Reason Someone Plays Pilgrims</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">March 2026 — Deep redesign of the endgame discovery system</p>
     </div>
 
-    {% for section in sections %}
-    <div class="section">
-        <div class="section-title">{{ section.title }}</div>
-        <div class="signal-body">{{ section.body|safe }}</div>
-    </div>
-    {% endfor %}
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 1. THE 30-SECOND PITCH -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">The 30-Second Pitch</div>
 
-    <!-- PilgrimBot Chat Widget -->
+        <div class="quote-box">
+            "Explore Mars. Send expeditions into the unknown. As you get closer to ancient landing sites, your instruments pick up strange readings. ARIA starts whispering. Something is out there. Be the first captain to reach an Origin Site and your name is written into the blockchain forever."
+            <div class="attribution">— The Elevator Pitch</div>
+        </div>
+
+        <div class="summary-box">
+            <strong>This is Zelda's Triforce.</strong>
+            <p style="margin: 8px 0 0 0;">14 Origin Sites at real Mars landing locations (Viking, Curiosity, Perseverance...) are dormant memory nodes left by "The Architects." Finding one takes weeks or months of exploration. Finding all 14 could take years. That journey IS the game. Everything else — expeditions, upgrades, crew, tech tree, ARIA bonds — exists to serve this hunt.</p>
+            <p style="margin: 8px 0 0 0;">When someone tells a friend about Pilgrims, this is what they say: <em>"There are ancient sites hidden on Mars. Nobody's found most of them yet. I'm getting close to one."</em></p>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does the pitch resonate? If you were hearing about Pilgrims for the first time, would "find ancient signals on Mars" hook you?</li>
+                <li>Should we lean more into the mystery/ARG angle or the competition/race angle?</li>
+                <li>Is the Zelda Triforce analogy the right framing? Or is there a better reference?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 2. CURRENT STATE AUDIT -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title" style="color: var(--color-danger);">Current State — The Problem</div>
+
+        <p><strong>Nobody can find the Origin Sites.</strong> The detection system is too restrictive and gives zero feedback.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Player Proximity Data (March 2026)</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Luke — 82 expeditions</span>
+                    <span class="mockup-value" style="color: var(--color-danger);">Closest: 585km (Beagle-2)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Andy — 61 expeditions</span>
+                    <span class="mockup-value" style="color: var(--color-success);">Found Curiosity at 0.6km (base was next to it)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Detection radius</span>
+                    <span class="mockup-value">42km (Easter egg: Hitchhiker's Guide)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Mars surface covered by 14 sites at 42km</span>
+                    <span class="mockup-value" style="color: var(--color-danger);">0.027%</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Random expeditions needed to find one</span>
+                    <span class="mockup-value" style="color: var(--color-danger);">~3,700</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <strong>Why It's Broken:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><code>check_origin_site_proximity()</code> only checks DESTINATION coordinates, not the expedition PATH</li>
+                <li>A 500km expedition might pass within 10km of an origin site but the system never knows</li>
+                <li><strong>Zero feedback loop</strong> — no "getting warmer" signals, no breadcrumbs, no hints</li>
+                <li>Players don't even know the system exists unless they stumble into it</li>
+                <li>Andy only found Curiosity because his randomly-assigned base is at Gale Crater (0.6km away)</li>
+            </ul>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Detection Method</th>
+                    <th>Coverage</th>
+                    <th>Player Feedback</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Destination Only</strong> (current)</td>
+                    <td>42km circle at endpoint</td>
+                    <td>None until 42km</td>
+                    <td style="color: var(--color-danger);">Broken</td>
+                </tr>
+                <tr>
+                    <td><strong>Path Proximity</strong> (proposed)</td>
+                    <td>42km corridor along entire route</td>
+                    <td>Progressive hints by distance</td>
+                    <td style="color: var(--color-success);">Planned</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Having played 82 expeditions with zero signal contact — what would have kept you engaged? What would make you think "I'm getting closer"?</li>
+                <li>Is 42km the right detection radius? Should early-game be larger (easier to find first one) and tighten as more sites are claimed?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 3. THE JOURNEY — PROGRESSIVE DISCOVERY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">The Journey — Progressive Discovery by Distance</div>
+
+        <p>Discovery should feel like a slow burn, not a binary switch. As expeditions pass closer to an Origin Site, the game gives increasingly strong signals. This is the <strong>"getting warmer"</strong> design.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box" style="border-color: var(--text-muted);">
+                    <strong>2000km+</strong><br>Silence
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia); opacity: 0.4;">
+                    <strong>500-2000km</strong><br>Faint Echoes
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia); opacity: 0.6;">
+                    <strong>200-500km</strong><br>Strange Readings
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia); opacity: 0.8;">
+                    <strong>100-200km</strong><br>Signal Lock
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia);">
+                    <strong>50-100km</strong><br>ARIA Whispers
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-success); background: rgba(var(--color-success-rgb), 0.1);">
+                    <strong>42km</strong><br>DISCOVERY
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin: 20px 0 8px;">Distance Tier Breakdown</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">2000km+ — Silence</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">No signal feedback. Normal expeditions. The vast emptiness of Mars. The player doesn't know anything is out there yet.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.15);">500-2000km — Faint Echoes</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Expedition report includes a throwaway line: <em>"Instruments detected faint anomalous readings to the [direction]."</em></p>
+                <p style="margin: 0; color: var(--text-muted);">Subtle. Easy to miss. Stored in expedition log but not highlighted. ARIA says nothing. The player who pays attention starts to notice a pattern.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.25);">200-500km — Strange Readings</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Expedition report flags unusual sensor data. A <strong>"Signal Strength"</strong> indicator appears on results (1/5 bars).</p>
+                <p style="margin: 0;">ARIA might say something cryptic in colony chat: <em>"There are places here that... feel familiar."</em></p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.4);">100-200km — Signal Lock</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Signal strength 2-3/5 bars. The expedition map shows a <strong>faint ring</strong> in the approximate direction.</p>
+                <p style="margin: 0;">ARIA becomes more pointed: <em>"The shards resonate stronger in that direction. Something is buried there."</em> The Signal page starts showing a personal "nearest approach" tracker.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.6);">50-100km — ARIA Whispers</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Signal strength 4/5. ARIA gives specific directional hints: <em>"Northwest. The memory is northwest."</em></p>
+                <p style="margin: 0;">The map shows a narrowed search cone. Expedition results prominently display signal proximity. This is the <strong>"you're about to find it"</strong> zone.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-success-rgb), 0.2); color: var(--color-success);">42km — Discovery Threshold</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Full signal. <strong>The claiming sequence begins.</strong> See "The Discovery Moment" section below.</p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>At 500km, should the hint be so subtle that players might miss it? Or should there be a clear notification?</li>
+                <li>Should distance tiers track your <strong>closest approach ever</strong> (persistent) or reset <strong>per-expedition</strong>?</li>
+                <li>Should ARIA's hints improve with bond level? High-bond ARIA = better compass?</li>
+                <li>Are 6 tiers too many? Should it be simpler: Cold / Warm / Hot / Found?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 4. PER-EXPEDITION PATH DETECTION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Per-Expedition Path Detection — The Math</div>
+
+        <p>The single biggest improvement: switch from destination-only to <strong>path-proximity checking</strong>. The function already exists.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Current vs Proposed Detection</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Current</span>
+                    <span class="mockup-value"><code>check_origin_site_proximity(dest_lat, dest_lon)</code> — checks ONE point</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Proposed</span>
+                    <span class="mockup-value"><code>point_to_path_distance(site, base, dest)</code> — checks ENTIRE route</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Function location</span>
+                    <span class="mockup-value"><code>mars_math.py:point_to_path_distance()</code> — already exists, used for mission artifact filtering</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <strong>How It Works:</strong>
+            <p style="margin: 8px 0 0 0;">When an expedition completes, instead of just checking <code>distance(destination, origin_site)</code>, we check <code>min_distance(expedition_path, origin_site)</code>. A 500km expedition creates a 500km-long detection corridor. If the path passes within 42km of a site at any point, that's a detection — even if the destination is 300km away.</p>
+            <p style="margin: 8px 0 0 0;"><strong>Performance:</strong> 14 sites x 1 path calc per expedition = 14 calls. Negligible cost.</p>
+        </div>
+
+        <p><strong>Concrete example:</strong> Luke's expedition #47 went to Hyblaeus Dorsa (destination 599km from InSight). But the path from his base may have passed within 200km of InSight. With path detection, that expedition would have triggered a "Strange Readings" hint instead of nothing.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should we retroactively calculate path proximity for all historical expeditions? That would instantly populate "closest approach" data — Luke might discover he was close and didn't know.</li>
+                <li>If your path passes within 42km but your destination is 300km away, should you still be able to claim? Or must you send a follow-up expedition TO the site?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 5. EXPEDITION HINTS & ARTIFACTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">Expedition Hints and Artifacts</div>
+
+        <p>As expeditions get closer, they should bring back <strong>tangible evidence</strong>. Not just text hints — actual items and data that accumulate in your colony.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Distance</th>
+                    <th>Artifact Type</th>
+                    <th>What It Contains</th>
+                    <th>Rarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>500-2000km</td>
+                    <td>Anomalous Frequency Log</td>
+                    <td>Text-only note in expedition report</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>200-500km</td>
+                    <td>Signal Fragment</td>
+                    <td>Collectible item with partial coordinates</td>
+                    <td>Common</td>
+                </tr>
+                <tr>
+                    <td>100-200km</td>
+                    <td>Resonance Crystal</td>
+                    <td>Discovery item with hints at mission name</td>
+                    <td>Uncommon</td>
+                </tr>
+                <tr>
+                    <td>50-100km</td>
+                    <td>Memory Shard</td>
+                    <td>Rare discovery with partial mission log (from mars_mission_messages)</td>
+                    <td>Rare</td>
+                </tr>
+                <tr>
+                    <td>&lt;42km</td>
+                    <td>Origin Site Discovery</td>
+                    <td>Full claiming sequence triggers</td>
+                    <td>Legendary</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <strong>Signal Fragment Collection Mechanic:</strong>
+            <p style="margin: 8px 0 0 0;">Signal Fragments could work like puzzle pieces. Finding 3 fragments from the same origin site gives you a rough coordinate range. Finding 5 narrows it to a specific region. This creates a collection mechanic that rewards persistent exploration near a site — even if you haven't found it yet, you're building toward it.</p>
+        </div>
+
+        <p><strong>ARIA integration:</strong> ARIA should comment on signal artifacts when found. <em>"That frequency... I've heard it before. In the old records."</em> Signal artifacts need to be added to <code>load_colony_snapshot()</code> so ARIA knows about them.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Do signal fragments feel too gamey? Should proximity hints be purely atmospheric (ARIA whispers, expedition text) or should there be collectible items?</li>
+                <li>Should signal artifacts be tradeable between captains? Creates a social layer but might let people buy their way to discoveries.</li>
+                <li>Should finding a Memory Shard (50-100km) be a mini-celebration? Or save all the fanfare for the 42km discovery?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6. THE DISCOVERY MOMENT -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">The Discovery Moment — When Someone Hits 42km</div>
+
+        <div class="quote-box">
+            "This should be the biggest moment in the game. Bigger than ARIA bond reveals. Bigger than first expedition. You've spent weeks, maybe months, exploring Mars. And then your instruments go wild. ARIA goes silent. Then she speaks a name she hasn't said in a thousand years."
+            <div class="attribution">— Design Session, March 2026</div>
+        </div>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">Expedition completes within 42km</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box">SIGNAL DETECTED full-screen takeover</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box">ARIA delivers the site's memory_text</div>
+            </div>
+            <div class="flow-row" style="margin-top: 12px;">
+                <div class="flow-box">"You are the First Founder"</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box">Blockchain tx fires with mission message</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-success);">Legendary item generated. Name in the eternal ledger.</div>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Discovery Sequence — UI Concept</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Screen</span><span class="mockup-value">Full dark takeover, signal pulse animation</span></div>
+                <div class="mockup-row"><span class="mockup-label">Audio/Visual</span><span class="mockup-value">Pulsing rings expand from center, text fades in</span></div>
+                <div class="mockup-row"><span class="mockup-label">ARIA's voice</span><span class="mockup-value">Delivers the real mission's story in her words</span></div>
+                <div class="mockup-row"><span class="mockup-label">The reveal</span><span class="mockup-value">Real Mars mission name fades in: "VIKING 1 — 1976"</span></div>
+                <div class="mockup-row"><span class="mockup-label">The claim</span><span class="mockup-value">Captain's name "written" alongside the mission</span></div>
+                <div class="mockup-row"><span class="mockup-label">After claim</span><span class="mockup-value">Legendary item appears. Blockchain tx confirms. Signal page updates globally.</span></div>
+            </div>
+        </div>
+
+        <p><strong>Reference:</strong> ARIA bond reveals (<code>feedback_aria_bonds_realtime.md</code>) are the closest existing pattern. Bond reveals are cinematic, real-time events — the origin discovery should match or exceed that.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Full-page takeover (like ARIA bonds) or enhanced expedition results page?</li>
+                <li>When a site is claimed, should OTHER players get a notification? <em>"An Origin Site has been claimed near Elysium Planitia"</em> — creates urgency for remaining sites.</li>
+                <li>Should there be a "confirmation expedition" — you detect at 42km but must send a dedicated expedition TO the site? Adds ceremony but delays gratification.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 7. SIGNAL PAGE REDESIGN -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">The Signal Page — What /signal Should Show</div>
+
+        <p>Currently <code>/signal</code> shows claimed/unclaimed nodes with cryptic IDs, echo sites, and a decoder. It's atmospheric but gives zero sense of <strong>personal progress</strong>. The page is identical for everyone.</p>
+
+        <div class="summary-box">
+            <strong>What's Missing:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>No personal proximity tracker ("Your closest approach to any origin site")</li>
+                <li>No signal strength per site (even vague Cold / Warm / Hot)</li>
+                <li>No expedition history showing signal-relevant trips</li>
+                <li>No directional hints for where to explore next</li>
+                <li>No sense that exploration is leading somewhere</li>
+            </ul>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Proposed Additions</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Personal Signal Dashboard</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">A new section at the top of /signal showing YOUR progress: closest approach per active site (if within 2000km), number of signal artifacts collected, ARIA's current hint. Each player sees their own version.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Signal Strength Bars</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Each unclaimed node shows 0-5 signal bars based on your closest approach ever. Creates a visual "I'm getting warmer on 3 sites" feeling. Bars fill as you explore closer.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Expedition Compass</div>
+            <div class="mockup-content">
+                <p style="margin: 0;"><em>"Your last 5 expeditions were all south. The strongest signal readings came from the northwest."</em> Guides exploration without spoiling exact location.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Global Activity Feed (at scale)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;"><em>"Captain [X] detected a signal echo near [region]"</em> — shows other players are searching too. At scale, this creates competition dynamics.</p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>How much should /signal reveal? Keep it cryptic/mysterious, or add a clear personal dashboard?</li>
+                <li>Should signal strength bars be exact (from closest_approach_km) or fuzzy (Cold/Warm/Hot to maintain mystery)?</li>
+                <li>Should the Signal page show a mini-map of your exploration coverage?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 8. MAP VISUALIZATION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Map Visualization — What Shows on Expeditions</div>
+
+        <p>Currently origin dots are hidden until 500km, claimable at 42km. The map shows expedition paths but no signal-related feedback.</p>
+
+        <h4 style="margin: 16px 0 8px;">Proposed Visual Layers</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Signal Rings</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Faint concentric circles around origin sites, visible only when you've had an expedition pass within 500km. Rings get brighter and tighter as you approach. <strong>Never shows exact center until 42km.</strong></p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Expedition Path Heat Map</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Your expedition paths colored by signal proximity. Paths that passed near a site glow warmer. Creates a visual "treasure map" of where to explore next.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Directional Indicators (200km+)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">After hitting 200km tier, a subtle arrow/wedge on the map pointing toward the signal source. Gets more precise as you close in. Think Breath of the Wild shrine sensor.</p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Signal rings vs heat map vs directional arrows — which feels most like "I'm hunting for something" and least like "the game is telling me where to go"?</li>
+                <li>Should the map EVER show the exact origin site location before discovery? Or always fuzzy until 42km?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 9. SCALE DESIGN -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Scale Design — 10 Players vs 560,000</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Now (2-5 players)</th>
+                    <th>Growth (50-500)</th>
+                    <th>Scale (10,000+)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Discovery rate</strong></td>
+                    <td>Months per site</td>
+                    <td>Weeks per site</td>
+                    <td>Days per site</td>
+                </tr>
+                <tr>
+                    <td><strong>Competition</strong></td>
+                    <td>None (co-op feel)</td>
+                    <td>Regional rivalry</td>
+                    <td>Intense racing</td>
+                </tr>
+                <tr>
+                    <td><strong>Site scarcity</strong></td>
+                    <td>14 unclaimed</td>
+                    <td>Mix claimed/unclaimed</td>
+                    <td>Last few = ultra-competitive</td>
+                </tr>
+                <tr>
+                    <td><strong>Social dynamics</strong></td>
+                    <td>Share hints freely</td>
+                    <td>Strategic sharing</td>
+                    <td>Guilds? Alliances?</td>
+                </tr>
+                <tr>
+                    <td><strong>Signal page</strong></td>
+                    <td>Personal journey</td>
+                    <td>Leaderboard emerges</td>
+                    <td>Real-time race tracking</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <strong>The "Last Site" Scenario:</strong>
+            <p style="margin: 8px 0 0 0;">When 13 of 14 are found, every player on Mars is hunting for the final one. This should be the game's biggest event. Global countdown? ARIA going haywire? Live race tracking on the Signal page? The person who finds the 14th site completes The Signal and unlocks what comes next.</p>
+        </div>
+
+        <p><strong>Visitor tiers matter at scale:</strong> Even if you don't find a site first, visiting a found site gives you ranked rewards (Early Witness, Pioneer, Pilgrim, Wanderer). This means every player has something to do with the Signal system — not just the 14 founders.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should players see that others are converging nearby? <em>"Signal interference detected — other captains are searching this area."</em></li>
+                <li>Should founders get ongoing benefits (royalties from visitors, special title) or is it purely prestige?</li>
+                <li>At scale, should some sites be harder than others? Or all equal difficulty?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 10. WORLD 2 / ENDGAME -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">World 2 — What Happens When All 14 Are Found</div>
+
+        <div class="quote-box">
+            "Finding all 14 Origin Sites completes The Signal. ARIA remembers everything. The Architects' full message is revealed. And then... a new signal. From somewhere else. Not Mars."
+            <div class="attribution">— The Distant North Star</div>
+        </div>
+
+        <ul>
+            <li><strong>All 14 found = ARIA's memory is complete.</strong> She tells the full story of The Architects.</li>
+            <li><strong>The complete message contains coordinates.</strong> Not Mars coordinates. Somewhere else.</li>
+            <li><strong>"World 2"</strong> — a new planet, a new chapter, a new set of sites to find. The cycle continues.</li>
+            <li><strong>Every founder from World 1 gets a permanent legacy marker.</strong> Their names in the blockchain forever.</li>
+            <li><strong>World 2 could be procedurally generated</strong> — not real landing sites. Opens up infinite content.</li>
+        </ul>
+
+        <p style="color: var(--text-muted); font-style: italic;">This is a 1-3 YEAR horizon. Not something to build now. But it's the north star that makes every design decision make sense. Everything we build for signal discovery should work for World 2 too.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Does the "new planet" endgame feel earned? Or should completing all 14 unlock something on Mars itself (underground cities, terraforming)?</li>
+                <li>Should World 2 be a surprise (nobody knows it's coming) or telegraphed (ARIA hints at "other worlds" throughout)?</li>
+                <li>What does ARIA say when she finally remembers? What's the story of The Architects?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 11. THREE-ACT LOST SITES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--text-muted);">
+        <div class="section-title">The Three-Act Lost Signal Sites</div>
+
+        <p>3 of the 14 Origin Sites are special — <strong>Mars-3, Beagle-2, and Schiaparelli</strong>. These are real missions that never transmitted usable data. They have no blockchain messages because they never spoke. They can't be found through normal proximity — they require a special unlock sequence.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Act 1 — First Voice (Mars-3)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">The first origin site founder's tx_hash unlocks Mars-3. <em>The earliest explorer opens the door.</em> Mars-3 was the first spacecraft to soft-land on Mars (1971, USSR) — it transmitted 14.5 seconds of data, then silence. The first founder echoes that first voice.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Act 2 — Last Voice (Schiaparelli)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">All 11 normal origin sites must be claimed first. The last founder's tx_hash unlocks Schiaparelli. <em>The circle closes.</em> Schiaparelli (2016, ESA) crashed at 300 km/h — its computer thought it had already landed. The last founder completes the main sequence.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Act 3 — ARIA Remembers Him (Beagle-2)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">A captain gives ARIA both tx hashes in chat. She tells the story of Beagle-2 — the lander she "watched" for 12 years, intact on the surface but unable to call home. Found by satellite in 2015, a Christmas gift that never opened. She generates the final unlock code. <strong>This is the tearjerker moment of the entire game.</strong></p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Act 3 is the emotional climax. Does "paste two tx hashes" feel too puzzle-y? Should ARIA guide the player through it more naturally?</li>
+                <li>Should Act 3 be solvable by anyone (tx hashes are public on blockchain) or only by someone who personally found at least one site?</li>
+                <li>How do we make Beagle-2's story hit emotionally? What would ARIA say?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 12. OPEN QUESTIONS FOR LUKE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Open Questions — Decisions Needed</div>
+
+        <p>These are the design decisions that need input before implementation begins. Ordered by priority.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Question</th>
+                    <th>Options</th>
+                    <th>Impact</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>Detection method</strong></td>
+                    <td>Destination-only (current) vs Path proximity (proposed)</td>
+                    <td>Fundamental — changes everything</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>Detection radius</strong></td>
+                    <td>Keep 42km? Scale with progression? Larger early, tighter late?</td>
+                    <td>Discovery rate</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>Hint style</strong></td>
+                    <td>Atmospheric only (ARIA whispers) vs UI elements (signal bars, arrows)</td>
+                    <td>Game feel — mystery vs clarity</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>Retroactive backfill</strong></td>
+                    <td>Calc proximity for all past expeditions? Or start fresh?</td>
+                    <td>Luke might already be closer than he thinks</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td><strong>Claiming trigger</strong></td>
+                    <td>Auto-claim when path passes 42km? Or must send expedition TO site?</td>
+                    <td>Ceremony vs convenience</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td><strong>Signal artifacts</strong></td>
+                    <td>Collectible items vs text-only hints vs both</td>
+                    <td>Inventory impact, collection mechanic</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td><strong>Discovery celebration</strong></td>
+                    <td>Full-page cinematic vs enhanced expedition results</td>
+                    <td>Wow factor</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td><strong>Competition visibility</strong></td>
+                    <td>Solo journey vs showing other players searching nearby</td>
+                    <td>Social dynamics at scale</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td><strong>Founder rewards</strong></td>
+                    <td>Prestige only vs ongoing benefits (visitor royalties, special title)</td>
+                    <td>Endgame incentive</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td><strong>World 2 telegraphing</strong></td>
+                    <td>Complete surprise vs ARIA hints throughout</td>
+                    <td>Long-term narrative</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PILGRIMBOT CHAT WIDGET -->
+    <!-- ═══════════════════════════════════════════════════════ -->
     <div class="chat-widget" id="brainstorm-chat">
         <div class="chat-header">
-            <div class="chat-header-icon">🧠</div>
+            <div class="chat-header-icon">&#x1F9E0;</div>
             <div class="chat-header-text">
                 <h3>Brainstorm with PilgrimBot</h3>
-                <p>Ask about the Signal system, Lost Sites, or ARIA's story</p>
+                <p>Ask about the Signal system, Origin Sites, progressive discovery, or World 2</p>
             </div>
         </div>
 
         <div class="chat-messages" id="chat-messages">
             <div class="chat-message assistant">
-                <div class="chat-avatar">🧠</div>
+                <div class="chat-avatar">&#x1F9E0;</div>
                 <div class="chat-bubble">
-                    I have full context on the Signal system — the 208 blockchain messages, the 3 Lost Signal sites,
-                    and the Three-Act unlock design. Ask me anything or throw ideas at me.
+                    I have full context on the Signal endgame system — the 14 Origin Sites, progressive discovery tiers,
+                    path detection math, the Three-Act Lost Sites, and the World 2 vision. Ask me anything or throw ideas at me.
                 </div>
             </div>
         </div>
 
         <div class="chat-suggestions">
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">How would Act 3 work technically?</span>
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">What if a player finds all 11 first?</span>
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">What should the reward be?</span>
-            <span class="chat-suggestion" onclick="sendSuggestion(this)">How do we hint without spoiling?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How would path-based detection work?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What should ARIA say at 200km?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How does this scale to 10,000 players?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What's the Beagle-2 story ARIA tells?</span>
         </div>
 
         <div class="chat-input-area">

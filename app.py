@@ -622,24 +622,9 @@ def api_tech_cancel():
 
 @app.route('/brainstorm/signal')
 def signal_brainstorm():
-    """Secret brainstorm page for signal.md — not linked anywhere."""
-    import re
-    import markdown as md
+    """Signal endgame design brainstorm — hardcoded sections with per-section comments."""
     user = auth.get_current_user() if auth.is_authenticated() else None
-    doc_path = os.path.join(os.path.dirname(__file__), 'docs', 'signal.md')
-    sections = []
-    try:
-        with open(doc_path, 'r') as f:
-            raw = f.read()
-        parts = re.split(r'^## (.+)$', raw, flags=re.MULTILINE)
-        for i in range(1, len(parts), 2):
-            title = parts[i].strip()
-            body_md = parts[i + 1].strip() if i + 1 < len(parts) else ''
-            body_html = md.markdown(body_md, extensions=['tables', 'fenced_code'])
-            sections.append({'title': title, 'body': body_html})
-    except Exception as e:
-        logger.error(f"Failed to read signal.md: {e}")
-    return render_template('brainstorm/signal.html', active_tab=None, user=user, sections=sections)
+    return render_template('brainstorm/signal.html', active_tab=None, user=user)
 
 
 @app.route('/api/brainstorm/signal-chat', methods=['POST'])

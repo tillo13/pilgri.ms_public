@@ -2521,7 +2521,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
@@ -2534,7 +2534,7 @@
     "description": "Page: Colony Redesign — Brainstorm"
   },
   "templates/brainstorm/signal.html": {
-    "description": "Page: Signal System — Brainstorm"
+    "description": "Page: Signal System — Endgame Design — Pilgrims"
   },
   "templates/brainstorm/sv_economy.html": {
     "description": "Page: SV Economy Brainstorm — Pilgrims"
