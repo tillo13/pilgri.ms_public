@@ -165,15 +165,16 @@
                 <!-- Data source attribution at top -->
                 <div class="mars-modal-source">
                     <img src="{{ icons.env_satellite }}" alt="Satellite" style="width: 16px; height: 16px; margin-right: 6px;">
-                    <span>Real Mars data calculated from <a href="https://mars.nasa.gov/all-about-mars/facts/" target="_blank" rel="noopener">NASA/JPL</a> orbital mechanics</span>
+                    <span>Environment, seasons, and time from <a href="https://mars.nasa.gov/all-about-mars/facts/" target="_blank" rel="noopener">NASA/JPL</a> orbital mechanics</span>
                 </div>
 
                 <div class="mars-modal-section">
                     <h4>{{ mars_env.time_icon }} Time &amp; Location</h4>
                     <div class="mars-modal-grid">
                         <div class="mars-modal-stat">
-                            <span class="mars-modal-label">Sol</span>
+                            <span class="mars-modal-label">Colony Sol</span>
                             <span class="mars-modal-value">{{ mars_env.sol }}</span>
+                            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 2px;">Mars Sol Date: {{ mars_env.real_msd }}</span>
                         </div>
                         <div class="mars-modal-stat">
                             <span class="mars-modal-label">Time of Day</span>

@@ -292,8 +292,22 @@ def get_mars_environment_summary(base_lat: float = -4.43, base_lon: float = 139.
     """
     env = get_mars_environment(base_lat, base_lon)
 
+    # Calculate real MSD for display
+    now = datetime.utcnow()
+    year = now.year
+    month = now.month
+    day_frac = now.day + now.hour/24 + now.minute/1440
+    if month <= 2:
+        year -= 1
+        month += 12
+    A = int(year / 100)
+    B = 2 - A + int(A / 4)
+    JD = int(365.25 * (year + 4716)) + int(30.6001 * (month + 1)) + day_frac + B - 1524.5
+    real_msd = int((JD - 2451549.5) / 1.02749125 + 44796.0)
+
     return {
         'sol': env['sol'],
+        'real_msd': real_msd,
         'time_of_day': env['time']['time_of_day'],
         'time_icon': env['time']['icon'],
         'sol_time': env['time']['sol_time'],
