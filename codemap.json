@@ -2036,7 +2036,7 @@
       "bonusPct",
       "totalWeight",
       "confirmColonyExtraction",
-      "extractSingleDiscovery"
+      "extractColonyDiscovery"
     ]
   },
   "static/js/colony-modals.js": {

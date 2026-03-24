@@ -922,8 +922,8 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
         # Boolean flags
         'dust_storm_immune': False,
 
-        # Storage capacity (discovery limit) - default 25, Storage Bunker adds more
-        'storage_capacity': 25,
+        # Storage capacity (discovery limit) - default 300, Storage Bunker adds more
+        'storage_capacity': 300,
     }
 
     # Get all user upgrades from new unified system
@@ -946,7 +946,7 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
 
                 # Map capacity (from Storage Bunker) to storage_capacity
                 if key == 'capacity':
-                    effects['storage_capacity'] = max(effects.get('storage_capacity', 25), value)
+                    effects['storage_capacity'] = max(effects.get('storage_capacity', 300), value)
                     continue
 
                 if key not in effects:

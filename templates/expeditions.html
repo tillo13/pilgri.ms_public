@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 {% if expedition.status == 'traveling' %}
                 <button class="recall-btn btn" style="background: rgba(255,255,255,0.15); color: white; font-size: 12px; padding: 6px 12px; border: 1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation(); recallExpedition({{ expedition.id }}, this)">Recall {{ expedition.vehicle_type|default('rover')|capitalize }}</button>
                 {% endif %}
-                <button class="claim-all-expedition-btn btn" style="background: white; color: var(--color-mars-dark); font-size: 12px; padding: 6px 12px;{% if expedition.status != 'complete' %} display: none;{% endif %}" onclick="event.stopPropagation(); claimAllExpeditionDiscoveries({{ expedition.id }}, event)">Claim {{ expedition.unclaimed_count|default(0) }} Items</button>
+                <button class="claim-all-expedition-btn btn" style="background: white; color: var(--color-mars-dark); font-size: 12px; padding: 6px 12px;{% if expedition.status != 'complete' %} display: none;{% endif %}" onclick="event.stopPropagation(); claimAllExpeditionDiscoveries({{ expedition.id }}, event)">Claim {{ expedition.unclaimed_count|default(0) }} Discoveries</button>
             </div>
             <div class="discoveries-container" style="display: none; margin-top: 12px;"></div>
         </div>

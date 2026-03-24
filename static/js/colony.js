@@ -183,7 +183,7 @@ function formatTechEffect(effects) {
     if (effects.shard_yield_bonus) parts.push(`+${(effects.shard_yield_bonus*100).toFixed(0)}% yield`);
     if (effects.extraction_efficiency) parts.push(`+${(effects.extraction_efficiency*100).toFixed(0)}% extract`);
     if (effects.bio_value_bonus) parts.push(`+${(effects.bio_value_bonus*100).toFixed(0)}% bio`);
-    if (effects.specimen_quality_bonus) parts.push(`+${(effects.specimen_quality_bonus*100).toFixed(0)}% specimen`);
+    if (effects.specimen_quality_bonus) parts.push(`+${(effects.specimen_quality_bonus*100).toFixed(0)}% discovery quality`);
     return parts.join(' · ') || '';
 }
 

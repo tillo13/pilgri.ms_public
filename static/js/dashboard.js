@@ -143,7 +143,7 @@ async function claimFleetDiscoveries(expeditionId) {
         const resp = await fetch(`/api/expeditions/${expeditionId}/claim_all`, { method: 'POST' });
         const data = await resp.json();
         if (data.success) {
-            showToast(`Claimed ${data.claimed_count} items!`, 'success');
+            showToast(`Claimed ${data.claimed_count} discoveries!`, 'success');
             MarsModal.hide();
             setTimeout(() => location.reload(), 500);
         } else { showToast(data.error || 'Failed to claim', 'error'); }
@@ -389,7 +389,7 @@ async function loadRecentDiscoveries() {
         if (!data.success || totalUnclaimed === 0) { content.style.display = 'none'; empty.style.display = 'block'; return; }
         const disc = data.discoveries, shownCount = disc.length;
         content.style.display = 'block'; empty.style.display = 'none';
-        if (countText) { countText.textContent = `${totalUnclaimed} items`; countText.style.color = 'var(--color-success)'; }
+        if (countText) { countText.textContent = `${totalUnclaimed} discoveries`; countText.style.color = 'var(--color-success)'; }
         if (claimBtn && totalUnclaimed > 0) { claimBtn.style.display = 'block'; claimBtn.textContent = `📦 Claim All (${totalUnclaimed})`; }
         container.innerHTML = disc.slice(0, 3).map(d => `<div class="discovery-card-compact" style="transition:all 0.2s;cursor:pointer;" data-discovery-id="${d.discovery_item_id}" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';" onmouseout="this.style.transform='';this.style.boxShadow='';">${d.image_url ? `<img src="${d.image_url}" class="discovery-image-small" alt="${d.item_name}">` : '<div class="discovery-image-small" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>'}<div class="discovery-info"><div class="discovery-name">${d.item_name}<span class="rarity-badge rarity-${d.rarity}">${d.rarity}</span></div><div class="discovery-details">${d.found_at_km > 0 ? `Found at ${d.found_at_km.toLocaleString()}km` : `From ${d.destination_name || 'expedition'}`}</div></div><div class="discovery-value"><div class="discovery-value-number">${d.enhanced_value}</div><div class="discovery-value-label">Sci Value</div></div></div>`).join('') + (totalUnclaimed > shownCount ? `<div style="text-align:center;padding:12px;font-size:13px;color:rgba(0,0,0,0.7);background:rgba(255,255,255,0.2);border-radius:8px;margin-top:8px;">Showing ${shownCount} of ${totalUnclaimed} unclaimed</div>` : '');
         $$('#recentDiscoveriesContainer .discovery-card-compact').forEach(c => c.onclick = function() { const id = this.dataset.discoveryId; if (id) showDiscoveryDetails(parseInt(id)); });
@@ -402,7 +402,7 @@ async function claimAllDiscoveries() {
     showToast('Claiming discoveries...', 'success', '🎉 Secured', 4000);
     setTimeout(() => { if (content) content.style.display = 'none'; $('discoveriesEmpty').style.display = 'block'; }, 1000);
     try { const r = await fetch('/api/expeditions/claim_all_discoveries', { method: 'POST', headers: { 'Content-Type': 'application/json' } }); const data = await r.json();
-        if (data.success) showToast(`${data.claimed_count} items secured (Value: ${data.total_value})`, 'info', '', 3000);
+        if (data.success) showToast(`${data.claimed_count} discoveries secured (Value: ${data.total_value})`, 'info', '', 3000);
         else { showToast(`Error: ${data.error}`, 'error'); setTimeout(() => location.reload(), 2000); }
     } catch { showToast('Network error.', 'error'); setTimeout(() => location.reload(), 2000); }
     setTimeout(() => location.reload(), 3000);

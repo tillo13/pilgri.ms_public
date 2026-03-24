@@ -665,52 +665,52 @@ UPGRADE_CATALOG = {
             'levels': {
                 1: {
                     'name': 'Storage Bunker I', 'cost': 2500, 'build_time_days': 0.042,
-                    'capacity': 50,
+                    'capacity': 500,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/upgrades/storage_bunker_lv1_1767751139.png',
                 },
                 2: {
                     'name': 'Storage Bunker II', 'cost': 2800, 'build_time_days': 2,
-                    'capacity': 75,
+                    'capacity': 1000,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/upgrades/storage_bunker_lv2_1767751147.png',
                 },
                 3: {
                     'name': 'Storage Bunker III', 'cost': 3136, 'build_time_days': 3,
-                    'capacity': 100,
+                    'capacity': 2000,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/upgrades/storage_bunker_lv3_1767751156.png',
                 },
                 4: {
                     'name': 'Storage Bunker IV', 'cost': 3512, 'build_time_days': 5,
-                    'capacity': 150,
+                    'capacity': 4000,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/upgrades/storage_bunker_lv4_1767751164.png',
                 },
                 5: {
                     'name': 'Storage Bunker V', 'cost': 3934, 'build_time_days': 6,
-                    'capacity': 200,
+                    'capacity': 7500,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/upgrades/storage_bunker_lv5_1767751171.png',
                 },
                 6: {
                     'name': 'Storage Bunker VI', 'cost': 4406, 'build_time_days': 8,
-                    'capacity': 300,
+                    'capacity': 15000,
                     'image_url': '',
                 },
                 7: {
                     'name': 'Storage Bunker VII', 'cost': 4935, 'build_time_days': 9,
-                    'capacity': 400,
+                    'capacity': 30000,
                     'image_url': '',
                 },
                 8: {
                     'name': 'Storage Bunker VIII', 'cost': 5527, 'build_time_days': 11,
-                    'capacity': 550,
+                    'capacity': 60000,
                     'image_url': '',
                 },
                 9: {
                     'name': 'Storage Bunker IX', 'cost': 6190, 'build_time_days': 13,
-                    'capacity': 700,
+                    'capacity': 125000,
                     'image_url': '',
                 },
                 10: {
                     'name': 'Storage Bunker X', 'cost': 6933, 'build_time_days': 14,
-                    'capacity': 1000,
+                    'capacity': 250000,
                     'image_url': '',
                 },
             }

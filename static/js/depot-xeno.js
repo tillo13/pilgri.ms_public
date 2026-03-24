@@ -61,7 +61,7 @@ function renderXenobiologyContent(data) {
 
     const body = `
         <div class="mm-section-label">Run Experiment</div>
-        <div class="mm-desc">Analyze Martian specimens to extract research points. Costs escalate as understanding deepens.</div>
+        <div class="mm-desc">Analyze Martian discoveries to extract research points. Costs escalate as understanding deepens.</div>
         <div class="mm-stats mm-stats-3">
             <div class="mm-stat" style="text-align:center;"><div class="mm-stat-value">${data.experiment_cost.toLocaleString()}</div><div class="mm-stat-label">Cost</div></div>
             <div class="mm-stat" style="text-align:center;"><div class="mm-stat-value">1-${data.max_roll}</div><div class="mm-stat-label">Roll Range</div></div>

@@ -9,7 +9,7 @@ function showDiscoveryDetails(discoveryItemId) {
     const rarityColors = { legendary: 'var(--color-mars)', rare: 'var(--color-sepolia)', uncommon: 'var(--color-success)', common: 'var(--text-muted)' };
     stats.push({ label: 'Rarity', value: `<span style="color: ${rarityColors[discovery.rarity]}">${discovery.rarity.toUpperCase()}</span>` });
     stats.push({ label: 'Type', value: discovery.item_type || 'Sample' });
-    stats.push({ label: 'Quantity', value: (discovery.quantity || 1) + ' specimen' + ((discovery.quantity || 1) !== 1 ? 's' : '') });
+    stats.push({ label: 'Quantity', value: (discovery.quantity || 1) + ' discover' + ((discovery.quantity || 1) !== 1 ? 'ies' : 'y') });
     stats.push({ label: '\u2500\u2500\u2500 VALUE \u2500\u2500\u2500', value: '' });
     const baseValue = discovery.base_scientific_value || discovery.enhanced_value;
     stats.push({ label: 'Base Value', value: Math.round(baseValue).toLocaleString() + ' shards' });
@@ -57,31 +57,36 @@ function showDiscoveryDetails(discoveryItemId) {
     stats.push({ label: 'Item ID', value: '#' + discovery.discovery_item_id });
     if (discovery.catalog_id) stats.push({ label: 'Catalog ID', value: discovery.catalog_id });
     let actionConfig = null;
-    if (discovery.rarity === 'common' || discovery.rarity === 'uncommon') {
-        const payoutMult = discovery.rarity === 'common' ? 0.5 : 0.75;
-        let extractValue = Math.floor(discovery.enhanced_value * (discovery.quantity || 1) * payoutMult);
+    const qty = discovery.quantity || 1;
+    if (discovery.rarity === 'common' || discovery.rarity === 'uncommon' || discovery.rarity === 'rare') {
+        const payoutMult = discovery.rarity === 'common' ? 0.5 : discovery.rarity === 'uncommon' ? 0.75 : 1.0;
+        let extractValueAll = Math.floor(discovery.enhanced_value * qty * payoutMult);
+        let extractValueOne = Math.floor(discovery.enhanced_value * payoutMult);
         // Apply equipment bonuses (Research Lab, Cryo Storage) to preview
-        if (discoveryValueMult > 1.0) extractValue = Math.floor(extractValue * discoveryValueMult);
-        if (discovery.item_type === 'biological' && bioDiscoveryValueMult > 1.0) extractValue = Math.floor(extractValue * bioDiscoveryValueMult);
-        const svBonus = Math.floor(extractValue * 0.15);
-        const svLabel = svBonus > 0 ? ` + ${svBonus} SV` : '';
+        if (discoveryValueMult > 1.0) { extractValueAll = Math.floor(extractValueAll * discoveryValueMult); extractValueOne = Math.floor(extractValueOne * discoveryValueMult); }
+        if (discovery.item_type === 'biological' && bioDiscoveryValueMult > 1.0) { extractValueAll = Math.floor(extractValueAll * bioDiscoveryValueMult); extractValueOne = Math.floor(extractValueOne * bioDiscoveryValueMult); }
+        const svBonusAll = Math.floor(extractValueAll * 0.15);
+        const svLabelAll = svBonusAll > 0 ? ` + ${svBonusAll} SV` : '';
+        const svLabelOne = Math.floor(extractValueOne * 0.15) > 0 ? ` + ${Math.floor(extractValueOne * 0.15)} SV` : '';
         actionConfig = {
-            label: `Extract for ${extractValue.toLocaleString()} Shards${svLabel}`,
+            label: qty > 1 ? `Extract All ${qty}× (${extractValueAll.toLocaleString()} Shards${svLabelAll})` : `Extract (${extractValueAll.toLocaleString()} Shards${svLabelAll})`,
             className: 'btn-warning',
-            onClick: () => confirmColonyExtraction(discovery, extractValue)
+            onClick: () => confirmColonyExtraction(discovery, extractValueAll, true),
+            secondaryAction: qty > 1 ? { label: `Extract 1× (${extractValueOne.toLocaleString()} Shards${svLabelOne})`, onClick: () => confirmColonyExtraction(discovery, extractValueOne, false) } : null
         };
     }
     ItemDetailModal.show({
         name: discovery.item_name, image: discovery.image_url || null,
         category: `<span style="color: ${rarityColors[discovery.rarity]}">&#9733; ${discovery.rarity.toUpperCase()}</span> DISCOVERY`,
-        description: discovery.description || 'A specimen recovered from Mars.',
+        description: discovery.description || 'A discovery recovered from Mars.',
         stats: stats, action: actionConfig
     });
 }
 
 // Confirmation step before extraction
-function confirmColonyExtraction(discovery, shardPayout) {
+function confirmColonyExtraction(discovery, shardPayout, extractAll = true) {
     const qty = discovery.quantity || 1;
+    const extractQty = extractAll ? qty : 1;
     const quotes = [
         'Another Martian mystery catalogued! The shards are yours.',
         'Mars never gets old! Processing extraction now.',
@@ -92,34 +97,34 @@ function confirmColonyExtraction(discovery, shardPayout) {
     const quote = quotes[Math.floor(Math.random() * quotes.length)];
 
     ItemDetailModal.show({
-        name: `Extract ${qty > 1 ? qty + '× ' : ''}${discovery.item_name}?`,
+        name: `Extract ${extractQty > 1 ? extractQty + '× ' : ''}${discovery.item_name}?`,
         image: discovery.image_url || null,
         category: `<span style="color: ${discovery.rarity === 'uncommon' ? 'var(--color-success)' : 'var(--text-muted)'}">${discovery.rarity.toUpperCase()}</span> Confirm Extraction`,
         description: `"${quote}"`,
         stats: [
-            { label: 'Specimens', value: qty },
+            { label: 'Discoveries', value: extractQty },
             { label: 'Shards Received', value: shardPayout.toLocaleString() },
             { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.15)} SV` },
         ],
         effects: `<div style="padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-            <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the specimen. You'll gain shards + bonus SV but lose the item permanently.
+            <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
         </div>`,
         action: {
             label: `Extract (${shardPayout.toLocaleString()} Shards)`,
             className: 'btn-warning',
-            onClick: () => extractSingleDiscovery(discovery.discovery_item_id, shardPayout)
+            onClick: () => extractColonyDiscovery(discovery.discovery_item_id, shardPayout, extractAll)
         }
     });
 }
 
-// Extract a single discovery for shards
-async function extractSingleDiscovery(discoveryItemId, expectedValue) {
+// Extract discovery for shards (extractAll: true = all stacked, false = just one)
+async function extractColonyDiscovery(discoveryItemId, expectedValue, extractAll = true) {
     const btn = document.getElementById('mmActionBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Extracting...'; }
     try {
         const response = await fetch('/api/discovery/analyze', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ discovery_item_id: discoveryItemId })
+            body: JSON.stringify({ discovery_item_id: discoveryItemId, extract_all: extractAll })
         });
         const data = await response.json();
         if (data.success) {

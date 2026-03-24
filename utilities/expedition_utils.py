@@ -1017,17 +1017,17 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         'has_segment_compounding': has_segment_compounding,
     }
 
-    # Storage capacity check (Storage Bunker upgrade)
+    # Storage capacity check (Storage Bunker upgrade) - counts ALL inventory, not just unclaimed
     from utilities.upgrades_utils import get_user_upgrade_effects
-    from utilities.db_expeditions import get_total_unclaimed_discoveries_count
+    from utilities.db_expeditions import get_total_discovery_count
     upgrade_effects = get_user_upgrade_effects(user_id)
-    storage_capacity = upgrade_effects.get('storage_capacity', 25)
-    current_unclaimed = get_total_unclaimed_discoveries_count(user_id)
+    storage_capacity = upgrade_effects.get('storage_capacity', 300)
+    current_total = get_total_discovery_count(user_id)
     storage_warning = None
-    if current_unclaimed >= storage_capacity:
-        storage_warning = f"Storage full ({current_unclaimed}/{storage_capacity}). Claim discoveries before launching!"
-    elif current_unclaimed >= storage_capacity * 0.8:
-        storage_warning = f"Storage nearly full ({current_unclaimed}/{storage_capacity}). Consider claiming discoveries."
+    if current_total >= storage_capacity:
+        storage_warning = f"Storage full ({current_total}/{storage_capacity}). Extract or shard discoveries before launching!"
+    elif current_total >= storage_capacity * 0.8:
+        storage_warning = f"Storage nearly full ({current_total}/{storage_capacity}). Consider extracting discoveries."
 
     return {
         'success': True,
@@ -1055,8 +1055,8 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         'slots_used': len(fleet_status),
         'storage': {
             'capacity': storage_capacity,
-            'used': current_unclaimed,
-            'remaining': max(0, storage_capacity - current_unclaimed),
+            'used': current_total,
+            'remaining': max(0, storage_capacity - current_total),
             'warning': storage_warning,
         },
     }
@@ -1290,18 +1290,18 @@ def launch_expedition(
 
         try:
             from utilities.discovery_utils import generate_expedition_discoveries
-            from utilities.db_expeditions import get_total_unclaimed_discoveries_count
+            from utilities.db_expeditions import get_total_discovery_count
 
-            # Storage capacity check - Storage Bunker increases capacity
-            storage_capacity = upgrade_effects.get('storage_capacity', 25)
-            current_unclaimed = get_total_unclaimed_discoveries_count(user_id)
-            remaining_capacity = max(0, storage_capacity - current_unclaimed)
+            # Storage capacity check - counts ALL inventory (claimed + unclaimed, not analyzed)
+            storage_capacity = upgrade_effects.get('storage_capacity', 300)
+            current_total = get_total_discovery_count(user_id)
+            remaining_capacity = max(0, storage_capacity - current_total)
 
             if remaining_capacity == 0:
-                logger.warning(f"⚠️ Storage full: {current_unclaimed}/{storage_capacity} discoveries. Limiting to minimum cargo.")
+                logger.warning(f"⚠️ Storage full: {current_total}/{storage_capacity} discoveries. Limiting to minimum cargo.")
                 cargo_capacity = min(cargo_capacity, 3)  # Still get SOME finds
             elif remaining_capacity < cargo_capacity:
-                logger.info(f"📦 Storage nearly full: {current_unclaimed}/{storage_capacity}. Limiting cargo to {remaining_capacity}.")
+                logger.info(f"📦 Storage nearly full: {current_total}/{storage_capacity}. Limiting cargo to {remaining_capacity}.")
                 cargo_capacity = max(3, remaining_capacity)  # Never below 3
 
             all_items = get_discovery_items_catalog()

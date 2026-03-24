@@ -172,7 +172,7 @@ const scientistBulkQuotes = [
     "Another gorgeous Sepolia formation! These crystalline beauties never cease to amaze me.",
     "Red dust meets pure energy. Mars continues to whisper her secrets.",
     "Look at those shard geometries! Exquisite molecular architecture in miniature.",
-    "Crystallography is poetry written in atomic landscapes. This specimen is pure verse.",
+    "Crystallography is poetry written in atomic landscapes. This discovery is pure verse.",
     "Every shard tells a story older than human civilization. Listen closely.",
     "Remarkable! The molecular resonance on this sample is off the charts.",
     "Mars doesn't give up her treasures easily. But we're persistent scientists.",
@@ -246,7 +246,7 @@ const scientistBulkQuotes = [
     "These common finds hide ancient Sepolia shard potential. Let me release it.",
     "So many samples, so little time. Let us be thorough.",
     "Each extraction teaches me something new about Martian crystallography.",
-    "A mountain of specimens, a river of shards. The cycle continues.",
+    "A mountain of discoveries, a river of shards. The cycle continues.",
     "Every crystal extracted brings us closer to understanding this world.",
     "These samples have served their purpose. The shards within call to be free..."
 ];
@@ -321,9 +321,9 @@ function showShardItAllModal() {
         name: 'Bulk Extraction',
         image: null,
         category: `<img src="${UI_ICONS.shard_gem}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Shard It All`,
-        description: `Extract shards from all ${totalCount} common and uncommon specimens in your inventory.`,
+        description: `Extract shards from all ${totalCount} common and uncommon discoveries in your inventory.`,
         stats: [
-            { label: 'Specimens', value: totalCount },
+            { label: 'Discoveries', value: totalCount },
             { label: 'Common', value: commonCount },
             { label: 'Uncommon', value: uncommonCount },
             { label: 'Total Shards', value: totalShards.toLocaleString() },
@@ -358,7 +358,7 @@ async function executeShardItAll() {
         if (data.success) {
             ItemDetailModal.hide();
             // Build message with bonus info if applicable
-            let msg = `Extracted ${data.shards_received.toFixed(0)} Shards from ${data.quantity_analyzed} specimens!`;
+            let msg = `Extracted ${data.shards_received.toFixed(0)} Shards from ${data.quantity_analyzed} discoveries!`;
             if (data.bonus_applied && data.discovery_value_mult > 1.0) {
                 const bonusPct = ((data.discovery_value_mult - 1) * 100).toFixed(0);
                 // Show bonus type - include bio bonus info if applicable

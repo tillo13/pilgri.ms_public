@@ -61,11 +61,11 @@ async function claimAllExpeditionDiscoveries(id, e) {
         const r = await fetch(`/api/expeditions/${id}/claim_all`, { method: 'POST' });
         const data = await r.json();
         if (data.success) {
-            showToast(`Claimed ${data.claimed_count} items!`, 'success');
+            showToast(`Claimed ${data.claimed_count} discoveries!`, 'success');
             const w = document.querySelector(`[data-expedition-id="${id}"]`);
             if (w) {
                 const status = w.dataset.status;
-                // If expedition was already complete (showing for unclaimed items only),
+                // If expedition was already complete (showing for unclaimed discoveries only),
                 // remove the banner entirely after claiming
                 if (status === 'complete') {
                     w.style.opacity = '0.5';
@@ -250,7 +250,7 @@ async function showExpeditionRewardsSummary(expeditionId) {
                     <div style="font-size:24px; font-weight:700; color:${profitColor};">
                         ${isProfitable ? '+' : ''}${netProfit.toLocaleString()} shards
                     </div>
-                    ${unclaimed.length > 0 ? `<div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Claim items, then extract in Inventory for shards</div>` : ''}
+                    ${unclaimed.length > 0 ? `<div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Claim discoveries, then extract in Inventory for shards</div>` : ''}
                 </div>
             </div>`;
         }
@@ -259,7 +259,7 @@ async function showExpeditionRewardsSummary(expeditionId) {
 
         let footer = '';
         if (unclaimed.length > 0) {
-            footer += `<button class="btn btn-primary" style="flex:1;" onclick="claimAllFromModal(${expeditionId})">Claim ${unclaimed.length} Item${unclaimed.length > 1 ? 's' : ''}</button>`;
+            footer += `<button class="btn btn-primary" style="flex:1;" onclick="claimAllFromModal(${expeditionId})">Claim ${unclaimed.length} Discover${unclaimed.length > 1 ? 'ies' : 'y'}</button>`;
         }
         footer += `<button class="btn btn-secondary" style="${unclaimed.length > 0 ? '' : 'flex:1;'}" onclick="MarsModal.hide()">${unclaimed.length > 0 ? 'Close' : 'Done'}</button>`;
 

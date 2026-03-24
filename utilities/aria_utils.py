@@ -2221,12 +2221,12 @@ def load_colony_snapshot(user_id: int) -> dict:
             try:
                 from utilities.upgrades_utils import get_user_upgrade_effects
                 effects = get_user_upgrade_effects(user_id)
-                storage_capacity = effects.get('storage_capacity', 25)
+                storage_capacity = effects.get('storage_capacity', 300)
                 build_speed_pct = round((1 - effects.get('build_time_mult', 1.0)) * 100)
                 if build_speed_pct > 0:
                     snapshot['build_speed_bonus'] = f'{build_speed_pct}% faster builds (from Logistics stat)'
             except Exception:
-                storage_capacity = 25
+                storage_capacity = 300
             snapshot['discoveries'] = {
                 'unclaimed': disc['unclaimed'] or 0,
                 'total': disc['total'] or 0,
@@ -2524,10 +2524,13 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
     # Discoveries + Storage
     disc = snapshot['discoveries']
     if disc['unclaimed'] > 0:
-        storage_cap = disc.get('storage_capacity', 25)
-        pct_full = round(disc['unclaimed'] / storage_cap * 100) if storage_cap > 0 else 0
-        storage_warning = " (STORAGE FULL!)" if disc['unclaimed'] >= storage_cap else f" ({pct_full}% of {storage_cap} capacity)"
-        parts.append(f"UNCLAIMED DISCOVERIES: {disc['unclaimed']} waiting to be extracted{storage_warning}")
+        storage_cap = disc.get('storage_capacity', 300)
+        total = disc.get('total', 0)
+        pct_full = round(total / storage_cap * 100) if storage_cap > 0 else 0
+        storage_warning = " (STORAGE FULL!)" if total >= storage_cap else f" ({pct_full}% of {storage_cap} capacity)"
+        parts.append(f"DISCOVERIES: {total} total in storage{storage_warning}")
+        if disc['unclaimed'] > 0:
+            parts.append(f"  └ {disc['unclaimed']} unclaimed, waiting to be extracted")
 
     # Research / Tech tree
     research = snapshot.get('research', {})

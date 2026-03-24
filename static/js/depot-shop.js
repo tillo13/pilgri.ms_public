@@ -209,7 +209,7 @@ function getUpgradeEffectDescription(category, itemKey) {
             'habitat_module': 'Expands living quarters. At Lv5, unlocks an extra build queue slot.',
             'greenhouse': 'Grows food from Martian soil. Reduces life support costs.',
             'research_station': 'Generates Scientific Value and boosts discovery values.',
-            'xenobiology_lab': 'Studies alien biology specimens. Boosts bio discovery values.',
+            'xenobiology_lab': 'Studies alien biology discoveries. Boosts bio discovery values.',
             'comms_array': 'Long-range communications. Improves discovery chances on expeditions.',
             'regolith_forge': 'Forges materials from regolith. Generates shards and SV.',
             'resonance_chamber': 'Amplifies crystal resonance. Multiplies all generation rates.',

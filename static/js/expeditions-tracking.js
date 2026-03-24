@@ -386,7 +386,7 @@ function updateDiscoveryDisplay(w, data) {
 
     if (claimBtn) {
         claimBtn.style.display = (unclaimed > 0 && data.expedition_complete) ? 'inline-block' : 'none';
-        claimBtn.textContent = `Claim ${unclaimed} Items`;
+        claimBtn.textContent = `Claim ${unclaimed} Discover${unclaimed > 1 ? 'ies' : 'y'}`;
     }
 
     // Only show discoveries when expedition is COMPLETE - keeps cards compact during travel

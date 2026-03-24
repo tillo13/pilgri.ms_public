@@ -39,12 +39,12 @@ window.showDiscoveryDetails = function(id) {
 
         // Cryptic rare messages (hint at hidden messages in shard exchanges - deep easter egg)
         const rareHints = [
-            "Strange... when I touch this specimen, I sense... <em>words</em>. As if every exchange carries a whisper we cannot hear.",
+            "Strange... when I touch this discovery, I sense... <em>words</em>. As if every exchange carries a whisper we cannot hear.",
             "There's something encoded here. Not in the crystal—in the giving. Every transfer leaves an echo.",
             "The shards remember. Every time they change hands, something invisible passes between.",
             "I keep hearing fragments... phrases that make no sense. The red planet speaks in riddles when we trade.",
             "This one vibrates differently. As if it's been part of something... a chain of hands, a chain of words.",
-            "The specimen pulses when shards move between us. There's meaning written in the exchange itself.",
+            "The discovery pulses when shards move between us. There's meaning written in the exchange itself.",
             "Words in the ether. Invisible ink on invisible paper. The ledger never forgets.",
             "Every time a shard passes from one pilgrim to another, a payload we cannot see travels with it.",
             "The ancients left messages in the currency itself. In the moment of exchange. We just haven't learned to read them.",
@@ -68,14 +68,14 @@ window.showDiscoveryDetails = function(id) {
             const isTrailConsumable = ['biological', 'mineral'].includes(i.item_type);
             const trailBoostNote = isTrailConsumable ? `
             <div class="trail-boost-note" style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;font-size:12px;color:#ccc;">
-                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this specimen in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
+                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
             </div>` : '';
             effects = `<div class="rarity-text-rare" style="font-style:italic;line-height:1.6;">
                 "${hint}"
                 <div style="margin-top:8px;opacity:0.7;">${scientistName} seems troubled but willing to proceed.</div>
             </div>
             <div class="sv-tradeoff-note" style="margin-top:12px;padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the specimen. You'll gain shards + bonus SV but lose the item permanently.
+                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
             </div>${trailBoostNote}`;
             action = {
                 label: qty > 1 ? `⚠️ Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `⚠️ Extract (${shardPayoutAll} Shards${svLabel})`,
@@ -88,14 +88,14 @@ window.showDiscoveryDetails = function(id) {
             const isTrailConsumable = ['biological', 'mineral'].includes(i.item_type);
             const trailBoostNote = isTrailConsumable ? `
             <div class="trail-boost-note" style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;font-size:12px;color:#ccc;">
-                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this specimen in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
+                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
             </div>` : '';
             effects = `<div class="rarity-text-uncommon" style="font-style:italic;line-height:1.6;">
-                "A bit tougher to crack than the common specimens. I'll need to borrow some equipment from the base, but we can extract ${qty > 1 ? shardPayoutAll : shardPayoutOne} shards."
+                "A bit tougher to crack than the common discoveries. I'll need to borrow some equipment from the base, but we can extract ${qty > 1 ? shardPayoutAll : shardPayoutOne} shards."
                 <div style="margin-top:8px;opacity:0.7;">— ${scientistName}</div>
             </div>
             <div class="sv-tradeoff-note" style="margin-top:12px;padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the specimen. You'll gain shards + bonus SV but lose the item permanently.
+                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
             </div>${trailBoostNote}`;
             action = {
                 label: qty > 1 ? `🔬 Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `🔬 Extract (${shardPayoutAll} Shards${svLabel})`,
@@ -108,14 +108,14 @@ window.showDiscoveryDetails = function(id) {
             const isTrailConsumable = ['biological', 'mineral'].includes(i.item_type);
             const trailBoostNote = isTrailConsumable ? `
             <div class="trail-boost-note" style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;font-size:12px;color:#ccc;">
-                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this specimen in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+6-12%). Also destroys the item.
+                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+6-12%). Also destroys the item.
             </div>` : '';
             effects = `<div class="rarity-text-common" style="font-style:italic;line-height:1.6;">
                 "Standard extraction procedure—${qty > 1 ? shardPayoutAll : shardPayoutOne} shards ready for harvest."
                 <div style="margin-top:8px;opacity:0.7;">— ${scientistName}</div>
             </div>
             <div class="sv-tradeoff-note" style="margin-top:12px;padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the specimen. You'll gain shards + bonus SV but lose the item permanently.
+                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
             </div>${trailBoostNote}`;
             action = {
                 label: qty > 1 ? `🔬 Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `🔬 Extract (${shardPayoutAll} Shards${svLabel})`,
@@ -194,12 +194,12 @@ function confirmExtraction(discoveryItemId, quantity, shardPayout, itemName, rar
         category: `<span class="rarity-badge rarity-${rarity}">${rarity.toUpperCase()}</span> Confirm Extraction`,
         description: quote,
         stats: [
-            { label: 'Specimens', value: extractAll ? quantity : 1 },
+            { label: 'Discoveries', value: extractAll ? quantity : 1 },
             { label: 'Shards Received', value: shardPayout.toLocaleString() },
             { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.15)} SV` },
         ],
         effects: `<div class="sv-tradeoff-note" style="padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-            <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the specimen. You'll gain shards + bonus SV but lose the item permanently.
+            <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
         </div>`,
         action: {
             label: `Extract (${shardPayout.toLocaleString()} Shards)`,
@@ -211,7 +211,7 @@ function confirmExtraction(discoveryItemId, quantity, shardPayout, itemName, rar
 window.confirmExtraction = confirmExtraction;
 
 
-// Analyze discovery - extract shards (extractAll: true = all specimens, false = just one)
+// Analyze discovery - extract shards (extractAll: true = all discoveries, false = just one)
 async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = true) {
     const btn = document.getElementById('mmActionBtn');
     if (btn) { btn.disabled = true; btn.textContent = '🔬 Analyzing...'; }
@@ -229,7 +229,7 @@ async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = 
         if (data.success) {
             ItemDetailModal.hide();
             // Build message with bonus info if applicable
-            let msg = `Extracted ${data.shards_received.toFixed(0)} Shards from ${data.quantity_analyzed} specimen${data.quantity_analyzed > 1 ? 's' : ''}!`;
+            let msg = `Extracted ${data.shards_received.toFixed(0)} Shards from ${data.quantity_analyzed} discover${data.quantity_analyzed > 1 ? 'ies' : 'y'}!`;
             if (data.bonus_applied && data.discovery_value_mult > 1.0) {
                 const bonusPct = ((data.discovery_value_mult - 1) * 100).toFixed(0);
                 // Show specific bonus type - Cryo Storage for bio, Research Lab for general

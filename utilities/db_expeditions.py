@@ -412,6 +412,26 @@ def get_total_unclaimed_discoveries_count(user_id: int) -> int:
         logger.error(f"❌ Failed to get unclaimed count: {e}")
         return 0
 
+
+def get_total_discovery_count(user_id: int) -> int:
+    """Get total count of ALL discoveries in inventory (claimed + unclaimed, not analyzed/sharded).
+    This is what Storage Bunker capacity checks against."""
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT COUNT(*) as count
+                FROM pilgrim.expedition_discoveries ed
+                JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
+                WHERE e.user_id = %s
+                  AND ed.unlocked_at IS NOT NULL
+                  AND (ed.analyzed = false OR ed.analyzed IS NULL)
+            """, (user_id,))
+            result = cur.fetchone()
+            return result['count'] if result else 0
+    except Exception as e:
+        logger.error(f"❌ Failed to get total discovery count: {e}")
+        return 0
+
 def get_claimed_discoveries(user_id: int) -> List[Dict]:
     """Get ALL claimed discoveries for user's inventory - STACKED by item (excludes analyzed)
 

@@ -356,7 +356,7 @@ def query_player_data(category, user_id):
                 disc = cur.fetchone()
             from utilities.upgrades_utils import get_user_upgrade_effects
             effects = get_user_upgrade_effects(user_id)
-            cap = effects.get('storage_capacity', 25)
+            cap = effects.get('storage_capacity', 300)
             return (f"Discoveries: {disc['total'] or 0} total, {disc['unclaimed'] or 0} unclaimed\n"
                     f"Storage capacity: {cap}")
 
