@@ -212,7 +212,8 @@
             overlay = document.createElement('div');
             overlay.id = 'btDetailModal';
             overlay.className = 'bt-modal-overlay';
-            overlay.addEventListener('click', function(e) { if (e.target === overlay) closeDetail(); });
+            // Don't close on backdrop click — prevents losing typed content in comment/edit fields
+            // Close only via X button, Cancel, or Escape key
             document.body.appendChild(overlay);
         }
 
@@ -412,7 +413,8 @@
             overlay = document.createElement('div');
             overlay.id = 'btDetailModal';
             overlay.className = 'bt-modal-overlay';
-            overlay.addEventListener('click', function(e) { if (e.target === overlay) closeDetail(); });
+            // Don't close on backdrop click — prevents losing typed content in comment/edit fields
+            // Close only via X button, Cancel, or Escape key
             document.body.appendChild(overlay);
         }
 
@@ -768,9 +770,8 @@
             if (document.getElementById('btModal').style.display !== 'none') closeModal();
         }
     });
-    document.getElementById('btModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
+    // Don't close create modal on backdrop click — prevents losing typed content
+    // Close only via X button, Cancel, or Escape key
 
     // Auto-open bug modal if ?open=ID in URL (e.g. from PilgrimBot)
     var openParam = new URLSearchParams(window.location.search).get('open');
