@@ -252,7 +252,8 @@
         } else {
             actions += '<button class="bt-btn bt-btn-sm bt-btn-danger" onclick="BT.reopenBug(' + bug.id + ')">Reopen</button>';
         }
-        actions += '<a href="/pilgrimbot?bug=' + bug.id + '" target="_blank" class="bt-btn bt-btn-sm" style="text-decoration:none;color:rgba(255,255,255,0.5);margin-left:auto;">Ask PilgrimBot about this</a>';
+        actions += '<button class="bt-btn bt-btn-sm" style="margin-left:auto;" onclick="BT.copyBugLink(' + bug.id + ',this)">Copy Link</button>';
+        actions += '<a href="/pilgrimbot?bug=' + bug.id + '" target="_blank" class="bt-btn bt-btn-sm" style="text-decoration:none;color:rgba(255,255,255,0.5);">Ask PilgrimBot about this</a>';
 
         // Parent bug link
         var parentLink = bug.parent_bug_id
@@ -802,6 +803,14 @@
         startNameEdit: startNameEdit,
         saveNameEdit: saveNameEdit,
         addComment: addComment,
-        searchRelated: searchRelated
+        searchRelated: searchRelated,
+        copyBugLink: function(bugId, btn) {
+            var url = window.location.origin + '/admin/bugs?open=' + bugId;
+            navigator.clipboard.writeText('#' + bugId + ' — ' + url).then(function() {
+                var orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(function() { btn.textContent = orig; }, 1500);
+            });
+        }
     };
 })();
