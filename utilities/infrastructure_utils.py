@@ -490,10 +490,9 @@ def send_completion_reward(construction_id, user_id):
 
 
 def user_has_maintenance_drone(user_id: int) -> bool:
-    """Check if user has purchased the Maintenance Drone from shop"""
-    from utilities.shop_utils import get_user_owned_items
-    owned = get_user_owned_items(user_id)
-    return 'maintenance_drone' in owned
+    """Check if user has dust immunity from automation upgrade (level 3+ = Dust Guard)"""
+    from utilities.upgrades_utils import get_user_upgrade_level
+    return get_user_upgrade_level(user_id, 'automation', 'automation') >= 3
 
 
 def calculate_accumulated_income(user_id):

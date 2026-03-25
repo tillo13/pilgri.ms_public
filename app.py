@@ -63,7 +63,7 @@ from utilities.tech_utils import (
     get_research_page_data, get_user_tech_status, start_research,
     get_research_progress, cancel_research,
 )
-from utilities.shop_utils import get_user_equipment_data, purchase_shop_item
+from utilities.shop_utils import get_user_equipment_data
 from utilities.upgrades_utils import perform_upgrade, get_upgrade_catalog_for_user, get_vehicle_for_expedition
 from utilities.claude_utils import brainstorm_chat, generate_aria_snapshot_narrative
 from utilities.aria_utils import (
@@ -2113,25 +2113,6 @@ def api_shop_modify_character():
     edit_prompt = data.get('prompt', '').strip()
 
     return jsonify(purchase_character_modification(session, edit_prompt, flux))
-
-@app.route('/api/shop/purchase_upgrade', methods=['POST'])
-@handle_api_error
-def api_shop_purchase_upgrade():
-    """Purchase equipment/upgrade from shop catalog"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'success': False, 'error': 'Not logged in'})
-
-    data = request.get_json()
-    item_id = data.get('item_id')
-
-    if not item_id:
-        return jsonify({'success': False, 'error': 'Missing item_id'})
-
-    result = purchase_shop_item(user_id, item_id)
-    if result.get('success'):
-        invalidate_balance_cache(session)
-    return jsonify(result)
 
 @app.route('/api/discovery_items')
 def api_discovery_items():

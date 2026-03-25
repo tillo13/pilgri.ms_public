@@ -80,12 +80,9 @@
     "keywords": "building catalog, solar array, battery, habitat, xenobiology lab, nuclear plant, fusion reactor, greenhouse, build time, generation rate"
   },
   "config_shop.py": {
-    "description": "═══════════════════════════════════════════════════════════════════════════════",
+    "description": "Trail building configuration — scanner bonuses, consumable bonuses, duration tiers.",
     "exports": [
-      "get_trail_duration_from_multiplier — Get trip duration in minutes based on TOTAL multiplier (stat × scanner × consumable).",
-      "get_shop_item — Get shop item config by ID",
-      "get_build_time_seconds — Calculate build time based on item cost.",
-      "get_shop_items_by_category — Get all shop items in a category"
+      "get_trail_duration_from_multiplier — Get trip duration in minutes based on TOTAL multiplier (stat × scanner × consumable)."
     ],
     "keywords": "shop items, depot, purchase, buy, drone, equipment, one-time items, shop catalog"
   },
@@ -1638,7 +1635,7 @@
       "start_construction — Begin building infrastructure - charge user if needed, set ready_at time",
       "check_construction_status — Check if construction is complete",
       "send_completion_reward — Send first payout when construction completes",
-      "user_has_maintenance_drone — Check if user has purchased the Maintenance Drone from shop",
+      "user_has_maintenance_drone — Check if user has dust immunity from automation upgrade (level 3+ = Dust Guard)",
       "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
       "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet",
       "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest.",
@@ -1798,22 +1795,14 @@
     "keywords": "session cache, invalidate balance, invalidate nav, cache keys"
   },
   "utilities/shop_utils.py": {
-    "description": "Shop Utilities - Equipment purchases, upgrade effects, and shopping list",
+    "description": "Shop Utilities — equipment effects, trail bonuses, commander stats.",
     "exports": [
-      "get_user_owned_items — Get dict of item_id -> quantity for all items user owns",
-      "get_scanner_trail_bonus — Get trail building bonus from owned scanners.",
-      "check_requirements_met — Check if user meets requirements to purchase an item",
-      "check_max_owned — Check if user has reached max ownership for an item",
-      "get_item_availability — Get full availability status for an item",
-      "get_shop_catalog_for_user — Get full shop catalog organized by category with availability info",
-      "get_shopping_list — Generate a \"shopping list\" showing what user can afford vs saving toward",
-      "purchase_shop_item — Process a shop item purchase",
-      "get_passive_income_source — Find which item is providing the highest passive_income_mult bonus.",
-      "get_user_upgrade_effects — DEPRECATED: Use utilities.upgrades_utils.get_user_upgrade_effects() instead.",
+      "get_scanner_trail_bonus — Get trail building bonus from scanner upgrade level.",
+      "get_passive_income_source — Find which upgrade provides passive income multiplier.",
+      "get_user_upgrade_effects — Wrapper → utilities.upgrades_utils.get_user_upgrade_effects()",
       "get_suit_stat_bonuses — Get EVA Suit stat bonus PERCENTAGES for UI display.",
       "get_effective_commander_stats — Apply EVA Suit bonuses as PERCENTAGES to commander stats.",
-      "format_shopping_list_for_email — Format shopping list as plain text for email",
-      "get_user_equipment_data — Get user's owned equipment and available upgrades for the profile/cache page."
+      "get_user_equipment_data — Get user's owned equipment from UPGRADE_CATALOG for the Depot equipment tab."
     ],
     "keywords": "depot, shop items, purchase, mining drone, power equipment, availability"
   },
@@ -2458,7 +2447,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

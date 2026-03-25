@@ -243,13 +243,12 @@ def generate_random_leader_stats():
 from config_infrastructure import INFRASTRUCTURE_CATALOG
 
 ##############################################################################
-# SHOP CATALOG - Extracted to config_shop.py (legacy reference for existing purchases)
+# TRAIL CONFIG - Trail building bonuses and durations (config_shop.py)
 ##############################################################################
 from config_shop import (
-    SHOP_CATALOG, SHOP_CATEGORIES, TRAIL_SCANNER_BONUSES,
+    TRAIL_SCANNER_BONUSES_BY_LEVEL,
     TRAIL_CONSUMABLE_BONUSES, TRAIL_MULTIPLIER_DURATIONS,
-    get_trail_duration_from_multiplier, get_shop_item,
-    get_build_time_seconds, get_shop_items_by_category
+    get_trail_duration_from_multiplier,
 )
 
 # Helper function
