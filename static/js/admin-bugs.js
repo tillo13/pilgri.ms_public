@@ -87,11 +87,13 @@
     function timeAgo(d) {
         if (!d) return '';
         var diff = (Date.now() - new Date(d).getTime()) / 1000;
+        if (diff < 0) return 'just now';
         if (diff < 60) return 'just now';
-        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
-        return Math.floor(diff / 604800) + 'w ago';
+        if (diff < 3600) { var m = Math.floor(diff / 60); return m + (m === 1 ? ' min ago' : ' mins ago'); }
+        if (diff < 86400) { var h = Math.floor(diff / 3600); return h + (h === 1 ? ' hr ago' : ' hrs ago'); }
+        if (diff < 604800) { var days = Math.floor(diff / 86400); return days + (days === 1 ? ' day ago' : ' days ago'); }
+        if (diff < 2592000) { var w = Math.floor(diff / 604800); return w + (w === 1 ? ' wk ago' : ' wks ago'); }
+        var mo = Math.floor(diff / 2592000); return mo + (mo === 1 ? ' mo ago' : ' mos ago');
     }
 
     // === Sortable columns ===

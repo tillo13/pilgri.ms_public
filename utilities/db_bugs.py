@@ -21,7 +21,8 @@ def _serialize_row(row):
     d = dict(row)
     for k, v in d.items():
         if isinstance(v, datetime):
-            d[k] = v.isoformat()
+            # Append Z so browser knows it's UTC (DB stores naive UTC timestamps)
+            d[k] = v.isoformat() + 'Z'
     return d
 
 
