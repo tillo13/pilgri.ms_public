@@ -1515,7 +1515,7 @@ def get_depot_page_data(user_id, auth):
         'stats': stats,
         'shop_catalog': shop_catalog,
         'upgrade_catalog': upgrade_catalog,
-        'building_items': building_items,
+        'building_items': [],
         'operations_fee': OPERATIONS_FEE_BUFFER_DISPLAY,
         'concurrent_upgrades': concurrent_upgrades,
         'upgrade_cap': upgrade_cap,
