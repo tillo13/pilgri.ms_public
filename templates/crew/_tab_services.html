@@ -1,0 +1,71 @@
+<!-- Captain Services: Shard Infusion, Modify Appearance, Video Briefing -->
+
+<div class="grid gap-16" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+
+    <!-- Shard Infusion (Stat Reroll) -->
+    <div class="dashboard-card p-20">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/reroll_stats_1767506212.png"
+                 alt="Shard Infusion" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Shard Infusion</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 16px;">
+            Channel Sepolia energy to randomize your captain's stats. Each stat is rerolled independently &mdash; results are permanent.
+        </p>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">
+                {{ '{:,}'.format(pricing.reroll_cost|int) }}
+            </span>
+            <span class="text-sm opacity-70"> shards</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="purchaseShardInfusion()">
+            <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> Infuse Stats
+        </button>
+        {% if pricing.reroll_count > 0 %}
+        <div class="text-xs opacity-50 mt-8" style="text-align: center;">{{ pricing.reroll_count }} infusion{{ 's' if pricing.reroll_count != 1 else '' }} performed</div>
+        {% endif %}
+    </div>
+
+    <!-- Modify Appearance -->
+    <div class="dashboard-card p-20">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/modify_commander_1767506225.png"
+                 alt="Modify Appearance" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Modify Appearance</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 12px;">
+            AI-powered appearance changes. Describe what you want changed and your captain's look will be updated.
+        </p>
+        <textarea id="modifyPrompt" rows="2" placeholder="e.g. Add a scar over the left eye..."
+                  style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; resize: vertical; margin-bottom: 12px;"></textarea>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">
+                {{ '{:,}'.format(pricing.modify_cost|int) }}
+            </span>
+            <span class="text-sm opacity-70"> shards</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="purchaseModifyAppearance()">
+            <img src="{{ icons.edit_pencil }}" alt="" class="inline-icon-sm"> Modify Captain
+        </button>
+    </div>
+
+    <!-- Video Briefing -->
+    <div class="dashboard-card p-20">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/video_briefing_1767506239.png"
+                 alt="Video Briefing" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Mission Briefing Video</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 16px;">
+            Generate an animated mission briefing video starring your captain. Takes about 60 seconds to create.
+        </p>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">90</span>
+            <span class="text-sm opacity-70"> shards</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="purchaseVideoBriefing()">
+            <img src="{{ icons.video_film }}" alt="" class="inline-icon-sm"> Generate Video
+        </button>
+    </div>
+
+</div>

@@ -128,6 +128,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <img src="{{ icons.aria_avatar }}" alt="ARIA" class="crew-tab-icon" style="border: 2px solid #a855f7;">
         <span class="crew-tab-label">ARIA</span>
     </button>
+    <button class="crew-tab" data-tab="services" onclick="switchCrewTab('services')" title="Captain Services - Modify your captain">
+        <img src="{{ icons.wrench_repair }}" alt="" class="crew-tab-icon" style="border-radius: 6px;">
+        <span class="crew-tab-label">Services</span>
+    </button>
 </div>
 
 <!-- Tab Descriptions -->
@@ -136,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <span id="tab-desc-captain" style="display: none;"><img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon-sm"> <strong>Captain:</strong> Your expedition leader. Stats affect discovery chances, costs, and efficiency. Upgrade via the Xenobiology Lab.</span>
     <span id="tab-desc-scientist" style="display: none;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> <strong>Scientist:</strong> Extracts Sepolia shards from your discoveries. Higher skill = faster extraction and bonus yields.</span>
     <span id="tab-desc-aria" style="display: none;"><img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> <strong>ARIA:</strong> Found waiting on Mars when the first Pilgrims arrived. She doesn't remember why.</span>
+    <span id="tab-desc-services" style="display: none;"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> <strong>Services:</strong> One-off services to modify your captain. Reroll stats, change appearance, or generate a mission briefing video.</span>
 </div>
 
 {% include "crew/_tab_trails.html" %}
@@ -202,6 +207,12 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 </div><!-- End tab-aria -->
+
+<!-- TAB: SERVICES -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-services" class="crew-tab-content" style="display: none;">
+{% include "crew/_tab_services.html" %}
+</div><!-- End tab-services -->
 
 {% include "crew/_chart_trail_modal.html" %}
 

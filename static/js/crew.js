@@ -287,3 +287,58 @@ function toggleStatInfo(stat) {
         infoEl.previousElementSibling.classList.add('active');
     }
 }
+
+// ============================================================================
+// CAPTAIN SERVICES (Shard Infusion, Modify Appearance, Video Briefing)
+// ============================================================================
+
+async function purchaseShardInfusion() {
+    if (!confirm('Infuse your captain with Sepolia energy? All stats will be rerolled randomly.')) return;
+    try {
+        const resp = await fetch('/api/shop/reroll_stats', { method: 'POST', headers: {'Content-Type': 'application/json'} });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Stats infused! Your captain has new attributes.', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.error || 'Failed to infuse stats', 'error');
+        }
+    } catch (e) { showToast('Connection error', 'error'); }
+}
+
+async function purchaseModifyAppearance() {
+    const prompt = document.getElementById('modifyPrompt')?.value?.trim();
+    if (!prompt) { showToast('Describe the change you want', 'error'); return; }
+    if (!confirm('Modify your captain\'s appearance? This will generate a new image.')) return;
+    try {
+        showToast('Generating new appearance...', 'info');
+        const resp = await fetch('/api/shop/modify_character', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ prompt })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('New look generated! Reloading...', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast(data.error || 'Failed to modify appearance', 'error');
+        }
+    } catch (e) { showToast('Connection error', 'error'); }
+}
+
+async function purchaseVideoBriefing() {
+    if (!confirm('Generate a mission briefing video? This costs 90 shards and takes about 60 seconds.')) return;
+    try {
+        showToast('Generating video... this takes about 60 seconds', 'info');
+        const resp = await fetch('/api/shop/generate_video', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast('Video generated! Reloading...', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showToast(data.error || 'Failed to generate video', 'error');
+        }
+    } catch (e) { showToast('Connection error', 'error'); }
+}

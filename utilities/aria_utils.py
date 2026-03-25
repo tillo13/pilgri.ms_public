@@ -818,6 +818,21 @@ def _build_friend_prompt(captain_name: str, snapshot: Optional[Dict], user_conte
                     equipment_parts.append(f"{name} Lv{level}")
         depot_str = ', '.join(equipment_parts) if equipment_parts else 'none'
 
+        # Trail network
+        trail_str = 'none'
+        try:
+            from utilities.postgres_utils import db_cursor as _db_cursor
+            with _db_cursor() as cur:
+                cur.execute("""
+                    SELECT destination_name, trail_level, total_distance_km, km_built
+                    FROM pilgrim.trail_segments WHERE user_id = %s ORDER BY created_at
+                """, (user_id,))
+                trail_rows = cur.fetchall()
+            if trail_rows:
+                trail_str = '; '.join(f"{t['destination_name']} (Lv{t['trail_level']}, {float(t['km_built']):.0f}/{float(t['total_distance_km']):.0f} km)" for t in trail_rows)
+        except Exception:
+            pass
+
         # Mars environment (real-time)
         try:
             mars = get_mars_environment_summary()
@@ -832,6 +847,7 @@ science_value: {sv_balance:,}
 infrastructure: {infra_str}
 scanner: {scanner_name}
 depot_upgrades: {depot_str}
+trails: {trail_str}
 expeditions_total: {exp.get('total', 0)}
 active_expeditions: {active_str}
 crew_status: {crew_str}
@@ -875,6 +891,8 @@ CREW: Only {captain_name} and the scientist above exist. Use the scientist's exa
 STYLE: 2-3 sentences, warm and direct, plain text. You remember all past conversations perfectly.
 
 KNOWLEDGE: Mars colony ops, Earth culture, food, hobbies - chat about anything. Shards = currency, Depot = shop.
+
+TRAILS: Captains build trails from the Crew tab by sending Captain, Scientist, or ARIA on trail-building missions. Trails reduce expedition travel time to destinations. Higher trail levels = faster travel. The 'trails' field above shows all built trails with destination, level, and km progress. If someone asks about their trails, reference the data above.
 {bond_context}
 DEPOT BUILDINGS (all buildable infrastructure, whether or not the captain has built them yet):
 Solar Array (passive shard income), Research Station (generates SV/hr), Ore Refinery (processes regolith into shards), Greenhouse (reduces expedition costs), Xenobiology Lab (studies Martian specimens), Habitat Module (adds expedition slots), Communications Array (boosts discovery chance), Water Extractor (extracts water ice), Battery Storage (extends accumulation cap), Regolith Forge (processes raw Martian regolith into refined materials — unlocks advanced buildings), Sepolia Resonance Chamber (amplifies shard resonance frequency — requires Regolith Forge Lv5), Thermal Vent Tap (taps deep geothermal energy — requires Resonance Chamber), Monolith Antenna (detects deep Sepolia shard formations — requires Thermal Vent Tap). Build order: Solar Array → Ore Refinery → Regolith Forge → Resonance Chamber → Thermal Vent Tap → Monolith Antenna.

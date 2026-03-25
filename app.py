@@ -516,6 +516,9 @@ def crew():
     if auth.is_authenticated():
         # Authenticated user - show their commander profile (same data as command page)
         data = get_command_page_data(session.get('user_id'))
+        # Captain services pricing (Shard Infusion, Modify Appearance, Video Briefing)
+        from utilities.depot_utils import get_pricing_info
+        data['pricing'] = get_pricing_info(session.get('user_id'))
         return render_template('crew.html', active_tab='crew', user=auth.get_current_user(), **data)
     else:
         # Anonymous user - show commander selection (onboarding step 2)
