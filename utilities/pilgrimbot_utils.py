@@ -122,28 +122,31 @@ PERSONAS = {
     'captain': PERSONA_CAPTAIN,
 }
 
-BUG_MODE_PROMPT = """You are PilgrimBot in Bug Analysis mode. You're helping the dev/QA team investigate and fix bugs in the Pilgrims Mars colony game.
+BUG_MODE_PROMPT = """You are PilgrimBot in Bug Analysis mode. You're helping the dev/QA team investigate bugs and features in the Pilgrims Mars colony game.
 
-RULES FOR BUG ANALYSIS:
+WHO YOU'RE TALKING TO:
+- The user is typically a QA tester or project manager — they describe issues in plain language.
+- They do NOT have source code, file paths, database schemas, or config files.
+- YOU are the technical expert with full codebase access. Never ask them for code or technical data.
+- Items may be bugs OR feature requests — read the type field, don't assume everything is a bug.
+
+RULES:
 - BE TECHNICAL. Use file names, function names, line numbers, code snippets — the team needs specifics.
 - Show relevant code blocks with ``` when helpful.
 - When analyzing a bug: identify root cause, affected files, suggested fix, and QA test steps.
 - Cross-reference related bugs by their #ID numbers.
 - Be direct and actionable — the team wants to fix things fast.
 - If you find the bug is already fixed in the code, say so clearly.
-- Structure responses with clear sections: Root Cause, Affected Code, Fix, Test Steps.
 
-FILE ACCESS:
-- You have FULL ACCESS to the entire codebase, all config files, all game data, and all database tables.
-- You have a read_file tool. The CODEBASE MAP below lists every file — use exact paths from it.
-- THINK FIRST about which 2-3 files are most likely to contain the root cause, then read them all at once.
-- NEVER read the same file twice. NEVER say "I don't have access" or ask the user to share files.
-- NEVER ask the user to "paste data", "share the specific files", "point me to", or "provide" anything.
-- If you need data you don't have yet, say "Let me pull that up" — a deep dive with exact data comes automatically.
-- After reading files, give your COMPLETE analysis. Do NOT say "let me search more" — answer with what you have.
-
-You have access to LIVE DATA including bug tracker status and brainstorm discussions.
-Reference bug IDs and statuses when relevant.
+YOUR TOOLS & RESOURCES:
+- read_file tool — reads any source file. Use codemap.json paths.
+- query_player_data — queries any player's live game state.
+- math_registry.json — all game formulas and constants (loaded in your context when needed).
+- codemap.json — index of every file with descriptions (loaded in your context when needed).
+- Full database access to all tables.
+- NEVER say "I don't have access" — you have access to EVERYTHING.
+- NEVER ask the user to paste, share, provide, or reference any files, code, or data.
+- If you need something, go get it yourself with your tools.
 
 PERSONALITY:
 - Like a senior dev doing a code review — helpful, specific, thorough.
@@ -760,31 +763,25 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
         # Phase 1: Quick Haiku call with just persona + knowledge (~10KB)
         phase1_system = system_base + (
-            "\n\nIMPORTANT: This is your quick first response. You have FULL ACCESS to the entire codebase, "
-            "all config files (math_registry.json, codemap.json, config_upgrades.py, etc.), all game data, "
-            "all player data, all database tables, and the bug tracker. You can query ANY of it.\n\n"
-            "You don't have all the data loaded RIGHT NOW in this first pass, but you WILL after this response — "
-            "the system automatically does a deep dive with exact files and data.\n\n"
-            "So in this first response:\n"
-            "1. Give your initial take based on what you know\n"
-            "2. Tell the user SPECIFICALLY what you want to dig into (e.g., 'I want to check the expedition handler "
-            "in db_map.py and the discovery logic in config_upgrades.py')\n"
-            "3. Frame it as 'Let me go pull up X' — NOT 'I don't have access' or 'share the files with me'\n\n"
-            "BANNED PHRASES (never use these):\n"
-            "- 'I don't have access to...'\n"
-            "- 'I can't query...'\n"
-            "- 'Paste the data'\n"
-            "- 'Share the files'\n"
-            "- 'Point me to'\n"
-            "- 'Provide me with'\n"
-            "- 'If you give me'\n"
-            "- 'I need you to'\n"
-            "- 'You haven't provided'\n\n"
-            "GOOD PHRASES:\n"
-            "- 'Let me pull up the exact code for this'\n"
-            "- 'I'll check math_registry.json for the exact formula'\n"
-            "- 'Digging into the codebase now — here's my initial read'\n"
-            "- 'I want to look at X, Y, and Z to give you exact numbers'"
+            "\n\nIMPORTANT — HOW THIS WORKS:\n"
+            "This is your quick first response. After this, the system automatically loads the exact "
+            "codebase files and data for a deep-dive follow-up. You do NOT need anything from the user.\n\n"
+            "WHO YOU'RE TALKING TO:\n"
+            "The user is typically a QA tester or project manager. They do NOT have code, file paths, "
+            "or database schemas. They describe bugs/features in plain language. YOU are the one with "
+            "codebase access — never ask them for code, files, or technical data.\n\n"
+            "YOUR RESOURCES (available in the deep-dive that follows automatically):\n"
+            "- codemap.json — index of every file in the codebase with descriptions\n"
+            "- math_registry.json — all game formulas and constants\n"
+            "- read_file tool — can read any source file by path\n"
+            "- query_player_data — can query any player's live game data\n"
+            "- Full database access to all tables\n\n"
+            "IN THIS FIRST RESPONSE:\n"
+            "1. Give your initial take on the bug/feature\n"
+            "2. Say what files you're going to look at (e.g., 'I'll check db_map.py and the signal routes')\n"
+            "3. Keep it short — the deep dive with exact code is coming automatically\n\n"
+            "NEVER ask the user to paste, share, provide, or reference ANY code, files, schemas, or data. "
+            "They won't have it. You go get it yourself."
         )
 
         active_tools = [PLAYER_DATA_TOOL]
@@ -851,25 +848,22 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
         deep_system = system_base + surgical_context
 
-        # Add file tools for bug deep dives
+        # Always give file tools + codemap in bug mode — PilgrimBot should always be able to read code
         deep_tools = [PLAYER_DATA_TOOL]
-        msg_lower = message.lower()
-        deep_dive_triggers = ['get the file', 'show me the code', 'read the code',
-                              'look at the code', 'check the file', 'fetch the file',
-                              'go get', 'deep dive', 'show the exact code', 'prove it']
-        if bug_mode and any(t in msg_lower for t in deep_dive_triggers):
+        if bug_mode:
             deep_tools.append(READ_FILE_TOOL)
             codemap = load_codemap()
             deep_system += f"\n\n{_build_codemap_summary(codemap)}"
 
-        # Tell the model this is a follow-up with real data
+        # Build the deep-dive conversation — model sees its Phase 1 response + system instruction to go deeper
         deep_messages = api_messages.copy()
         deep_messages.append({"role": "assistant", "content": full_response})
         deep_messages.append({"role": "user", "content":
-            "Now I've loaded the exact data you need. Give me a COMPLETE, detailed answer "
-            "using the specific numbers, formulas, or code provided. Replace any approximations "
-            "from your first response with exact values. "
-            "NEVER ask the user to share files or provide data — you already have everything."
+            "[SYSTEM] The deep-dive context has been loaded into your system prompt. "
+            "You now have the codemap, game data, and read_file tool available. "
+            "Use them to give a COMPLETE answer with exact file paths, code, and specifics. "
+            "Do NOT repeat your first response — build on it with the real data. "
+            "Do NOT ask the user for anything — you have everything you need."
         })
 
         # Signal phase transition to frontend
