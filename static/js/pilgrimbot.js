@@ -261,7 +261,7 @@
         div.className = 'pb-msg pb-msg-' + role;
         const name = role === 'user' ? USER_NAME : 'PilgrimBot';
         const time = timestamp ? formatTime(timestamp) : formatTime(new Date());
-        const content = role === 'user' ? escapeHtml(text) : parseMarkdown(text);
+        const content = parseMarkdown(text);
 
         div.innerHTML =
             '<div class="pb-msg-header">' + escapeHtml(name) +
