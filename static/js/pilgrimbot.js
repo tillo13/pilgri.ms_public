@@ -384,8 +384,8 @@
                             if (data.type === 'start' && data.chat_id) {
                                 currentChatId = data.chat_id;
                                 resetStreamTimeout();
-                            } else if (data.type === 'status') {
-                                // Show status message (e.g. "Running calculations...")
+                            } else if (data.type === 'status' || data.type === 'tool_call') {
+                                // Show live status — always keep pulsing dots at bottom
                                 removeTyping(typingEl);
                                 if (!assistantEl) {
                                     assistantEl = document.createElement('div');
@@ -398,43 +398,41 @@
                                     messagesEl.appendChild(assistantEl);
                                     contentEl = assistantEl.querySelector('.pb-msg-content');
                                 }
-                                let statusEl = assistantEl.querySelector('.pb-tool-calls');
-                                if (statusEl) {
-                                    let sl = document.createElement('div');
-                                    sl.className = 'pb-tool-line';
-                                    sl.style.color = 'var(--color-sepolia)';
-                                    sl.textContent = data.message;
-                                    statusEl.appendChild(sl);
-                                }
-                                resetStreamTimeout();
-                            } else if (data.type === 'tool_call') {
-                                // Bot is actively working — reset timeout
-                                resetStreamTimeout();
-                                removeTyping(typingEl);
-                                if (!assistantEl) {
-                                    assistantEl = document.createElement('div');
-                                    assistantEl.className = 'pb-msg pb-msg-assistant';
-                                    assistantEl.innerHTML =
-                                        '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
-                                        formatTime(new Date()) + '</span></div>' +
-                                        '<div class="pb-tool-calls"></div>' +
-                                        '<div class="pb-msg-content"></div>';
-                                    messagesEl.appendChild(assistantEl);
-                                    contentEl = assistantEl.querySelector('.pb-msg-content');
-                                }
-                                let toolEl = assistantEl.querySelector('.pb-tool-calls');
-                                if (toolEl) {
-                                    let toolLine = document.createElement('div');
-                                    toolLine.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
-                                    toolLine.textContent = (data.found ? 'Read ' : 'Not found: ') + data.file;
-                                    toolEl.appendChild(toolLine);
+                                let toolArea = assistantEl.querySelector('.pb-tool-calls');
+                                if (toolArea) {
+                                    // Remove old pulsing dots before adding new line
+                                    let oldDots = toolArea.querySelector('.pb-tool-dots');
+                                    if (oldDots) oldDots.remove();
+
+                                    let line = document.createElement('div');
+                                    if (data.type === 'status') {
+                                        line.className = 'pb-tool-line';
+                                        line.style.color = 'var(--color-sepolia)';
+                                        line.textContent = data.message;
+                                    } else {
+                                        line.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
+                                        line.textContent = (data.found ? 'Read ' : 'Not found: ') + data.file;
+                                    }
+                                    toolArea.appendChild(line);
+
+                                    // Add pulsing dots after the latest status line
+                                    let dots = document.createElement('div');
+                                    dots.className = 'pb-tool-dots';
+                                    dots.innerHTML = '<span class="pb-typing-dots"><span></span><span></span><span></span></span>';
+                                    toolArea.appendChild(dots);
                                 }
                                 messagesEl.scrollTop = messagesEl.scrollHeight;
+                                resetStreamTimeout();
                             } else if (data.type === 'delta' && data.text) {
                                 if (!gotFirstDelta) {
                                     gotFirstDelta = true;
                                     clearTimeout(streamTimeout);
                                     removeTyping(typingEl);
+                                    // Remove pulsing dots — real text is arriving
+                                    if (assistantEl) {
+                                        let dots = assistantEl.querySelector('.pb-tool-dots');
+                                        if (dots) dots.remove();
+                                    }
                                     if (!assistantEl) {
                                         assistantEl = document.createElement('div');
                                         assistantEl.className = 'pb-msg pb-msg-assistant';
@@ -452,6 +450,7 @@
                             } else if (data.type === 'stop') {
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
+                                if (assistantEl) { let d = assistantEl.querySelector('.pb-tool-dots'); if (d) d.remove(); }
                                 if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
                                 addFooterToEl(assistantEl, fullText);
                                 finishStream(fullText);
@@ -459,6 +458,7 @@
                             } else if (data.type === 'error') {
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
+                                if (assistantEl) { let d = assistantEl.querySelector('.pb-tool-dots'); if (d) d.remove(); }
                                 appendMessage('assistant', data.message || 'Something went wrong.');
                                 finishStream(fullText);
                                 return;

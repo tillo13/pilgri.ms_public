@@ -326,6 +326,10 @@
     gap: 10px;
 }
 
+.pb-tool-dots {
+    padding: 6px 0 2px;
+}
+
 .pb-typing-dots {
     display: flex;
     gap: 5px;
