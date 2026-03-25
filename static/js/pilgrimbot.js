@@ -278,6 +278,8 @@
         return div;
     }
 
+    let _typingTimer = null;
+
     function showTyping() {
         const div = document.createElement('div');
         div.className = 'pb-typing';
@@ -286,13 +288,21 @@
             '<div class="pb-typing-header">PilgrimBot</div>' +
             '<div class="pb-typing-body">' +
                 '<div class="pb-typing-dots"><span></span><span></span><span></span></div>' +
+                '<span class="pb-typing-timer">0s</span>' +
             '</div>';
         messagesEl.appendChild(div);
         messagesEl.scrollTop = messagesEl.scrollHeight;
+        // Live ticking timer
+        const startTime = Date.now();
+        const timerEl = div.querySelector('.pb-typing-timer');
+        _typingTimer = setInterval(() => {
+            if (timerEl) timerEl.textContent = Math.round((Date.now() - startTime) / 1000) + 's';
+        }, 1000);
         return div;
     }
 
     function removeTyping(el) {
+        if (_typingTimer) { clearInterval(_typingTimer); _typingTimer = null; }
         if (el && el.parentNode) el.remove();
     }
 
@@ -324,6 +334,7 @@
 
         const typingEl = showTyping();
         let gotFirstDelta = false;
+        const sendStartTime = Date.now();
 
         // Timeout updates typing indicator label — NEVER kills the stream
         const TIMEOUT_MS = 30000;
@@ -413,7 +424,12 @@
             else draining = false;
         }
 
+        let _lastStatusText = '';
         function queueEvent(data) {
+            // Deduplicate consecutive identical status messages
+            var text = data.message || data.label || data.file || '';
+            if (data.type === 'status' && text === _lastStatusText) return;
+            _lastStatusText = text;
             eventQueue.push(data);
             if (!draining) { draining = true; drainQueue(); }
         }
@@ -448,7 +464,7 @@
                         clearTimeout(streamTimeout);
                         removeDots();
                         if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
-                        addFooterToEl(assistantEl, fullText);
+                        addFooterToEl(assistantEl, fullText, Date.now() - sendStartTime);
                         finishStream(fullText);
                         return;
                     }
@@ -488,7 +504,7 @@
                                 removeTyping(typingEl);
                                 removeDots();
                                 if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
-                                addFooterToEl(assistantEl, fullText);
+                                addFooterToEl(assistantEl, fullText, Date.now() - sendStartTime);
                                 finishStream(fullText);
                                 return;
 
@@ -538,7 +554,7 @@
         });
     }
 
-    function addFooterToEl(el, text) {
+    function addFooterToEl(el, text, elapsedMs) {
         if (!el || !text) return;
         const footer = document.createElement('div');
         footer.className = 'pb-msg-footer';
@@ -572,6 +588,14 @@
                 if (!currentChatId) { showToast('Start a conversation first.', 'error'); return; }
                 showNewBugModal(this, text);
             });
+        }
+        // Response time badge
+        if (elapsedMs) {
+            var secs = (elapsedMs / 1000).toFixed(1);
+            var timeSpan = document.createElement('span');
+            timeSpan.className = 'pb-response-time';
+            timeSpan.textContent = secs + 's';
+            footer.appendChild(timeSpan);
         }
         el.appendChild(footer);
     }
