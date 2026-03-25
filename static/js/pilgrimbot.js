@@ -778,8 +778,25 @@
             }
         });
         if (existingBugChat) {
-            // Existing chat found — always load it so user sees the analysis
-            loadChat(existingBugChat);
+            // Existing chat found — load it, then check if it has an assistant response
+            currentChatId = existingBugChat;
+            messagesEl.innerHTML = '';
+            if (welcomeEl) welcomeEl.style.display = 'none';
+            fetch('/api/pilgrimbot/history?chat_id=' + existingBugChat)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.messages) {
+                        data.messages.forEach(function(m) { appendMessage(m.role, m.content, m.created_at); });
+                        // If no assistant response exists, re-send the bug context
+                        var hasAssistant = data.messages.some(function(m) { return m.role === 'assistant'; });
+                        if (!hasAssistant) {
+                            setTimeout(function() { sendMessage(window.PB_BUG_CONTEXT); }, 200);
+                        }
+                    }
+                    document.querySelectorAll('.pb-chat-item').forEach(function(el) {
+                        el.classList.toggle('active', el.dataset.chatId === existingBugChat);
+                    });
+                });
         } else {
             // No chat yet — auto-send bug context immediately
             startNewChat();
