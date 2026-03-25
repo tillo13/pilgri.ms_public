@@ -792,8 +792,8 @@ def signal():
     # Get all signal page data
     signal_data = get_signal_page_data()
 
-    # Get the closest pilgrim to any unclaimed origin (for the cryptic proximity hint)
-    closest_pilgrim = get_closest_pilgrim_to_origin()
+    # Reuse origin_sites from signal_data (avoid duplicate DB call)
+    closest_pilgrim = get_closest_pilgrim_to_origin(origin_sites=signal_data.get('origin_sites'))
 
     # Check for ARIA bonds to show on Signal page
     bond_fragment_hint = None

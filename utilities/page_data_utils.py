@@ -1304,13 +1304,24 @@ def get_colony_page_data(user_id, auth):
                 'total_finds': row['total_finds'],
             }
 
+    # Bulk-fetch ALL vehicle acquisition dates in one query (not per-vehicle)
+    vehicle_upgrades = {}
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT item_key, upgraded_at, tx_hash FROM pilgrim.player_upgrades
+            WHERE user_id = %s AND category = 'vehicles'
+        """, (user_id,))
+        for row in cur.fetchall():
+            vehicle_upgrades[row['item_key']] = row
+
+    from utilities.upgrade_image_utils import get_best_available_image
+
     for v in raw_vehicles:
         enriched = dict(v)
         vehicle_config = UPGRADE_CATALOG.get('vehicles', {}).get(v['vehicle_type'], {})
         level_stats = vehicle_config.get('levels', {}).get(v['level'], {})
 
         # Image fallback: walk back to nearest level with image (Lv2+ often empty)
-        from utilities.upgrade_image_utils import get_best_available_image
         enriched['image_url'] = get_best_available_image('vehicles', v['vehicle_type'], v['level'])
 
         # Add catalog data
@@ -1343,20 +1354,15 @@ def get_colony_page_data(user_id, auth):
         else:
             enriched['next_level'] = None  # Max level reached
 
-        # Get acquisition date from player_upgrades table
-        with db_cursor() as cur:
-            cur.execute("""
-                SELECT upgraded_at, tx_hash FROM pilgrim.player_upgrades
-                WHERE user_id = %s AND category = 'vehicles' AND item_key = %s
-            """, (user_id, v['vehicle_type']))
-            row = cur.fetchone()
-            if row:
-                enriched['acquired_at'] = row['upgraded_at']
-                enriched['acquired_at_str'] = row['upgraded_at'].strftime('%b %d, %Y at %I:%M %p') if row['upgraded_at'] else ''
-                enriched['tx_hash'] = row['tx_hash'] or ''
-            else:
-                enriched['acquired_at_str'] = 'Starting equipment'
-                enriched['tx_hash'] = ''
+        # Acquisition date from bulk-fetched data
+        upgrade_row = vehicle_upgrades.get(v['vehicle_type'])
+        if upgrade_row:
+            enriched['acquired_at'] = upgrade_row['upgraded_at']
+            enriched['acquired_at_str'] = upgrade_row['upgraded_at'].strftime('%b %d, %Y at %I:%M %p') if upgrade_row['upgraded_at'] else ''
+            enriched['tx_hash'] = upgrade_row['tx_hash'] or ''
+        else:
+            enriched['acquired_at_str'] = 'Starting equipment'
+            enriched['tx_hash'] = ''
 
         # Check expedition status
         exp_info = expedition_vehicles.get(v['vehicle_type'])
@@ -1398,15 +1404,20 @@ def get_colony_page_data(user_id, auth):
     # Get ARIA bond data (pending + completed)
     from utilities.aria_bond_utils import get_user_bonds
     raw_bonds = get_user_bonds(user_id)
+
+    # Bulk-fetch all partner names in one query (not per-bond)
+    partner_ids = [b.get('partner_id') for b in raw_bonds if b.get('partner_id')]
+    partner_names = {}
+    if partner_ids:
+        with db_cursor() as cur:
+            cur.execute("SELECT id, captain_name FROM pilgrim.users WHERE id = ANY(%s)", (partner_ids,))
+            for row in cur.fetchall():
+                partner_names[row['id']] = row['captain_name']
+
     aria_bonds = []
     for b in raw_bonds:
         partner_id = b.get('partner_id')
-        partner_name = None
-        if partner_id:
-            with db_cursor() as cur:
-                cur.execute("SELECT captain_name FROM pilgrim.users WHERE id = %s", (partner_id,))
-                row = cur.fetchone()
-                partner_name = row['captain_name'] if row else f"Captain {partner_id}"
+        partner_name = partner_names.get(partner_id, f"Captain {partner_id}") if partner_id else None
         aria_bonds.append({
             'id': b['id'],
             'landmark_name': b['landmark_name'],

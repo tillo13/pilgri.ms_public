@@ -128,6 +128,17 @@
       "The Signal / Shard Network (ARG)"
     ]
   },
+  "tools/andy_check.py": {
+    "description": "Andy Check — auto-manage Andy's colony on deploy.",
+    "exports": [
+      "check_crew_trails — Send idle crew members on trail missions.",
+      "check_expeditions — Launch expeditions for idle vehicles.",
+      "check_depot_upgrades — Buy the cheapest affordable upgrade if any available.",
+      "check_lab_research — Start cheapest available research if nothing active.",
+      "check_infrastructure_income — Claim accumulated infrastructure income.",
+      "main"
+    ]
+  },
   "tools/aria_snapshots.py": {
     "description": "ARIA Snapshots - Generate Instagram-style photos of life at the colony",
     "exports": [
@@ -1820,7 +1831,7 @@
       "get_claimable_origin_sites_for_user — Get only the Origin Sites a user can currently claim.",
       "get_active_echo_sites — Get all active Echo Sites",
       "get_recent_echo_claims — Get recent Echo Site claims for the /signal page",
-      "get_origin_site_visitors — Get visitors for an Origin Site, grouped by tier",
+      "get_origin_site_visitors — Get visitors for a single Origin Site — prefer _bulk_get_origin_visitors() for multiple sites",
       "get_expeditions_since_last_echo — Count expeditions since user's last echo site spawn",
       "maybe_spawn_echo_site — Roll dice for Echo Site spawn with pity timer.",
       "claim_echo_site — Claim an Echo Site. Returns claim rank and tier."
@@ -1876,6 +1887,7 @@
       "get_infrastructure_level — Get the current level of an infrastructure building.",
       "ensure_upgrades_table — Ensure the player_upgrades table exists with build timer columns.",
       "get_user_upgrade_level — Get user's current USABLE level for an upgradeable item.",
+      "get_all_upgrade_build_statuses — Bulk-fetch build statuses for ALL items in a category in ONE query.",
       "get_upgrade_build_status — Get the build status for an upgrade.",
       "count_concurrent_upgrades — Count how many upgrades are currently in progress (pending_level set, ready_at in future).",
       "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
@@ -1883,8 +1895,7 @@
       "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
       "get_upgrade_stats — Get stats for an item at a given level - handles both upgrades and infrastructure",
       "get_next_upgrade_cost — Get cost to upgrade from current_level to next level. Returns None if max.",
-      "perform_upgrade — Upgrade an item to the next level.",
-      "get_upgrade_catalog_for_user — Get the full upgrade catalog enriched with user's current levels and affordability."
+      "perform_upgrade — Upgrade an item to the next level."
     ],
     "keywords": "upgrade cost, level, tier, build time, upgrade effects, passive income multiplier, power core"
   },
@@ -2525,7 +2536,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

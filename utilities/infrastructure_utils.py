@@ -129,6 +129,34 @@ def calculate_generation_rate(structure_type, latitude, longitude, level: int = 
     return catalog_rate
 
 
+def _check_build_requirements_fast(structure_type, user_active_types, all_levels):
+    """Check build requirements using pre-fetched data (no DB calls).
+    Used by get_infrastructure_page_data to avoid N+1 queries."""
+    definition = INFRASTRUCTURE_CATALOG.get(structure_type)
+    if not definition:
+        return False, ['Invalid structure type']
+
+    missing = []
+
+    # Check basic requirements (building must exist)
+    for req in definition.get('requirements', []):
+        if req not in user_active_types:
+            missing.append(req)
+
+    # Check unlock_requirements (building must be at specific level)
+    for req_building, req_level in definition.get('unlock_requirements', {}).items():
+        if req_building not in user_active_types:
+            missing.append(f"{req_building} (need Lv{req_level})")
+        else:
+            current_level = all_levels.get(req_building, 1)
+            if current_level < req_level:
+                catalog = INFRASTRUCTURE_CATALOG.get(req_building, {})
+                building_name = catalog.get('name', req_building)
+                missing.append(f"{building_name} Lv{req_level} (have Lv{current_level})")
+
+    return len(missing) == 0, missing
+
+
 def get_build_requirements(structure_type, user_id):
     """Check if user meets requirements to build this structure.
 
@@ -988,18 +1016,18 @@ def get_infrastructure_page_data(user_id: int) -> dict:
     coords = get_or_set_user_mars_home(user_id)
     existing_raw = get_user_infrastructure(user_id)
 
-    # Enrich buildings with catalog data, separate active vs building
-    from utilities.upgrades_utils import get_infrastructure_level, get_upgrade_build_status
+    # Bulk-fetch ALL levels and build statuses in 2 queries (not per-building)
+    from utilities.upgrades_utils import get_all_infrastructure_levels, get_all_upgrade_build_statuses
+    all_levels = get_all_infrastructure_levels(user_id, structures=existing_raw)
+    all_build_statuses = get_all_upgrade_build_statuses(user_id, 'infrastructure')
+
     existing = []  # Only active (completed) buildings for "Your Colony"
     building_infrastructure = []  # Still building - goes in "Under Construction"
 
     for building in existing_raw:
         enriched = dict(building)
         catalog_def = INFRASTRUCTURE_CATALOG.get(building['structure_type'], {})
-        # Get current level for this building
-        current_level = get_infrastructure_level(user_id, building['structure_type'])
-        if current_level < 1:
-            current_level = 1
+        current_level = max(1, all_levels.get(building['structure_type'], 1))
         level_data = catalog_def.get('levels', {}).get(current_level, {})
 
         enriched['image_url'] = level_data.get('image_url', '')
@@ -1017,8 +1045,8 @@ def get_infrastructure_page_data(user_id: int) -> dict:
         enriched['max_level'] = catalog_def.get('max_level', 10)
         enriched['level_name'] = level_data.get('name', f'Level {current_level}')
 
-        # Check for in-progress upgrade
-        upgrade_status = get_upgrade_build_status(user_id, 'infrastructure', building['structure_type'])
+        # Check for in-progress upgrade (from bulk-fetched data)
+        upgrade_status = all_build_statuses.get(building['structure_type'])
         enriched['is_upgrading'] = upgrade_status.get('is_building', False) if upgrade_status else False
         enriched['upgrade_status'] = upgrade_status
 
@@ -1033,7 +1061,6 @@ def get_infrastructure_page_data(user_id: int) -> dict:
             enriched['is_max_level'] = True
 
         # Use level-based catalog rate
-        # For solar_array, calculate based on latitude + level; for others, use catalog value
         if building['structure_type'] == 'solar_array':
             enriched['generation_rate'] = calculate_generation_rate('solar_array', coords['latitude'], coords['longitude'], current_level)
         else:
@@ -1046,14 +1073,15 @@ def get_infrastructure_page_data(user_id: int) -> dict:
 
     # Include both active AND building for type checking (don't allow duplicate builds)
     existing_types = {b['structure_type']: b for b in existing_raw}
+    # Pre-compute user active types + levels for build requirements (avoid re-fetching)
+    user_active_types = [b['structure_type'] for b in existing_raw if b.get('status') == 'active']
 
     available_structures = []
     for structure_type, definition in INFRASTRUCTURE_CATALOG.items():
         if structure_type in existing_types:
             continue
-        # NOTE: No longer hiding advanced buildings - they show but are locked until prereqs met
 
-        can_build, missing = get_build_requirements(structure_type, user_id)
+        can_build, missing = _check_build_requirements_fast(structure_type, user_active_types, all_levels)
         rate = calculate_generation_rate(structure_type, coords['latitude'], coords['longitude'])
 
         # Flatten level 1 data into definition for template compatibility

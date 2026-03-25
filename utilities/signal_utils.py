@@ -658,25 +658,28 @@ def get_recent_echo_claims(limit: int = 10) -> List[Dict]:
         return []
 
 def get_origin_site_visitors(site_id: int) -> Dict:
-    """Get visitors for an Origin Site, grouped by tier"""
+    """Get visitors for a single Origin Site — prefer _bulk_get_origin_visitors() for multiple sites"""
+    result = _bulk_get_origin_visitors([site_id])
+    return result.get(site_id, {'founder': None, 'early_witnesses': [], 'pioneers': [], 'pilgrims_count': 0, 'total_visitors': 0})
+
+
+def _bulk_get_origin_visitors(site_ids: List[int]) -> Dict[int, Dict]:
+    """Bulk-fetch visitors for multiple Origin Sites in ONE query. Returns {site_id: visitors_dict}."""
+    empty = lambda: {'founder': None, 'early_witnesses': [], 'pioneers': [], 'pilgrims_count': 0, 'total_visitors': 0}
+    if not site_ids:
+        return {}
     try:
         with db_cursor() as cur:
             cur.execute("""
-                SELECT commander_name, claim_rank, claim_tier, claimed_at, sol_number
+                SELECT origin_site_id, commander_name, claim_rank, claim_tier, claimed_at, sol_number
                 FROM pilgrim.site_claims
-                WHERE site_type = 'origin' AND origin_site_id = %s
-                ORDER BY claim_rank ASC
-            """, (site_id,))
+                WHERE site_type = 'origin' AND origin_site_id = ANY(%s)
+                ORDER BY origin_site_id, claim_rank ASC
+            """, (site_ids,))
 
-            visitors = {
-                'founder': None,
-                'early_witnesses': [],  # Ranks 2-3
-                'pioneers': [],         # Ranks 4-10
-                'pilgrims_count': 0,    # Ranks 11-42
-                'total_visitors': 0
-            }
-
+            results = {sid: empty() for sid in site_ids}
             for row in cur.fetchall():
+                sid = row['origin_site_id']
                 rank = row['claim_rank']
                 visitor = {
                     'name': row['commander_name'],
@@ -684,6 +687,7 @@ def get_origin_site_visitors(site_id: int) -> Dict:
                     'tier': row['claim_tier'],
                     'sol': row['sol_number']
                 }
+                visitors = results[sid]
                 visitors['total_visitors'] += 1
 
                 if rank == 1:
@@ -695,10 +699,10 @@ def get_origin_site_visitors(site_id: int) -> Dict:
                 elif rank <= 42:
                     visitors['pilgrims_count'] += 1
 
-            return visitors
+            return results
     except Exception as e:
-        logger.error(f"Failed to get origin site visitors: {e}")
-        return {'founder': None, 'early_witnesses': [], 'pioneers': [], 'pilgrims_count': 0, 'total_visitors': 0}
+        logger.error(f"Failed to bulk get origin site visitors: {e}")
+        return {sid: empty() for sid in site_ids}
 
 
 def get_expeditions_since_last_echo(user_id: int) -> int:
@@ -957,10 +961,13 @@ def get_signal_page_data() -> Dict:
     claimed_origin_sites = [s for s in origin_sites if s['is_claimed']]
     unclaimed_origin_sites = [s for s in origin_sites if not s['is_claimed']]
 
-    # Get claimed origin memories and visitors for display
+    # Bulk-fetch ALL origin visitors in one query (not per-site)
+    all_visitors = _bulk_get_origin_visitors([s['id'] for s in claimed_origin_sites])
+
+    # Build origin memories using bulk-fetched visitors
     origin_memories = []
     for s in claimed_origin_sites:
-        visitors = get_origin_site_visitors(s['id'])
+        visitors = all_visitors.get(s['id'], {'founder': None, 'early_witnesses': [], 'pioneers': [], 'pilgrims_count': 0, 'total_visitors': 0})
         origin_memories.append({
             'site_code': s['site_code'],
             'mission_name': s['mission_name'],
@@ -1006,15 +1013,15 @@ def generate_blockchain_message(site_type: str, site_code: str, commander_name: 
         return f"ECHO://{site_code}//{rank_label}//FINDER:{commander_name}//SOL:{sol}"
 
 
-def get_closest_pilgrim_to_origin() -> Optional[Dict]:
+def get_closest_pilgrim_to_origin(origin_sites: List[Dict] = None) -> Optional[Dict]:
     """
     Find the commander who got closest to any unclaimed Origin Site.
-    Checks ALL expeditions with coordinates (not just completed ones).
-    Returns None only if no expeditions exist at all.
+    Accepts pre-fetched origin_sites to avoid duplicate DB call.
     """
     try:
-        # Get unclaimed origin sites
-        origin_sites = get_all_origin_sites()
+        # Use pre-fetched sites or fetch fresh
+        if origin_sites is None:
+            origin_sites = get_all_origin_sites()
         unclaimed = [s for s in origin_sites if not s['is_claimed']]
 
         if not unclaimed:

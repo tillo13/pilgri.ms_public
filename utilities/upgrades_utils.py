@@ -277,6 +277,50 @@ def _complete_pending_upgrade(user_id: int, category: str, item_key: str, new_le
         logger.error(f"Failed to complete pending upgrade: {e}")
 
 
+def get_all_upgrade_build_statuses(user_id: int, category: str) -> Dict[str, Optional[Dict]]:
+    """Bulk-fetch build statuses for ALL items in a category in ONE query.
+    Returns {item_key: status_dict_or_None}."""
+    from datetime import datetime, timezone
+    try:
+        ensure_upgrades_table()
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT item_key, level, pending_level, ready_at FROM pilgrim.player_upgrades
+                WHERE user_id = %s AND category = %s
+            """, (user_id, category))
+            rows = cur.fetchall()
+    except Exception as e:
+        logger.error(f"Failed to bulk-fetch build statuses: {e}")
+        return {}
+
+    now = datetime.now(timezone.utc)
+    results = {}
+    for row in rows:
+        key = row['item_key']
+        pending_level = row['pending_level']
+        ready_at = row['ready_at']
+
+        if not pending_level or not ready_at:
+            results[key] = {'is_building': False, 'current_level': row['level']}
+            continue
+
+        ready_at_aware = ready_at.replace(tzinfo=timezone.utc) if ready_at.tzinfo is None else ready_at
+        seconds_remaining = max(0, (ready_at_aware - now).total_seconds())
+
+        if seconds_remaining <= 0:
+            _complete_pending_upgrade(user_id, category, key, pending_level)
+            results[key] = {'is_building': False, 'current_level': pending_level}
+        else:
+            results[key] = {
+                'is_building': True,
+                'pending_level': pending_level,
+                'ready_at': ready_at_aware.isoformat(),
+                'seconds_remaining': int(seconds_remaining),
+                'current_level': row['level']
+            }
+    return results
+
+
 def get_upgrade_build_status(user_id: int, category: str, item_key: str) -> Optional[Dict]:
     """
     Get the build status for an upgrade.
