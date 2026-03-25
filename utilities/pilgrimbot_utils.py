@@ -738,8 +738,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         # Phase 1: Quick Haiku call with just persona + knowledge (~10KB)
         phase1_system = system_base + (
             "\n\nIMPORTANT: Give a helpful, concise first response. If you need specific data "
-            "(formulas, player stats, code) to give a complete answer, say what you know and note "
-            "you're pulling up the details — a follow-up with exact data will come shortly."
+            "(formulas, player stats, code, bug tracker, brainstorm discussions) to give a complete answer, "
+            "say what you know and note you're pulling up the details — a follow-up with exact data will come shortly. "
+            "NEVER say you don't have access to something. You always have access — the data just takes a moment to load."
         )
 
         active_tools = [PLAYER_DATA_TOOL]
