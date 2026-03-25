@@ -207,27 +207,25 @@
         if (!BUG_ID) return [];
         const resp = (lastResponseText || '').toLowerCase();
         const suggestions = [];
+        const hadDeepDive = resp.includes('root cause') || resp.includes('file') || resp.length > 3000;
 
-        // Always offer test steps — QA's core job
-        suggestions.push({label: 'Write test steps for QA', q: 'Write detailed QA test steps to verify this bug is fixed. Be specific about what to click, type, and expect to see.'});
-
-        // If response mentions files/code, offer deeper dive
-        if (resp.match(/\.py|\.js|\.html|\.css|function|class |def /)) {
-            suggestions.push({label: 'Show me the exact code', q: 'Show me the exact code that needs to change. Give file paths, line numbers, and what the fix looks like.'});
+        if (!hadDeepDive) {
+            // Light response — offer deep actions
+            suggestions.push({label: 'Deep dive into the code', q: 'Look through the codebase for this bug. What files are involved? What\'s the root cause? Show me the exact code.'});
+            suggestions.push({label: 'Check related bugs', q: 'Search the bug tracker — are there related or duplicate bugs? Should any be merged?'});
+            suggestions.push({label: 'Write QA test steps', q: 'Write detailed QA test steps to verify this bug. What should I click, type, and expect to see?'});
+            suggestions.push({label: 'Dev handoff summary', q: 'Write a concise dev handoff: root cause, fix approach, files to change, and test steps.'});
         } else {
-            suggestions.push({label: 'What files need to change?', q: 'What specific files and functions need to change to fix this? Give me exact file paths and line numbers.'});
+            // Deep response — offer follow-ups
+            suggestions.push({label: 'Write test steps for QA', q: 'Write detailed QA test steps to verify this bug is fixed. Be specific about what to click, type, and expect to see.'});
+            if (resp.match(/\.py|\.js|\.html|function|class |def /)) {
+                suggestions.push({label: 'Show me the exact code', q: 'Show me the exact code that needs to change. Give file paths, line numbers, and what the fix looks like.'});
+            } else {
+                suggestions.push({label: 'What files need to change?', q: 'What specific files and functions need to change to fix this?'});
+            }
+            suggestions.push({label: 'Should we merge these bugs?', q: 'Based on what you found, should any related bugs be merged or closed as duplicates?'});
+            suggestions.push({label: 'Summarize for dev handoff', q: 'Write a concise dev handoff summary: root cause, fix approach, files to change, QA test steps.'});
         }
-
-        // If response mentions other bugs or duplicates
-        if (resp.match(/related|duplicate|similar|#\d+/)) {
-            suggestions.push({label: 'Should we merge these bugs?', q: 'Based on the related bugs you found, should any be merged or closed as duplicates? Which ones and why?'});
-        } else {
-            suggestions.push({label: 'Find related bugs', q: 'Are there other bugs in the tracker that might be related or duplicates of this one?'});
-        }
-
-        // Summarize for handoff to dev
-        suggestions.push({label: 'Summarize for dev handoff', q: 'Write a concise dev handoff summary: root cause, suggested fix approach, files to change, and QA test steps. Keep it actionable.'});
-
         return suggestions;
     }
 

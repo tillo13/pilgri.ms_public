@@ -2794,16 +2794,12 @@ def pilgrimbot():
                 if len(seen) >= 5:
                     break
             related_text = '\n'.join(related_lines) if related_lines else '  (none found)'
-            bug_context = (f"Research everything about this bug so we can discuss it:\n\n"
+            bug_context = (f"Give me a quick summary of this bug — what it is, current status, and your initial take:\n\n"
                 f"Bug #{bug['id']}: {bug['name']}\n"
                 f"Status: {bug['status']} | Priority: {bug['priority']} | Type: {bug['type']}\n"
                 f"Description: {bug.get('description','')}\n"
-                f"To Validate: {bug.get('to_validate','')}\n"
                 f"QA Notes: {bug.get('qa_notes','')}\n\n"
-                f"Possibly related bugs:\n{related_text}\n\n"
-                f"Look through the codebase and tell me: 1) What's likely causing this? "
-                f"2) Are any related bugs duplicates or connected? "
-                f"3) What's the fix? 4) What should QA test to verify?")
+                f"Keep it brief — just the essentials. I'll ask follow-up questions if I need more.")
     bug_name = bug['name'] if bug_id and bug else ''
     # Combine brainstorm + bug context (brainstorm as initial message, bug as pre-load)
     combined_context = brainstorm_context or bug_context
