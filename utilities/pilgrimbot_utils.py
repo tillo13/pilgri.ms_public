@@ -165,10 +165,27 @@ READ_FILE_TOOL = {
 from utilities.pilgrimbot_data import PLAYER_DATA_TOOL, PLAYER_DATA_MAP, query_player_data  # noqa: F401
 
 
+# === Helpers ===
+
+def _strip_markdown_json(text):
+    """Strip markdown code fence from Claude's JSON responses."""
+    text = text.strip()
+    if text.startswith('```'):
+        text = text.split('\n', 1)[-1].rsplit('```', 1)[0].strip()
+    return text
+
+
 # === Database ===
 
+_tables_ensured = False
+
 def ensure_pilgrimbot_table():
-    """Create the pilgrimbot conversations table + role column if they don't exist."""
+    """Create the pilgrimbot conversations table + role column if they don't exist.
+    Uses a module-level flag so schema checks only run once per process."""
+    global _tables_ensured
+    if _tables_ensured:
+        return
+    _tables_ensured = True
     with db_cursor(commit=True) as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pilgrim.pilgrimbot_conversations (
@@ -245,18 +262,20 @@ def save_message(user_id, chat_id, role, content, title=None):
 
 
 def get_chat_history(user_id, chat_id, limit=MAX_HISTORY):
-    """Load conversation history for a specific chat."""
+    """Load conversation history for a specific chat. Uses subquery to fetch only last N rows."""
     with db_cursor() as cur:
         cur.execute("""
-            SELECT role, content, created_at FROM pilgrim.pilgrimbot_conversations
-            WHERE user_id = %s AND chat_id = %s
-            ORDER BY created_at ASC
-        """, (user_id, str(chat_id)))
+            SELECT role, content, created_at FROM (
+                SELECT role, content, created_at FROM pilgrim.pilgrimbot_conversations
+                WHERE user_id = %s AND chat_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+            ) sub ORDER BY created_at ASC
+        """, (user_id, str(chat_id), limit))
         rows = cur.fetchall()
-    # Return last N messages
     return [{"role": r['role'], "content": r['content'],
              "created_at": r['created_at'].isoformat() if r.get('created_at') else None}
-            for r in rows[-limit:]]
+            for r in rows]
 
 
 def get_user_chats(user_id):
@@ -394,505 +413,20 @@ def _find_best_section(content, search_terms):
     return positions[0][1]
 
 
-def load_codemap():
-    """Load codemap.json from the local project."""
-    local_path = os.path.join(PROJECT_ROOT, "codemap.json")
-    if os.path.exists(local_path):
-        with open(local_path) as f:
-            return json.load(f)
-    return {}
-
-
-_math_registry_cache = None
-_endgame_registry_cache = None
-
-def load_math_registry():
-    """Load math_registry.json — authoritative formula reference for math questions."""
-    global _math_registry_cache
-    if _math_registry_cache is not None:
-        return _math_registry_cache
-    local_path = os.path.join(PROJECT_ROOT, "math_registry.json")
-    if os.path.exists(local_path):
-        with open(local_path) as f:
-            _math_registry_cache = json.load(f)
-            return _math_registry_cache
-    return {}
-
-
-def load_endgame_registry():
-    """Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system."""
-    global _endgame_registry_cache
-    if _endgame_registry_cache is not None:
-        return _endgame_registry_cache
-    local_path = os.path.join(PROJECT_ROOT, "endgame_registry.json")
-    if os.path.exists(local_path):
-        with open(local_path) as f:
-            _endgame_registry_cache = json.load(f)
-            return _endgame_registry_cache
-    return {}
-
-
-def find_relevant_math(message, max_formulas=5):
-    """Keyword-match the question to only the relevant math_registry sections.
-    Returns a slim dict with only matching formulas + referenced constants.
-    Same pattern as codemap file matching — avoids dumping 48KB into context."""
-    registry = load_math_registry()
-    if not registry:
-        return None
-
-    msg_lower = message.lower()
-    words = set(w.strip("?.,!()\"'") for w in msg_lower.split() if len(w) > 2)
-
-    # Score each formula by keyword overlap with name + description + key
-    scored = []
-    for key, formula in registry.get('formulas', {}).items():
-        searchable = f"{key} {formula.get('name', '')} {formula.get('description', '')}".lower()
-        # Split formula key parts: "shard_generation.effective_rate" -> ["shard", "generation", "effective", "rate"]
-        key_words = set(key.replace('.', ' ').replace('_', ' ').split())
-        score = 0
-        for w in words:
-            if w in searchable:
-                score += 2
-            # Partial match on key words (e.g. "shards" matches "shard")
-            for kw in key_words:
-                if w.startswith(kw[:4]) or kw.startswith(w[:4]):
-                    score += 1
-        if score > 0:
-            scored.append((score, key, formula))
-
-    if not scored:
-        # No match — return just constants as a lightweight fallback
-        return {'constants': registry.get('constants', {})}
-
-    scored.sort(key=lambda x: -x[0])
-    top = scored[:max_formulas]
-
-    # Build slim result with only matched formulas
-    result = {'formulas': {}}
-    for _, key, formula in top:
-        result['formulas'][key] = formula
-
-    # Include only constants referenced by matched formulas
-    all_text = json.dumps(result['formulas']).upper()
-    relevant_constants = {}
-    for cname, cval in registry.get('constants', {}).items():
-        if cname.upper() in all_text:
-            relevant_constants[cname] = cval
-    if relevant_constants:
-        result['constants'] = relevant_constants
-
-    # Include tables if formula references them
-    for table_key in ['terrain_modifiers', 'vehicle_stats', 'payout_multipliers', 'stat_divisor_reference']:
-        if table_key.upper().replace('_', '') in all_text.replace('_', '') or table_key in all_text.lower():
-            if table_key in registry:
-                result[table_key] = registry[table_key]
-
-    return result
-
-
-def find_relevant_files(question, max_files=4):
-    """Use codemap to find the most relevant files for a question."""
-    codemap = load_codemap()
-    if not codemap:
-        return []
-
-    # Score each file by keyword matches against its description + exports
-    stopwords = {"have", "been", "this", "that", "with", "from", "they", "what",
-                 "does", "will", "would", "could", "should", "about", "there",
-                 "their", "than", "then", "also", "just", "some", "other", "into",
-                 "over", "after", "before", "many", "much", "most", "more", "very",
-                 "like", "know", "think", "make", "made", "come", "came", "gets",
-                 "going", "been", "being", "were", "each", "which", "when", "where",
-                 "tried", "figure", "couple", "months", "times", "past", "never"}
-    words = set(w.lower().strip("?.,!()\"'") for w in question.split()
-                if len(w) > 3 and w.lower().strip("?.,!()\"'") not in stopwords)
-    scored = []
-    for filepath, info in codemap.items():
-        # Build searchable text from description + exports
-        text_parts = [filepath.lower()]
-        if "description" in info:
-            text_parts.append(info["description"].lower())
-        if "exports" in info:
-            text_parts.append(" ".join(info["exports"]).lower())
-        if "keywords" in info:
-            text_parts.append(info["keywords"].lower())
-        searchable = " ".join(text_parts)
-        # Count keyword hits
-        score = sum(1 for w in words if w in searchable)
-        if score > 0:
-            scored.append((score, filepath))
-
-    scored.sort(key=lambda x: -x[0])
-    paths = [path for _, path in scored]
-    # Prefer Python utilities over JS/templates for answer quality
-    py_utils = [p for p in paths if p.startswith("utilities/") and p.endswith(".py")]
-    others = [p for p in paths if p not in set(py_utils)]
-    result = py_utils[:2] + others[:1]  # 2 utility files + 1 other
-    return result[:max_files]
-
-
-# === Dynamic Context (brainstorm + bugs) ===
-
-def load_dynamic_context(message):
-    """Load extra context from DB when message mentions specific topics."""
-    msg_lower = message.lower()
-    extra = ""
-
-    # Brainstorm discussions
-    BRAINSTORM_KEYWORDS = {
-        'signal': 'signal', 'tech tree': 'tech-tree', 'progression': 'progression',
-        'trail': 'trail-network', 'icon': 'icon-redesign', 'colony redesign': 'icon-redesign',
-        'aria meeting': 'aria-meetings', 'bonds': 'aria-meetings',
-        'sv economy': 'sv-economy', 'science value': 'sv-economy',
-    }
-    matched_pages = set()
-    for keyword, page_key in BRAINSTORM_KEYWORDS.items():
-        if keyword in msg_lower:
-            matched_pages.add(page_key)
-
-    if matched_pages:
-        try:
-            from utilities.db_brainstorm import get_comments_for_page
-            for page_key in matched_pages:
-                comments = get_comments_for_page(page_key)
-                if comments:
-                    extra += f"\n--- Brainstorm: {page_key} ({len(comments)} comments) ---\n"
-                    for c in comments[-15:]:
-                        extra += f"[{c.get('author_name', 'anon')}]: {str(c.get('comment_text', ''))[:200]}\n"
-        except Exception as e:
-            logger.warning(f"Failed to load brainstorm context: {e}")
-
-    # Speed test — when Luke asks "is it slow?" or "are you deploying?"
-    speed_keywords = ['slow', 'speed', 'deploying', 'updating', 'laggy', 'loading',
-                      'performance', 'broken site', 'site down', 'page load']
-    if any(k in msg_lower for k in speed_keywords):
-        try:
-            with db_cursor() as cur:
-                cur.execute("""SELECT results, slowest_page, slowest_time, all_ok, tested_at
-                               FROM speed_test_runs ORDER BY tested_at DESC LIMIT 1""")
-                row = cur.fetchone()
-            if row:
-                age_mins = (datetime.now() - row['tested_at']).total_seconds() / 60
-                extra += f"\n--- Site Speed (last test: {int(age_mins)} min ago) ---\n"
-                extra += f"Slowest: {row['slowest_page']} at {row['slowest_time']}s | All OK: {row['all_ok']}\n"
-                if isinstance(row['results'], str):
-                    pages = json.loads(row['results'])
-                else:
-                    pages = row['results']
-                for p in pages:
-                    extra += f"  {p['page']}: {p['time_s']}s {'OK' if p['status'] == 'ok' else p['status']}\n"
-                if age_mins > 60:
-                    extra += "(Results are over an hour old. Suggest running a new test at /admin/speed)\n"
-            else:
-                extra += "\n--- Site Speed ---\nNo speed tests have been run yet. Run one at /admin/speed\n"
-        except Exception as e:
-            logger.warning(f"Failed to load speed context: {e}")
-
-    # Bug tracker
-    bug_keywords = ['bug', 'issue', 'broken', 'fix', 'reported', 'tracker']
-    if any(k in msg_lower for k in bug_keywords):
-        try:
-            from utilities.db_bugs import get_bug_stats, search_bugs
-            stats = get_bug_stats()
-            if stats:
-                extra += f"\n--- Bug Tracker ---\n"
-                extra += (f"Active: {stats.get('active_count', 0)}, "
-                         f"In Review: {stats.get('awaiting_qa', 0)}, "
-                         f"P1: {stats.get('p1_count', 0)}, P2: {stats.get('p2_count', 0)}, "
-                         f"Completed: {stats.get('completed_count', 0)}\n")
-            # Search for specific bugs mentioned
-            words = [w for w in msg_lower.split() if len(w) > 4
-                     and w not in {'about', 'these', 'there', 'where', 'which', 'being', 'broken'}]
-            if words:
-                results = search_bugs(' '.join(words[:2]))
-                if results:
-                    extra += "Matching bugs:\n"
-                    for b in results[:5]:
-                        extra += f"  #{b['id']}: {b['name']} ({b['status']}/{b['priority']})\n"
-        except Exception as e:
-            logger.warning(f"Failed to load bug context: {e}")
-
-    return extra
+# Registries + search + dynamic context extracted to pilgrimbot_context.py
+from utilities.pilgrimbot_context import (  # noqa: F401
+    load_codemap, load_math_registry, load_endgame_registry,
+    find_relevant_math, find_relevant_files, load_dynamic_context,
+)
 
 
 # === Bug/Feature Reports (delegates to db_bugs) ===
 
-def create_bug_from_question(question, user_display_name="PilgrimBot User", description=None):
-    """Save a bug/feature report via the unified bug tracker."""
-    try:
-        from utilities.db_bugs import create_bug
-        title = question[:200]
-        bug = create_bug(name=title, description=description or '',
-                         source='PilgrimBot', type='Bug')
-        if bug:
-            logger.info(f"PilgrimBot report saved: {title[:60]}")
-            return True
-        return False
-    except Exception as e:
-        logger.warning(f"Report save failed: {e}")
-        return False
-
-
-def _cross_link_related_bugs(bug_id, bug_name, affected_areas):
-    """Background task: find related bugs and cross-link with comments."""
-    try:
-        from utilities.db_bugs import add_bug_comment
-        related = _find_related_bugs(bug_id, bug_name, affected_areas)
-        if not related:
-            logger.info(f"Bug #{bug_id}: no related bugs found")
-            return
-        # Comment on the new bug listing related ones
-        rel_lines = []
-        for r in related:
-            reason = r.get('_relation', '')
-            line = f"- **#{r['id']}:** {r['name']} ({r['status']}/{r['priority']})"
-            if reason:
-                line += f" — {reason}"
-            rel_lines.append(line)
-        add_bug_comment(bug_id, 'PilgrimBot',
-            f"**Related bugs found ({len(related)}):**\n" + "\n".join(rel_lines) +
-            "\n\nConsider checking if any are duplicates or can be fixed together.")
-        # Comment on each related bug pointing back
-        for r in related:
-            add_bug_comment(r['id'], 'PilgrimBot',
-                f"**Possibly related:** New bug [#{bug_id}: {bug_name}] "
-                f"was just created. May overlap with this bug.")
-        logger.info(f"Bug #{bug_id}: cross-linked with {len(related)} related bugs")
-    except Exception as e:
-        logger.error(f"Bug #{bug_id} cross-link failed: {e}")
-
-
-def _find_related_bugs(new_bug_id, title, affected_areas=""):
-    """Find bugs related to a newly created one via keyword search.
-    Searches title words + affected area words against all active bugs.
-    Returns up to 5 related bugs (excludes the new bug itself)."""
-    from utilities.db_bugs import search_bugs
-    stopwords = {'the', 'and', 'for', 'not', 'but', 'with', 'from', 'that', 'this',
-                 'does', 'doesn', 'have', 'has', 'are', 'was', 'were', 'been', 'being',
-                 'both', 'give', 'gives', 'when', 'after', 'before', 'should', 'could',
-                 'page', 'button', 'click', 'show', 'display'}
-    # Extract meaningful words from title + affected areas
-    raw = f"{title} {affected_areas}".lower()
-    words = [w.strip(".,!?()\"'#") for w in raw.split()
-             if len(w.strip(".,!?()\"'#")) > 3 and w.strip(".,!?()\"'#") not in stopwords]
-    # Dedupe while preserving order
-    seen = set()
-    unique_words = []
-    for w in words:
-        if w not in seen:
-            seen.add(w)
-            unique_words.append(w)
-
-    # Search each keyword, score by hit count
-    bug_scores = {}  # bug_id -> {bug_data, score}
-    for word in unique_words[:6]:
-        results = search_bugs(word)
-        for b in results:
-            if b['id'] == new_bug_id:
-                continue
-            if b['id'] in bug_scores:
-                bug_scores[b['id']]['score'] += 1
-            else:
-                bug_scores[b['id']] = {'bug': b, 'score': 1}
-
-    # Sort by score (most keyword overlap first)
-    ranked = sorted(bug_scores.values(), key=lambda x: -x['score'])
-    candidates = [item['bug'] for item in ranked[:8]]
-    if not candidates:
-        return []
-
-    # Haiku pass: let AI rank relevance and explain connections
-    try:
-        client = create_client(model=MODEL)
-        bug_list = "\n".join(
-            f"#{b['id']}: {b['name']} ({b['status']}/{b['priority']}) — {(b.get('description') or '')[:150]}"
-            for b in candidates
-        )
-        _s = _time.time()
-        resp = client.client.messages.create(
-            model=MODEL, max_tokens=500, temperature=0,
-            system="You identify related software bugs. Return ONLY valid JSON, no markdown.",
-            messages=[{"role": "user", "content": f"""New bug: "{title}"
-Affected areas: {affected_areas}
-
-Candidate related bugs:
-{bug_list}
-
-Return JSON array of the TRULY related bugs (same system, similar symptom, or likely same root cause).
-Exclude bugs that just happen to share a common word but are about different issues.
-Format: [{{"id": 123, "reason": "one sentence why it's related"}}]
-Return empty array [] if none are truly related."""}]
-        )
-        log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_related_bugs', duration_ms=int((_time.time() - _s) * 1000))
-        text = resp.content[0].text.strip()
-        if text.startswith('```'):
-            text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
-        ai_picks = json.loads(text)
-        # Filter candidates to only AI-approved ones, preserving bug data
-        ai_ids = {p['id'] for p in ai_picks}
-        ai_reasons = {p['id']: p.get('reason', '') for p in ai_picks}
-        result = []
-        for b in candidates:
-            if b['id'] in ai_ids:
-                b['_relation'] = ai_reasons.get(b['id'], '')
-                result.append(b)
-        return result[:5]
-    except Exception as e:
-        logger.warning(f"Haiku related-bug ranking failed, using SQL results: {e}")
-        return candidates[:5]
-
-
-def create_bug_from_conversation(chat_id, user_id, title_override=None, priority_override=None):
-    """Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.
-    Includes evidence trail: key data points, source references, and DB lookup info.
-    Returns {'success': bool, 'bug_id': int, 'title': str} or {'success': False, 'error': str}."""
-    history = get_chat_history(user_id, chat_id, limit=40)
-    if not history:
-        return {'success': False, 'error': 'No conversation found'}
-
-    # Build full conversation for Claude (use more chars for longer threads)
-    convo_text = ""
-    for i, msg in enumerate(history):
-        role = "QA" if msg['role'] == 'user' else "PilgrimBot"
-        ts = msg.get('created_at', '')
-        convo_text += f"[{i+1}] {role} ({ts}): {msg['content'][:800]}\n\n"
-
-    client = create_client(model=MODEL)
-    _s = _time.time()
-    resp = client.client.messages.create(
-        model=MODEL, max_tokens=1000, temperature=0,
-        system="You extract structured bug reports from QA conversations. Return ONLY valid JSON, no markdown.",
-        messages=[{"role": "user", "content": f"""Read this QA conversation ({len(history)} messages) and extract a bug report.
-
-CONVERSATION:
-{convo_text[-6000:]}
-
-Return JSON with exactly these fields:
-{{
-  "title": "Short bug title (under 100 chars)",
-  "description": "Clear description: what's wrong, expected vs actual behavior",
-  "priority": "P1 or P2 or P3",
-  "evidence": "Key data points and findings from the conversation — specific numbers, formulas, behaviors observed. Include which message numbers [N] contain the most important evidence.",
-  "affected_areas": "Which game systems/pages are affected (e.g. shard generation, colony page, expeditions)"
-}}"""}]
-    )
-    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug', duration_ms=int((_time.time() - _s) * 1000))
-    try:
-        text = resp.content[0].text.strip()
-        if text.startswith('```'):
-            text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
-        parsed = json.loads(text)
-    except (json.JSONDecodeError, IndexError) as e:
-        logger.warning(f"Bug extraction parse error: {e}")
-        return {'success': False, 'error': 'Could not parse conversation into a bug'}
-
-    from utilities.db_bugs import create_bug, add_bug_comment
-    bug = create_bug(
-        name=(title_override or parsed.get('title', 'PilgrimBot bug'))[:200],
-        description=parsed.get('description', '')[:2000],
-        priority=priority_override or parsed.get('priority', 'P3'),
-        source='PilgrimBot'
-    )
-    if not bug:
-        return {'success': False, 'error': 'Failed to create bug'}
-
-    # Add evidence comment with conversation reference + DB lookup
-    evidence = parsed.get('evidence', '')
-    areas = parsed.get('affected_areas', '')
-    comment_body = f"**Source:** PilgrimBot conversation ({len(history)} messages)\n"
-    comment_body += f"**Chat ID:** `{chat_id}`\n"
-    comment_body += f"**DB lookup:** `SELECT * FROM pilgrim.pilgrimbot_conversations WHERE chat_id = '{chat_id}' ORDER BY created_at`\n\n"
-    if areas:
-        comment_body += f"**Affected areas:** {areas}\n\n"
-    if evidence:
-        comment_body += f"**Key findings:**\n{evidence}\n"
-    add_bug_comment(bug['id'], 'PilgrimBot', comment_body)
-
-    # Auto-discover related bugs in background (don't make user wait for Haiku)
-    import threading
-    threading.Thread(
-        target=_cross_link_related_bugs,
-        args=(bug['id'], bug['name'], areas),
-    ).start()
-
-    logger.info(f"Bug created from conversation: #{bug['id']} - {bug['name']}")
-    return {'success': True, 'bug_id': bug['id'], 'title': bug['name']}
-
-
-def create_bug_from_response(response_text, user_id, chat_id=None, title_override=None, priority_override=None):
-    """Create a bug from a SINGLE PilgrimBot response (not the full conversation).
-    Uses Claude to extract a structured bug report from just this one response."""
-    if not response_text:
-        return {'success': False, 'error': 'No response text'}
-
-    client = create_client(model=MODEL)
-    _s = _time.time()
-    resp = client.client.messages.create(
-        model=MODEL, max_tokens=1000, temperature=0,
-        system="You extract structured bug reports from a single PilgrimBot analysis response. Return ONLY valid JSON, no markdown.",
-        messages=[{"role": "user", "content": f"""Read this single PilgrimBot response and extract a bug report from it.
-
-RESPONSE:
-{response_text[:6000]}
-
-Return JSON with exactly these fields:
-{{
-  "title": "Short bug title (under 100 chars)",
-  "description": "Clear description based on what PilgrimBot found in this response",
-  "priority": "P1 or P2 or P3",
-  "evidence": "Key findings from this specific response"
-}}"""}]
-    )
-    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug_from_response', duration_ms=int((_time.time() - _s) * 1000))
-    try:
-        text = resp.content[0].text.strip()
-        if text.startswith('```'):
-            text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
-        parsed = json.loads(text)
-    except (json.JSONDecodeError, IndexError) as e:
-        logger.warning(f"Bug extraction from response parse error: {e}")
-        return {'success': False, 'error': 'Could not parse response into a bug'}
-
-    from utilities.db_bugs import create_bug, add_bug_comment
-    bug = create_bug(
-        name=(title_override or parsed.get('title', 'PilgrimBot bug'))[:200],
-        description=parsed.get('description', '')[:2000],
-        priority=priority_override or parsed.get('priority', 'P3'),
-        source='PilgrimBot'
-    )
-    if not bug:
-        return {'success': False, 'error': 'Failed to create bug'}
-
-    # Add the original response as evidence
-    evidence = parsed.get('evidence', '')
-    comment_body = f"**Source:** Single PilgrimBot response\n"
-    if chat_id:
-        comment_body += f"**Chat ID:** `{chat_id}`\n"
-    if evidence:
-        comment_body += f"\n**Key findings:**\n{evidence}\n"
-    add_bug_comment(bug['id'], 'PilgrimBot', comment_body)
-
-    # Auto-discover related bugs in background
-    import threading
-    threading.Thread(
-        target=_cross_link_related_bugs,
-        args=(bug['id'], bug['name'], parsed.get('description', '')),
-    ).start()
-
-    logger.info(f"Bug created from single response: #{bug['id']} - {bug['name']}")
-    return {'success': True, 'bug_id': bug['id'], 'title': bug['name']}
-
-
-def get_reports(limit=50):
-    """Get PilgrimBot-submitted reports from the bug tracker."""
-    try:
-        from utilities.db_bugs import search_bugs
-        # Return all bugs from PilgrimBot source
-        from utilities.db_bugs import get_active_bugs
-        return get_active_bugs(search=None)[:limit]
-    except Exception as e:
-        logger.warning(f"Failed to get reports: {e}")
-        return []
+# Bug creation/filing extracted to pilgrimbot_bugs.py
+from utilities.pilgrimbot_bugs import (  # noqa: F401
+    create_bug_from_question, create_bug_from_conversation,
+    create_bug_from_response, get_reports,
+)
 
 
 # === Chat Handler ===
@@ -1025,9 +559,7 @@ Be MINIMAL. Most simple questions need NO context at all. A greeting needs nothi
         )
         _ms = int((_time.time() - _start) * 1000)
         log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_plan_context', duration_ms=_ms)
-        text = resp.content[0].text.strip()
-        if text.startswith('```'):
-            text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+        text = _strip_markdown_json(resp.content[0].text)
         plan = json.loads(text)
         if not isinstance(plan, dict):
             logger.warning(f"Planner returned non-dict: {type(plan)}, using fallback")
@@ -1229,8 +761,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         logger.info(f"Phase 1 (fast): {phase1_ms}ms, {len(phase1_system)} chars prompt")
 
         # Stream phase 1 response immediately
-        for i in range(0, len(full_response), 20):
-            yield f"data: {json.dumps({'type': 'delta', 'text': full_response[i:i+20]})}\n\n"
+        for i in range(0, len(full_response), 500):
+            yield f"data: {json.dumps({'type': 'delta', 'text': full_response[i:i+500]})}\n\n"
 
         # === PHASE 2: Context planning + surgical deep dive (only if needed) ===
         plan_start = _time.time()
@@ -1289,7 +821,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         })
 
         # Signal to frontend that a detailed follow-up is coming
-        yield f"data: {json.dumps({'type': 'delta', 'text': '\\n\\n---\\n\\n'})}\n\n"
+        separator = '\n\n---\n\n'
+        yield f"data: {json.dumps({'type': 'delta', 'text': separator})}\n\n"
         yield f"data: {json.dumps({'type': 'status', 'message': 'Deep diving...'})}\n\n"
 
         deep_start = _time.time()
@@ -1312,8 +845,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         logger.info(f"Phase 2 (deep): {deep_ms}ms, {len(deep_system)} chars prompt, loaded: {loaded}")
 
         # Stream deep response
-        for i in range(0, len(deep_response), 20):
-            yield f"data: {json.dumps({'type': 'delta', 'text': deep_response[i:i+20]})}\n\n"
+        for i in range(0, len(deep_response), 500):
+            yield f"data: {json.dumps({'type': 'delta', 'text': deep_response[i:i+500]})}\n\n"
 
         # Save the combined response
         combined = full_response + "\n\n---\n\n" + deep_response

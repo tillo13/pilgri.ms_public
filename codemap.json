@@ -1711,6 +1711,26 @@
     ],
     "keywords": "dashboard data, colony page, fleet status, activity feed"
   },
+  "utilities/pilgrimbot_bugs.py": {
+    "description": "PilgrimBot bug creation and cross-linking utilities.",
+    "exports": [
+      "create_bug_from_question — Save a bug/feature report via the unified bug tracker.",
+      "create_bug_from_conversation — Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.",
+      "create_bug_from_response — Create a bug from a SINGLE PilgrimBot response (not the full conversation).",
+      "get_reports — Get PilgrimBot-submitted reports from the bug tracker."
+    ]
+  },
+  "utilities/pilgrimbot_context.py": {
+    "description": "PilgrimBot context loading — registries, file search, and dynamic context.",
+    "exports": [
+      "load_codemap — Load codemap.json from the local project. Cached after first load.",
+      "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
+      "load_endgame_registry — Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system.",
+      "find_relevant_math — Keyword-match the question to only the relevant math_registry sections.",
+      "find_relevant_files — Use codemap to find the most relevant files for a question.",
+      "load_dynamic_context — Load extra context from DB when message mentions specific topics."
+    ]
+  },
   "utilities/pilgrimbot_data.py": {
     "description": "PilgrimBot player data queries — tool for fetching live game state on demand.",
     "exports": [
@@ -1725,17 +1745,13 @@
       "get_user_role — Get user's PilgrimBot persona role (dev/qa/captain).",
       "set_user_role — Set user's PilgrimBot persona role. Returns True on success.",
       "save_message — Save a message to the database.",
-      "get_chat_history — Load conversation history for a specific chat.",
+      "get_chat_history — Load conversation history for a specific chat. Uses subquery to fetch only last N rows.",
       "get_user_chats — List all chat threads for a user, most recent first.",
       "hide_chat — Soft-delete a chat thread by marking all its messages as hidden.",
       "generate_title — Generate a short title from the first user message.",
       "log_pilgrimbot_call — Log a PilgrimBot API call for performance tracking.",
       "read_local_file — Read a code file from the local codebase.",
-      "load_codemap — Load codemap.json from the local project.",
-      "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
-      "load_endgame_registry — Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system.",
-      "find_relevant_math — Keyword-match the question to only the relevant math_registry sections.",
-      "find_relevant_files — Use codemap to find the most relevant files for a question."
+      "handle_chat_streaming — Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."
     ],
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
   },
@@ -2525,7 +2541,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

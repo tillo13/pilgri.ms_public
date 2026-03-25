@@ -2741,11 +2741,15 @@ def api_admin_ideas_promote(idea_id):
 def pilgrimbot():
     """PilgrimBot chat interface — codebase Q&A."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
+    if not session.get('_adm'):
         return redirect(url_for('home'))
     from utilities.pilgrimbot_utils import get_user_chats, get_user_role
     chats = get_user_chats(real_user_id) if real_user_id else []
-    pb_role = get_user_role(real_user_id) if real_user_id else 'captain'
+    # Cache role in session for fast access on chat messages
+    pb_role = session.get('_pb_role')
+    if not pb_role:
+        pb_role = get_user_role(real_user_id) if real_user_id else 'captain'
+        session['_pb_role'] = pb_role
     # Support ?brainstorm=<page> to pre-load brainstorm context
     brainstorm_page = request.args.get('brainstorm')
     brainstorm_context = ''
@@ -2812,7 +2816,7 @@ def pilgrimbot():
 def api_pilgrimbot_chat():
     """Chat with PilgrimBot — streaming SSE response."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
+    if not session.get('_adm'):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.get_json() or {}
@@ -2823,7 +2827,11 @@ def api_pilgrimbot_chat():
     chat_id = data.get('chat_id')
     from utilities.pilgrimbot_utils import handle_chat_streaming, get_user_role
     bug_mode = bool(data.get('bug_mode'))
-    user_role = get_user_role(real_user_id)
+    # Cache user_role in session to avoid DB hit per message
+    user_role = session.get('_pb_role')
+    if not user_role:
+        user_role = get_user_role(real_user_id)
+        session['_pb_role'] = user_role
 
     # PilgrimBot actions — detect and execute before streaming
     action_context = ""
@@ -2951,7 +2959,7 @@ def api_pilgrimbot_chat():
 def api_pilgrimbot_report():
     """Submit a bug/feature from PilgrimBot chat."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
+    if not session.get('_adm'):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json() or {}
     title = data.get('title', '').strip()
@@ -2968,7 +2976,7 @@ def api_pilgrimbot_report():
 def api_pilgrimbot_create_bug():
     """Create a bug from PilgrimBot conversation — Claude parses context into title + description."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
+    if not session.get('_adm'):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     data = request.get_json() or {}
     response_text = data.get('response_text', '').strip()
@@ -3026,6 +3034,7 @@ def api_pilgrimbot_role():
     role = (request.get_json() or {}).get('role', 'captain')
     from utilities.pilgrimbot_utils import set_user_role
     if set_user_role(real_user_id, role):
+        session['_pb_role'] = role  # Update cached role
         return jsonify({'success': True, 'role': role})
     return jsonify({'success': False, 'error': 'Invalid role'}), 400
 
@@ -3048,7 +3057,7 @@ def api_pilgrimbot_hide():
 def api_pilgrimbot_chats():
     """List user's PilgrimBot chat threads."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
+    if not session.get('_adm'):
         return jsonify({'success': False}), 403
     from utilities.pilgrimbot_utils import get_user_chats
     return jsonify({'success': True, 'chats': get_user_chats(real_user_id)})
@@ -3058,7 +3067,7 @@ def api_pilgrimbot_chats():
 def api_pilgrimbot_history():
     """Load message history for a specific PilgrimBot chat."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not is_admin(real_user_id):
+    if not session.get('_adm'):
         return jsonify({'success': False}), 403
     chat_id = request.args.get('chat_id', '')
     if not chat_id:

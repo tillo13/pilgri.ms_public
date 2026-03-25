@@ -353,6 +353,9 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined})
         }).then(response => {
+            if (!response.ok) {
+                throw new Error('Server error: ' + response.status);
+            }
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
@@ -459,13 +462,20 @@
                                 finishStream(fullText);
                                 return;
                             }
-                        } catch (e) { /* skip malformed */ }
+                        } catch (e) { console.warn('PilgrimBot SSE parse error:', e, line); }
                     }
                     processChunk();
+                }).catch(err => {
+                    console.error('PilgrimBot stream read error:', err);
+                    clearTimeout(streamTimeout);
+                    removeTyping(typingEl);
+                    if (!fullText) appendMessage('assistant', 'Connection lost. Please try again.');
+                    finishStream(fullText);
                 });
             }
             processChunk();
-        }).catch(() => {
+        }).catch(err => {
+            console.error('PilgrimBot fetch error:', err);
             clearTimeout(streamTimeout);
             removeTyping(typingEl);
             appendMessage('assistant', 'Connection error. Please try again.');
@@ -566,16 +576,21 @@
         return div;
     }
 
+    let _refreshTimer = null;
     function refreshChatList() {
-        fetch('/api/pilgrimbot/chats')
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) return;
-                chatListEl.innerHTML = '';
-                data.chats.forEach(chat => {
-                    chatListEl.appendChild(buildChatItem(chat));
-                });
-            }).catch(() => {});
+        // Debounce — avoid spamming API on rapid messages
+        clearTimeout(_refreshTimer);
+        _refreshTimer = setTimeout(() => {
+            fetch('/api/pilgrimbot/chats')
+                .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(data => {
+                    if (!data.success) return;
+                    chatListEl.innerHTML = '';
+                    data.chats.forEach(chat => {
+                        chatListEl.appendChild(buildChatItem(chat));
+                    });
+                }).catch(() => {});
+        }, 500);
     }
 
     function loadChat(chatId) {
@@ -584,7 +599,7 @@
         if (welcomeEl) welcomeEl.style.display = 'none';
 
         fetch('/api/pilgrimbot/history?chat_id=' + chatId)
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
             .then(data => {
                 if (data.success && data.messages) {
                     data.messages.forEach(m => appendMessage(m.role, m.content, m.created_at));
@@ -667,16 +682,7 @@
     document.querySelectorAll('.pb-example').forEach(btn => {
         btn.addEventListener('click', () => sendMessage(btn.dataset.q));
     });
-    document.querySelectorAll('.pb-chat-item').forEach(el => {
-        el.addEventListener('click', () => loadChat(el.dataset.chatId));
-        const hideBtn = el.querySelector('.pb-chat-hide');
-        if (hideBtn) {
-            hideBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                hideChat(el.dataset.chatId, el);
-            });
-        }
-    });
+    // Chat item listeners are added via buildChatItem() — no need to duplicate here
 
     // === Role picker ===
     var roleSelect = document.getElementById('pbRoleSelect');
