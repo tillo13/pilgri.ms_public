@@ -382,33 +382,49 @@
             }
         }
 
+        var _activeTyping = null; // track current typing indicator
+
         function renderStatusEvent(data) {
-            ensureAssistantEl();
-            let toolArea = assistantEl.querySelector('.pb-tool-calls');
-            if (!toolArea) return;
-            // Remove old dots
-            let oldDots = toolArea.querySelector('.pb-tool-dots');
-            if (oldDots) oldDots.remove();
-            // Elapsed time since send
             let elapsed = Math.round((Date.now() - sendStartTime) / 1000);
-            // Create status/tool line with timing
-            let el = document.createElement('div');
-            if (data.type === 'status') {
-                el.className = 'pb-tool-line pb-tool-status';
-                el.innerHTML = data.message + '<span class="pb-step-time">' + elapsed + 's</span>';
-            } else if (data.type === 'phase') {
-                el.className = 'pb-phase-divider';
-                el.textContent = data.label;
+
+            // Remove any active typing indicator
+            if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
+            removeTyping(typingEl);
+
+            if (data.type === 'phase') {
+                let div = document.createElement('div');
+                div.className = 'pb-step-bubble pb-phase-divider';
+                div.textContent = data.label;
+                messagesEl.appendChild(div);
             } else {
-                el.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
-                el.innerHTML = (data.found ? 'Read ' : 'Not found: ') + escapeHtml(data.file) + '<span class="pb-step-time">' + elapsed + 's</span>';
+                // Each status/tool_call = its own mini bubble
+                let div = document.createElement('div');
+                div.className = 'pb-step-bubble';
+                let text = data.type === 'status' ? data.message : ((data.found ? 'Read ' : 'Not found: ') + data.file);
+                div.innerHTML = '<span class="pb-step-icon">\u25B6</span>' +
+                    '<span class="pb-step-text">' + escapeHtml(text) + '</span>' +
+                    '<span class="pb-step-time">' + elapsed + 's</span>';
+                if (data.type === 'tool_call' && !data.found) div.classList.add('pb-step-miss');
+                messagesEl.appendChild(div);
             }
-            toolArea.appendChild(el);
-            // Always re-add pulsing dots below
-            let dots = document.createElement('div');
-            dots.className = 'pb-tool-dots';
-            dots.innerHTML = '<span class="pb-typing-dots"><span></span><span></span><span></span></span>';
-            toolArea.appendChild(dots);
+
+            // Fresh typing dots after latest step
+            _activeTyping = document.createElement('div');
+            _activeTyping.className = 'pb-typing';
+            _activeTyping.innerHTML =
+                '<div class="pb-typing-body">' +
+                    '<div class="pb-typing-dots"><span></span><span></span><span></span></div>' +
+                    '<span class="pb-typing-timer"></span>' +
+                '</div>';
+            messagesEl.appendChild(_activeTyping);
+            // Live timer on new dots
+            var _stepStart = Date.now();
+            var _stepTimer = setInterval(function() {
+                var tel = _activeTyping && _activeTyping.querySelector('.pb-typing-timer');
+                if (tel) tel.textContent = Math.round((Date.now() - sendStartTime) / 1000) + 's';
+                else clearInterval(_stepTimer);
+            }, 1000);
+
             messagesEl.scrollTop = messagesEl.scrollHeight;
             resetStreamTimeout();
         }
@@ -464,7 +480,8 @@
                     if (done) {
                         flushQueue();
                         clearTimeout(streamTimeout);
-                        removeDots();
+                        removeTyping(typingEl);
+                        if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
                         if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
                         addFooterToEl(assistantEl, fullText, Date.now() - sendStartTime);
                         finishStream(fullText);
@@ -486,14 +503,21 @@
                                 queueEvent(data);
 
                             } else if (data.type === 'delta' && data.text) {
-                                // Flush pending status events immediately, then stream text
+                                // Flush pending status events, then stream text
                                 flushQueue();
                                 if (!gotFirstDelta) {
                                     gotFirstDelta = true;
                                     clearTimeout(streamTimeout);
                                     removeTyping(typingEl);
-                                    removeDots();
-                                    ensureAssistantEl();
+                                    if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
+                                    // Create response bubble
+                                    assistantEl = document.createElement('div');
+                                    assistantEl.className = 'pb-msg pb-msg-assistant';
+                                    assistantEl.innerHTML =
+                                        '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
+                                        formatTime(new Date()) + '</span></div>' +
+                                        '<div class="pb-msg-content"></div>';
+                                    messagesEl.appendChild(assistantEl);
                                     contentEl = assistantEl.querySelector('.pb-msg-content');
                                 }
                                 fullText += data.text;
@@ -504,7 +528,7 @@
                                 flushQueue();
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
-                                removeDots();
+                                if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
                                 if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
                                 addFooterToEl(assistantEl, fullText, Date.now() - sendStartTime);
                                 finishStream(fullText);
@@ -514,21 +538,14 @@
                                 flushQueue();
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
-                                removeDots();
-                                // Render error INLINE — never as a separate message
-                                ensureAssistantEl();
-                                if (fullText) {
-                                    // Partial response exists — add subtle note in tool area
-                                    let toolArea = assistantEl.querySelector('.pb-tool-calls');
-                                    if (toolArea) {
-                                        let note = document.createElement('div');
-                                        note.className = 'pb-tool-line pb-tool-error';
-                                        note.textContent = data.message || 'Deep dive interrupted';
-                                        toolArea.appendChild(note);
-                                    }
-                                } else {
-                                    // No response at all — show in content area
-                                    if (contentEl) contentEl.innerHTML = '<span class="pb-error-text">' + escapeHtml(data.message || 'Something went wrong.') + '</span>';
+                                if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
+                                // Show error as a subtle step bubble (not a full message)
+                                if (data.message) {
+                                    let div = document.createElement('div');
+                                    div.className = 'pb-step-bubble pb-step-miss';
+                                    div.innerHTML = '<span class="pb-step-icon">\u25CF</span>' +
+                                        '<span class="pb-step-text">' + escapeHtml(data.message) + '</span>';
+                                    messagesEl.appendChild(div);
                                 }
                                 finishStream(fullText);
                                 return;
@@ -541,7 +558,7 @@
                     flushQueue();
                     clearTimeout(streamTimeout);
                     removeTyping(typingEl);
-                    removeDots();
+                    if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
                     if (!fullText) appendMessage('assistant', 'Connection lost. Please try again.');
                     finishStream(fullText);
                 });

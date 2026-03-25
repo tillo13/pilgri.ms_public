@@ -513,17 +513,33 @@
 .pb-tool-miss { color: rgba(255,255,255,0.2); }
 .pb-tool-miss::before { color: rgba(239,68,68,0.5); }
 
+/* Step bubbles — each status/tool_call is its own mini message */
+.pb-step-bubble {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 16px;
+    font-size: 12px;
+    font-family: monospace;
+    color: rgba(255,255,255,0.35);
+    animation: pbFadeSlideIn 0.3s ease-out;
+}
+.pb-step-icon { color: rgba(96,165,250,0.6); font-size: 8px; flex-shrink: 0; }
+.pb-step-text { flex: 1; }
+.pb-step-time { color: rgba(255,255,255,0.15); font-size: 10px; flex-shrink: 0; }
+.pb-step-bubble.pb-step-miss .pb-step-icon { color: rgba(239,68,68,0.5); }
+.pb-step-bubble.pb-step-miss .pb-step-text { color: rgba(239,130,130,0.7); }
+
 /* Phase divider between fast response and deep dive */
 .pb-phase-divider {
     font-size: 11px;
     color: rgba(255,255,255,0.3);
-    padding: 8px 0 4px;
-    margin-top: 4px;
+    padding: 8px 16px;
+    margin: 4px 0;
     border-top: 1px solid rgba(255,255,255,0.08);
     font-style: italic;
     animation: pbFadeSlideIn 0.3s ease-out;
 }
-.pb-phase-divider::before { content: none; }
 
 /* Inline error in tool area */
 .pb-tool-error { color: rgba(239, 130, 130, 0.7) !important; }
