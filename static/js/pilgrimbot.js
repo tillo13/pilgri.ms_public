@@ -334,11 +334,13 @@
             streamTimeout = setTimeout(() => {
                 if (isStreaming && typingEl && typingEl.parentNode) {
                     timeoutCount++;
-                    // Update typing indicator with dots to show progress
-                    const dots = '.'.repeat((timeoutCount % 3) + 1);
-                    typingEl.textContent = timeoutCount === 1
-                        ? 'Still working' + dots
-                        : 'Deep diving into the code' + dots;
+                    // Update the label above the pulsing dots — dots keep animating
+                    let header = typingEl.querySelector('.pb-typing-header');
+                    if (header) {
+                        header.textContent = timeoutCount === 1
+                            ? 'Still working...'
+                            : 'Deep diving into the code...';
+                    }
                     resetStreamTimeout(); // Keep resetting — never give up
                 }
             }, TIMEOUT_DEFAULT);
