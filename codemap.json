@@ -1729,13 +1729,13 @@
       "get_user_chats — List all chat threads for a user, most recent first.",
       "hide_chat — Soft-delete a chat thread by marking all its messages as hidden.",
       "generate_title — Generate a short title from the first user message.",
+      "log_pilgrimbot_call — Log a PilgrimBot API call for performance tracking.",
       "read_local_file — Read a code file from the local codebase.",
       "load_codemap — Load codemap.json from the local project.",
       "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
       "load_endgame_registry — Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system.",
       "find_relevant_math — Keyword-match the question to only the relevant math_registry sections.",
-      "find_relevant_files — Use codemap to find the most relevant files for a question.",
-      "load_dynamic_context — Load extra context from DB when message mentions specific topics."
+      "find_relevant_files — Use codemap to find the most relevant files for a question."
     ],
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
   },

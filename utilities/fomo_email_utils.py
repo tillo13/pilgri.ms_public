@@ -1193,48 +1193,11 @@ def send_welcome_back_email(to_email: str, user_name: str, days_away: int, pendi
                     </tr>"""
 
     # ==================== DEPOT UPGRADES MINI-CATALOG ====================
-    # Show 2-3 upgrades from different categories: Expedition Gear, Discovery, Infrastructure
-    from config_shop import SHOP_CATALOG
+    # Show infrastructure upgrade suggestions (upgrade catalog items shown on depot page)
     from config_infrastructure import INFRASTRUCTURE_CATALOG
 
     balance = fomo_data.get('current_balance', 0)
-    owned_upgrades = fomo_data.get('owned_upgrades', [])
     owned_infrastructure = fomo_data.get('owned_infrastructure', {})
-
-    # Helper to find next available item in a category
-    def get_next_upgrade(category_items, owned_list, balance):
-        """Find the best next upgrade: something affordable, or the cheapest unowned"""
-        affordable = []
-        unaffordable = []
-        for item_id, item in category_items.items():
-            if item_id in owned_list:
-                continue
-            # Check requirements
-            reqs = item.get('requirements', [])
-            if not all(r in owned_list for r in reqs):
-                continue
-            cost = item.get('cost_display', 0)
-            if balance >= cost:
-                affordable.append((item_id, item, cost))
-            else:
-                unaffordable.append((item_id, item, cost))
-        # Prefer affordable, sorted by cost descending (best they can buy)
-        if affordable:
-            affordable.sort(key=lambda x: x[2], reverse=True)
-            return affordable[0]
-        # Otherwise cheapest unaffordable
-        if unaffordable:
-            unaffordable.sort(key=lambda x: x[2])
-            return unaffordable[0]
-        return None
-
-    # Category 1: Expedition Gear (Rovers)
-    rover_items = {k: v for k, v in SHOP_CATALOG.items() if v.get('category') == 'rover'}
-    rover_upgrade = get_next_upgrade(rover_items, owned_upgrades, balance)
-
-    # Category 2: Discovery Boost (Scanners/Equipment)
-    scanner_items = {k: v for k, v in SHOP_CATALOG.items() if 'scanner' in k}
-    scanner_upgrade = get_next_upgrade(scanner_items, owned_upgrades, balance)
 
     # Category 3: Infrastructure (next building)
     def get_next_infra(owned_infra, balance):
@@ -1258,36 +1221,6 @@ def send_welcome_back_email(to_email: str, user_name: str, days_away: int, pendi
 
     # Build the catalog section if we have at least one upgrade to show
     upgrades_to_show = []
-
-    if rover_upgrade:
-        item_id, item, cost = rover_upgrade
-        can_afford = balance >= cost
-        upgrades_to_show.append({
-            'category_label': '🛵 Expedition Gear',
-            'category_color': '#e74c3c',
-            'name': item.get('name'),
-            'icon': item.get('icon', '🚗'),
-            'image_url': item.get('image_url', ''),
-            'benefit': item.get('description', '')[:50],
-            'cost': cost,
-            'can_afford': can_afford,
-            'link': 'https://pilgri.ms/colony/depot'
-        })
-
-    if scanner_upgrade:
-        item_id, item, cost = scanner_upgrade
-        can_afford = balance >= cost
-        upgrades_to_show.append({
-            'category_label': '📡 Discovery Boost',
-            'category_color': '#9b59b6',
-            'name': item.get('name'),
-            'icon': item.get('icon', '📡'),
-            'image_url': item.get('image_url', ''),
-            'benefit': item.get('description', '')[:50],
-            'cost': cost,
-            'can_afford': can_afford,
-            'link': 'https://pilgri.ms/colony/depot'
-        })
 
     if infra_upgrade:
         struct_id, struct, cost = infra_upgrade

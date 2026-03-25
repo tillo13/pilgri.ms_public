@@ -64,10 +64,10 @@
 
     function statusClass(status) {
         var map = {
-            'New': 'new', 'In Process': 'working', 'Awaiting QA': 'awaiting',
+            'New': 'new', 'Backlog': 'backlog', 'Awaiting QA': 'awaiting',
             'ReOpen': 'dev', 'Done': 'done', 'Ready For Dev': 'ready',
             // Legacy statuses still map correctly
-            'Backlog': 'new', 'Todo': 'new', 'In Progress': 'working', 'In Review': 'awaiting',
+            'In Process': 'backlog', 'Todo': 'new', 'In Progress': 'backlog', 'In Review': 'awaiting',
             'Blocked': 'blocked', 'Working On': 'working', 'AWAITING_QA': 'awaiting',
             'DEV_NEEDED': 'dev', 'NEEDS_MORE_INFO': 'info'
         };
@@ -234,7 +234,7 @@
         var actions = '';
         if (isActive) {
             actions += '<select class="bt-input" style="width:auto;" onchange="BT.updateField(' + bug.id + ',\'status\',this.value)">';
-            ['New','Ready For Dev','In Process','Awaiting QA','ReOpen'].forEach(function(s) {
+            ['New','Backlog','Ready For Dev','Awaiting QA','ReOpen'].forEach(function(s) {
                 actions += '<option' + (bug.status === s ? ' selected' : '') + '>' + s + '</option>';
             });
             actions += '</select>';

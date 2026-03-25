@@ -655,6 +655,23 @@ def test_sv_sources_query():
     return True
 
 
+@test("PilgrimBot calls logging table exists", tier=1, features=['pilgrimbot'])
+def test_pilgrimbot_calls_table():
+    from utilities.postgres_utils import db_cursor
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'pilgrim' AND table_name = 'pilgrimbot_calls'
+            ORDER BY ordinal_position
+        """)
+        cols = [r['column_name'] for r in cur.fetchall()]
+    required = ['id', 'user_id', 'chat_id', 'phase', 'model', 'prompt_size_chars',
+                'context_loaded', 'duration_ms', 'success', 'created_at']
+    for c in required:
+        assert c in cols, f"Missing column: {c}"
+    return True
+
+
 # -----------------------------------------------------------------------------
 # BUG REGRESSION: ARIA colony snapshot must load cleanly (Feb 2026)
 # Issue: load_colony_snapshot() had JOIN on pilgrim.discoveries (doesn't exist)

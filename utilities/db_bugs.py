@@ -179,16 +179,16 @@ def get_active_bugs(priority=None, status=None, search=None):
                 ORDER BY
                     CASE status
                         WHEN 'Awaiting QA' THEN 1
-                        WHEN 'In Process' THEN 2
-                        WHEN 'Ready For Dev' THEN 3
-                        WHEN 'ReOpen' THEN 4
+                        WHEN 'Ready For Dev' THEN 2
+                        WHEN 'ReOpen' THEN 3
+                        WHEN 'Backlog' THEN 4
                         WHEN 'New' THEN 5
                         -- Legacy statuses
+                        WHEN 'In Process' THEN 4
+                        WHEN 'In Progress' THEN 4
                         WHEN 'In Review' THEN 1
-                        WHEN 'In Progress' THEN 2
                         WHEN 'Blocked' THEN 3
-                        WHEN 'Todo' THEN 4
-                        WHEN 'Backlog' THEN 5
+                        WHEN 'Todo' THEN 5
                         ELSE 6
                     END,
                     CASE priority

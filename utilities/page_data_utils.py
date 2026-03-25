@@ -910,31 +910,9 @@ def get_dashboard_page_data(user_id, auth):
     # Get "While You Were Away" summary
     away_summary = get_while_you_were_away_summary(user_id)
 
-    # Get ALL building items (old shop + new upgrades + infrastructure)
-    from utilities.postgres_utils import get_building_upgrades, complete_ready_builds
-    from config import get_shop_item
-    complete_ready_builds(user_id)
-    building_raw = get_building_upgrades(user_id)
+    # Get building items (upgrades + infrastructure)
     building_items = []
-    for b in building_raw:
-        item = get_shop_item(b['item_id'])
-        if item:
-            seconds_remaining = max(0, int(b['seconds_remaining'] or 0))
-            total_seconds = 0
-            progress_pct = 0
-            if b.get('purchased_at') and b.get('ready_at'):
-                total_seconds = (b['ready_at'] - b['purchased_at']).total_seconds()
-                if total_seconds > 0:
-                    progress_pct = ((total_seconds - seconds_remaining) / total_seconds) * 100
-            building_items.append({
-                'name': item['name'],
-                'seconds_remaining': seconds_remaining,
-                'total_seconds': total_seconds,
-                'progress_pct': min(100, max(0, progress_pct)),
-                'ready_at': b['ready_at'],
-                'ready_at_str': b['ready_at'].strftime('%b %d') if b['ready_at'] else ''
-            })
-    # Add new upgrade system builds
+    # Upgrade system builds
     try:
         from utilities.upgrades_utils import get_active_builds
         for build in get_active_builds(user_id):
@@ -1135,7 +1113,7 @@ def get_colony_page_data(user_id, auth):
     from utilities.postgres_utils import get_building_upgrades, complete_ready_builds, db_cursor
     from utilities.infrastructure_utils import get_user_infrastructure, INFRASTRUCTURE_CATALOG, get_or_set_user_mars_home, calculate_generation_rate
     from utilities.upgrades_utils import get_user_owned_vehicles
-    from config import get_shop_item, get_build_time_seconds, UPGRADE_CATALOG
+    from config_upgrades import UPGRADE_CATALOG
     from utilities.depot_utils import get_fast_balance_and_wallet_info
 
     total_balance = get_fast_balance_and_wallet_info(user_id)[0]
@@ -1228,41 +1206,8 @@ def get_colony_page_data(user_id, auth):
         elif building['status'] == 'building':
             building_infrastructure.append(enriched)
 
-    # Get building equipment (shop items under construction)
-    complete_ready_builds(user_id)
-    building_raw = get_building_upgrades(user_id)
+    # Legacy shop building items removed — all builds now use upgrade system
     building_equipment = []
-    for b in building_raw:
-        item = get_shop_item(b['item_id'])
-        if item:
-            # Get all effects from the item
-            effects = item.get('effects', {})
-            building_equipment.append({
-                'item_id': b['item_id'],
-                'name': item['name'],
-                'icon': item['icon'],
-                'image_url': item.get('image_url'),
-                'description': item.get('description', ''),
-                'category': item.get('category', ''),
-                'cost': item.get('cost_display', 0),
-                'ready_at': b['ready_at'],
-                'ready_at_str': b['ready_at'].strftime('%b %d, %Y at %I:%M %p') if b['ready_at'] else '',
-                'ready_at_iso': b['ready_at'].isoformat() if b['ready_at'] else '',
-                'purchased_at': b.get('purchased_at'),
-                'purchased_at_str': b['purchased_at'].strftime('%b %d, %Y at %I:%M %p') if b.get('purchased_at') else '',
-                'seconds_remaining': max(0, int(b['seconds_remaining'] or 0)),
-                'build_time_total': get_build_time_seconds(item.get('cost_display', 0)),
-                'requirements': item.get('requirements', []),
-                'max_owned': item.get('max_owned', 1),
-                # All possible effects
-                'discovery_chance_bonus': effects.get('discovery_chance_bonus', 0),
-                'rare_chance_bonus': effects.get('rare_chance_bonus', 0),
-                'legendary_chance_bonus': effects.get('legendary_chance_bonus', 0),
-                'expedition_speed_mult': effects.get('expedition_speed_mult', 0),
-                'cargo_slots': effects.get('cargo_slots', 0),
-                'fuel_cost_mult': effects.get('fuel_cost_mult', 0),
-                'tx_hash': b.get('tx_hash', ''),
-            })
 
     # Get owned vehicles with COMPREHENSIVE stats
     raw_vehicles = get_user_owned_vehicles(user_id)
@@ -1518,32 +1463,6 @@ def get_depot_page_data(user_id, auth):
     # Get captain stats for display
     commander, stats = get_commander_and_stats(user_id)
 
-    # Get building upgrades (shop items under construction)
-    from utilities.postgres_utils import get_building_upgrades, complete_ready_builds
-    from config import get_shop_item, get_build_time_seconds
-    complete_ready_builds(user_id)  # Complete any ready builds first
-    building_raw = get_building_upgrades(user_id)
-    building_items = []
-    for b in building_raw:
-        item = get_shop_item(b['item_id'])
-        if item:
-            building_items.append({
-                'item_id': b['item_id'],
-                'name': item['name'],
-                'icon': item['icon'],
-                'image_url': item.get('image_url'),
-                'description': item.get('description', ''),
-                'category': item.get('category', ''),
-                'cost': item.get('cost_display', 0),
-                'ready_at': b['ready_at'],
-                'ready_at_str': b['ready_at'].strftime('%b %d, %Y at %I:%M %p') if b['ready_at'] else '',
-                'ready_at_iso': b['ready_at'].isoformat() if b['ready_at'] else '',
-                'purchased_at': b['purchased_at'],
-                'purchased_at_str': b['purchased_at'].strftime('%b %d, %Y at %I:%M %p') if b.get('purchased_at') else '',
-                'seconds_remaining': max(0, int(b['seconds_remaining'] or 0)),
-                'build_time_total': get_build_time_seconds(item.get('cost_display', 0))
-            })
-
     # Get upgrade cap info and active builds for UI
     try:
         from utilities.upgrades_utils import count_concurrent_upgrades, get_user_upgrade_cap, get_active_builds
@@ -1555,17 +1474,6 @@ def get_depot_page_data(user_id, auth):
         upgrade_cap = 3
         active_builds = []
 
-    # Consolidate: Add OLD system building items to active_builds for unified Build Queue
-    for item in building_items:
-        active_builds.append({
-            'name': item['name'],
-            'category': item.get('category', 'equipment'),
-            'item_key': item['item_id'],
-            'target_level': None,  # OLD system has no levels
-            'seconds_remaining': item['seconds_remaining'],
-            'ready_at_str': item['ready_at_str'],
-            'is_legacy': True  # Flag to distinguish in template if needed
-        })
     # Add infrastructure builds to active_builds
     from utilities.infrastructure_utils import get_user_infrastructure, INFRASTRUCTURE_CATALOG
     for infra in get_user_infrastructure(user_id):

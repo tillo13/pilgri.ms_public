@@ -195,6 +195,26 @@ def ensure_pilgrimbot_table():
             ALTER TABLE pilgrim.pilgrimbot_conversations ADD COLUMN IF NOT EXISTS
             hidden BOOLEAN DEFAULT FALSE
         """)
+        # PilgrimBot call logging — tracks every API call for performance analysis
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pilgrim.pilgrimbot_calls (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                chat_id UUID,
+                phase VARCHAR(20) NOT NULL,
+                model VARCHAR(80),
+                prompt_size_chars INTEGER,
+                context_loaded JSONB DEFAULT '[]',
+                duration_ms INTEGER,
+                success BOOLEAN DEFAULT TRUE,
+                error_message TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pilgrimbot_calls_user
+            ON pilgrim.pilgrimbot_calls(user_id, created_at DESC)
+        """)
 
 
 def get_user_role(user_id):
@@ -286,6 +306,23 @@ def generate_title(message):
     if len(message) > 80:
         title = title.rsplit(" ", 1)[0] + "..."
     return title
+
+
+def log_pilgrimbot_call(user_id, chat_id, phase, model, prompt_size_chars,
+                        context_loaded, duration_ms, success=True, error_message=None):
+    """Log a PilgrimBot API call for performance tracking."""
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                INSERT INTO pilgrim.pilgrimbot_calls
+                (user_id, chat_id, phase, model, prompt_size_chars, context_loaded,
+                 duration_ms, success, error_message)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, str(chat_id) if chat_id else None, phase, model,
+                  prompt_size_chars, json.dumps(context_loaded),
+                  duration_ms, success, error_message))
+    except Exception as e:
+        logger.warning(f"Failed to log pilgrimbot call: {e}")
 
 
 # === Local Code Reading ===
@@ -953,174 +990,224 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     yield ("result", text)
 
 
+def _plan_context(message, history, bug_mode):
+    """Phase 2: Ask Haiku what context is needed to answer this question.
+    Returns a dict of context tags like {'math': ['shard_generation'], 'endgame': True, 'code': ['db_expeditions.py'], 'player_data': ['balance', 'shard_generation']}."""
+    # Build a lightweight prompt for the planner
+    recent = ""
+    for h in (history or [])[-4:]:
+        recent += f"{h['role']}: {h['content'][:200]}\n"
+
+    planner_prompt = f"""Given this PilgrimBot question, what context do I need to answer it well?
+{"This is a BUG INVESTIGATION — code context is important." if bug_mode else ""}
+
+Recent conversation:
+{recent}
+
+Current question: {message}
+
+Return ONLY a JSON object with these optional keys (omit keys you don't need):
+- "math": list of formula keywords to look up (e.g. ["shard_generation", "expedition_payout"]). Only if the question involves calculations, rates, formulas, or numbers.
+- "endgame": true if the question is about Signal, Origin sites, decoders, ledger, founders, blockchain/tx, or the endgame system.
+- "code": list of specific filenames to read (e.g. ["utilities/db_expeditions.py"]). Only if the question requires looking at actual code to answer.
+- "player_data": list of data categories to query (e.g. ["balance", "shard_generation", "upgrades"]). Only if the question is about THIS user's specific data.
+- "bugs": true if the question mentions bugs, issues, broken things, or the tracker.
+- "brainstorm": list of brainstorm page keys (e.g. ["signal", "tech-tree"]). Only if asking about design discussions.
+
+Be MINIMAL. Most simple questions need NO context at all. A greeting needs nothing. "How do expeditions work?" needs maybe one code file. Only request what's truly needed."""
+
+    try:
+        client = create_client(model=MODEL)
+        _start = _time.time()
+        resp = client.client.messages.create(
+            model=MODEL, max_tokens=300, temperature=0,
+            messages=[{"role": "user", "content": planner_prompt}]
+        )
+        _ms = int((_time.time() - _start) * 1000)
+        log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_plan_context', duration_ms=_ms)
+        text = resp.content[0].text.strip()
+        if text.startswith('```'):
+            text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
+        plan = json.loads(text)
+        logger.info(f"Context plan ({_ms}ms): {json.dumps(plan)}")
+        return plan, _ms
+    except Exception as e:
+        logger.warning(f"Context planner failed ({e}), using keyword fallback")
+        return _plan_context_fallback(message), 0
+
+
+def _plan_context_fallback(message):
+    """Fast keyword-based fallback if the Haiku planner fails."""
+    msg_lower = message.lower()
+    plan = {}
+    math_triggers = ['calculate', 'formula', 'math', 'how is my', 'how does my',
+                     'break down', 'show the math', 'add up', 'multiplier',
+                     'effective rate', 'generation rate', 'how much', 'per hour']
+    if any(t in msg_lower for t in math_triggers):
+        plan['math'] = []  # empty = use find_relevant_math
+        plan['player_data'] = ['balance', 'shard_generation']
+
+    endgame_triggers = ['signal', 'origin', 'node', 'decoder', 'decode', 'ledger',
+                        'endgame', 'end game', 'founder', 'claim', 'hitchhiker',
+                        'lost signal', 'beagle', 'schiaparelli', 'mars-3',
+                        '14 sites', 'origin site', 'three act', 'world 2']
+    if any(t in msg_lower for t in endgame_triggers):
+        plan['endgame'] = True
+
+    bug_triggers = ['bug', 'issue', 'broken', 'fix', 'reported', 'tracker']
+    if any(t in msg_lower for t in bug_triggers):
+        plan['bugs'] = True
+    return plan
+
+
+def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
+    """Phase 2b: Load ONLY the context pieces the planner requested.
+    Returns (system_addition, context_loaded_list) where context_loaded_list tracks what was injected."""
+    extra = ""
+    loaded = []
+    show_code = user_role in ('dev', 'qa') or bug_mode
+
+    # Math registry — surgical lookup
+    if 'math' in plan:
+        math_keywords = plan['math']
+        if math_keywords:
+            # Planner gave specific keywords — build a targeted query
+            query = ' '.join(math_keywords)
+            relevant_math = find_relevant_math(query)
+        else:
+            relevant_math = find_relevant_math(message)
+        if relevant_math and relevant_math.get('formulas'):
+            math_json = json.dumps(relevant_math)
+            extra += f"\n\nMATH REGISTRY (authoritative — use EXACT formulas):\n{math_json}"
+            loaded.append(f"math:{len(relevant_math['formulas'])}formulas:{len(math_json)}chars")
+        else:
+            # No match — still don't dump the full 48KB. Give just constants.
+            registry = load_math_registry()
+            if registry and 'constants' in registry:
+                const_json = json.dumps({'constants': registry['constants']})
+                extra += f"\n\nMATH CONSTANTS (no matching formulas found — use these base values):\n{const_json}"
+                loaded.append(f"math:constants_only:{len(const_json)}chars")
+
+    # Endgame registry
+    if plan.get('endgame'):
+        endgame = load_endgame_registry()
+        if endgame:
+            eg_json = json.dumps(endgame)
+            extra += f"\n\nENDGAME REGISTRY (authoritative reference):\n{eg_json}"
+            loaded.append(f"endgame:{len(eg_json)}chars")
+
+    # Code files — only if planner requested specific files
+    if 'code' in plan and plan['code']:
+        codemap = load_codemap()
+        for fpath in plan['code'][:4]:  # cap at 4 files
+            content = read_local_file(fpath)
+            if content:
+                if show_code:
+                    extra += f"\n\n--- {fpath} ---\n{content}"
+                else:
+                    extra += f"\n\nINTERNAL REFERENCE (never show to user):\n--- {fpath} ---\n{content}"
+                loaded.append(f"code:{fpath}:{len(content)}chars")
+
+    # Player data — pre-query specific categories
+    if 'player_data' in plan:
+        for category in plan['player_data'][:5]:
+            try:
+                data = query_player_data(category, user_id)
+                extra += f"\n\nPLAYER DATA ({category}):\n{data}"
+                loaded.append(f"player:{category}")
+            except Exception as e:
+                logger.warning(f"Player data query {category} failed: {e}")
+
+    # Bug tracker context
+    if plan.get('bugs'):
+        dynamic = load_dynamic_context(message)
+        if dynamic:
+            label = "LIVE DATA" if show_code else "INTERNAL DATA (summarize in plain English)"
+            extra += f"\n\n{label}:{dynamic}"
+            loaded.append(f"bugs:{len(dynamic)}chars")
+
+    # Brainstorm context
+    if 'brainstorm' in plan:
+        try:
+            from utilities.db_brainstorm import get_comments_for_page
+            for page_key in plan['brainstorm'][:3]:
+                comments = get_comments_for_page(page_key)
+                if comments:
+                    extra += f"\n--- Brainstorm: {page_key} ({len(comments)} comments) ---\n"
+                    for c in comments[-10:]:
+                        extra += f"[{c.get('author_name', 'anon')}]: {str(c.get('comment_text', ''))[:200]}\n"
+                    loaded.append(f"brainstorm:{page_key}")
+        except Exception as e:
+            logger.warning(f"Brainstorm context failed: {e}")
+
+    return extra, loaded
+
+
 def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=False, action_context="", user_role="captain"):
-    """Stream a PilgrimBot response. Yields SSE-formatted JSON chunks."""
-    # Ensure table exists (idempotent)
+    """Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."""
     ensure_pilgrimbot_table()
 
-    # Generate or validate chat_id
     if not chat_id:
         chat_id = str(uuid.uuid4())
 
-    # Load history from DB if not provided
     if history is None:
         history = get_chat_history(user_id, chat_id)
 
-    # Save user message
     title = generate_title(message) if not history else None
     save_message(user_id, chat_id, "user", message, title=title)
 
-    # Send start event FIRST so frontend gets an immediate SSE chunk (resets 45s timeout)
+    # Immediate start event — resets frontend 45s timeout
     yield f"data: {json.dumps({'type': 'start', 'chat_id': chat_id})}\n\n"
 
-    # Extract search terms from message for smart file reading
-    msg_stopwords = {"have", "been", "this", "that", "with", "from", "what", "does",
-                     "will", "would", "could", "about", "there", "their", "also",
-                     "just", "some", "into", "over", "after", "before", "many",
-                     "like", "know", "tried", "figure", "couple", "months", "times",
-                     "past", "never", "gets"}
-    search_terms = [w.lower().strip("?.,!()\"'") for w in message.split()
-                    if len(w) > 3 and w.lower().strip("?.,!()\"'") not in msg_stopwords]
-
-    # Find and read relevant code files from local codebase
-    codemap = load_codemap()
-    code_context = ""
-    relevant = find_relevant_files(message, max_files=6 if bug_mode else 4)
-    for fpath in relevant:
-        extra_terms = search_terms[:]
-        if fpath in codemap and "exports" in codemap[fpath]:
-            for export in codemap[fpath]["exports"]:
-                fname = export.split(" —")[0].split(" ")[0].replace("class ", "")
-                extra_terms.append(fname.lower())
-        content = read_local_file(fpath, search_terms=extra_terms)
-        if content:
-            code_context += f"\n--- {fpath} ---\n{content}\n"
-
-    # Keepalive after file reads — resets frontend timeout
-    yield f"data: {json.dumps({'type': 'status', 'message': 'Preparing...'})}\n\n"
-
-    # Build system prompt — role-based persona
-    show_code = user_role in ('dev', 'qa') or bug_mode
-    if bug_mode:
-        system = BUG_MODE_PROMPT
-    else:
-        system = PERSONAS.get(user_role, PERSONA_CAPTAIN)
-    if code_context:
-        if show_code:
-            system += f"\n\nRELEVANT CODE CONTEXT:\n{code_context}"
-        else:
-            system += (
-                "\n\nINTERNAL REFERENCE (for YOUR understanding only — NEVER show this to the user):\n"
-                "Translate everything below into plain-English game mechanics. "
-                "NEVER mention file names, function names, variable names, line numbers, or code. "
-                "The user should feel like they're talking to someone who designed the game, not someone reading source code.\n"
-                f"{code_context}"
-            )
-
-    # Always load static knowledge file
-    knowledge_path = os.path.join(PROJECT_ROOT, "pilgrimbot_knowledge.md")
-    if os.path.exists(knowledge_path):
-        try:
-            with open(knowledge_path) as f:
-                system += f"\n\nGAME KNOWLEDGE:\n{f.read()}"
-        except Exception:
-            pass
-
-    # Load dynamic context (brainstorm + bugs) when keywords match
-    dynamic = load_dynamic_context(message)
-    if dynamic:
-        if show_code:
-            system += f"\n\nLIVE DATA:{dynamic}"
-        else:
-            system += f"\n\nINTERNAL DATA (summarize in plain English, never show raw data/queries/column names):{dynamic}"
-
-    # Action results (speed test, etc.) from app.py
-    if action_context:
-        if show_code:
-            system += f"\n\nACTION RESULTS:{action_context}"
-        else:
-            system += f"\n\nINTERNAL RESULTS (share the findings in plain English, no technical details):{action_context}"
-
-    # Build conversation messages
-    api_messages = []
-    for h in history[-MAX_HISTORY:]:
-        api_messages.append({"role": h["role"], "content": h["content"]})
-    api_messages.append({"role": "user", "content": message})
-
     try:
-        # Detect math/calculation questions → upgrade model for accuracy
-        msg_lower = message.lower()
-        math_triggers = ['calculate', 'calculated', 'calculation', 'formula', 'math',
-                         'how is my', 'how does my', 'break down', 'breakdown', 'show the math',
-                         'explain exactly', 'add up', 'doesn\'t add up', 'multiplier',
-                         'effective rate', 'generation rate', 'how much', 'per hour']
-        is_math_question = any(t in msg_lower for t in math_triggers)
+        # === PHASE 1: Fast response with minimal context ===
+        show_code = user_role in ('dev', 'qa') or bug_mode
+        if bug_mode:
+            system_base = BUG_MODE_PROMPT
+        else:
+            system_base = PERSONAS.get(user_role, PERSONA_CAPTAIN)
 
-        # Math questions: Sonnet + targeted formulas instead of Opus + full 48KB dump.
-        # Sonnet is strong at math, way cheaper/faster than Opus, and with precise
-        # context from find_relevant_math() it has everything it needs.
-        chat_model = MODEL
-        if is_math_question:
-            chat_model = CLAUDE_MODELS.get("sonnet-4.5", "claude-sonnet-4-5-20250929")
-            logger.info(f"Math question detected — using Sonnet: {message[:80]}")
-
-        client = create_client(model=chat_model)
-
-        if is_math_question:
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Looking up formulas...'})}\n\n"
-            # Targeted math lookup — only inject relevant formulas + constants
-            relevant_math = find_relevant_math(message)
-            if relevant_math and relevant_math.get('formulas'):
-                system += f"\n\nMATH REGISTRY (authoritative formulas — use these EXACT formulas, never guess or re-derive from code):\n{json.dumps(relevant_math)}"
-                logger.info(f"Math: targeted {len(relevant_math['formulas'])} formulas ({len(json.dumps(relevant_math))} chars)")
-            else:
-                # Generic math question with no keyword matches — send full registry
-                full = load_math_registry()
-                if full:
-                    system += f"\n\nMATH REGISTRY (authoritative formulas — use these EXACT formulas, never guess or re-derive from code):\n{json.dumps(full)}"
-                    logger.info(f"Math: full registry fallback ({len(json.dumps(full))} chars)")
-            # Force query player data upfront so the model has real numbers
+        # Only load the lightweight knowledge file
+        knowledge_path = os.path.join(PROJECT_ROOT, "pilgrimbot_knowledge.md")
+        if os.path.exists(knowledge_path):
             try:
-                shard_data = query_player_data('shard_generation', user_id)
-                balance_data = query_player_data('balance', user_id)
-                system += f"\n\nPRE-LOADED PLAYER DATA (use these EXACT numbers, do NOT recalculate):\n{balance_data}\n\n{shard_data}"
-            except Exception as e:
-                logger.warning(f"Failed to pre-load math data: {e}")
+                with open(knowledge_path) as f:
+                    system_base += f"\n\nGAME KNOWLEDGE:\n{f.read()}"
+            except Exception:
+                pass
 
-        # Endgame questions: inject endgame_registry.json
-        endgame_triggers = ['signal', 'origin', 'node', 'decoder', 'decode', 'ledger',
-                            'endgame', 'end game', 'end-game', 'founder', 'claim',
-                            'hitchhiker', 'lost signal', 'beagle', 'schiaparelli', 'mars-3',
-                            'blockchain', 'transaction', 'tx_hash', 'puzzle',
-                            '14 sites', 'origin site', 'three act', 'world 2']
-        if any(t in msg_lower for t in endgame_triggers):
-            endgame = load_endgame_registry()
-            if endgame:
-                system += f"\n\nENDGAME REGISTRY (authoritative reference for Signal/Origin/Decoder system — use this as your answer key):\n{json.dumps(endgame)}"
-                logger.info(f"Endgame registry injected ({len(json.dumps(endgame))} chars)")
+        # Action results from app.py (speed test etc.) — small, always include
+        if action_context:
+            label = "ACTION RESULTS" if show_code else "INTERNAL RESULTS (plain English)"
+            system_base += f"\n\n{label}:{action_context}"
 
-        # Decide which tools to offer
-        deep_dive_triggers = ['get the file', 'show me the code', 'read the code',
-                              'look at the code', 'check the file', 'fetch the file',
-                              'go get', 'deep dive', 'show the exact code', 'prove it']
-        use_file_tools = bug_mode and any(t in msg_lower for t in deep_dive_triggers)
+        # Add player data tool + user ID
+        system_base += f"\n\n{PLAYER_DATA_MAP}"
+        system_base += f"\nThe current user's ID is {user_id}. Use this when they say 'my' or 'I'."
 
-        # Keepalive before API call — resets frontend timeout after all context loading
-        yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing...'})}\n\n"
+        # Build conversation messages
+        api_messages = []
+        for h in history[-MAX_HISTORY:]:
+            api_messages.append({"role": h["role"], "content": h["content"]})
+        api_messages.append({"role": "user", "content": message})
 
-        # Always include player data tool — Claude decides when to use it
+        # Phase 1: Quick Haiku call with just persona + knowledge (~10KB)
+        phase1_system = system_base + (
+            "\n\nIMPORTANT: Give a helpful, concise first response. If you need specific data "
+            "(formulas, player stats, code) to give a complete answer, say what you know and note "
+            "you're pulling up the details — a follow-up with exact data will come shortly."
+        )
+
         active_tools = [PLAYER_DATA_TOOL]
-        system += f"\n\n{PLAYER_DATA_MAP}"
-        system += f"\nThe current user's ID is {user_id}. Use this when they say 'my' or 'I'."
 
-        if use_file_tools:
-            active_tools.append(READ_FILE_TOOL)
-            system += f"\n\n{_build_codemap_summary(codemap)}"
+        yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
 
+        phase1_start = _time.time()
+        client = create_client(model=MODEL)
         full_response = ""
         for event_type, data in _execute_tool_loop(
-            client.client, api_messages, system, active_tools,
-            current_user_id=user_id, model_override=chat_model
+            client.client, api_messages, phase1_system, active_tools,
+            current_user_id=user_id, model_override=MODEL
         ):
             if event_type == "status":
                 yield f"data: {json.dumps({'type': 'status', 'message': data['message']})}\n\n"
@@ -1128,23 +1215,111 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
                 yield f"data: {json.dumps({'type': 'tool_call', 'file': data['file'], 'found': data['found']})}\n\n"
             elif event_type == "result":
                 full_response = data
-        # Stream the final response to frontend
+        phase1_ms = int((_time.time() - phase1_start) * 1000)
+
+        log_pilgrimbot_call(user_id, chat_id, 'fast', MODEL,
+                           len(phase1_system), ['knowledge', 'persona'],
+                           phase1_ms, success=True)
+        logger.info(f"Phase 1 (fast): {phase1_ms}ms, {len(phase1_system)} chars prompt")
+
+        # Stream phase 1 response immediately
         for i in range(0, len(full_response), 20):
-            chunk = full_response[i:i+20]
-            yield f"data: {json.dumps({'type': 'delta', 'text': chunk})}\n\n"
+            yield f"data: {json.dumps({'type': 'delta', 'text': full_response[i:i+20]})}\n\n"
 
-        # Save assistant response
-        save_message(user_id, chat_id, "assistant", full_response)
+        # === PHASE 2: Context planning + surgical deep dive (only if needed) ===
+        plan_start = _time.time()
+        plan, plan_ms = _plan_context(message, history, bug_mode)
 
-        # Check if PilgrimBot indicated it couldn't answer
-        cant_answer_signals = [
+        # If the planner says nothing extra is needed, we're done
+        if not plan:
+            log_pilgrimbot_call(user_id, chat_id, 'plan', MODEL, 0, ['empty'], plan_ms)
+            save_message(user_id, chat_id, "assistant", full_response)
+            cant_answer = any(s in full_response.lower() for s in [
+                "wasn't able to find", "couldn't find a clear answer",
+                "flag this for the dev team", "like me to flag", "want me to report"])
+            yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
+            return
+
+        log_pilgrimbot_call(user_id, chat_id, 'plan', MODEL, 0, list(plan.keys()), plan_ms)
+
+        # Load surgical context
+        yield f"data: {json.dumps({'type': 'status', 'message': 'Pulling up details...'})}\n\n"
+        surgical_context, loaded = _load_surgical_context(plan, message, user_id, user_role, bug_mode)
+
+        if not surgical_context:
+            # Planner wanted context but nothing was found — phase 1 answer stands
+            save_message(user_id, chat_id, "assistant", full_response)
+            cant_answer = any(s in full_response.lower() for s in [
+                "wasn't able to find", "couldn't find a clear answer",
+                "flag this for the dev team", "like me to flag", "want me to report"])
+            yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
+            return
+
+        # Phase 2 deep call: persona + knowledge + surgical context
+        # Use Sonnet for math questions, Haiku for everything else
+        is_math = 'math' in plan
+        deep_model = CLAUDE_MODELS.get("sonnet-4.5", "claude-sonnet-4-5-20250929") if is_math else MODEL
+
+        deep_system = system_base + surgical_context
+
+        # Add file tools for bug deep dives
+        deep_tools = [PLAYER_DATA_TOOL]
+        msg_lower = message.lower()
+        deep_dive_triggers = ['get the file', 'show me the code', 'read the code',
+                              'look at the code', 'check the file', 'fetch the file',
+                              'go get', 'deep dive', 'show the exact code', 'prove it']
+        if bug_mode and any(t in msg_lower for t in deep_dive_triggers):
+            deep_tools.append(READ_FILE_TOOL)
+            codemap = load_codemap()
+            deep_system += f"\n\n{_build_codemap_summary(codemap)}"
+
+        # Tell the model this is a follow-up with real data
+        deep_messages = api_messages.copy()
+        deep_messages.append({"role": "assistant", "content": full_response})
+        deep_messages.append({"role": "user", "content":
+            "Now I've loaded the exact data you need. Give me a COMPLETE, detailed answer "
+            "using the specific numbers, formulas, or code provided. Replace any approximations "
+            "from your first response with exact values."
+        })
+
+        # Signal to frontend that a detailed follow-up is coming
+        yield f"data: {json.dumps({'type': 'delta', 'text': '\\n\\n---\\n\\n'})}\n\n"
+        yield f"data: {json.dumps({'type': 'status', 'message': 'Deep diving...'})}\n\n"
+
+        deep_start = _time.time()
+        deep_client = create_client(model=deep_model)
+        deep_response = ""
+        for event_type, data in _execute_tool_loop(
+            deep_client.client, deep_messages, deep_system, deep_tools,
+            current_user_id=user_id, model_override=deep_model
+        ):
+            if event_type == "status":
+                yield f"data: {json.dumps({'type': 'status', 'message': data['message']})}\n\n"
+            elif event_type == "tool_call":
+                yield f"data: {json.dumps({'type': 'tool_call', 'file': data['file'], 'found': data['found']})}\n\n"
+            elif event_type == "result":
+                deep_response = data
+        deep_ms = int((_time.time() - deep_start) * 1000)
+
+        log_pilgrimbot_call(user_id, chat_id, 'deep', deep_model,
+                           len(deep_system), loaded, deep_ms, success=True)
+        logger.info(f"Phase 2 (deep): {deep_ms}ms, {len(deep_system)} chars prompt, loaded: {loaded}")
+
+        # Stream deep response
+        for i in range(0, len(deep_response), 20):
+            yield f"data: {json.dumps({'type': 'delta', 'text': deep_response[i:i+20]})}\n\n"
+
+        # Save the combined response
+        combined = full_response + "\n\n---\n\n" + deep_response
+        save_message(user_id, chat_id, "assistant", combined)
+
+        cant_answer = any(s in combined.lower() for s in [
             "wasn't able to find", "couldn't find a clear answer",
-            "flag this for the dev team", "like me to flag", "want me to report",
-        ]
-        cant_answer = any(signal in full_response.lower() for signal in cant_answer_signals)
-
+            "flag this for the dev team", "like me to flag", "want me to report"])
         yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
 
     except Exception as e:
         logger.error(f"PilgrimBot stream error: {e}")
+        log_pilgrimbot_call(user_id, chat_id, 'error', MODEL, 0, [], 0,
+                           success=False, error_message=str(e))
         yield f"data: {json.dumps({'type': 'error', 'message': 'Something went wrong. Try again?'})}\n\n"
