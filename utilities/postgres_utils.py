@@ -66,12 +66,13 @@ def _get_connection_pool():
                 # Galactica gets the biggest share (heaviest app)
                 _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                     minconn=2,
-                    maxconn=8,
+                    maxconn=6,
                     host=host,
                     database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
                     user=get_secret('PILGRIM_POSTGRES_USERNAME'),
                     password=get_secret('PILGRIM_POSTGRES_PASSWORD'),
-                    connect_timeout=10
+                    connect_timeout=10,
+                    options='-c statement_timeout=30000'
                 )
                 logger.info("✅ Database connection pool initialized (2-10 connections)")
     return _connection_pool
