@@ -688,6 +688,14 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
     return extra, loaded
 
 
+# SSE padding to force GCP App Engine TCP buffer flush (~2KB comment)
+_SSE_PAD = ": " + "." * 2048 + "\n\n"
+
+def _sse(data_dict):
+    """Build an SSE event with padding to force immediate TCP delivery on GCP."""
+    return f"data: {json.dumps(data_dict)}\n\n" + _SSE_PAD
+
+
 def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=False, action_context="", user_role="captain"):
     """Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."""
     ensure_pilgrimbot_table()
@@ -702,18 +710,18 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
     save_message(user_id, chat_id, "user", message, title=title)
 
     # Immediate start event — resets frontend timeout
-    yield f"data: {json.dumps({'type': 'start', 'chat_id': chat_id})}\n\n"
+    yield _sse({'type': 'start', 'chat_id': chat_id})
 
     # Instant acknowledgment so user sees something immediately
     if bug_mode and '#' in message:
         import re as _re
         bug_num = _re.search(r'#(\d+)', message)
         if bug_num:
-            yield f"data: {json.dumps({'type': 'status', 'message': f'Analyzing Bug #{bug_num.group(1)}...'})}\n\n"
+            yield _sse({'type': 'status', 'message': f'Analyzing Bug #{bug_num.group(1)}...'})
         else:
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing bug...'})}\n\n"
+            yield _sse({'type': 'status', 'message': 'Analyzing bug...'})
     else:
-        yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
+        yield _sse({'type': 'status', 'message': 'Thinking...'})
 
     try:
         # === PHASE 1: Fast response with minimal context ===
@@ -757,7 +765,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
         active_tools = [PLAYER_DATA_TOOL]
 
-        yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
+        yield _sse({'type': 'status', 'message': 'Thinking...'})
 
         phase1_start = _time.time()
         client = create_client(model=MODEL)
@@ -767,9 +775,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             current_user_id=user_id, model_override=MODEL
         ):
             if event_type == "status":
-                yield f"data: {json.dumps({'type': 'status', 'message': data['message']})}\n\n"
+                yield _sse({'type': 'status', 'message': data['message']})
             elif event_type == "tool_call":
-                yield f"data: {json.dumps({'type': 'tool_call', 'file': data['file'], 'found': data['found']})}\n\n"
+                yield _sse({'type': 'tool_call', 'file': data['file'], 'found': data['found']})
             elif event_type == "result":
                 full_response = data
         phase1_ms = int((_time.time() - phase1_start) * 1000)
@@ -794,13 +802,13 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             cant_answer = any(s in full_response.lower() for s in [
                 "wasn't able to find", "couldn't find a clear answer",
                 "flag this for the dev team", "like me to flag", "want me to report"])
-            yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
+            yield _sse({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})
             return
 
         log_pilgrimbot_call(user_id, chat_id, 'plan', MODEL, 0, list(plan.keys()), plan_ms)
 
         # Load surgical context
-        yield f"data: {json.dumps({'type': 'status', 'message': 'Pulling up details...'})}\n\n"
+        yield _sse({'type': 'status', 'message': 'Pulling up details...'})
         surgical_context, loaded = _load_surgical_context(plan, message, user_id, user_role, bug_mode)
 
         if not surgical_context:
@@ -809,7 +817,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             cant_answer = any(s in full_response.lower() for s in [
                 "wasn't able to find", "couldn't find a clear answer",
                 "flag this for the dev team", "like me to flag", "want me to report"])
-            yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
+            yield _sse({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})
             return
 
         # Phase 2 deep call: persona + knowledge + surgical context
@@ -840,7 +848,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         })
 
         # Signal phase transition to frontend
-        yield f"data: {json.dumps({'type': 'phase', 'label': 'Deep dive \u2014 loading exact code and data...'})}\n\n"
+        yield _sse({'type': 'phase', 'label': 'Deep dive \u2014 loading exact code and data...'})
 
         deep_start = _time.time()
         deep_client = create_client(model=deep_model)
@@ -850,9 +858,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             current_user_id=user_id, model_override=deep_model
         ):
             if event_type == "status":
-                yield f"data: {json.dumps({'type': 'status', 'message': data['message']})}\n\n"
+                yield _sse({'type': 'status', 'message': data['message']})
             elif event_type == "tool_call":
-                yield f"data: {json.dumps({'type': 'tool_call', 'file': data['file'], 'found': data['found']})}\n\n"
+                yield _sse({'type': 'tool_call', 'file': data['file'], 'found': data['found']})
             elif event_type == "result":
                 deep_response = data
         deep_ms = int((_time.time() - deep_start) * 1000)
@@ -872,7 +880,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         cant_answer = any(s in combined.lower() for s in [
             "wasn't able to find", "couldn't find a clear answer",
             "flag this for the dev team", "like me to flag", "want me to report"])
-        yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
+        yield _sse({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})
 
     except Exception as e:
         logger.error(f"PilgrimBot stream error: {e}", exc_info=True)
@@ -884,4 +892,4 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         err_msg = ""  # Empty = no visible error if we have a response
         if not full_response:
             err_msg = "Ran into an issue — try rephrasing or asking about a specific part?"
-        yield f"data: {json.dumps({'type': 'error', 'message': err_msg})}\n\n"
+        yield _sse({'type': 'error', 'message': err_msg})
