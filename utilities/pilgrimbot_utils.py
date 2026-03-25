@@ -453,7 +453,8 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     loop_model = model_override or MODEL
     files_already_read = {}  # path -> content (cache to prevent re-reads)
     for round_num in range(max_rounds):
-        yield ("status", {"message": f"Analyzing{'.' * (round_num + 1)}"})
+        _round_msgs = ["Analyzing...", "Reading context...", "Processing...", "Almost there..."]
+        yield ("status", {"message": _round_msgs[min(round_num, len(_round_msgs) - 1)]})
         _start = _time.time()
         resp = client_raw.messages.create(
             model=loop_model, max_tokens=3000, temperature=0.7,
@@ -700,8 +701,16 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
     title = generate_title(message) if not history else None
     save_message(user_id, chat_id, "user", message, title=title)
 
-    # Immediate start event — resets frontend 45s timeout
+    # Immediate start event — resets frontend timeout
     yield f"data: {json.dumps({'type': 'start', 'chat_id': chat_id})}\n\n"
+
+    # Instant acknowledgment so user sees something immediately
+    if bug_mode and '#' in message:
+        import re as _re
+        bug_num = _re.search(r'#(\d+)', message)
+        if bug_num:
+            yield f"data: {json.dumps({'type': 'status', 'message': f'Analyzing Bug #{bug_num.group(1)}...'})}\n\n"
+    yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
 
     try:
         # === PHASE 1: Fast response with minimal context ===
@@ -827,10 +836,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "from your first response with exact values."
         })
 
-        # Signal to frontend that a detailed follow-up is coming
-        separator = '\n\n---\n\n'
-        yield f"data: {json.dumps({'type': 'delta', 'text': separator})}\n\n"
-        yield f"data: {json.dumps({'type': 'status', 'message': 'Deep diving...'})}\n\n"
+        # Signal phase transition to frontend
+        yield f"data: {json.dumps({'type': 'phase', 'label': 'Deep dive \u2014 loading exact code and data...'})}\n\n"
 
         deep_start = _time.time()
         deep_client = create_client(model=deep_model)

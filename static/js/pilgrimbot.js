@@ -325,42 +325,118 @@
         const typingEl = showTyping();
         let gotFirstDelta = false;
 
-        // Timeout just updates the typing indicator — NEVER kills the stream
-        const TIMEOUT_DEFAULT = 30000;
+        // Timeout updates typing indicator label — NEVER kills the stream
+        const TIMEOUT_MS = 30000;
         let timeoutCount = 0;
+        let streamTimeout = null;
 
         function resetStreamTimeout() {
             clearTimeout(streamTimeout);
             streamTimeout = setTimeout(() => {
                 if (isStreaming && typingEl && typingEl.parentNode) {
                     timeoutCount++;
-                    // Update the label above the pulsing dots — dots keep animating
                     let header = typingEl.querySelector('.pb-typing-header');
                     if (header) {
                         header.textContent = timeoutCount === 1
-                            ? 'Still working...'
-                            : 'Deep diving into the code...';
+                            ? 'Still working...' : 'Deep diving into the code...';
                     }
-                    resetStreamTimeout(); // Keep resetting — never give up
+                    resetStreamTimeout();
                 }
-            }, TIMEOUT_DEFAULT);
+            }, TIMEOUT_MS);
         }
-
-        let streamTimeout = null;
         resetStreamTimeout();
 
         let contentEl = null;
         let fullText = '';
         let assistantEl = null;
 
+        // === Event queue: stagger status/tool_call renders so they appear one-at-a-time ===
+        const eventQueue = [];
+        let draining = false;
+        let lastEventRenderTime = 0;
+        const MIN_GAP_MS = 350;
+
+        function ensureAssistantEl() {
+            removeTyping(typingEl);
+            if (!assistantEl) {
+                assistantEl = document.createElement('div');
+                assistantEl.className = 'pb-msg pb-msg-assistant';
+                assistantEl.innerHTML =
+                    '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
+                    formatTime(new Date()) + '</span></div>' +
+                    '<div class="pb-tool-calls"></div>' +
+                    '<div class="pb-msg-content"></div>';
+                messagesEl.appendChild(assistantEl);
+                contentEl = assistantEl.querySelector('.pb-msg-content');
+            }
+        }
+
+        function renderStatusEvent(data) {
+            ensureAssistantEl();
+            let toolArea = assistantEl.querySelector('.pb-tool-calls');
+            if (!toolArea) return;
+            // Remove old dots
+            let oldDots = toolArea.querySelector('.pb-tool-dots');
+            if (oldDots) oldDots.remove();
+            // Create status/tool line
+            let el = document.createElement('div');
+            if (data.type === 'status') {
+                el.className = 'pb-tool-line pb-tool-status';
+                el.textContent = data.message;
+            } else if (data.type === 'phase') {
+                el.className = 'pb-phase-divider';
+                el.textContent = data.label;
+            } else {
+                el.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
+                el.textContent = (data.found ? 'Read ' : 'Not found: ') + data.file;
+            }
+            toolArea.appendChild(el);
+            // Always re-add pulsing dots below
+            let dots = document.createElement('div');
+            dots.className = 'pb-tool-dots';
+            dots.innerHTML = '<span class="pb-typing-dots"><span></span><span></span><span></span></span>';
+            toolArea.appendChild(dots);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            resetStreamTimeout();
+        }
+
+        function drainQueue() {
+            if (!eventQueue.length) { draining = false; return; }
+            let elapsed = Date.now() - lastEventRenderTime;
+            if (elapsed < MIN_GAP_MS) {
+                setTimeout(drainQueue, MIN_GAP_MS - elapsed);
+                return;
+            }
+            renderStatusEvent(eventQueue.shift());
+            lastEventRenderTime = Date.now();
+            if (eventQueue.length) setTimeout(drainQueue, MIN_GAP_MS);
+            else draining = false;
+        }
+
+        function queueEvent(data) {
+            eventQueue.push(data);
+            if (!draining) { draining = true; drainQueue(); }
+        }
+
+        function flushQueue() {
+            while (eventQueue.length) renderStatusEvent(eventQueue.shift());
+            draining = false;
+        }
+
+        function removeDots() {
+            if (assistantEl) {
+                let d = assistantEl.querySelector('.pb-tool-dots');
+                if (d) d.remove();
+            }
+        }
+
+        // === SSE fetch ===
         fetch('/api/pilgrimbot/chat', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined})
         }).then(response => {
-            if (!response.ok) {
-                throw new Error('Server error: ' + response.status);
-            }
+            if (!response.ok) throw new Error('Server error: ' + response.status);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
@@ -368,13 +444,14 @@
             function processChunk() {
                 reader.read().then(({done, value}) => {
                     if (done) {
+                        flushQueue();
                         clearTimeout(streamTimeout);
+                        removeDots();
                         if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
                         addFooterToEl(assistantEl, fullText);
                         finishStream(fullText);
                         return;
                     }
-
                     buffer += decoder.decode(value, {stream: true});
                     const lines = buffer.split('\n');
                     buffer = lines.pop();
@@ -386,82 +463,55 @@
                             if (data.type === 'start' && data.chat_id) {
                                 currentChatId = data.chat_id;
                                 resetStreamTimeout();
-                            } else if (data.type === 'status' || data.type === 'tool_call') {
-                                // Show live status — always keep pulsing dots at bottom
-                                removeTyping(typingEl);
-                                if (!assistantEl) {
-                                    assistantEl = document.createElement('div');
-                                    assistantEl.className = 'pb-msg pb-msg-assistant';
-                                    assistantEl.innerHTML =
-                                        '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
-                                        formatTime(new Date()) + '</span></div>' +
-                                        '<div class="pb-tool-calls"></div>' +
-                                        '<div class="pb-msg-content"></div>';
-                                    messagesEl.appendChild(assistantEl);
-                                    contentEl = assistantEl.querySelector('.pb-msg-content');
-                                }
-                                let toolArea = assistantEl.querySelector('.pb-tool-calls');
-                                if (toolArea) {
-                                    // Remove old pulsing dots before adding new line
-                                    let oldDots = toolArea.querySelector('.pb-tool-dots');
-                                    if (oldDots) oldDots.remove();
 
-                                    let line = document.createElement('div');
-                                    if (data.type === 'status') {
-                                        line.className = 'pb-tool-line';
-                                        line.style.color = 'var(--color-sepolia)';
-                                        line.textContent = data.message;
-                                    } else {
-                                        line.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
-                                        line.textContent = (data.found ? 'Read ' : 'Not found: ') + data.file;
-                                    }
-                                    toolArea.appendChild(line);
+                            } else if (data.type === 'status' || data.type === 'tool_call' || data.type === 'phase') {
+                                queueEvent(data);
 
-                                    // Add pulsing dots after the latest status line
-                                    let dots = document.createElement('div');
-                                    dots.className = 'pb-tool-dots';
-                                    dots.innerHTML = '<span class="pb-typing-dots"><span></span><span></span><span></span></span>';
-                                    toolArea.appendChild(dots);
-                                }
-                                messagesEl.scrollTop = messagesEl.scrollHeight;
-                                resetStreamTimeout();
                             } else if (data.type === 'delta' && data.text) {
+                                // Flush pending status events immediately, then stream text
+                                flushQueue();
                                 if (!gotFirstDelta) {
                                     gotFirstDelta = true;
                                     clearTimeout(streamTimeout);
                                     removeTyping(typingEl);
-                                    // Remove pulsing dots — real text is arriving
-                                    if (assistantEl) {
-                                        let dots = assistantEl.querySelector('.pb-tool-dots');
-                                        if (dots) dots.remove();
-                                    }
-                                    if (!assistantEl) {
-                                        assistantEl = document.createElement('div');
-                                        assistantEl.className = 'pb-msg pb-msg-assistant';
-                                        assistantEl.innerHTML =
-                                            '<div class="pb-msg-header">PilgrimBot <span class="pb-msg-time">' +
-                                            formatTime(new Date()) + '</span></div>' +
-                                            '<div class="pb-msg-content"></div>';
-                                        messagesEl.appendChild(assistantEl);
-                                    }
+                                    removeDots();
+                                    ensureAssistantEl();
                                     contentEl = assistantEl.querySelector('.pb-msg-content');
                                 }
                                 fullText += data.text;
-                                contentEl.textContent = fullText;
+                                contentEl.innerHTML = parseMarkdown(fullText);
                                 messagesEl.scrollTop = messagesEl.scrollHeight;
+
                             } else if (data.type === 'stop') {
+                                flushQueue();
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
-                                if (assistantEl) { let d = assistantEl.querySelector('.pb-tool-dots'); if (d) d.remove(); }
+                                removeDots();
                                 if (contentEl) contentEl.innerHTML = parseMarkdown(fullText);
                                 addFooterToEl(assistantEl, fullText);
                                 finishStream(fullText);
                                 return;
+
                             } else if (data.type === 'error') {
+                                flushQueue();
                                 clearTimeout(streamTimeout);
                                 removeTyping(typingEl);
-                                if (assistantEl) { let d = assistantEl.querySelector('.pb-tool-dots'); if (d) d.remove(); }
-                                appendMessage('assistant', data.message || 'Something went wrong.');
+                                removeDots();
+                                // Render error INLINE — never as a separate message
+                                ensureAssistantEl();
+                                if (fullText) {
+                                    // Partial response exists — add subtle note in tool area
+                                    let toolArea = assistantEl.querySelector('.pb-tool-calls');
+                                    if (toolArea) {
+                                        let note = document.createElement('div');
+                                        note.className = 'pb-tool-line pb-tool-error';
+                                        note.textContent = data.message || 'Deep dive interrupted';
+                                        toolArea.appendChild(note);
+                                    }
+                                } else {
+                                    // No response at all — show in content area
+                                    if (contentEl) contentEl.innerHTML = '<span class="pb-error-text">' + escapeHtml(data.message || 'Something went wrong.') + '</span>';
+                                }
                                 finishStream(fullText);
                                 return;
                             }
@@ -470,8 +520,10 @@
                     processChunk();
                 }).catch(err => {
                     console.error('PilgrimBot stream read error:', err);
+                    flushQueue();
                     clearTimeout(streamTimeout);
                     removeTyping(typingEl);
+                    removeDots();
                     if (!fullText) appendMessage('assistant', 'Connection lost. Please try again.');
                     finishStream(fullText);
                 });

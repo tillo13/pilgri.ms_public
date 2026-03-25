@@ -482,14 +482,37 @@
     color: rgba(255,255,255,0.35);
     padding: 2px 0;
     font-family: monospace;
+    animation: pbFadeSlideIn 0.3s ease-out;
+}
+@keyframes pbFadeSlideIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 .pb-tool-line::before {
     content: '\25B6  ';
     font-size: 8px;
     color: rgba(96,165,250,0.6);
 }
+.pb-tool-status { color: var(--color-sepolia, #ffa07a); }
 .pb-tool-miss { color: rgba(255,255,255,0.2); }
 .pb-tool-miss::before { color: rgba(239,68,68,0.5); }
+
+/* Phase divider between fast response and deep dive */
+.pb-phase-divider {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    padding: 8px 0 4px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-style: italic;
+    animation: pbFadeSlideIn 0.3s ease-out;
+}
+.pb-phase-divider::before { content: none; }
+
+/* Inline error in tool area */
+.pb-tool-error { color: rgba(239, 130, 130, 0.7) !important; }
+.pb-tool-error::before { content: '\25CF  ' !important; color: rgba(239,68,68,0.5) !important; }
+.pb-error-text { color: rgba(239, 130, 130, 0.8); font-style: italic; }
 
 /* === Smart follow-up suggestions === */
 
