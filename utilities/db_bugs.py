@@ -328,25 +328,31 @@ def get_bug_stats():
         with db_cursor() as cur:
             cur.execute("""
                 SELECT
+                    -- Core counts
                     COUNT(*) FILTER (WHERE completed_at IS NULL) AS active_count,
                     COUNT(*) FILTER (WHERE completed_at IS NOT NULL) AS completed_count,
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'Awaiting QA') AS awaiting_qa,
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND priority = 'P1') AS p1_count,
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND priority = 'P2') AS p2_count,
-                    -- Velocity: closed in last 7 days
+
+                    -- Dev metrics
                     COUNT(*) FILTER (WHERE completed_at >= NOW() - INTERVAL '7 days') AS closed_this_week,
-                    -- Filed in last 7 days
                     COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS filed_this_week,
-                    -- Avg time to close (completed bugs only, in hours)
-                    ROUND(EXTRACT(EPOCH FROM AVG(completed_at - created_at) FILTER (WHERE completed_at IS NOT NULL)) / 3600) AS avg_close_hours,
-                    -- Median time to close (approx via percentile)
-                    ROUND(EXTRACT(EPOCH FROM PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY completed_at - created_at) FILTER (WHERE completed_at IS NOT NULL)) / 3600) AS median_close_hours,
-                    -- Oldest open bug age in days
-                    EXTRACT(DAY FROM NOW() - MIN(created_at) FILTER (WHERE completed_at IS NULL))::int AS oldest_open_days,
-                    -- Closed in last 30 days (for monthly rate)
                     COUNT(*) FILTER (WHERE completed_at >= NOW() - INTERVAL '30 days') AS closed_this_month,
-                    -- P1s created this week
-                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days' AND priority = 'P1') AS p1_filed_this_week
+                    ROUND(EXTRACT(EPOCH FROM AVG(
+                        CASE WHEN completed_at > created_at THEN completed_at - created_at END
+                    ) FILTER (WHERE completed_at IS NOT NULL AND completed_at > created_at)) / 3600) AS avg_close_hours,
+                    EXTRACT(DAY FROM NOW() - MIN(created_at) FILTER (WHERE completed_at IS NULL))::int AS oldest_open_days,
+                    COUNT(*) FILTER (WHERE completed_at IS NULL AND status IN ('Ready For Dev', 'In Progress')) AS dev_queue,
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days' AND priority = 'P1') AS p1_filed_this_week,
+
+                    -- QA metrics
+                    COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'Awaiting QA') AS qa_queue,
+                    COUNT(*) FILTER (WHERE qa_approved = true AND completed_at >= NOW() - INTERVAL '7 days') AS qa_passed_this_week,
+                    COUNT(*) FILTER (WHERE status = 'ReOpen') AS reopened_count,
+                    COUNT(*) FILTER (WHERE status = 'ReOpen' AND created_at >= NOW() - INTERVAL '30 days') AS reopened_this_month,
+                    COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'New') AS new_untriaged,
+                    COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'Backlog') AS backlog_count
                 FROM pilgrim.bugs
             """)
             return _fetchone(cur)

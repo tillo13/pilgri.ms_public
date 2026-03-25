@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Bug Tracker - Admin{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v=6">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v=7">{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -48,31 +48,65 @@
         <div class="bt-stat"><span class="bt-stat-val bt-stat-p2" id="btStatP2">{{ stats.p2_count or 0 }}</span><span class="bt-stat-label">P2</span></div>
         <div class="bt-stat"><span class="bt-stat-val" id="btStatDone">{{ stats.completed_count or 0 }}</span><span class="bt-stat-label">Completed</span></div>
     </div>
-    <!-- Velocity metrics -->
-    <div class="bt-velocity">
-        {% set closed_week = stats.closed_this_week or 0 %}
-        {% set filed_week = stats.filed_this_week or 0 %}
-        {% set avg_hrs = stats.avg_close_hours or 0 %}
-        {% set median_hrs = stats.median_close_hours or 0 %}
-        {% set oldest = stats.oldest_open_days or 0 %}
-        {% set closed_month = stats.closed_this_month or 0 %}
-        {% set net = filed_week - closed_week %}
+    <!-- Dev velocity -->
+    {% set closed_week = stats.closed_this_week or 0 %}
+    {% set filed_week = stats.filed_this_week or 0 %}
+    {% set avg_hrs = (stats.avg_close_hours or 0)|int %}
+    {% set oldest = stats.oldest_open_days or 0 %}
+    {% set closed_month = stats.closed_this_month or 0 %}
+    {% set dev_queue = stats.dev_queue or 0 %}
+    {% set net = filed_week - closed_week %}
+    <div class="bt-velocity bt-vel-dev">
+        <span class="bt-vel-label">DEV</span>
         <span class="bt-vel-item">
-            <span class="bt-vel-val">{{ closed_week }}</span> closed this week
-            {% if filed_week > 0 %}<span class="bt-vel-note">({{ filed_week }} filed, {{ '+' if net > 0 }}{{ net }} net)</span>{% endif %}
+            <span class="bt-vel-val">{{ closed_week }}</span> closed /wk
+            <span class="bt-vel-note">({{ filed_week }} filed, {{ '+' if net > 0 }}{{ net }} net)</span>
         </span>
         <span class="bt-vel-sep"></span>
         <span class="bt-vel-item">
-            avg close <span class="bt-vel-val">{% if avg_hrs > 48 %}{{ (avg_hrs / 24)|int }}d{% else %}{{ avg_hrs|int }}h{% endif %}</span>
-            <span class="bt-vel-note">(median {% if median_hrs > 48 %}{{ (median_hrs / 24)|int }}d{% else %}{{ median_hrs|int }}h{% endif %})</span>
+            <span class="bt-vel-val">{{ closed_month }}</span> closed /mo
         </span>
         <span class="bt-vel-sep"></span>
         <span class="bt-vel-item">
-            <span class="bt-vel-val">{{ closed_month }}</span> closed /30d
+            avg close <span class="bt-vel-val">{% if avg_hrs > 48 %}{{ (avg_hrs / 24)|int }}d{% elif avg_hrs > 0 %}{{ avg_hrs }}h{% else %}—{% endif %}</span>
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ dev_queue }}</span> in dev queue
         </span>
         <span class="bt-vel-sep"></span>
         <span class="bt-vel-item">
             oldest open <span class="bt-vel-val {% if oldest > 30 %}bt-vel-warn{% endif %}">{{ oldest }}d</span>
+        </span>
+    </div>
+    <!-- QA velocity -->
+    {% set qa_queue = stats.qa_queue or 0 %}
+    {% set qa_passed = stats.qa_passed_this_week or 0 %}
+    {% set reopened = stats.reopened_count or 0 %}
+    {% set reopened_mo = stats.reopened_this_month or 0 %}
+    {% set untriaged = stats.new_untriaged or 0 %}
+    {% set backlog = stats.backlog_count or 0 %}
+    <div class="bt-velocity bt-vel-qa">
+        <span class="bt-vel-label">QA</span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ qa_queue }}</span> awaiting QA
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ qa_passed }}</span> passed /wk
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val {% if reopened > 0 %}bt-vel-warn{% endif %}">{{ reopened }}</span> reopened
+            {% if reopened_mo > 0 %}<span class="bt-vel-note">({{ reopened_mo }} /mo)</span>{% endif %}
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ untriaged }}</span> untriaged
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ backlog }}</span> in backlog
         </span>
     </div>
 

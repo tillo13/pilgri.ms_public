@@ -54,6 +54,18 @@
 .bt-vel-note { color: rgba(255,255,255,0.3); font-size: 11px; }
 .bt-vel-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.12); margin: 0 4px; }
 .bt-vel-warn { color: #e74c3c; }
+.bt-vel-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+}
+.bt-vel-dev .bt-vel-label { background: rgba(52, 152, 219, 0.2); color: #5dade2; }
+.bt-vel-qa .bt-vel-label { background: rgba(46, 204, 113, 0.2); color: #58d68d; }
+.bt-velocity + .bt-velocity { margin-top: -6px; }
 
 .bt-tabs {
     display: flex;
