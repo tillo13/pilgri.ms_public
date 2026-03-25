@@ -321,8 +321,8 @@
                     '</div>' +
                     '<button class="bt-detail-close" onclick="BT.closeDetail()">&times;</button>' +
                 '</div>' +
-                '<div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:12px;">Created ' + formatDate(bug.created_at) +
-                    (bug.completed_at ? ' &middot; Completed ' + formatDate(bug.completed_at) : '') +
+                '<div style="font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:12px;">Created ' + formatDateTime(bug.created_at) +
+                    (bug.completed_at ? ' &middot; Completed ' + formatDateTime(bug.completed_at) : '') +
                     ' &middot; Source: ' + escapeHtml(bug.source) + '</div>' +
                 '<div class="bt-actions">' + actions + '</div>' +
                 '<div class="bt-detail-desc">' +
