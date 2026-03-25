@@ -368,9 +368,11 @@
         }
 
         var _activeTyping = null; // track current typing indicator
+        var _lastStepTime = sendStartTime; // track time between steps
 
         function renderStatusEvent(data) {
-            let elapsed = Math.round((Date.now() - sendStartTime) / 1000);
+            let stepElapsed = Math.round((Date.now() - _lastStepTime) / 1000);
+            _lastStepTime = Date.now();
 
             // Remove any active typing indicator
             if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
@@ -395,9 +397,11 @@
                 let div = document.createElement('div');
                 div.className = 'pb-step-bubble';
                 let text = data.type === 'status' ? data.message : ((data.found ? 'Read ' : 'Not found: ') + data.file);
+                let totalElapsed = Math.round((Date.now() - sendStartTime) / 1000);
+                let timeLabel = stepElapsed > 0 ? stepElapsed + 's / ' + totalElapsed + 's' : totalElapsed + 's';
                 div.innerHTML = '<span class="pb-step-icon">\u25B6</span>' +
                     '<span class="pb-step-text">' + escapeHtml(text) + '</span>' +
-                    '<span class="pb-step-time">' + elapsed + 's</span>';
+                    '<span class="pb-step-time">' + timeLabel + '</span>';
                 if (data.type === 'tool_call' && !data.found) div.classList.add('pb-step-miss');
                 insertBeforeResponse(div);
             }
@@ -411,12 +415,14 @@
                     '<span class="pb-typing-timer"></span>' +
                 '</div>';
             insertBeforeResponse(_activeTyping);
-            // Live timer on new dots
-            var _stepStart = Date.now();
+            // Live timer on new dots — shows step/total
+            var _dotStart = Date.now();
             var _stepTimer = setInterval(function() {
                 var tel = _activeTyping && _activeTyping.querySelector('.pb-typing-timer');
-                if (tel) tel.textContent = Math.round((Date.now() - sendStartTime) / 1000) + 's';
-                else clearInterval(_stepTimer);
+                if (!tel) { clearInterval(_stepTimer); return; }
+                var stepSec = Math.round((Date.now() - _dotStart) / 1000);
+                var totalSec = Math.round((Date.now() - sendStartTime) / 1000);
+                tel.textContent = stepSec > 0 ? stepSec + 's / ' + totalSec + 's' : totalSec + 's';
             }, 1000);
 
             messagesEl.scrollTop = messagesEl.scrollHeight;

@@ -25,7 +25,7 @@ MAX_HISTORY = 20  # messages (10 exchanges)
 MAX_FILE_CONTENT = 12000  # chars per file section to include in context
 
 # Only read code files (no secrets, no configs, no data)
-CODE_EXTS = {".py", ".js", ".css", ".html", ".md"}
+CODE_EXTS = {".py", ".js", ".css", ".html", ".md", ".json", ".sql", ".txt", ".yaml", ".yml", ".toml", ".cfg"}
 SKIP_DIRS = {"venv_galactica", "archive", "antiquated_code", ".git", "__pycache__",
              "node_modules", ".claude", "testing", "tools/credentials"}
 
@@ -668,8 +668,39 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
             except Exception as e:
                 logger.warning(f"Player data query {category} failed: {e}")
 
-    # Bug tracker context
-    if plan.get('bugs'):
+    # Bug tracker context — load full bug data when a specific bug is referenced
+    if plan.get('bugs') or bug_mode:
+        import re as _re
+        bug_match = _re.search(r'#(\d+)', message)
+        if bug_match:
+            try:
+                from utilities.db_bugs import get_bug_by_id, get_bug_comments, get_bug_history
+                bug_id = int(bug_match.group(1))
+                bug = get_bug_by_id(bug_id)
+                if bug:
+                    extra += f"\n\n--- FULL BUG #{bug_id} DATA ---\n"
+                    for key in ['name', 'description', 'status', 'priority', 'bug_type',
+                                'qa_notes', 'dev_notes', 'assigned_to', 'qa_approved',
+                                'screenshot_urls', 'created_at', 'updated_at']:
+                        val = bug.get(key)
+                        if val:
+                            extra += f"{key}: {val}\n"
+                    # Load comments
+                    comments = get_bug_comments(bug_id)
+                    if comments:
+                        extra += f"\n--- Bug #{bug_id} Comments ({len(comments)}) ---\n"
+                        for c in comments[-15:]:
+                            extra += f"[{c.get('author', 'anon')}]: {str(c.get('body', ''))[:300]}\n"
+                    # Load history
+                    history_entries = get_bug_history(bug_id)
+                    if history_entries:
+                        extra += f"\n--- Bug #{bug_id} History ({len(history_entries)}) ---\n"
+                        for h in history_entries[-10:]:
+                            extra += f"{h.get('changed_at', '')}: {h.get('field', '')} → {h.get('new_value', '')}\n"
+                    loaded.append(f"bug:{bug_id}:full")
+            except Exception as e:
+                logger.warning(f"Failed to load full bug data: {e}")
+        # Also load general bug tracker stats
         dynamic = load_dynamic_context(message)
         if dynamic:
             label = "LIVE DATA" if show_code else "INTERNAL DATA (summarize in plain English)"
