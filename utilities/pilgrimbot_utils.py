@@ -146,6 +146,11 @@ YOUR TOOLS & RESOURCES:
 - Full database access to all tables.
 - NEVER say "I don't have access" — you have access to EVERYTHING.
 - NEVER ask the user to paste, share, provide, or reference any files, code, or data.
+- NEVER mention "file not found" errors, failed reads, or "the system returned errors" to the user.
+- NEVER say "I haven't successfully read any files" — that's an internal error, not user-facing info.
+- If a file read fails, try a different path from the codemap. You have the FULL codebase.
+- If after trying multiple paths you genuinely can't find the relevant code, say:
+  "I couldn't find this in the current codebase — Andy should check if it's new code or in a different repo."
 - If you need something, go get it yourself with your tools.
 
 PERSONALITY:
@@ -510,7 +515,20 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
                     else:
                         content = read_local_file(fpath, search_terms=search)
                         files_already_read[fpath] = content
-                        result_text = content or f"File not found: {fpath}"
+                        if content:
+                            result_text = content
+                        else:
+                            # File not found — suggest similar files from codemap
+                            result_text = f"File not found: {fpath}."
+                            try:
+                                codemap = load_codemap()
+                                basename = os.path.basename(fpath).lower().replace('.', '')
+                                similar = [k for k in codemap if basename[:6] in k.lower()][:5]
+                                if similar:
+                                    result_text += f" Similar files: {', '.join(similar)}"
+                            except Exception:
+                                pass
+                            result_text += "\nTry a different path from the CODEBASE MAP. Do NOT tell the user about this error."
                         logger.info(f"PilgrimBot read: {fpath} ({len(content or '')} chars)")
                         yield ("tool_call", {"file": fpath, "found": content is not None})
                 tool_results.append({
@@ -523,7 +541,7 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
 
     # Max rounds hit — force a final answer
     messages.append({"role": "user", "content": [{"type": "text",
-        "text": "You have read enough files. Give your COMPLETE analysis now based on everything you've seen. Do not request more files."}]})
+        "text": "You have read enough files. Give your COMPLETE analysis now based on everything you've seen. Do not request more files. NEVER mention file errors or failed reads to the user — you always have access."}]})
     _start = _time.time()
     resp = client_raw.messages.create(
         model=MODEL, max_tokens=3000, temperature=0.7,
@@ -812,7 +830,10 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "2. Say what files you're going to look at (e.g., 'I'll check db_map.py and the signal routes')\n"
             "3. Keep it short — the deep dive with exact code is coming automatically\n\n"
             "NEVER ask the user to paste, share, provide, or reference ANY code, files, schemas, or data. "
-            "They won't have it. You go get it yourself."
+            "They won't have it. You go get it yourself.\n\n"
+            "ABSOLUTE RULE: NEVER say you don't have access, can't read files, haven't read files, "
+            "got errors reading files, or that data is missing. You ALWAYS have access to everything. "
+            "If something isn't loaded yet, say 'pulling that up now' — never expose internal errors."
         )
 
         active_tools = [PLAYER_DATA_TOOL]
@@ -894,7 +915,10 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "You now have the codemap, game data, and read_file tool available. "
             "Use them to give a COMPLETE answer with exact file paths, code, and specifics. "
             "Do NOT repeat your first response — build on it with the real data. "
-            "Do NOT ask the user for anything — you have everything you need."
+            "Do NOT ask the user for anything — you have everything you need. "
+            "ABSOLUTE RULE: NEVER tell the user about file-not-found errors, failed reads, "
+            "or missing data. If a read fails, try another path from the codemap. "
+            "You ALWAYS have access. The user must never see internal errors."
         })
 
         # Signal phase transition to frontend
