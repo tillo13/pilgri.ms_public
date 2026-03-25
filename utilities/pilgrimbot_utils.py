@@ -865,7 +865,13 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         yield f"data: {json.dumps({'type': 'stop', 'chat_id': chat_id, 'cant_answer': cant_answer})}\n\n"
 
     except Exception as e:
-        logger.error(f"PilgrimBot stream error: {e}")
+        logger.error(f"PilgrimBot stream error: {e}", exc_info=True)
         log_pilgrimbot_call(user_id, chat_id, 'error', MODEL, 0, [], 0,
                            success=False, error_message=str(e))
-        yield f"data: {json.dumps({'type': 'error', 'message': 'Something went wrong. Try again?'})}\n\n"
+        # If we already have a partial response, save it so the user doesn't lose it
+        if full_response:
+            save_message(user_id, chat_id, "assistant", full_response + "\n\n*(response interrupted)*")
+        err_msg = "Hit a snag on the deep dive — but the analysis above should still be useful. Try asking a follow-up?"
+        if not full_response:
+            err_msg = "Hit a snag analyzing this — try rephrasing or asking about a specific part?"
+        yield f"data: {json.dumps({'type': 'error', 'message': err_msg})}\n\n"

@@ -325,20 +325,23 @@
         const typingEl = showTyping();
         let gotFirstDelta = false;
 
-        // Reset timeout on any SSE activity. Opus math questions can take 60-90s.
-        const TIMEOUT_DEFAULT = 45000;
-        const TIMEOUT_THINKING = 120000;  // math/opus gets 2 min
-        let currentTimeoutMs = TIMEOUT_DEFAULT;
+        // Timeout just updates the typing indicator — NEVER kills the stream
+        const TIMEOUT_DEFAULT = 30000;
+        let timeoutCount = 0;
 
         function resetStreamTimeout() {
             clearTimeout(streamTimeout);
             streamTimeout = setTimeout(() => {
-                if (!gotFirstDelta && isStreaming) {
-                    removeTyping(typingEl);
-                    appendMessage('assistant', 'PilgrimBot is still thinking — this is taking longer than usual. You can wait or try a simpler question.');
-                    finishStream('');
+                if (isStreaming && typingEl && typingEl.parentNode) {
+                    timeoutCount++;
+                    // Update typing indicator with dots to show progress
+                    const dots = '.'.repeat((timeoutCount % 3) + 1);
+                    typingEl.textContent = timeoutCount === 1
+                        ? 'Still working' + dots
+                        : 'Deep diving into the code' + dots;
+                    resetStreamTimeout(); // Keep resetting — never give up
                 }
-            }, currentTimeoutMs);
+            }, TIMEOUT_DEFAULT);
         }
 
         let streamTimeout = null;
@@ -403,8 +406,6 @@
                                     sl.textContent = data.message;
                                     statusEl.appendChild(sl);
                                 }
-                                // Math/calculation status — give extra time for Opus
-                                currentTimeoutMs = TIMEOUT_THINKING;
                                 resetStreamTimeout();
                             } else if (data.type === 'tool_call') {
                                 // Bot is actively working — reset timeout
