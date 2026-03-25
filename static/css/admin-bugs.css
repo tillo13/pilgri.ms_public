@@ -56,31 +56,57 @@
 .bt-tab.active { color: #fff; border-bottom-color: var(--color-sepolia, #c0392b); }
 
 /* Filters */
-.bt-filters {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
+.bt-search-bar {
+    margin-bottom: 8px;
 }
-.bt-filters select,
-.bt-filters input {
+.bt-search-bar input {
+    width: 100%;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.15);
     color: #fff;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 14px;
     outline: none;
+    box-sizing: border-box;
 }
-.bt-filters input { flex: 1; min-width: 180px; }
-.bt-filters select option { background: #1a1a2e; color: #fff; }
+.bt-search-bar input:focus { border-color: rgba(255,255,255,0.3); }
+
+.bt-col-header {
+    display: grid;
+    grid-template-columns: 50px 42px 1fr 100px 60px 90px 36px;
+    gap: 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    margin-bottom: 2px;
+}
+.bt-col {
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.bt-col-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+}
+.bt-col-sortable:hover { color: rgba(255,255,255,0.7); }
+.bt-col-active { color: #ffa07a; }
+.bt-col-active::after { content: ' ▼'; font-size: 9px; }
+.bt-col-active.bt-sort-asc::after { content: ' ▲'; font-size: 9px; }
+.bt-col-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Keep old filters hidden but functional */
+.bt-filters { display: none; }
 
 /* Bug list */
 .bt-list { display: flex; flex-direction: column; gap: 2px; }
 
 .bt-row {
     display: grid;
-    grid-template-columns: 40px 42px 1fr 90px 70px 36px 36px;
+    grid-template-columns: 50px 42px 1fr 100px 60px 90px 36px;
     gap: 8px;
     align-items: center;
     padding: 10px 12px;
@@ -334,6 +360,7 @@
 /* Ticket number */
 .bt-ticket { color: rgba(255,255,255,0.3); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .bt-ticket-header { color: rgba(255,255,255,0.4); font-size: 14px; font-weight: 600; margin-right: 8px; }
+.bt-time-ago { color: rgba(255,255,255,0.3); font-size: 11px; font-variant-numeric: tabular-nums; cursor: default; }
 
 /* Inline-editable fields */
 /* Editable bug name in detail header */
@@ -485,9 +512,13 @@ a.bt-mention-link:hover { text-decoration: underline; }
 /* Mobile */
 @media (max-width: 768px) {
     .bt-row { grid-template-columns: 36px 36px 1fr 70px; }
+    .bt-col-header { grid-template-columns: 36px 36px 1fr 70px; }
     .bt-row > :nth-child(5),
     .bt-row > :nth-child(6),
     .bt-row > :nth-child(7) { display: none; }
+    .bt-col-header > :nth-child(5),
+    .bt-col-header > :nth-child(6),
+    .bt-col-header > :nth-child(7) { display: none; }
     .bt-detail-grid { grid-template-columns: 1fr; }
     .bt-filters { flex-direction: column; }
     .bt-stats { gap: 8px; }

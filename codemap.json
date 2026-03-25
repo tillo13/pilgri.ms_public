@@ -1973,15 +1973,15 @@
       "statusClass",
       "formatDate",
       "formatDateTime",
+      "timeAgo",
+      "diff",
+      "initSortHeaders",
       "getSearchText",
       "matchesSearch",
       "renderBugList",
       "renderIdeas",
       "getFilteredBugs",
-      "sortBy",
-      "pd",
-      "showDetail",
-      "renderDetailModal"
+      "showDetail"
     ]
   },
   "static/js/aria.js": {
@@ -2541,7 +2541,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

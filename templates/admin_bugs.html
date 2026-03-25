@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Bug Tracker - Admin{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v=4">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v=5">{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -55,32 +55,25 @@
         <button class="bt-tab" data-tab="ideas" onclick="BT.switchTab('ideas')">Ideas</button>
     </div>
 
-    <!-- Filters (active tab only) -->
-    <div class="bt-filters" id="btFilters">
-        <select id="btFilterStatus" onchange="BT.applyFilters()">
-            <option value="">All Statuses</option>
-            <option value="New">New</option>
-            <option value="Backlog">Backlog</option>
-            <option value="Ready For Dev">Ready For Dev</option>
-            <option value="Awaiting QA">Awaiting QA</option>
-            <option value="ReOpen">ReOpen</option>
-        </select>
-        <select id="btFilterPriority" onchange="BT.applyFilters()">
-            <option value="">All Priorities</option>
-            <option value="P1">P1</option>
-            <option value="P2">P2</option>
-            <option value="P3">P3</option>
-            <option value="P4">P4</option>
-            <option value="P5">P5</option>
-        </select>
-        <select id="btSort" onchange="BT.applyFilters()">
-            <option value="priority">Sort: Priority</option>
-            <option value="newest">Sort: Newest First</option>
-            <option value="oldest">Sort: Oldest First</option>
-            <option value="updated">Sort: Recently Updated</option>
-            <option value="id">Sort: Bug #</option>
-        </select>
-        <input type="text" id="btSearch" placeholder="Search bugs..." oninput="BT.applyFilters()">
+    <!-- Search bar -->
+    <div class="bt-search-bar">
+        <input type="text" id="btSearch" placeholder="Search bugs... (use #123 for ID)" oninput="BT.applyFilters()">
+    </div>
+
+    <!-- Hidden filter state (still used by JS) -->
+    <select id="btFilterStatus" style="display:none"><option value="">All</option></select>
+    <select id="btFilterPriority" style="display:none"><option value="">All</option></select>
+    <select id="btSort" style="display:none"><option value="priority">priority</option></select>
+
+    <!-- Sortable column headers -->
+    <div class="bt-col-header" id="btColHeader">
+        <span class="bt-col bt-col-sortable" data-sort="id">#</span>
+        <span class="bt-col bt-col-sortable" data-sort="priority">Pri</span>
+        <span class="bt-col bt-col-name bt-col-sortable" data-sort="name">Name</span>
+        <span class="bt-col bt-col-sortable" data-sort="status">Status</span>
+        <span class="bt-col bt-col-sortable" data-sort="type">Type</span>
+        <span class="bt-col bt-col-sortable bt-col-active" data-sort="created">Created</span>
+        <span class="bt-col"></span>
     </div>
 
     <!-- Bug List -->
@@ -138,5 +131,5 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="/static/js/admin-bugs.js?v=9" defer></script>
+<script src="/static/js/admin-bugs.js?v=10" defer></script>
 {% endblock %}

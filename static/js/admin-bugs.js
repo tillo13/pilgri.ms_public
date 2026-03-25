@@ -84,6 +84,43 @@
         return new Date(d).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles'});
     }
 
+    function timeAgo(d) {
+        if (!d) return '';
+        var diff = (Date.now() - new Date(d).getTime()) / 1000;
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+        return Math.floor(diff / 604800) + 'w ago';
+    }
+
+    // === Sortable columns ===
+    var _sortCol = 'priority';
+    var _sortAsc = true;
+
+    function initSortHeaders() {
+        var header = document.getElementById('btColHeader');
+        if (!header) return;
+        header.querySelectorAll('.bt-col-sortable').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var col = el.dataset.sort;
+                if (_sortCol === col) {
+                    _sortAsc = !_sortAsc;
+                } else {
+                    _sortCol = col;
+                    _sortAsc = col === 'priority' || col === 'name' || col === 'status' || col === 'type';
+                }
+                // Update active state
+                header.querySelectorAll('.bt-col-sortable').forEach(function(e) {
+                    e.classList.remove('bt-col-active', 'bt-sort-asc');
+                });
+                el.classList.add('bt-col-active');
+                if (_sortAsc) el.classList.add('bt-sort-asc');
+                renderBugList();
+            });
+        });
+    }
+
     // === Bug List Rendering ===
 
     function getSearchText() {
@@ -105,23 +142,16 @@
 
     function renderBugList() {
         var list = document.getElementById('btBugList');
-        var filters = document.getElementById('btFilters');
+        var header = document.getElementById('btColHeader');
         var search = getSearchText();
 
         if (currentTab === 'ideas') {
-            // Show only the search box, hide status/priority/sort dropdowns
-            filters.style.display = 'flex';
-            var dropdowns = filters.querySelectorAll('select');
-            dropdowns.forEach(function(d) { d.style.display = 'none'; });
-            document.getElementById('btSearch').style.display = '';
+            if (header) header.style.display = 'none';
             renderIdeas(list, search);
             return;
         }
 
-        // Active/Completed: show all filters
-        filters.style.display = 'flex';
-        var dropdowns = filters.querySelectorAll('select');
-        dropdowns.forEach(function(d) { d.style.display = currentTab === 'active' ? '' : 'none'; });
+        if (header) header.style.display = '';
         var bugs = currentTab === 'active' ? getFilteredBugs() : completedBugs.filter(function(b) { return matchesSearch(b, search); });
 
         if (!bugs.length) {
@@ -130,7 +160,6 @@
         }
 
         list.innerHTML = bugs.map(function(b) {
-            var qaCheck = b.qa_approved ? '<span class="bt-qa-check">QA</span>' : '';
             var thumb = b.screenshot_url
                 ? '<img src="' + escapeHtml(b.screenshot_url) + '" class="bt-thumb" loading="lazy">'
                 : '';
@@ -140,7 +169,7 @@
                 '<span class="bt-row-name">' + escapeHtml(b.name) + '</span>' +
                 '<span class="' + statusClass(b.status) + '">' + escapeHtml(b.status) + '</span>' +
                 '<span style="color:rgba(255,255,255,0.4);font-size:12px;">' + escapeHtml(b.type) + '</span>' +
-                '<span>' + qaCheck + '</span>' +
+                '<span class="bt-time-ago" title="' + formatDateTime(b.created_at) + '">' + timeAgo(b.created_at) + '</span>' +
                 '<span>' + thumb + '</span>' +
                 '</div>';
         }).join('');
@@ -163,34 +192,32 @@
     }
 
     function getFilteredBugs() {
-        var status = document.getElementById('btFilterStatus').value;
-        var priority = document.getElementById('btFilterPriority').value;
         var search = getSearchText();
-        var sortBy = (document.getElementById('btSort') || {}).value || 'priority';
         var filtered = activeBugs.filter(function(b) {
-            if (status && b.status !== status) return false;
-            if (priority && b.priority !== priority) return false;
-            if (!matchesSearch(b, search)) return false;
-            return true;
+            return matchesSearch(b, search);
         });
 
-        // Sort
+        // Sort by clicked column
         var priOrder = {P1:1, P2:2, P3:3, P4:4, P5:5};
-        if (sortBy === 'newest') {
-            filtered.sort(function(a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-        } else if (sortBy === 'oldest') {
-            filtered.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-        } else if (sortBy === 'updated') {
-            filtered.sort(function(a, b) { return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at); });
-        } else if (sortBy === 'id') {
-            filtered.sort(function(a, b) { return b.id - a.id; });
-        } else {
-            // Default: priority then newest
-            filtered.sort(function(a, b) {
-                var pd = (priOrder[a.priority]||6) - (priOrder[b.priority]||6);
-                return pd !== 0 ? pd : new Date(b.created_at) - new Date(a.created_at);
-            });
-        }
+        var dir = _sortAsc ? 1 : -1;
+        filtered.sort(function(a, b) {
+            var cmp = 0;
+            if (_sortCol === 'priority') {
+                cmp = (priOrder[a.priority]||6) - (priOrder[b.priority]||6);
+                if (cmp === 0) cmp = new Date(b.created_at) - new Date(a.created_at);
+            } else if (_sortCol === 'id') {
+                cmp = a.id - b.id;
+            } else if (_sortCol === 'name') {
+                cmp = (a.name || '').localeCompare(b.name || '');
+            } else if (_sortCol === 'status') {
+                cmp = (a.status || '').localeCompare(b.status || '');
+            } else if (_sortCol === 'type') {
+                cmp = (a.type || '').localeCompare(b.type || '');
+            } else if (_sortCol === 'created') {
+                cmp = new Date(a.created_at) - new Date(b.created_at);
+            }
+            return cmp * dir;
+        });
         return filtered;
     }
 
@@ -761,6 +788,7 @@
 
     // === Init ===
 
+    initSortHeaders();
     renderBugList();
     setupUploadZone();
 
