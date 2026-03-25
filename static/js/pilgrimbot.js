@@ -389,17 +389,19 @@
             // Remove old dots
             let oldDots = toolArea.querySelector('.pb-tool-dots');
             if (oldDots) oldDots.remove();
-            // Create status/tool line
+            // Elapsed time since send
+            let elapsed = Math.round((Date.now() - sendStartTime) / 1000);
+            // Create status/tool line with timing
             let el = document.createElement('div');
             if (data.type === 'status') {
                 el.className = 'pb-tool-line pb-tool-status';
-                el.textContent = data.message;
+                el.innerHTML = data.message + '<span class="pb-step-time">' + elapsed + 's</span>';
             } else if (data.type === 'phase') {
                 el.className = 'pb-phase-divider';
                 el.textContent = data.label;
             } else {
                 el.className = 'pb-tool-line' + (data.found ? '' : ' pb-tool-miss');
-                el.textContent = (data.found ? 'Read ' : 'Not found: ') + data.file;
+                el.innerHTML = (data.found ? 'Read ' : 'Not found: ') + escapeHtml(data.file) + '<span class="pb-step-time">' + elapsed + 's</span>';
             }
             toolArea.appendChild(el);
             // Always re-add pulsing dots below

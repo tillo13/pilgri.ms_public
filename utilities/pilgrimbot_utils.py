@@ -710,7 +710,10 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         bug_num = _re.search(r'#(\d+)', message)
         if bug_num:
             yield f"data: {json.dumps({'type': 'status', 'message': f'Analyzing Bug #{bug_num.group(1)}...'})}\n\n"
-    yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
+        else:
+            yield f"data: {json.dumps({'type': 'status', 'message': 'Analyzing bug...'})}\n\n"
+    else:
+        yield f"data: {json.dumps({'type': 'status', 'message': 'Thinking...'})}\n\n"
 
     try:
         # === PHASE 1: Fast response with minimal context ===

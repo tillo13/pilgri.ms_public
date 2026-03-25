@@ -508,6 +508,8 @@
     color: rgba(96,165,250,0.6);
 }
 .pb-tool-status { color: var(--color-sepolia, #ffa07a); }
+.pb-tool-line { display: flex; justify-content: space-between; align-items: baseline; }
+.pb-step-time { font-size: 10px; color: rgba(255,255,255,0.15); margin-left: 12px; flex-shrink: 0; }
 .pb-tool-miss { color: rgba(255,255,255,0.2); }
 .pb-tool-miss::before { color: rgba(239,68,68,0.5); }
 
