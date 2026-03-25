@@ -322,7 +322,7 @@ def get_bug_history(bug_id):
 
 
 def get_bug_stats():
-    """Get counts by status and priority for dashboard."""
+    """Get counts and velocity metrics for dashboard."""
     ensure_bug_tables()
     try:
         with db_cursor() as cur:
@@ -332,7 +332,21 @@ def get_bug_stats():
                     COUNT(*) FILTER (WHERE completed_at IS NOT NULL) AS completed_count,
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'Awaiting QA') AS awaiting_qa,
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND priority = 'P1') AS p1_count,
-                    COUNT(*) FILTER (WHERE completed_at IS NULL AND priority = 'P2') AS p2_count
+                    COUNT(*) FILTER (WHERE completed_at IS NULL AND priority = 'P2') AS p2_count,
+                    -- Velocity: closed in last 7 days
+                    COUNT(*) FILTER (WHERE completed_at >= NOW() - INTERVAL '7 days') AS closed_this_week,
+                    -- Filed in last 7 days
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS filed_this_week,
+                    -- Avg time to close (completed bugs only, in hours)
+                    ROUND(EXTRACT(EPOCH FROM AVG(completed_at - created_at) FILTER (WHERE completed_at IS NOT NULL)) / 3600) AS avg_close_hours,
+                    -- Median time to close (approx via percentile)
+                    ROUND(EXTRACT(EPOCH FROM PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY completed_at - created_at) FILTER (WHERE completed_at IS NOT NULL)) / 3600) AS median_close_hours,
+                    -- Oldest open bug age in days
+                    EXTRACT(DAY FROM NOW() - MIN(created_at) FILTER (WHERE completed_at IS NULL))::int AS oldest_open_days,
+                    -- Closed in last 30 days (for monthly rate)
+                    COUNT(*) FILTER (WHERE completed_at >= NOW() - INTERVAL '30 days') AS closed_this_month,
+                    -- P1s created this week
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days' AND priority = 'P1') AS p1_filed_this_week
                 FROM pilgrim.bugs
             """)
             return _fetchone(cur)

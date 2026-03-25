@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Bug Tracker - Admin{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v=5">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v=6">{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -40,12 +40,40 @@
     </div>
 
     <!-- Stats -->
+    <!-- Key counts -->
     <div class="bt-stats">
         <div class="bt-stat"><span class="bt-stat-val" id="btStatActive">{{ stats.active_count or 0 }}</span><span class="bt-stat-label">Active</span></div>
         <div class="bt-stat"><span class="bt-stat-val" id="btStatQA">{{ stats.awaiting_qa or 0 }}</span><span class="bt-stat-label">In Review</span></div>
         <div class="bt-stat"><span class="bt-stat-val bt-stat-p1" id="btStatP1">{{ stats.p1_count or 0 }}</span><span class="bt-stat-label">P1</span></div>
         <div class="bt-stat"><span class="bt-stat-val bt-stat-p2" id="btStatP2">{{ stats.p2_count or 0 }}</span><span class="bt-stat-label">P2</span></div>
         <div class="bt-stat"><span class="bt-stat-val" id="btStatDone">{{ stats.completed_count or 0 }}</span><span class="bt-stat-label">Completed</span></div>
+    </div>
+    <!-- Velocity metrics -->
+    <div class="bt-velocity">
+        {% set closed_week = stats.closed_this_week or 0 %}
+        {% set filed_week = stats.filed_this_week or 0 %}
+        {% set avg_hrs = stats.avg_close_hours or 0 %}
+        {% set median_hrs = stats.median_close_hours or 0 %}
+        {% set oldest = stats.oldest_open_days or 0 %}
+        {% set closed_month = stats.closed_this_month or 0 %}
+        {% set net = filed_week - closed_week %}
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ closed_week }}</span> closed this week
+            {% if filed_week > 0 %}<span class="bt-vel-note">({{ filed_week }} filed, {{ '+' if net > 0 }}{{ net }} net)</span>{% endif %}
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            avg close <span class="bt-vel-val">{% if avg_hrs > 48 %}{{ (avg_hrs / 24)|int }}d{% else %}{{ avg_hrs|int }}h{% endif %}</span>
+            <span class="bt-vel-note">(median {% if median_hrs > 48 %}{{ (median_hrs / 24)|int }}d{% else %}{{ median_hrs|int }}h{% endif %})</span>
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ closed_month }}</span> closed /30d
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            oldest open <span class="bt-vel-val {% if oldest > 30 %}bt-vel-warn{% endif %}">{{ oldest }}d</span>
+        </span>
     </div>
 
     <!-- Tabs -->

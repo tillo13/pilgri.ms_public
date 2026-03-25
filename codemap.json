@@ -1341,7 +1341,7 @@
       "reopen_bug — Reopen a completed bug.",
       "search_bugs — Search across ALL bugs (active + completed) by name or description.",
       "get_bug_history — Get full audit trail for a bug.",
-      "get_bug_stats — Get counts by status and priority for dashboard.",
+      "get_bug_stats — Get counts and velocity metrics for dashboard.",
       "upload_bug_screenshot — Upload screenshot to GCS and save URL to bug record.",
       "get_ideas — Get all ideas, optionally filtered by category.",
       "create_idea — Create a new idea in the parking lot."
@@ -2463,7 +2463,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
