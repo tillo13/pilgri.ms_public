@@ -108,7 +108,7 @@
                     _sortAsc = !_sortAsc;
                 } else {
                     _sortCol = col;
-                    _sortAsc = col === 'priority' || col === 'name' || col === 'status' || col === 'type';
+                    _sortAsc = col === 'priority' || col === 'name' || col === 'status' || col === 'type' || col === 'updated';
                 }
                 // Update active state
                 header.querySelectorAll('.bt-col-sortable').forEach(function(e) {
@@ -169,7 +169,7 @@
                 '<span class="bt-row-name">' + escapeHtml(b.name) + '</span>' +
                 '<span class="' + statusClass(b.status) + '">' + escapeHtml(b.status) + '</span>' +
                 '<span style="color:rgba(255,255,255,0.4);font-size:12px;">' + escapeHtml(b.type) + '</span>' +
-                '<span class="bt-time-ago" title="' + formatDateTime(b.created_at) + '">' + timeAgo(b.created_at) + '</span>' +
+                '<span class="bt-time-ago" title="' + formatDateTime(b.updated_at || b.created_at) + '">' + timeAgo(b.updated_at || b.created_at) + '</span>' +
                 '<span>' + thumb + '</span>' +
                 '</div>';
         }).join('');
@@ -213,8 +213,8 @@
                 cmp = (a.status || '').localeCompare(b.status || '');
             } else if (_sortCol === 'type') {
                 cmp = (a.type || '').localeCompare(b.type || '');
-            } else if (_sortCol === 'created') {
-                cmp = new Date(a.created_at) - new Date(b.created_at);
+            } else if (_sortCol === 'updated') {
+                cmp = new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at);
             }
             return cmp * dir;
         });
