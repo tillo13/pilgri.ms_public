@@ -135,11 +135,11 @@ function setVehicleRange(btn, vehicleType) {
     const marsCorrection = 6371 / 3396;
     rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
         radius: rangeKm * 1000 * marsCorrection,
-        color: '#e06030',
-        fillColor: '#e06030',
-        fillOpacity: 0.06,
+        color: '#ffffff',
+        fillColor: '#ffffff',
+        fillOpacity: 0.04,
         weight: 2,
-        opacity: 0.5,
+        opacity: 0.7,
         dashArray: '8, 6',
         interactive: false
     }).addTo(map);

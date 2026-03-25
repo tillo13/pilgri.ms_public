@@ -389,8 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <!-- Level indicator -->
             <div class="depot-card-level">
-                <span class="level-current">{{ item.current_level_name }}</span>
-                <span class="level-progress">{% if is_locked %}Locked{% else %}Lv {{ item.current_level }}/{{ item.max_level }}{% endif %}</span>
+                <span class="level-current">{% if is_locked and item.next_level_name %}{{ item.next_level_name }}{% else %}{{ item.current_level_name }}{% endif %}</span>
+                <span class="level-progress">{% if is_locked %}{{ '{:,}'.format(upgrade_cost|int) }} to unlock{% else %}Lv {{ item.current_level }}/{{ item.max_level }}{% endif %}</span>
             </div>
 
             <!-- Stats preview (for owned items) -->
