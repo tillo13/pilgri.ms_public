@@ -682,7 +682,17 @@
     document.querySelectorAll('.pb-example').forEach(btn => {
         btn.addEventListener('click', () => sendMessage(btn.dataset.q));
     });
-    // Chat item listeners are added via buildChatItem() — no need to duplicate here
+    // Add listeners to server-rendered chat items (buildChatItem only handles dynamic ones)
+    document.querySelectorAll('.pb-chat-item').forEach(el => {
+        el.addEventListener('click', () => loadChat(el.dataset.chatId));
+        const hideBtn = el.querySelector('.pb-chat-hide');
+        if (hideBtn) {
+            hideBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                hideChat(el.dataset.chatId, el);
+            });
+        }
+    });
 
     // === Role picker ===
     var roleSelect = document.getElementById('pbRoleSelect');
@@ -713,16 +723,12 @@
             }
         });
         if (existingBugChat) {
-            // Existing chat found — just load it, never re-send
+            // Existing chat found — always load it so user sees the analysis
             loadChat(existingBugChat);
         } else {
-            // No chat yet — only auto-send once per bug (sessionStorage prevents re-send on refresh)
-            var sentKey = 'pb_bug_sent_' + BUG_ID;
-            if (!sessionStorage.getItem(sentKey)) {
-                sessionStorage.setItem(sentKey, '1');
-                startNewChat();
-                setTimeout(function() { sendMessage(window.PB_BUG_CONTEXT); }, 100);
-            }
+            // No chat yet — auto-send bug context immediately
+            startNewChat();
+            setTimeout(function() { sendMessage(window.PB_BUG_CONTEXT); }, 100);
         }
     }
 
