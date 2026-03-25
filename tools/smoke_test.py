@@ -679,7 +679,7 @@ def test_pilgrimbot_calls_table():
 # -----------------------------------------------------------------------------
 
 @test("load_colony_snapshot loads for Andy", tier=1, features=['aria', 'crew'])
-@requires_import('anthropic')
+@requires_import('anthropic', 'web3')
 def test_snapshot_andy():
     from utilities.aria_utils import load_colony_snapshot
     snapshot = load_colony_snapshot(45)
@@ -691,7 +691,7 @@ def test_snapshot_andy():
 
 
 @test("load_colony_snapshot loads for Luke", tier=1, features=['aria', 'crew'])
-@requires_import('anthropic')
+@requires_import('anthropic', 'web3')
 def test_snapshot_luke():
     from utilities.aria_utils import load_colony_snapshot
     snapshot = load_colony_snapshot(112)
@@ -720,7 +720,7 @@ def test_snapshot_no_bad_table():
 # -----------------------------------------------------------------------------
 
 @test("analyze endpoint exists in app.py", tier=1, features=['api', 'expeditions'])
-@requires_import('flask')
+@requires_import('flask', 'replicate', 'web3')
 def test_analyze_endpoint():
     """colony-discoveries.js calls /api/discovery/analyze — it must exist."""
     import inspect
