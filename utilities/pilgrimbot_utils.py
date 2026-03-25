@@ -1029,6 +1029,9 @@ Be MINIMAL. Most simple questions need NO context at all. A greeting needs nothi
         if text.startswith('```'):
             text = text.split('\n', 1)[1].rsplit('```', 1)[0].strip()
         plan = json.loads(text)
+        if not isinstance(plan, dict):
+            logger.warning(f"Planner returned non-dict: {type(plan)}, using fallback")
+            return _plan_context_fallback(message), _ms
         logger.info(f"Context plan ({_ms}ms): {json.dumps(plan)}")
         return plan, _ms
     except Exception as e:
@@ -1069,7 +1072,7 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
 
     # Math registry — surgical lookup
     if 'math' in plan:
-        math_keywords = plan['math']
+        math_keywords = plan['math'] if isinstance(plan['math'], list) else []
         if math_keywords:
             # Planner gave specific keywords — build a targeted query
             query = ' '.join(math_keywords)
@@ -1097,9 +1100,10 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
             loaded.append(f"endgame:{len(eg_json)}chars")
 
     # Code files — only if planner requested specific files
-    if 'code' in plan and plan['code']:
+    code_files = plan.get('code') if isinstance(plan.get('code'), list) else []
+    if code_files:
         codemap = load_codemap()
-        for fpath in plan['code'][:4]:  # cap at 4 files
+        for fpath in code_files[:4]:  # cap at 4 files
             content = read_local_file(fpath)
             if content:
                 if show_code:
@@ -1109,8 +1113,9 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
                 loaded.append(f"code:{fpath}:{len(content)}chars")
 
     # Player data — pre-query specific categories
-    if 'player_data' in plan:
-        for category in plan['player_data'][:5]:
+    player_cats = plan.get('player_data') if isinstance(plan.get('player_data'), list) else []
+    if player_cats:
+        for category in player_cats[:5]:
             try:
                 data = query_player_data(category, user_id)
                 extra += f"\n\nPLAYER DATA ({category}):\n{data}"
@@ -1127,10 +1132,11 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
             loaded.append(f"bugs:{len(dynamic)}chars")
 
     # Brainstorm context
-    if 'brainstorm' in plan:
+    brainstorm_keys = plan.get('brainstorm') if isinstance(plan.get('brainstorm'), list) else []
+    if brainstorm_keys:
         try:
             from utilities.db_brainstorm import get_comments_for_page
-            for page_key in plan['brainstorm'][:3]:
+            for page_key in brainstorm_keys[:3]:
                 comments = get_comments_for_page(page_key)
                 if comments:
                     extra += f"\n--- Brainstorm: {page_key} ({len(comments)} comments) ---\n"
