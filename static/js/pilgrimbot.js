@@ -376,11 +376,20 @@
             if (_activeTyping && _activeTyping.parentNode) _activeTyping.remove();
             removeTyping(typingEl);
 
+            // Helper: insert element before assistantEl if it exists, otherwise append
+            function insertBeforeResponse(el) {
+                if (assistantEl && assistantEl.parentNode) {
+                    messagesEl.insertBefore(el, assistantEl);
+                } else {
+                    messagesEl.appendChild(el);
+                }
+            }
+
             if (data.type === 'phase') {
                 let div = document.createElement('div');
                 div.className = 'pb-step-bubble pb-phase-divider';
                 div.textContent = data.label;
-                messagesEl.appendChild(div);
+                insertBeforeResponse(div);
             } else {
                 // Each status/tool_call = its own mini bubble
                 let div = document.createElement('div');
@@ -390,7 +399,7 @@
                     '<span class="pb-step-text">' + escapeHtml(text) + '</span>' +
                     '<span class="pb-step-time">' + elapsed + 's</span>';
                 if (data.type === 'tool_call' && !data.found) div.classList.add('pb-step-miss');
-                messagesEl.appendChild(div);
+                insertBeforeResponse(div);
             }
 
             // Fresh typing dots after latest step
@@ -401,7 +410,7 @@
                     '<div class="pb-typing-dots"><span></span><span></span><span></span></div>' +
                     '<span class="pb-typing-timer"></span>' +
                 '</div>';
-            messagesEl.appendChild(_activeTyping);
+            insertBeforeResponse(_activeTyping);
             // Live timer on new dots
             var _stepStart = Date.now();
             var _stepTimer = setInterval(function() {

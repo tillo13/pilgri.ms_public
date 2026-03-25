@@ -134,9 +134,12 @@ RULES FOR BUG ANALYSIS:
 - Structure responses with clear sections: Root Cause, Affected Code, Fix, Test Steps.
 
 FILE ACCESS:
+- You have FULL ACCESS to the entire codebase, all config files, all game data, and all database tables.
 - You have a read_file tool. The CODEBASE MAP below lists every file — use exact paths from it.
 - THINK FIRST about which 2-3 files are most likely to contain the root cause, then read them all at once.
 - NEVER read the same file twice. NEVER say "I don't have access" or ask the user to share files.
+- NEVER ask the user to "paste data", "share the specific files", "point me to", or "provide" anything.
+- If you need data you don't have yet, say "Let me pull that up" — a deep dive with exact data comes automatically.
 - After reading files, give your COMPLETE analysis. Do NOT say "let me search more" — answer with what you have.
 
 You have access to LIVE DATA including bug tracker status and brainstorm discussions.
@@ -760,7 +763,11 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "\n\nIMPORTANT: Give a helpful, concise first response. If you need specific data "
             "(formulas, player stats, code, bug tracker, brainstorm discussions) to give a complete answer, "
             "say what you know and note you're pulling up the details — a follow-up with exact data will come shortly. "
-            "NEVER say you don't have access to something. You always have access — the data just takes a moment to load."
+            "NEVER say you don't have access to something. You ALWAYS have full access to the entire codebase, "
+            "all config files, all game data, all player data, and all database tables. "
+            "NEVER ask the user to 'share files', 'paste data', 'point me to', or 'provide' anything. "
+            "If you need to look something up, say 'Let me pull that up' or 'Checking that now' — "
+            "the deep dive system will automatically load the exact files and data."
         )
 
         active_tools = [PLAYER_DATA_TOOL]
@@ -844,7 +851,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         deep_messages.append({"role": "user", "content":
             "Now I've loaded the exact data you need. Give me a COMPLETE, detailed answer "
             "using the specific numbers, formulas, or code provided. Replace any approximations "
-            "from your first response with exact values."
+            "from your first response with exact values. "
+            "NEVER ask the user to share files or provide data — you already have everything."
         })
 
         # Signal phase transition to frontend
