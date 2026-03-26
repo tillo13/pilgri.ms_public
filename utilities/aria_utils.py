@@ -3045,10 +3045,7 @@ def get_aria_album_data(user_id):
 
             created = snap.get('created_at')
             earth_date = created.strftime('%b %d, %Y') if created else None
-            # Show Mars time of day instead of meaningless Earth clock time
-            tod = metadata.get('time_of_day', '')
-            mars_time_labels = {'dawn': 'Mars Dawn', 'day': 'Mars Day', 'dusk': 'Mars Dusk', 'night': 'Mars Night'}
-            earth_time = mars_time_labels.get(tod, created.strftime('%I:%M %p').lstrip('0') if created else None)
+            earth_time = None  # Sol badge is the time reference, Earth clock is irrelevant
             # Calculate sol from created_at (not stored metadata) so epoch changes apply retroactively
             from utilities.mars_environment_utils import get_mars_sol_number
             mars_sol = get_mars_sol_number(created) if created else metadata.get('mars_sol')

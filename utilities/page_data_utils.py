@@ -475,12 +475,10 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
                     from utilities.mars_environment_utils import get_mars_sol_number
                     mars_sol = get_mars_sol_number(created) if created else metadata.get('mars_sol')
 
-                    # Format dates — show Mars time of day instead of Earth clock
+                    # Just show date — Sol badge is the time reference
                     created = snap.get('created_at')
                     earth_date = created.strftime('%b %d, %Y') if created else None
-                    tod = metadata.get('time_of_day', '')
-                    mars_time_labels = {'dawn': 'Mars Dawn', 'day': 'Mars Day', 'dusk': 'Mars Dusk', 'night': 'Mars Night'}
-                    earth_time = mars_time_labels.get(tod, created.strftime('%I:%M %p').lstrip('0') if created else None)
+                    earth_time = None
 
                     snapshots.append({
                         'id': snap['id'],

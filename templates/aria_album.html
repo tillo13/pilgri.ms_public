@@ -72,13 +72,13 @@
     <p style="color: rgba(255,255,255,0.6); max-width: 400px; margin: 0 auto 24px auto;">
         ARIA hasn't captured any snapshots yet. Check back soon - new photos are generated daily showing life at your colony!
     </p>
-    <a href="/home" class="btn btn-primary">Return to Colony</a>
+    <a href="/" class="btn btn-primary">Return to Colony</a>
 </div>
 {% endif %}
 
 <!-- Back Link -->
 <div style="text-align: center; margin-top: 20px;">
-    <a href="/home" style="color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px;">&larr; Back to Colony</a>
+    <a href="/" style="color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px;">&larr; Back to Colony</a>
 </div>
 
 <!-- Snapshot Modal with Gallery Navigation -->
@@ -92,7 +92,7 @@ function formatLocalTime(isoString) {
     try {
         const date = new Date(isoString);
         if (isNaN(date.getTime())) return '';
-        const options = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+        const options = { month: 'short', day: 'numeric', year: 'numeric' };
         return date.toLocaleString(undefined, options);
     } catch (e) {
         return '';
