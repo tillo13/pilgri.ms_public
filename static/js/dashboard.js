@@ -381,10 +381,22 @@ async function checkInfrastructureIncome() {
             const svCard = $('svGenerationCard');
             const svRateEl = $('svRate');
             const svAccEl = $('svAccumulated');
+            const svBreakdownEl = $('svBreakdown');
             if (data.sv_hourly_rate > 0) {
                 if (svCard) svCard.style.display = 'block';
                 if (svRateEl) svRateEl.textContent = data.sv_hourly_rate.toFixed(1);
                 if (svAccEl) svAccEl.textContent = Math.round(data.sv_accumulated);
+                // SV source breakdown
+                if (svBreakdownEl && data.sv_sources) {
+                    let html = '';
+                    for (const src of data.sv_sources) {
+                        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;"><span style="color:var(--text-secondary);">${src.name} Lv${src.level}</span><span style="color:var(--color-aria);font-weight:600;">${src.rate.toFixed(1)} SV/hr</span></div>`;
+                    }
+                    if (data.sv_scientist_name && data.sv_scientist_extra > 0) {
+                        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);margin-top:2px;padding-top:4px;"><span style="color:var(--text-secondary);">${data.sv_scientist_name} (Analysis) ×${data.sv_scientist_bonus.toFixed(1)}</span><span style="color:var(--color-aria);font-weight:600;">+${data.sv_scientist_extra.toFixed(1)} SV/hr</span></div>`;
+                    }
+                    svBreakdownEl.innerHTML = html;
+                }
             }
 
             // Show/hide dust storm warning based on whether any structure is at cap

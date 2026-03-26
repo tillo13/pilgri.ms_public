@@ -108,7 +108,8 @@ def query_player_data(category, user_id):
                         f"Mars environment multiplier: {rb.get('mars_env_multiplier', 0):.0f}%\n"
                         f"Generators:\n" + "\n".join(gen_lines) if gen_lines else "" +
                         f"\nAccumulated (unharvested): {calc.get('total_accumulated', 0):.1f} shards\n"
-                        f"SV generation: {calc.get('sv_hourly_rate', 0):.1f} SV/hr")
+                        f"SV generation: {calc.get('sv_hourly_rate', 0):.1f} SV/hr"
+                        + (f" (base {calc.get('sv_base_rate', 0):.1f} + {calc['sv_scientist_name']} Analysis x{calc['sv_scientist_bonus']:.1f})" if calc.get('sv_scientist_name') and calc.get('sv_scientist_extra', 0) > 0 else f" (from buildings)"))
             except Exception:
                 return f"Balance: {balance:,.0f} shards"
 
@@ -178,8 +179,14 @@ def query_player_data(category, user_id):
                     if sg_rate > 0:
                         sv_buildings.append(f"{cat.get('name', infra['structure_type'])} Lv{level} ({sg_rate:.0f} SV/hr)")
                 source_text = ', '.join(sv_buildings) if sv_buildings else 'no SV-generating buildings'
+                base_rate = calc.get('sv_base_rate', 0)
+                sci_name = calc.get('sv_scientist_name')
+                sci_bonus = calc.get('sv_scientist_bonus', 1.0)
+                sci_extra = calc.get('sv_scientist_extra', 0)
                 lines.append(f"PASSIVE GENERATION: {sv_rate:.1f} SV/hr")
-                lines.append(f"  Sources: {source_text}")
+                lines.append(f"  Building sources ({base_rate:.1f} SV/hr base): {source_text}")
+                if sci_name and sci_extra > 0:
+                    lines.append(f"  Scientist bonus: {sci_name} (Analysis) ×{sci_bonus:.1f} = +{sci_extra:.1f} SV/hr")
                 lines.append(f"  SV accumulated (unharvested): {calc.get('sv_accumulated', 0):.1f}")
             except Exception:
                 lines.append("PASSIVE GENERATION: unable to calculate")

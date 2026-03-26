@@ -762,11 +762,11 @@ def calculate_accumulated_income(user_id):
     # Uses same accumulation cap as shards for consistency
     # ========================================================================
     sv_accumulated = 0.0
-    sv_hourly_rate = 0.0
+    sv_base_rate = 0.0
+    sv_sources = []  # Per-building SV breakdown for UI
     for structure in structures:
         if structure['status'] != 'active':
             continue
-        # Get level-based SV rate (using bulk-fetched levels)
         building_level = all_levels.get(structure['structure_type'], 1)
         if building_level < 1:
             building_level = 1
@@ -776,23 +776,34 @@ def calculate_accumulated_income(user_id):
         sv_rate = float(level_data.get('science_generation_rate', 0))
         if sv_rate <= 0:
             continue
-        sv_hourly_rate += sv_rate
+        sv_base_rate += sv_rate
+        sv_sources.append({
+            'name': level_data.get('name', catalog_def.get('name', structure['structure_type'])),
+            'type': structure['structure_type'],
+            'level': building_level,
+            'rate': sv_rate,
+        })
         last_payout = structure.get('last_payout_at') or structure['build_completed_at'] or structure['created_at']
         hours_elapsed = (datetime.utcnow() - last_payout).total_seconds() / 3600
         capped_hours = min(hours_elapsed, ACCUMULATION_CAP_HOURS)
         sv_accumulated += sv_rate * capped_hours
 
     # Scientist analysis stat boosts SV generation (+2% per point, max +100% at 50)
+    sv_scientist_name = None
+    sv_scientist_bonus = 1.0
+    sv_scientist_extra = 0.0
     try:
         from utilities.postgres_utils import get_user_scientist
         scientist = get_user_scientist(user_id)
         if scientist:
             analysis_stat = scientist.get('stats', {}).get('analysis', 0)
-            sv_bonus = 1.0 + (analysis_stat / 50.0)
-            sv_accumulated *= sv_bonus
-            sv_hourly_rate *= sv_bonus
+            sv_scientist_bonus = 1.0 + (analysis_stat / 50.0)
+            sv_scientist_name = scientist.get('name')
+            sv_scientist_extra = round(sv_base_rate * (sv_scientist_bonus - 1.0), 1)
+            sv_accumulated *= sv_scientist_bonus
     except Exception:
         pass
+    sv_hourly_rate = round(sv_base_rate * sv_scientist_bonus, 1)
 
     return {
         'total_accumulated': round(total_accumulated, 2),
@@ -832,6 +843,11 @@ def calculate_accumulated_income(user_id):
         # Science Value generation
         'sv_accumulated': round(sv_accumulated, 1),
         'sv_hourly_rate': round(sv_hourly_rate, 1),
+        'sv_base_rate': round(sv_base_rate, 1),
+        'sv_sources': sv_sources,
+        'sv_scientist_name': sv_scientist_name,
+        'sv_scientist_bonus': round(sv_scientist_bonus, 2),
+        'sv_scientist_extra': sv_scientist_extra,
     }
 
 
