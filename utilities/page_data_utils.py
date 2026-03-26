@@ -469,8 +469,11 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
                         except:
                             metadata = {}
                     thumbnail_url = metadata.get('thumbnail_url')
-                    mars_sol = metadata.get('mars_sol')
                     time_of_day = metadata.get('time_of_day', 'day')
+                    # Calculate sol from created_at (not stored metadata) so epoch changes apply
+                    created = snap.get('created_at')
+                    from utilities.mars_environment_utils import get_mars_sol_number
+                    mars_sol = get_mars_sol_number(created) if created else metadata.get('mars_sol')
 
                     # Format dates Instagram-style
                     created = snap.get('created_at')
