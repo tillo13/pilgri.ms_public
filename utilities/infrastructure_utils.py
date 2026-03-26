@@ -748,6 +748,8 @@ def calculate_accumulated_income(user_id):
         generators_breakdown.append({
             'structure_type': struct_type,
             'name': d['structure_name'],
+            'level': d.get('building_level', 1),
+            'max_level': len(catalog_entry.get('levels', {})),
             'icon': catalog_entry.get('icon', '⚡'),
             'hourly_rate': d['hourly_rate'],
             'has_day_night': d.get('day_night') is not None,  # True for solar_array

@@ -245,10 +245,10 @@ async function checkInfrastructureIncome() {
             if (genContainer) {
                 const lat = data.latitude || 0;
                 genContainer.innerHTML = generators.map(g => {
-                    // Show latitude note only for solar arrays
                     const latNote = g.latitude_affected ? ` <span style="opacity:0.7">(${Math.abs(lat).toFixed(1)}°)</span>` : '';
+                    const lvl = g.level ? ` <span style="color:var(--color-sepolia);font-size:10px;">Lv${g.level}/${g.max_level || '?'}</span>` : '';
                     return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
-                        <span class="card-label" style="font-size: 12px;">${g.icon} ${g.name}${latNote}</span>
+                        <span class="card-label" style="font-size: 12px;">${g.icon} ${g.name}${lvl}${latNote}</span>
                         <span class="card-value" style="font-size: 13px; font-weight: 600;">${g.hourly_rate.toFixed(1)}/hr</span>
                     </div>`;
                 }).join('');
@@ -270,7 +270,9 @@ async function checkInfrastructureIncome() {
                     const label = $('powerEquipmentLabel');
                     if (label && source.name) {
                         const levelName = source.level_name ? ` (${source.level_name})` : '';
-                        label.textContent = (source.icon || '') + ' ' + source.name + levelName;
+                        // Highlight "LvN" in sepolia color to show it's upgradeable
+                        const nameHtml = source.name.replace(/(Lv\d+)/, '<span style="color:var(--color-sepolia);">$1</span>');
+                        label.innerHTML = (source.icon || '') + ' ' + nameHtml + levelName;
                     }
                     // Show the Shard Generator's own mult (not combined with tech)
                     $('solarUpgradeMult').textContent = '× ' + source.mult.toFixed(2);

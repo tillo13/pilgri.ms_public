@@ -189,9 +189,9 @@
                             <span class="mars-modal-value">{{ mars_env.season }}</span>
                         </div>
                         {% if first_login %}
-                        <div class="mars-modal-stat" style="grid-column: span 2;">
+                        <div class="mars-modal-stat" style="grid-column: span 2;" id="timeOnMarsItem" data-first-login="{{ first_login.isoformat() if first_login else '' }}">
                             <span class="mars-modal-label">Your Time on Mars</span>
-                            <span class="mars-modal-value" id="modalTimeOnMars" style="color: var(--color-success);">SOL 0.0000</span>
+                            <span class="mars-modal-value" id="modalTimeOnMars" style="color: var(--color-success);">Loading...</span>
                         </div>
                         {% endif %}
                         {% if mars_env.base_lat is defined %}
