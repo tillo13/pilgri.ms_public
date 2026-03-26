@@ -197,7 +197,7 @@
       "cmd_screenshot — Download bug screenshot to /tmp/.",
       "cmd_ideas — List ideas from parking lot.",
       "cmd_idea — Add idea to parking lot.",
-      "cmd_note — Add note to an idea."
+      "cmd_note — Add note to an idea (parking lot bug)."
     ]
   },
   "tools/cleanup_unclaimed_discoveries.py": {
@@ -533,7 +533,7 @@
       "cmd_screenshot — Download bug screenshot to /tmp/.",
       "cmd_ideas — List ideas from parking lot.",
       "cmd_idea — Add idea to parking lot.",
-      "cmd_note — Add note to an idea."
+      "cmd_note — Add note to an idea (parking lot bug)."
     ]
   },
   "tools/populate_discovery_images.py": {
@@ -1343,8 +1343,8 @@
       "get_bug_history — Get full audit trail for a bug.",
       "get_bug_stats — Get counts and velocity metrics for dashboard.",
       "upload_bug_screenshot — Upload screenshot to GCS and save URL to bug record.",
-      "get_ideas — Get all ideas, optionally filtered by category.",
-      "create_idea — Create a new idea in the parking lot."
+      "get_ideas — Get all parking lot ideas (bugs with status='Parking Lot').",
+      "create_idea — Create a new idea in the parking lot (stored as a bug with status='Parking Lot')."
     ],
     "keywords": "bug tracker, bugs, QA, priority, status, comments, history, screenshot, complete, reopen"
   },
@@ -2463,7 +2463,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

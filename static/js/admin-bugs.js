@@ -184,10 +184,10 @@
             return;
         }
         list.innerHTML = filtered.map(function(idea) {
-            var promoted = idea.promoted_to_bug_id ? ' (promoted)' : '';
+            var category = idea.category || idea.type || 'Feature';
             return '<div class="bt-idea-row" onclick="BT.showIdeaDetail(' + idea.id + ')">' +
-                '<span class="bt-row-name">' + escapeHtml(idea.name) + promoted + '</span>' +
-                '<span class="bt-category bt-cat-' + idea.category + '">' + escapeHtml(idea.category) + '</span>' +
+                '<span class="bt-row-name">#' + idea.id + ' ' + escapeHtml(idea.name) + '</span>' +
+                '<span class="bt-category bt-cat-' + category + '">' + escapeHtml(category) + '</span>' +
                 '<span style="color:rgba(255,255,255,0.4);font-size:12px;">' + formatDate(idea.created_at) + '</span>' +
                 '</div>';
         }).join('');
@@ -447,28 +447,27 @@
             overlay = document.createElement('div');
             overlay.id = 'btDetailModal';
             overlay.className = 'bt-modal-overlay';
-            // Don't close on backdrop click — prevents losing typed content in comment/edit fields
-            // Close only via X button, Cancel, or Escape key
             document.body.appendChild(overlay);
         }
 
-        var notes = (idea.notes || '').split('|').filter(Boolean);
+        // Notes stored in extra_notes (pipe-delimited legacy) — show as history items
+        var notes = (idea.notes || idea.extra_notes || '').split('|').filter(Boolean);
         var notesHtml = notes.length ? notes.map(function(n) {
             return '<div class="bt-history-item">' + escapeHtml(n) + '</div>';
         }).join('') : '<div style="color:rgba(255,255,255,0.3)">No notes yet</div>';
 
+        var category = idea.category || idea.type || 'Feature';
         overlay.innerHTML =
             '<div class="bt-modal">' +
                 '<div class="bt-detail-header">' +
-                    '<div class="bt-detail-title">' + escapeHtml(idea.name) + '</div>' +
+                    '<div class="bt-detail-title">#' + idea.id + ' ' + escapeHtml(idea.name) + '</div>' +
                     '<button class="bt-detail-close" onclick="BT.closeDetail()">&times;</button>' +
                 '</div>' +
-                '<div class="bt-field"><div class="bt-field-label">Description</div><div class="bt-field-value">' + escapeHtml(idea.description) + '</div></div>' +
-                '<div class="bt-field"><div class="bt-field-label">Category</div><div class="bt-field-value"><span class="bt-category bt-cat-' + idea.category + '">' + escapeHtml(idea.category) + '</span></div></div>' +
+                '<div class="bt-field"><div class="bt-field-label">Description</div><div class="bt-field-value">' + escapeHtml(idea.description || '') + '</div></div>' +
+                '<div class="bt-field"><div class="bt-field-label">Type</div><div class="bt-field-value"><span class="bt-category bt-cat-' + category + '">' + escapeHtml(category) + '</span></div></div>' +
                 '<div class="bt-field"><div class="bt-field-label">Notes</div>' + notesHtml + '</div>' +
                 '<div class="bt-actions">' +
-                    (idea.promoted_to_bug_id ? '<span style="color:#4ade80;font-size:13px;">Promoted to bug <a class="bt-bug-link" href="javascript:void(0)" onclick="BT.showDetail(' + idea.promoted_to_bug_id + ')">#' + idea.promoted_to_bug_id + '</a></span>' :
-                        '<button class="bt-btn bt-btn-sm bt-btn-primary" onclick="BT.promoteIdea(' + idea.id + ')">Promote to Active Bug</button>') +
+                    '<button class="bt-btn bt-btn-sm bt-btn-primary" onclick="BT.promoteIdea(' + idea.id + ')">Promote to Active Bug</button>' +
                 '</div>' +
             '</div>';
 

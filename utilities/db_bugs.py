@@ -80,18 +80,23 @@ def ensure_bug_tables():
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bug_history_bug ON pilgrim.bug_history(bug_id)")
 
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS pilgrim.bug_ideas (
-                    id SERIAL PRIMARY KEY,
-                    name VARCHAR(200) NOT NULL,
-                    description TEXT DEFAULT '',
-                    category VARCHAR(30) DEFAULT 'Feature',
-                    status VARCHAR(30) DEFAULT 'New',
-                    notes TEXT DEFAULT '',
-                    promoted_to_bug_id INTEGER REFERENCES pilgrim.bugs(id),
-                    created_at TIMESTAMP DEFAULT NOW()
-                )
-            """)
+            # Migration: move ideas from bug_ideas into bugs table with status='Parking Lot'
+            cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='pilgrim' AND table_name='bug_ideas') as ex")
+            if cur.fetchone()['ex']:
+                # Check if any un-migrated ideas remain
+                cur.execute("SELECT COUNT(*) as cnt FROM pilgrim.bug_ideas WHERE promoted_to_bug_id IS NULL AND status != 'Promoted'")
+                unmigrated = cur.fetchone()['cnt']
+                if unmigrated > 0:
+                    cur.execute("""
+                        INSERT INTO pilgrim.bugs (name, description, type, priority, status, source, extra_notes, created_at)
+                        SELECT name, description, COALESCE(NULLIF(category,''), 'Feature'), 'P5', 'Parking Lot', 'Idea',
+                               notes, created_at
+                        FROM pilgrim.bug_ideas
+                        WHERE promoted_to_bug_id IS NULL AND status != 'Promoted'
+                    """)
+                    logger.info(f"Migrated {unmigrated} ideas from bug_ideas to bugs table")
+                # Drop the old table
+                cur.execute("DROP TABLE IF EXISTS pilgrim.bug_ideas CASCADE")
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS pilgrim.bug_comments (
@@ -163,7 +168,7 @@ def get_active_bugs(priority=None, status=None, search=None):
     """Get active bugs (not completed). Optional filters."""
     ensure_bug_tables()
     try:
-        conditions = ["completed_at IS NULL"]
+        conditions = ["completed_at IS NULL", "status != 'Parking Lot'"]
         params = []
         if priority:
             conditions.append("priority = %s")
@@ -357,6 +362,7 @@ def get_bug_stats():
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'New') AS new_untriaged,
                     COUNT(*) FILTER (WHERE completed_at IS NULL AND status = 'Backlog') AS backlog_count
                 FROM pilgrim.bugs
+                WHERE status != 'Parking Lot'
             """)
             return _fetchone(cur)
     except Exception as e:
@@ -405,54 +411,65 @@ def upload_bug_screenshot(bug_id, file_data, filename, content_type='image/png',
 
 
 # =============================================================================
-# IDEAS (Parking Lot)
+# IDEAS (Parking Lot) — stored in bugs table with status='Parking Lot'
 # =============================================================================
 
 def get_ideas(category=None):
-    """Get all ideas, optionally filtered by category."""
+    """Get all parking lot ideas (bugs with status='Parking Lot')."""
     ensure_bug_tables()
     try:
         if category:
-            sql = "SELECT * FROM pilgrim.bug_ideas WHERE category = %s ORDER BY created_at DESC"
+            sql = "SELECT * FROM pilgrim.bugs WHERE status = 'Parking Lot' AND type = %s ORDER BY created_at DESC"
             params = (category,)
         else:
-            sql = "SELECT * FROM pilgrim.bug_ideas ORDER BY created_at DESC"
+            sql = "SELECT * FROM pilgrim.bugs WHERE status = 'Parking Lot' ORDER BY created_at DESC"
             params = ()
         with db_cursor() as cur:
             cur.execute(sql, params)
-            return _serialize_rows(_fetchall(cur))
+            rows = _serialize_rows(_fetchall(cur))
+            # Map bug fields to legacy idea fields for frontend compat
+            for r in rows:
+                r['category'] = r.get('type', 'Feature')
+                r['notes'] = r.get('extra_notes', '') or ''
+            return rows
     except Exception as e:
         logger.error(f"Failed to get ideas: {e}")
         return []
 
 
 def create_idea(name, description='', category='Feature'):
-    """Create a new idea in the parking lot."""
+    """Create a new idea in the parking lot (stored as a bug with status='Parking Lot')."""
     ensure_bug_tables()
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
-                INSERT INTO pilgrim.bug_ideas (name, description, category)
-                VALUES (%s, %s, %s)
+                INSERT INTO pilgrim.bugs (name, description, type, priority, status, source)
+                VALUES (%s, %s, %s, 'P5', 'Parking Lot', 'Idea')
                 RETURNING *
             """, (name, description, category))
-            return _serialize_row(_fetchone(cur))
+            row = _serialize_row(_fetchone(cur))
+            if row:
+                row['category'] = row.get('type', 'Feature')
+                row['notes'] = row.get('extra_notes', '') or ''
+            return row
     except Exception as e:
         logger.error(f"Failed to create idea: {e}")
         return None
 
 
 def add_idea_note(idea_id, note_text):
-    """Append a timestamped note to an idea."""
+    """Append a timestamped note to a parking lot idea."""
     ensure_bug_tables()
     try:
         ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+        entry = f'{ts}: {note_text}'
         with db_cursor(commit=True) as cur:
             cur.execute("""
-                UPDATE pilgrim.bug_ideas
-                SET notes = CASE WHEN notes = '' THEN %s ELSE notes || '|' || %s END
-                WHERE id = %s
-            """, (f'{ts}: {note_text}', f'{ts}: {note_text}', idea_id))
+                UPDATE pilgrim.bugs
+                SET extra_notes = CASE WHEN COALESCE(extra_notes, '') = '' THEN %s ELSE extra_notes || '|' || %s END,
+                    updated_at = NOW()
+                WHERE id = %s AND status = 'Parking Lot'
+            """, (entry, entry, idea_id))
             return True
     except Exception as e:
         logger.error(f"Failed to add note to idea {idea_id}: {e}")
@@ -460,27 +477,19 @@ def add_idea_note(idea_id, note_text):
 
 
 def promote_idea(idea_id, priority='P3'):
-    """Promote an idea to an active bug. Returns the new bug or None."""
+    """Promote a parking lot idea to active bug. Just changes status and priority."""
     ensure_bug_tables()
     try:
         with db_cursor(commit=True) as cur:
-            cur.execute("SELECT * FROM pilgrim.bug_ideas WHERE id = %s", (idea_id,))
-            idea = _fetchone(cur)
-            if not idea:
-                return None
-
             cur.execute("""
-                INSERT INTO pilgrim.bugs (name, description, type, priority, source)
-                VALUES (%s, %s, %s, %s, 'Promoted')
+                UPDATE pilgrim.bugs
+                SET status = 'New', priority = %s, source = 'Promoted', updated_at = NOW()
+                WHERE id = %s AND status = 'Parking Lot'
                 RETURNING *
-            """, (idea['name'], idea['description'], idea['category'], priority))
+            """, (priority, idea_id))
             bug = _fetchone(cur)
-
-            cur.execute("""
-                UPDATE pilgrim.bug_ideas SET promoted_to_bug_id = %s, status = 'Promoted'
-                WHERE id = %s
-            """, (bug['id'], idea_id))
-
+            if not bug:
+                return None
             return _serialize_row(bug)
     except Exception as e:
         logger.error(f"Failed to promote idea {idea_id}: {e}")
