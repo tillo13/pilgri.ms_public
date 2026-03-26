@@ -63,10 +63,10 @@ def _get_connection_pool():
 
                 # ThreadedConnectionPool is thread-safe
                 # Budget: 50 max_connections shared across 8+ apps on db-f1-micro
-                # Galactica gets the biggest share (heaviest app)
+                # Galactica gets biggest share: 2/12 (heaviest app, QA bot + ARIA + pages)
                 _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                     minconn=2,
-                    maxconn=6,
+                    maxconn=12,
                     host=host,
                     database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
                     user=get_secret('PILGRIM_POSTGRES_USERNAME'),
