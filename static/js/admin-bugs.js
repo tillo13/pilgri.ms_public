@@ -267,7 +267,7 @@
         var actions = '';
         if (isActive) {
             actions += '<select class="bt-input" style="width:auto;" onchange="BT.updateField(' + bug.id + ',\'status\',this.value)">';
-            ['New','Backlog','Ready For Dev','Awaiting QA','ReOpen'].forEach(function(s) {
+            ['New','Backlog','Ready For Dev','Awaiting QA','ReOpen','Parking Lot'].forEach(function(s) {
                 actions += '<option' + (bug.status === s ? ' selected' : '') + '>' + s + '</option>';
             });
             actions += '</select>';
@@ -466,8 +466,11 @@
                 '<div class="bt-field"><div class="bt-field-label">Description</div><div class="bt-field-value">' + escapeHtml(idea.description || '') + '</div></div>' +
                 '<div class="bt-field"><div class="bt-field-label">Type</div><div class="bt-field-value"><span class="bt-category bt-cat-' + category + '">' + escapeHtml(category) + '</span></div></div>' +
                 '<div class="bt-field"><div class="bt-field-label">Notes</div>' + notesHtml + '</div>' +
-                '<div class="bt-actions">' +
-                    '<button class="bt-btn bt-btn-sm bt-btn-primary" onclick="BT.promoteIdea(' + idea.id + ')">Promote to Active Bug</button>' +
+                '<div class="bt-actions" style="display:flex;gap:8px;align-items:center;">' +
+                    '<span style="font-size:12px;color:var(--text-secondary);">Move to:</span>' +
+                    '<select class="bt-input" style="width:auto;" onchange="if(this.value){BT.updateField(' + idea.id + ',\'status\',this.value);BT.closeDetail();setTimeout(BT.refreshData,300);}">' +
+                    '<option value="">— select —</option><option value="New">New</option><option value="Backlog">Backlog</option><option value="Ready For Dev">Ready For Dev</option>' +
+                    '</select>' +
                 '</div>' +
             '</div>';
 
