@@ -258,6 +258,10 @@
             screenshots += '<a href="' + escapeHtml(bug.screenshot_2_url) + '" target="_blank">' +
                 '<img src="' + escapeHtml(bug.screenshot_2_url) + '" class="bt-screenshot-img" loading="lazy"></a>';
         }
+        if (bug.screenshot_3_url) {
+            screenshots += '<a href="' + escapeHtml(bug.screenshot_3_url) + '" target="_blank">' +
+                '<img src="' + escapeHtml(bug.screenshot_3_url) + '" class="bt-screenshot-img" loading="lazy"></a>';
+        }
 
         // Actions bar
         var actions = '';

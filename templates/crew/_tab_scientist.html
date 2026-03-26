@@ -162,7 +162,7 @@
                 {% set bonuses = sci.get('_branch_bonuses', {}) %}
                 {% if bonuses %}
                 <div style="font-size: 9px; color: var(--color-success); margin-top: 4px;">
-                    {% for branch, info in bonuses.items() %}{{ branch|title }}: {{ info.label }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+                    {% for branch, info in bonuses.items() %}{% if branch == 'power' %}Shard Generation{% else %}{{ branch|title }}{% endif %}: {{ info.label }}{% if not loop.last %}<br>{% endif %}{% endfor %}
                 </div>
                 {% endif %}
             </div>

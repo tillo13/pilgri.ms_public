@@ -65,9 +65,9 @@ function showDiscoveryDetails(discoveryItemId) {
         // Apply equipment bonuses (Research Lab, Cryo Storage) to preview
         if (discoveryValueMult > 1.0) { extractValueAll = Math.floor(extractValueAll * discoveryValueMult); extractValueOne = Math.floor(extractValueOne * discoveryValueMult); }
         if (discovery.item_type === 'biological' && bioDiscoveryValueMult > 1.0) { extractValueAll = Math.floor(extractValueAll * bioDiscoveryValueMult); extractValueOne = Math.floor(extractValueOne * bioDiscoveryValueMult); }
-        const svBonusAll = Math.floor(extractValueAll * 0.15);
+        const svBonusAll = Math.floor(extractValueAll * 0.50);
         const svLabelAll = svBonusAll > 0 ? ` + ${svBonusAll} SV` : '';
-        const svLabelOne = Math.floor(extractValueOne * 0.15) > 0 ? ` + ${Math.floor(extractValueOne * 0.15)} SV` : '';
+        const svLabelOne = Math.floor(extractValueOne * 0.50) > 0 ? ` + ${Math.floor(extractValueOne * 0.50)} SV` : '';
         actionConfig = {
             label: qty > 1 ? `Extract All ${qty}× (${extractValueAll.toLocaleString()} Shards${svLabelAll})` : `Extract (${extractValueAll.toLocaleString()} Shards${svLabelAll})`,
             className: 'btn-warning',
@@ -104,7 +104,7 @@ function confirmColonyExtraction(discovery, shardPayout, extractAll = true) {
         stats: [
             { label: 'Discoveries', value: extractQty },
             { label: 'Shards Received', value: shardPayout.toLocaleString() },
-            { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.15)} SV` },
+            { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.50)} SV` },
         ],
         effects: `<div style="padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
             <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.

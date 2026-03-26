@@ -625,14 +625,20 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
     if item_type == 'biological' and bio_discovery_value_mult > 1.0:
         combined_mult *= bio_discovery_value_mult
 
-    # Calculate new balance: session cache + received (NO blockchain re-query)
+    # Optimistically update DB wallet balance so ribbon stays correct after page reload
+    # (matches pattern used by purchases in depot_utils, upgrades_utils, etc.)
+    from utilities.depot_utils import update_session_balance, get__bal
+    from utilities.db_wallets import update_sepolia_wallet_balance
+    old_balance_eth = float(wallet.get('current_balance_eth', 0))
+    new_balance_eth = old_balance_eth + amount_eth
+    update_sepolia_wallet_balance(wallet['wallet_address'], new_balance_eth)
+
+    # Calculate new balance: session cache + received
     if session is not None:
-        from utilities.depot_utils import update_session_balance
         old_balance = session.get('_bal', 0)
         new_balance = old_balance + total_value
         update_session_balance(session, new_balance)
     else:
-        from utilities.depot_utils import get__bal
         old_balance = get__bal(user_id)
         new_balance = old_balance + total_value
 
@@ -822,14 +828,19 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
     if bio_discovery_value_mult > 1.0:
         combined_mult *= bio_discovery_value_mult
 
-    # Calculate new balance: session cache + received (NO blockchain re-query)
+    # Optimistically update DB wallet balance so ribbon stays correct after page reload
+    from utilities.depot_utils import update_session_balance, get__bal
+    from utilities.db_wallets import update_sepolia_wallet_balance
+    old_balance_eth = float(wallet.get('current_balance_eth', 0))
+    new_balance_eth = old_balance_eth + amount_eth
+    update_sepolia_wallet_balance(wallet['wallet_address'], new_balance_eth)
+
+    # Calculate new balance: session cache + received
     if session is not None:
-        from utilities.depot_utils import update_session_balance
         old_balance = session.get('_bal', 0)
         new_balance = old_balance + total_value
         update_session_balance(session, new_balance)
     else:
-        from utilities.depot_utils import get__bal
         old_balance = get__bal(user_id)
         new_balance = old_balance + total_value
 

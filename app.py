@@ -2672,9 +2672,14 @@ def api_admin_bugs_screenshot(bug_id):
     f = request.files.get('file')
     if not f:
         return jsonify({'success': False, 'error': 'No file provided'})
-    # Use screenshot_2_url if first slot is taken
+    # Fill first empty screenshot slot (supports up to 3)
     bug = get_bug_by_id(bug_id)
-    field = 'screenshot_2_url' if bug and bug.get('screenshot_url') else 'screenshot_url'
+    if not bug or not bug.get('screenshot_url'):
+        field = 'screenshot_url'
+    elif not bug.get('screenshot_2_url'):
+        field = 'screenshot_2_url'
+    else:
+        field = 'screenshot_3_url'
     url = upload_bug_screenshot(bug_id, f.read(), f.filename, f.content_type, field)
     return jsonify({'success': bool(url), 'url': url})
 

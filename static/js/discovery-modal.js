@@ -20,7 +20,7 @@ window.showDiscoveryDetails = function(id) {
         if (typeof discoveryValueMult !== 'undefined' && discoveryValueMult > 1.0) shardPayoutAll = Math.floor(shardPayoutAll * discoveryValueMult);
         if (typeof bioDiscoveryValueMult !== 'undefined' && i.item_type === 'biological' && bioDiscoveryValueMult > 1.0) shardPayoutAll = Math.floor(shardPayoutAll * bioDiscoveryValueMult);
         const shardPayoutOne = qty > 1 ? Math.floor(shardPayoutAll / qty) : shardPayoutAll;
-        const svBonusAll = Math.floor(shardPayoutAll * 0.15);
+        const svBonusAll = Math.floor(shardPayoutAll * 0.50);
         const svLabel = svBonusAll > 0 ? ` + ${svBonusAll} SV` : '';
 
         // Cryptic legendary messages (Zelda-style hints - obscured references to something in the colony)
@@ -196,7 +196,7 @@ function confirmExtraction(discoveryItemId, quantity, shardPayout, itemName, rar
         stats: [
             { label: 'Discoveries', value: extractAll ? quantity : 1 },
             { label: 'Shards Received', value: shardPayout.toLocaleString() },
-            { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.15)} SV` },
+            { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.50)} SV` },
         ],
         effects: `<div class="sv-tradeoff-note" style="padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
             <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.

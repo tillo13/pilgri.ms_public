@@ -157,7 +157,7 @@ function formatLevelStats(stats, category) {
     }
     if (stats.expedition_capacity) parts.push(`${stats.expedition_capacity} expedition slots`);
     if (stats.legendary_discovery_chance) parts.push(gold(`+${(stats.legendary_discovery_chance * 100).toFixed(0)}% legendary`));
-    if (stats.research_enabled === true) parts.push(green('unlocks research'));
+    if (stats.research_enabled === true) parts.push(green('enables xenobiology research'));
 
     return parts.length > 0 ? parts.join(' · ') : '';
 }

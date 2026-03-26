@@ -209,7 +209,7 @@ const EFFECT_LABELS = {
     'dust_storm_immune': 'Storm Immunity', 'night_generation': 'Night Shards',
     'fuel_cost_reduction': 'Cost Savings', 'expedition_capacity': 'Max Expeditions',
     'discovery_bonus': 'Discovery Chance', 'all_generation_mult': 'All Generation',
-    'legendary_discovery_chance': 'Legendary Chance', 'research_enabled': 'Research',
+    'legendary_discovery_chance': 'Legendary Chance', 'research_enabled': 'Xenobiology Research',
     'expedition_range': 'Expedition Range', 'passive_income_base': 'Base Income'
 };
 

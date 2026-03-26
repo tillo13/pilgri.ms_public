@@ -33,7 +33,7 @@ PLAYER_DATA_TOOL = {
 }
 
 PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any category):
-  overview          — Captain name, account age, balance, tier, playstyle summary
+  overview          — Captain name, scientist name/stats, account age, balance, tier, playstyle summary
   balance           — Shard balance, generation rate summary, accumulated unharvested
   shard_generation  — DETAILED shard generation: every source, every multiplier, every bonus, environmental factors. USE THIS when user asks about income/generation.
   sv_sources        — Science Value economy: ALL SV sources (passive, extraction, expeditions, trails, milestones), collection milestone progress
@@ -55,15 +55,26 @@ def query_player_data(category, user_id):
     try:
         if category == 'overview':
             from utilities.postgres_utils import get_user_commander
+            from utilities.db_users import get_user_scientist
             from utilities.aria_utils import get_aria_relationship_tier, analyze_playstyle
             commander = get_user_commander(user_id)
+            scientist = get_user_scientist(user_id)
             tier = get_aria_relationship_tier(user_id)
             playstyle = analyze_playstyle(user_id)
             with db_cursor() as cur:
                 cur.execute("SELECT current_balance_eth FROM pilgrim.sepolia_assets WHERE user_id = %s AND is_primary_wallet = true", (user_id,))
                 w = cur.fetchone()
             balance = float(w['current_balance_eth']) * 10000000 if w and w['current_balance_eth'] else 0
+            sci_line = ""
+            if scientist:
+                s = scientist.get('stats', {})
+                sci_line = (f"Scientist: {scientist.get('name', 'None')} ({scientist.get('specialty', '?')} specialist)\n"
+                           f"  Stats: Nav {s.get('navigation', 0)}, Analysis {s.get('analysis', 0)}, "
+                           f"Geology {s.get('geology', 0)}, Engineering {s.get('engineering', 0)}\n")
+            else:
+                sci_line = "Scientist: None assigned\n"
             return (f"Captain: {commander.get('name', 'Unknown') if commander else 'Unknown'}\n"
+                    f"{sci_line}"
                     f"Days on Mars: {tier.get('account_days', '?')}\n"
                     f"Balance: {balance:,.0f} shards\n"
                     f"Tier: {tier.get('tier_name', '?')} ({tier.get('tier_level', '?')}/5)\n"

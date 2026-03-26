@@ -86,6 +86,9 @@ function confirmScientistSwap(key, name) {
     const newSci = sciData.all[key];
     if (!newSci) return;
 
+    // Branch key → display name mapping (power → Shard Generation per #1143)
+    const branchNames = {power: 'Shard Generation', exploration: 'Exploration', vehicles: 'Vehicles', extraction: 'Extraction'};
+
     // Populate current scientist side
     if (currentSci) {
         document.getElementById('compare-current-img').src = currentSci.image_url;
@@ -96,7 +99,7 @@ function confirmScientistSwap(key, name) {
             `Nav: ${cs.navigation} &middot; Anl: ${cs.analysis}<br>Geo: ${cs.geology} &middot; Eng: ${cs.engineering}`;
         const cb = currentSci._branch_bonuses || {};
         document.getElementById('compare-current-bonuses').innerHTML =
-            Object.entries(cb).map(([b, info]) => `${b.charAt(0).toUpperCase()+b.slice(1)}: ${info.label}`).join('<br>');
+            Object.entries(cb).map(([b, info]) => `${branchNames[b] || b.charAt(0).toUpperCase()+b.slice(1)}: ${info.label}`).join('<br>');
     }
 
     // Populate new scientist side
@@ -108,7 +111,7 @@ function confirmScientistSwap(key, name) {
         `Nav: ${ns.navigation} &middot; Anl: ${ns.analysis}<br>Geo: ${ns.geology} &middot; Eng: ${ns.engineering}`;
     const nb = newSci._branch_bonuses || {};
     document.getElementById('compare-new-bonuses').innerHTML =
-        Object.entries(nb).map(([b, info]) => `${b.charAt(0).toUpperCase()+b.slice(1)}: ${info.label}`).join('<br>');
+        Object.entries(nb).map(([b, info]) => `${branchNames[b] || b.charAt(0).toUpperCase()+b.slice(1)}: ${info.label}`).join('<br>');
 
     document.getElementById('scientist-confirm-modal').style.display = 'block';
 }

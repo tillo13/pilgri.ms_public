@@ -52,6 +52,7 @@ def ensure_bug_tables():
                     source VARCHAR(20) DEFAULT 'QA',
                     screenshot_url TEXT,
                     screenshot_2_url TEXT,
+                    screenshot_3_url TEXT,
                     qa_notes TEXT DEFAULT '',
                     extra_notes TEXT DEFAULT '',
                     parent_bug_id INTEGER REFERENCES pilgrim.bugs(id),
@@ -63,6 +64,8 @@ def ensure_bug_tables():
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bugs_status ON pilgrim.bugs(status)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bugs_priority ON pilgrim.bugs(priority)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bugs_completed ON pilgrim.bugs(completed_at) WHERE completed_at IS NOT NULL")
+            # Migration: add screenshot_3_url column if missing
+            cur.execute("ALTER TABLE pilgrim.bugs ADD COLUMN IF NOT EXISTS screenshot_3_url TEXT")
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS pilgrim.bug_history (
@@ -374,7 +377,7 @@ def upload_bug_screenshot(bug_id, file_data, filename, content_type='image/png',
         file_data: Raw file bytes
         filename: Original filename (for extension)
         content_type: MIME type
-        field: 'screenshot_url' or 'screenshot_2_url'
+        field: 'screenshot_url', 'screenshot_2_url', or 'screenshot_3_url'
     Returns:
         GCS public URL or None
     """

@@ -279,7 +279,7 @@ function updateShardItAllBanner(discoveries) {
         totalShards += payout;
     });
 
-    const totalSV = Math.floor(totalShards * 0.15);
+    const totalSV = Math.floor(totalShards * 0.50);
 
     // Update banner
     countEl.textContent = totalCount;
@@ -311,7 +311,7 @@ function showShardItAllModal() {
         if (d.rarity === 'common') commonCount += qty;
         if (d.rarity === 'uncommon') uncommonCount += qty;
     });
-    const totalSV = Math.floor(totalShards * 0.15);
+    const totalSV = Math.floor(totalShards * 0.50);
 
     // Pick a random scientist quote
     const quote = scientistBulkQuotes[Math.floor(Math.random() * scientistBulkQuotes.length)];

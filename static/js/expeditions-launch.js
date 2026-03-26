@@ -86,7 +86,7 @@ function renderPreLaunchModal(l, preview) {
                     <span>Navigation</span><span style="text-align:right; ${sci.nav_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sci.stats.navigation}/50 → ×${sci.nav_mult} speed</span>
                     <span>Analysis</span><span style="text-align:right; ${sci.stats.analysis > 0 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sci.stats.analysis}/50 → +${Math.round(sci.stats.analysis / 2)}% value</span>
                     <span>Geology</span><span style="text-align:right; ${sci.stats.geology > 0 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sci.stats.geology}/50 → +${Math.round(sci.stats.geology)}% minerals</span>
-                    <span>Engineering</span><span style="text-align:right; ${sci.stats.engineering >= 25 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sci.stats.engineering}/50 → +${Math.floor(sci.stats.engineering / 25)} cargo</span>
+                    <span>Engineering</span><span style="text-align:right; ${sci.stats.engineering >= 10 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sci.stats.engineering}/50 → +${Math.floor(sci.stats.engineering / 10)} cargo</span>
                 </div>
             </div>
         </div>`;

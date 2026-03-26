@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 BASE_FUEL_PER_KM = 1.0
 LIFE_SUPPORT_PER_DAY = 50.0
-BASE_SPEED_KM_PER_HOUR = 2.0  # Base rover/walking speed on Mars
+BASE_SPEED_KM_PER_HOUR = 3.5  # Base rover/walking speed on Mars (was 2.0, bumped per Luke #1116)
 EVA_HOURS_PER_DAY = 8.0
 
 # Trail system: trip count thresholds → level, and level → speed multiplier
@@ -965,9 +965,9 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         available = v['available'] and not out_of_range
         unavailable_reason = f'Out of range ({max_range} km max)' if out_of_range else ('In use' if not v['available'] else '')
 
-        # Engineering cargo bonus: +1 per 25 stat points (max +2)
+        # Engineering cargo bonus: +1 per 10 stat points (max +5 at ENG 50)
         eng_stat = scientist_stats.get('engineering', 0)
-        effective_cargo = v['cargo'] + eng_stat // 25
+        effective_cargo = v['cargo'] + eng_stat // 10
 
         vehicle_estimates.append({
             'vehicle_type': v['vehicle_type'],
@@ -1267,7 +1267,7 @@ def launch_expedition(
         # Use vehicle-specific cargo capacity + scientist engineering bonus
         cargo_capacity = vehicle_data.get('cargo', 5)
         engineering_stat = sci_stats.get('engineering', 0)
-        cargo_capacity += engineering_stat // 25  # +1 per 25 engineering (max +2 at 50)
+        cargo_capacity += engineering_stat // 10  # +1 per 10 engineering (max +5 at 50)
 
         # Optimistically deduct balance
         new_balance = total_pricing['current_balance_eth'] - total_pricing['total_cost_eth']
