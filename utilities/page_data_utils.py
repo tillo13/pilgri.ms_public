@@ -1086,8 +1086,13 @@ def get_dashboard_page_data(user_id, auth):
             buggy_cfg = UPGRADE_CATALOG.get('vehicles', {}).get('buggy', {}).get('levels', {}).get(buggy_level, {})
             lbe['longhaul_image_url'] = buggy_cfg.get('longhaul_image_url') or buggy_cfg.get('image_url', '')
             lbe['buggy_name'] = buggy_cfg.get('name', 'Buggy')
-            # Current buggy status: idle, traveling, or returned
+            # Sol date for return
             from datetime import datetime, timezone
+            SOL_EPOCH = datetime(2025, 10, 4, tzinfo=timezone.utc)
+            if lbe.get('completed_at'):
+                completed_utc = lbe['completed_at'].replace(tzinfo=timezone.utc) if not lbe['completed_at'].tzinfo else lbe['completed_at']
+                lbe['return_sol'] = int((completed_utc - SOL_EPOCH).total_seconds() // 86400)
+            # Current buggy status: idle, traveling, or returned
             buggy_now = next((e for e in active_expeditions if e.get('vehicle_type') == 'buggy' and e.get('status') == 'traveling'), None)
             if buggy_now:
                 lbe['buggy_status'] = 'traveling'

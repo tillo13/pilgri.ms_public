@@ -427,7 +427,7 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
     {% endif %}
 
     <div class="lbe-footer">
-        <span style="font-size: 11px; color: var(--text-muted);">Returned {{ lbe.completed_at.strftime('%b %d') if lbe.completed_at else '' }}</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Returned Sol {{ lbe.return_sol }} ({{ lbe.completed_at.strftime('%b %d') if lbe.completed_at else '' }})</span>
         {% if lbe.buggy_status == 'traveling' %}
         <span style="font-size: 11px; color: var(--color-success); font-weight: 600;">
             Buggy en route to {{ lbe.buggy_current_dest }} ({{ '{:,.0f}'.format(lbe.buggy_current_distance) }} km) →
