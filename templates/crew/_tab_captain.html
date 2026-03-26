@@ -20,7 +20,8 @@
             </div>
             <div id="captainVideoTab" class="flex justify-center" style="display: none;">
                 {% if character_video_url %}
-                <video autoplay muted loop playsinline class="rounded-lg" style="max-width: 200px; max-height: 200px; border: 3px solid var(--color-primary);">
+                <video autoplay muted loop playsinline class="rounded-lg cursor-pointer" onclick="showVideoModal('{{ character_video_url }}')"
+                       style="max-width: 200px; max-height: 200px; border: 3px solid var(--color-primary);">
                     <source src="{{ character_video_url }}" type="video/mp4">
                 </video>
                 {% else %}

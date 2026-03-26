@@ -295,53 +295,120 @@ function toggleStatInfo(stat) {
 // CAPTAIN SERVICES (Shard Infusion, Modify Appearance, Video Briefing)
 // ============================================================================
 
+function _highlightCaptainTab() {
+    const btn = document.querySelector('[data-tab="captain"]');
+    if (btn) {
+        btn.style.animation = 'none'; btn.offsetHeight; // Force reflow
+        btn.style.outline = '2px solid var(--color-success)';
+        btn.style.outlineOffset = '2px';
+        setTimeout(() => { btn.style.outline = ''; btn.style.outlineOffset = ''; }, 5000);
+    }
+}
+
 async function purchaseShardInfusion() {
-    if (!confirm('Infuse your captain with Sepolia energy? All stats will be rerolled randomly.')) return;
-    try {
-        const resp = await fetch('/api/shop/reroll_stats', { method: 'POST', headers: {'Content-Type': 'application/json'} });
-        const data = await resp.json();
-        if (data.success) {
-            showToast('Stats infused! Your captain has new attributes.', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.error || 'Failed to infuse stats', 'error');
-        }
-    } catch (e) { showToast('Connection error', 'error'); }
+    MarsModal.show({
+        title: 'Shard Infusion', badge: 'Confirm',
+        body: '<div style="text-align:center;padding:8px 0;">' +
+            '<p style="margin-bottom:12px;">Channel Sepolia energy into your captain. Each stat has a chance to gain <strong>+1</strong>.</p>' +
+            '<p style="font-size:12px;color:var(--text-secondary);">Stats can only go up, never down. Higher stats have lower improvement chance.</p></div>',
+        footer: '<button class="btn btn-primary mm-btn-full" id="mmActionBtn">Infuse Stats</button>',
+        width: 'sm'
+    });
+    document.getElementById('mmActionBtn').onclick = async () => {
+        MarsModal.show({ title: 'Infusing...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">Channeling Sepolia energy...</div>', width: 'sm' });
+        try {
+            const resp = await fetch('/api/shop/reroll_stats', { method: 'POST', headers: {'Content-Type': 'application/json'} });
+            const data = await resp.json();
+            if (data.success) {
+                // Build stat change display
+                let statsHtml = '<div style="display:grid;gap:6px;margin:12px 0;">';
+                const names = ['leadership', 'strategy', 'exploration', 'logistics', 'charisma'];
+                names.forEach(s => {
+                    const old_v = (data.old_stats || {})[s] || 0;
+                    const new_v = (data.stats || {})[s] || old_v;
+                    const changed = new_v > old_v;
+                    statsHtml += `<div style="display:flex;justify-content:space-between;padding:4px 8px;background:${changed ? 'rgba(74,222,128,0.1)' : 'transparent'};border-radius:4px;">` +
+                        `<span style="text-transform:capitalize;">${s}</span>` +
+                        `<span style="font-weight:700;${changed ? 'color:var(--color-success);' : ''}">${old_v}${changed ? ' → ' + new_v + ' (+1)' : ' (no change)'}</span></div>`;
+                });
+                statsHtml += '</div>';
+                const gained = data.total_gained || 0;
+                const title = gained > 0 ? `${gained} Stat${gained > 1 ? 's' : ''} Improved!` : 'No Change';
+                MarsModal.show({
+                    title, badge: `Infusion #${data.infusion_number || '?'}`, theme: gained > 0 ? 'success' : 'warning',
+                    body: statsHtml + `<p style="text-align:center;font-size:12px;color:var(--text-secondary);margin-top:8px;">Next infusion: ${(data.next_infusion_cost || 0).toLocaleString()} shards</p>`,
+                    footer: '<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide();switchTab(\'captain\');">View Captain Stats</button>',
+                    width: 'sm'
+                });
+                _highlightCaptainTab();
+                setBalance(data.new_balance);
+            } else {
+                MarsModal.hide();
+                showToast(data.error || 'Failed to infuse stats', 'error');
+            }
+        } catch (e) { MarsModal.hide(); showToast('Connection error', 'error'); }
+    };
 }
 
 async function purchaseModifyAppearance() {
     const prompt = document.getElementById('modifyPrompt')?.value?.trim();
     if (!prompt) { showToast('Describe the change you want', 'error'); return; }
-    if (!confirm('Modify your captain\'s appearance? This will generate a new image.')) return;
-    try {
-        showToast('Generating new appearance...', 'info');
-        const resp = await fetch('/api/shop/modify_character', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ prompt })
-        });
-        const data = await resp.json();
-        if (data.success) {
-            showToast('New look generated! Reloading...', 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast(data.error || 'Failed to modify appearance', 'error');
-        }
-    } catch (e) { showToast('Connection error', 'error'); }
+    MarsModal.show({
+        title: 'Modify Appearance', badge: 'Confirm',
+        body: `<div style="text-align:center;padding:8px 0;"><p>Your captain's appearance will be updated with:</p><p style="font-weight:700;color:var(--color-warning);margin:8px 0;">"${prompt}"</p><p style="font-size:12px;color:var(--text-secondary);">This takes a few seconds to generate. View the result on the Captain tab.</p></div>`,
+        footer: '<button class="btn btn-primary mm-btn-full" id="mmActionBtn">Modify Captain</button>',
+        width: 'sm'
+    });
+    document.getElementById('mmActionBtn').onclick = async () => {
+        MarsModal.show({ title: 'Generating...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">AI is updating your captain\'s appearance...</div>', width: 'sm' });
+        try {
+            const resp = await fetch('/api/shop/modify_character', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ prompt })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                MarsModal.show({
+                    title: 'Appearance Updated!', badge: 'Complete', theme: 'success',
+                    body: '<div style="text-align:center;padding:8px 0;"><p>Your captain has a new look. Switch to the <strong>Captain</strong> tab to see the changes.</p></div>',
+                    footer: '<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide();switchTab(\'captain\');setTimeout(()=>location.reload(),300);">View Captain</button>',
+                    width: 'sm'
+                });
+                _highlightCaptainTab();
+            } else {
+                MarsModal.hide();
+                showToast(data.error || 'Failed to modify appearance', 'error');
+            }
+        } catch (e) { MarsModal.hide(); showToast('Connection error', 'error'); }
+    };
 }
 
 async function purchaseVideoBriefing() {
-    if (!confirm('Generate a mission briefing video? This costs 90 shards and takes about 60 seconds.')) return;
-    try {
-        showToast('Generating video... this takes about 60 seconds', 'info');
-        const resp = await fetch('/api/shop/generate_video', {
-            method: 'POST', headers: {'Content-Type': 'application/json'}
-        });
-        const data = await resp.json();
-        if (data.success) {
-            showToast('Video generated! Reloading...', 'success');
-            setTimeout(() => location.reload(), 2000);
-        } else {
-            showToast(data.error || 'Failed to generate video', 'error');
-        }
-    } catch (e) { showToast('Connection error', 'error'); }
+    MarsModal.show({
+        title: 'Mission Briefing Video', badge: 'Confirm',
+        body: '<div style="text-align:center;padding:8px 0;"><p>Generate an animated mission briefing starring your captain.</p><p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">Takes about 60 seconds. View the result on the Captain tab under Video.</p></div>',
+        footer: '<button class="btn btn-primary mm-btn-full" id="mmActionBtn">Generate Video (90 shards)</button>',
+        width: 'sm'
+    });
+    document.getElementById('mmActionBtn').onclick = async () => {
+        MarsModal.show({ title: 'Generating Video...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">Creating your mission briefing... this takes about 60 seconds.</div>', width: 'sm' });
+        try {
+            const resp = await fetch('/api/shop/generate_video', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}
+            });
+            const data = await resp.json();
+            if (data.success) {
+                MarsModal.show({
+                    title: 'Video Ready!', badge: 'Complete', theme: 'success',
+                    body: '<div style="text-align:center;padding:8px 0;"><p>Your mission briefing video is ready. Switch to the <strong>Captain</strong> tab and tap <strong>Video</strong> to watch it.</p></div>',
+                    footer: '<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide();switchTab(\'captain\');setTimeout(()=>location.reload(),300);">View Video</button>',
+                    width: 'sm'
+                });
+                _highlightCaptainTab();
+            } else {
+                MarsModal.hide();
+                showToast(data.error || 'Failed to generate video', 'error');
+            }
+        } catch (e) { MarsModal.hide(); showToast('Connection error', 'error'); }
+    };
 }

@@ -114,6 +114,17 @@ function showImageModal(src, alt) {
     m.onclick = close;
     document.addEventListener('keydown', function h(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', h); } });
 }
+function showVideoModal(src) {
+    const m = document.createElement('div'); m.className = 'image-modal';
+    m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+    const v = document.createElement('video'); v.src = src; v.autoplay = true; v.loop = true; v.muted = true; v.playsInline = true; v.controls = true;
+    v.style.cssText = 'max-width:90%;max-height:90%;border-radius:12px;box-shadow:0 4px 60px rgba(0,0,0,0.5);';
+    v.onclick = (e) => e.stopPropagation(); // Don't close when clicking video controls
+    m.appendChild(v); document.body.appendChild(m);
+    const close = () => { v.pause(); document.body.removeChild(m); };
+    m.onclick = close;
+    document.addEventListener('keydown', function h(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', h); } });
+}
 function formatDuration(sec) { const d = sec / 86400, h = sec / 3600, m = sec / 60; return d >= 1 ? `${d.toFixed(1)} days` : h >= 1 ? `${h.toFixed(1)} hours` : m >= 1 ? `${m.toFixed(1)} minutes` : `${sec} seconds`; }
 
 // Shared countdown formatter (used by colony.js, available globally)

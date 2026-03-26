@@ -1,17 +1,21 @@
 <!-- Captain Services: Shard Infusion, Modify Appearance, Video Briefing -->
 
-<div class="grid gap-16" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+<div class="grid gap-16" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start;">
 
-    <!-- Shard Infusion (Stat Reroll) -->
-    <div class="dashboard-card p-20">
+    <!-- Shard Infusion (Stat Boost) -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
         <div style="text-align: center; margin-bottom: 12px;">
             <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/reroll_stats_1767506212.png"
                  alt="Shard Infusion" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
         </div>
         <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Shard Infusion</h3>
-        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 16px;">
-            Channel Sepolia energy to randomize your captain's stats. Each stat is rerolled independently &mdash; results are permanent.
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            Channel Sepolia energy to boost your captain's stats. Each stat has a chance to gain +1. Stats can only go <strong>up</strong>, never down.
         </p>
+        <p class="text-xs opacity-50" style="text-align: center; margin-bottom: 16px;">
+            Higher stats have lower chance of improvement. Cost doubles each infusion.
+        </p>
+        <div style="flex-grow: 1;"></div>
         <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">
                 {{ '{:,}'.format(pricing.reroll_cost|int) }}
@@ -27,17 +31,18 @@
     </div>
 
     <!-- Modify Appearance -->
-    <div class="dashboard-card p-20">
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
         <div style="text-align: center; margin-bottom: 12px;">
             <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/modify_commander_1767506225.png"
                  alt="Modify Appearance" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
         </div>
         <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Modify Appearance</h3>
         <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 12px;">
-            AI-powered appearance changes. Describe what you want changed and your captain's look will be updated.
+            AI-powered appearance changes. Describe what you want and your captain's look will be updated. View results on the <strong>Captain</strong> tab.
         </p>
         <textarea id="modifyPrompt" rows="2" placeholder="e.g. Add a scar over the left eye..."
                   style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; resize: vertical; margin-bottom: 12px;"></textarea>
+        <div style="flex-grow: 1;"></div>
         <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">
                 {{ '{:,}'.format(pricing.modify_cost|int) }}
@@ -50,15 +55,19 @@
     </div>
 
     <!-- Video Briefing -->
-    <div class="dashboard-card p-20">
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
         <div style="text-align: center; margin-bottom: 12px;">
             <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/video_briefing_1767506239.png"
                  alt="Video Briefing" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
         </div>
         <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Mission Briefing Video</h3>
-        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 16px;">
-            Generate an animated mission briefing video starring your captain. Takes about 60 seconds to create.
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            Generate an animated mission briefing video starring your captain. View results on the <strong>Captain</strong> tab.
         </p>
+        <p class="text-xs opacity-50" style="text-align: center; margin-bottom: 16px;">
+            Takes about 60 seconds to create.
+        </p>
+        <div style="flex-grow: 1;"></div>
         <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">90</span>
             <span class="text-sm opacity-70"> shards</span>

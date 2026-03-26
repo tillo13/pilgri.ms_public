@@ -2174,8 +2174,8 @@
       "deleteAsset",
       "toggleStatInfo",
       "purchaseShardInfusion",
-      "purchaseModifyAppearance",
-      "purchaseVideoBriefing"
+      "old_v",
+      "new_v"
     ],
     "keywords": "captain stats, image management, SV ticker, reroll, transmute"
   },
@@ -2464,7 +2464,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
