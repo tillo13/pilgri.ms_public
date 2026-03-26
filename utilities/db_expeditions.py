@@ -275,6 +275,12 @@ def create_expedition_discoveries(discoveries: List[Dict]) -> bool:
                 """, (disc['expedition_id'], disc['discovery_item_id'], disc['found_at_km'],
                       json.dumps(disc['found_at_coordinates']), disc['nearby_feature'],
                       disc['base_value'], disc['enhanced_value'], disc['quantity']))
+            # Update denormalized discovery_count on expedition
+            exp_counts = {}
+            for d in discoveries:
+                exp_counts[d['expedition_id']] = exp_counts.get(d['expedition_id'], 0) + 1
+            for exp_id, count in exp_counts.items():
+                cur.execute("UPDATE pilgrim.expeditions SET discovery_count = %s WHERE id = %s", (count, exp_id))
             logger.info(f"Created {len(discoveries)} expedition discoveries")
             return True
     except Exception as e:

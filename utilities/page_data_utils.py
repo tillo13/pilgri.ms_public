@@ -1236,9 +1236,10 @@ def get_colony_page_data(user_id, auth):
                 'arrives_at': row['arrives_at'],
                 'returns_at': row['return_arrives_at'],
             }
-        # Lifetime stats per vehicle type (trips + km only — fast query, no JOIN)
+        # Lifetime stats per vehicle type — uses denormalized discovery_count (no JOIN)
         cur.execute("""
-            SELECT vehicle_type, COUNT(*) as trips, SUM(distance_km) as total_km
+            SELECT vehicle_type, COUNT(*) as trips, SUM(distance_km) as total_km,
+                   SUM(discovery_count) as total_finds
             FROM pilgrim.expeditions
             WHERE user_id = %s AND status = 'complete'
             GROUP BY vehicle_type
@@ -1247,7 +1248,7 @@ def get_colony_page_data(user_id, auth):
             vehicle_lifetime_stats[row['vehicle_type']] = {
                 'trips': row['trips'],
                 'total_km': float(row['total_km']),
-                'total_finds': 0,  # Skipped — discovery JOIN was 5s+, not worth it
+                'total_finds': row['total_finds'] or 0,
             }
 
     # Bulk-fetch ALL vehicle acquisition dates in one query (not per-vehicle)
