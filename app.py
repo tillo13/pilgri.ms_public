@@ -1423,6 +1423,14 @@ def api_expedition_haul(expedition_id):
         sv_earned = 1000 + int((distance - 1500) * 0.4)
     sv_earned = max(100, min(sv_earned, 2000))
 
+    # Mark as seen (sets notified_at so it stops showing as "new return" on dashboard)
+    if expedition['status'] == 'complete' and not expedition.get('notified_at'):
+        try:
+            with db_cursor(commit=True) as cur:
+                cur.execute("UPDATE pilgrim.expeditions SET notified_at = NOW() WHERE id = %s", (expedition_id,))
+        except Exception:
+            pass
+
     return jsonify({
         'success': True,
         'expedition': {

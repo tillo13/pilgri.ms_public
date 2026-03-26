@@ -83,7 +83,9 @@ def get_user_active_expeditions(user_id: int) -> List[Dict]:
                     GROUP BY expedition_id
                 ) total_disc ON total_disc.expedition_id = e.id
                 WHERE e.user_id = %s
-                  AND (e.status IN ('traveling', 'recalled') OR (e.status = 'complete' AND COALESCE(unclaimed.count, 0) > 0))
+                  AND (e.status IN ('traveling', 'recalled')
+                       OR (e.status = 'complete' AND (COALESCE(unclaimed.count, 0) > 0
+                           OR (e.notified_at IS NULL AND e.completed_at > NOW() - INTERVAL '7 days'))))
                 ORDER BY e.departed_at DESC
             """, (user_id,))
             return _fetchall(cur)

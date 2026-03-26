@@ -2186,6 +2186,7 @@
     "exports": [
       "updateFleetETAs",
       "initFleetReviewButtons",
+      "autoShowReturnedExpedition",
       "showExpeditionHaulModal",
       "renderHaulModal",
       "vehicle",
@@ -2197,8 +2198,7 @@
       "triggerMining",
       "claimAdditionalCache",
       "loadInfrastructureCount",
-      "checkInfrastructureIncome",
-      "loadRecentDiscoveries"
+      "checkInfrastructureIncome"
     ],
     "keywords": "income display, effective rate UI, mining drone bonus display, base total display, harvest"
   },

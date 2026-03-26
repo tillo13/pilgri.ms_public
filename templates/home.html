@@ -642,7 +642,8 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
                 <span style="font-size: 12px; color: var(--text-primary); flex: 1; font-weight: 500;">{{ exp.destination_name }}</span>
                 <span style="font-size: 10px; color: var(--text-muted);">{{ exp.total_discovery_count }} find{{ 's' if exp.total_discovery_count != 1 else '' }}</span>
                 {% if exp.sepolia_earned %}
-                <span style="font-size: 10px; color: var(--color-warning); font-weight: 600;">{{ '{:,}'.format((exp.sepolia_earned)|int) }} <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"></span>
+                {% set display_shards = (exp.sepolia_earned * 10000000)|int %}
+                <span style="font-size: 10px; color: var(--color-warning); font-weight: 600;">{{ '{:,}'.format(display_shards) }} <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"></span>
                 {% endif %}
             </div>
             {% endfor %}

@@ -14,6 +14,8 @@ window.addEventListener('DOMContentLoaded', function() {
         updateFleetETAs();
         setInterval(updateFleetETAs, 1000);
         initFleetReviewButtons();
+        // Auto-popup haul modal for first unseen returned expedition
+        autoShowReturnedExpedition();
     } else {
         // Anonymous user - run demo animations
         runAnonDemoAnimations();
@@ -59,6 +61,18 @@ function initFleetReviewButtons() {
             }
         });
     });
+}
+
+function autoShowReturnedExpedition() {
+    // Auto-pop haul modal for the first returned expedition on page load
+    const firstReturned = document.querySelector('.fleet-review-btn');
+    if (firstReturned) {
+        const expId = parseInt(firstReturned.dataset.expeditionId) || 0;
+        if (expId > 0) {
+            // Small delay so page finishes rendering first
+            setTimeout(() => showExpeditionHaulModal(expId, true), 500);
+        }
+    }
 }
 
 async function showExpeditionHaulModal(expeditionId, showClaimButton = true) {
