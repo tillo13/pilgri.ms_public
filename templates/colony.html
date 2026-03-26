@@ -481,7 +481,8 @@ document.addEventListener('DOMContentLoaded', function() {
              data-expedition-returns="{{ vehicle.expedition_returns_at_str|default('') }}"
              data-lifetime-trips="{{ vehicle.lifetime_trips|default(0) }}"
              data-lifetime-km="{{ vehicle.lifetime_km|default(0)|int }}"
-             data-lifetime-finds="{{ vehicle.lifetime_finds|default(0) }}">
+             data-lifetime-finds="{{ vehicle.lifetime_finds|default(0) }}"
+             data-lifetime-cost="{{ vehicle.lifetime_cost|default(0) }}">
             {% if vehicle.image_url %}
             <img src="{{ vehicle.image_url }}" alt="{{ vehicle.name }}" class="asset-card-image" loading="lazy">
             {% else %}

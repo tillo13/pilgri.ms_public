@@ -90,6 +90,7 @@ function renderHaulModal(data, showClaimButton) {
     let body = `<div class="mm-section-label">Expedition Summary</div>`;
     body += `<div class="mm-kv"><span class="mm-kv-label">Travel Time</span><span class="mm-kv-value">${travelStr}</span></div>`;
     body += `<div class="mm-kv"><span class="mm-kv-label">Shards Earned</span><span class="mm-kv-value" style="color:var(--color-warning);">${Math.round(exp.shards_earned).toLocaleString()}</span></div>`;
+    if (exp.sv_earned) body += `<div class="mm-kv"><span class="mm-kv-label">SV Earned</span><span class="mm-kv-value" style="color:var(--color-success);">+${exp.sv_earned.toLocaleString()} SV</span></div>`;
     if (bonusLabel) body += `<div class="mm-kv"><span class="mm-kv-label">Distance Bonus</span><span class="mm-kv-value" style="color:var(--color-warning);">${bonusMult}&times; ${bonusLabel}</span></div>`;
     // Discoveries grid
     body += `<hr class="mm-divider"><div class="mm-section-label">Discoveries (${discoveries.length})</div>`;

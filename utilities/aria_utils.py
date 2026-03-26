@@ -839,9 +839,23 @@ def _build_friend_prompt(captain_name: str, snapshot: Optional[Dict], user_conte
         except Exception:
             mars = {'sol': 0, 'sol_time': 0, 'temperature': -40, 'solar_efficiency': 70, 'condition': 'Clear'}
 
+        # Build available scientists list for comparison
+        all_sci = snapshot.get('all_scientists', {})
+        sci_stats = scientist.get('stats', {})
+        current_sci_detail = f"{scientist.get('name', 'unknown')} ({scientist.get('specialty', 'general')}) — Nav:{sci_stats.get('navigation',0)} Anl:{sci_stats.get('analysis',0)} Geo:{sci_stats.get('geology',0)} Eng:{sci_stats.get('engineering',0)}"
+        other_sci_lines = []
+        for k, s in all_sci.items():
+            if k == (scientist.get('key') or ''):
+                continue
+            st = s.get('stats', {})
+            other_sci_lines.append(f"  {s['name']} ({s.get('specialty','?')}) — Nav:{st.get('navigation',0)} Anl:{st.get('analysis',0)} Geo:{st.get('geology',0)} Eng:{st.get('engineering',0)}")
+        other_sci_str = '\n'.join(other_sci_lines[:13]) if other_sci_lines else '  none'
+
         colony_data = f"""```COLONY
 captain: {captain_name}
-scientist: {scientist.get('name', 'unknown')} ({scientist.get('specialty', 'general')})
+scientist: {current_sci_detail}
+available_scientists_for_reassignment:
+{other_sci_str}
 shards: {res.get('balance', 0):,.0f}
 science_value: {sv_balance:,}
 infrastructure: {infra_str}
@@ -1010,7 +1024,8 @@ RESPONSE GUIDELINES:
 
 CRITICAL - DO NOT INVENT PEOPLE OR OTHER COLONIES:
 - Each colony has EXACTLY 2 crew: the captain and ONE scientist (named in snapshot above)
-- NEVER invent other scientists, doctors, engineers, teams, or crew members
+- NEVER invent scientists or crew that aren't listed in the COLONY data above
+- The available_scientists_for_reassignment list shows ALL scientists the captain can switch to — use this data when asked to compare scientists or recommend a different one
 - You ONLY know about THIS colony UNLESS there's an ARIA Bond (listed as "bonded_colonies" in snapshot)
 - ARIA Bonds = captains who visited the same landmark. You can discuss bonded captains briefly.
 - For unbonded captains, say "We haven't crossed paths yet"
@@ -3027,11 +3042,13 @@ def get_aria_album_data(user_id):
                 except Exception:
                     metadata = {}
             thumbnail_url = metadata.get('thumbnail_url')
-            mars_sol = metadata.get('mars_sol')
 
             created = snap.get('created_at')
             earth_date = created.strftime('%b %d, %Y') if created else None
             earth_time = created.strftime('%I:%M %p').lstrip('0') if created else None
+            # Calculate sol from created_at (not stored metadata) so epoch changes apply retroactively
+            from utilities.mars_environment_utils import get_mars_sol_number
+            mars_sol = get_mars_sol_number(created) if created else metadata.get('mars_sol')
 
             snapshots.append({
                 'id': snap['id'],

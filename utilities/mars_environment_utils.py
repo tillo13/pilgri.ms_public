@@ -47,11 +47,11 @@ def get_mars_sol_number(reference_date: datetime = None) -> int:
     """
     Calculate game Sol number — days since the first captain landed on Mars.
 
-    Sol 1 = October 3, 2025 (first account created). Uses real Mars Sol Date
+    Sol 1 = October 4, 2025 (game launch). Uses real Mars Sol Date
     math internally, then offsets so the game epoch starts at Sol 1.
     """
-    # MSD on Oct 3, 2025 (first account: Andy Tillo) = 53946
-    GAME_EPOCH_MSD = 53945  # offset so Oct 3 = Sol 1
+    # MSD offset so Oct 4, 2025 = Sol 1 (was Oct 3, updated per Luke #4)
+    GAME_EPOCH_MSD = 53946
 
     if reference_date is None:
         reference_date = datetime.utcnow()

@@ -366,8 +366,10 @@ function showVehicleModal(el) {
     const lifetimeTrips = parseInt(d.lifetimeTrips) || 0;
     const lifetimeKm = parseInt(d.lifetimeKm) || 0;
     const lifetimeFinds = parseInt(d.lifetimeFinds) || 0;
-    if (lifetimeTrips > 0) {
+    const lifetimeCost = parseInt(d.lifetimeCost) || 0;
+    if (lifetimeTrips > 0 || lifetimeCost > 0) {
         stats.push({ label: '\u2500\u2500\u2500 LIFETIME STATS \u2500\u2500\u2500', value: '' });
+        if (lifetimeCost > 0) stats.push({ label: 'Total Cost (incl. upgrades)', value: lifetimeCost.toLocaleString() + ' shards' });
         stats.push({ label: 'Total Expeditions', value: lifetimeTrips.toLocaleString() });
         stats.push({ label: 'Distance Traveled', value: lifetimeKm.toLocaleString() + ' km' });
         stats.push({ label: 'Items Found', value: lifetimeFinds.toLocaleString() });

@@ -1389,14 +1389,30 @@ def api_expedition_haul(expedition_id):
         'claimed': d.get('claimed_by_user', False), 'item_type': d.get('item_type')
     } for d in discoveries]
 
+    # Convert ETH to display shards
+    from utilities.depot_utils import eth_to_display
+    shards_display = eth_to_display(float(expedition.get('sepolia_earned') or 0))
+
+    # Calculate SV earned from distance (same formula as expedition_utils.py:1654)
+    distance = float(expedition['distance_km'])
+    if distance <= 200:
+        sv_earned = 100 + int(distance * 0.5)
+    elif distance <= 500:
+        sv_earned = 200 + int((distance - 200) * 1.0)
+    elif distance <= 1500:
+        sv_earned = 500 + int((distance - 500) * 0.5)
+    else:
+        sv_earned = 1000 + int((distance - 1500) * 0.4)
+    sv_earned = max(100, min(sv_earned, 2000))
+
     return jsonify({
         'success': True,
         'expedition': {
             'id': expedition_id, 'destination': expedition['destination_name'],
             'destination_type': expedition.get('destination_type'), 'destination_image': destination_image,
-            'distance_km': float(expedition['distance_km']), 'vehicle_type': expedition.get('vehicle_type', 'rover'),
-            'shards_earned': float(expedition.get('sepolia_earned') or 0), 'travel_hours': round(travel_hours, 1),
-            'status': expedition['status']
+            'distance_km': distance, 'vehicle_type': expedition.get('vehicle_type', 'rover'),
+            'shards_earned': shards_display, 'sv_earned': sv_earned,
+            'travel_hours': round(travel_hours, 1), 'status': expedition['status']
         },
         'discoveries': formatted,
         'unclaimed_count': sum(1 for d in formatted if not d['claimed'])

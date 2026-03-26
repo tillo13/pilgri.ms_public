@@ -821,7 +821,7 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
                         fleet[vehicle_type] = {
                             'status': 'returned', 'vehicle_name': vehicle_type.title(), 'icon': fleet[vehicle_type]['icon'],
                             'destination': exp['destination_name'], 'distance_km': distance_km,
-                            'shards_earned': float(exp['sepolia_earned'] or 0),
+                            'shards_earned': round(float(exp['sepolia_earned'] or 0) * 10000000, 1),
                             'expedition_id': exp['id'],
                             'discoveries': discoveries, 'total_discoveries': total_disc,
                             'distance_bonus': distance_bonus
@@ -853,7 +853,7 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
                     fleet[vehicle_type] = {
                         'status': 'returned', 'vehicle_name': vehicle_type.title(), 'icon': fleet[vehicle_type]['icon'],
                         'destination': exp['destination_name'], 'distance_km': distance_km,
-                        'shards_earned': float(exp['sepolia_earned'] or 0),
+                        'shards_earned': round(float(exp['sepolia_earned'] or 0) * 10000000, 1),
                         'expedition_id': exp['id'],
                         'discoveries': discoveries, 'total_discoveries': total_disc,
                         'distance_bonus': distance_bonus
@@ -1235,13 +1235,21 @@ def get_colony_page_data(user_id, auth):
             }
         # Lifetime stats per vehicle type (trips, km, finds)
         cur.execute("""
-            SELECT e.vehicle_type, COUNT(e.id) as trips, COALESCE(SUM(e.distance_km), 0) as total_km,
-                   COUNT(ed.id) as total_finds
-            FROM pilgrim.expeditions e
-            LEFT JOIN pilgrim.expedition_discoveries ed ON ed.expedition_id = e.id
-            WHERE e.user_id = %s
-            GROUP BY e.vehicle_type
-        """, (user_id,))
+            SELECT vehicle_type, trips, total_km, COALESCE(finds.total_finds, 0) as total_finds
+            FROM (
+                SELECT vehicle_type, COUNT(*) as trips, SUM(distance_km) as total_km
+                FROM pilgrim.expeditions
+                WHERE user_id = %s AND status = 'complete'
+                GROUP BY vehicle_type
+            ) exp
+            LEFT JOIN (
+                SELECT e.vehicle_type, COUNT(ed.id) as total_finds
+                FROM pilgrim.expeditions e
+                JOIN pilgrim.expedition_discoveries ed ON ed.expedition_id = e.id
+                WHERE e.user_id = %s AND e.status = 'complete'
+                GROUP BY e.vehicle_type
+            ) finds USING (vehicle_type)
+        """, (user_id, user_id))
         for row in cur.fetchall():
             vehicle_lifetime_stats[row['vehicle_type']] = {
                 'trips': row['trips'],
@@ -1280,6 +1288,9 @@ def get_colony_page_data(user_id, auth):
         enriched['lifetime_trips'] = lifetime.get('trips', 0)
         enriched['lifetime_km'] = lifetime.get('total_km', 0)
         enriched['lifetime_finds'] = lifetime.get('total_finds', 0)
+        # Total Cost = sum of all upgrade costs from level 1 to current level
+        total_cost = sum(vehicle_config.get('levels', {}).get(lv, {}).get('cost', 0) for lv in range(1, v['level'] + 1))
+        enriched['lifetime_cost'] = total_cost
 
         # Range/speed breakdown data
         lv1_stats = vehicle_config.get('levels', {}).get(1, {})
