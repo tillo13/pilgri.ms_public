@@ -1086,6 +1086,20 @@ def get_dashboard_page_data(user_id, auth):
             buggy_cfg = UPGRADE_CATALOG.get('vehicles', {}).get('buggy', {}).get('levels', {}).get(buggy_level, {})
             lbe['longhaul_image_url'] = buggy_cfg.get('longhaul_image_url') or buggy_cfg.get('image_url', '')
             lbe['buggy_name'] = buggy_cfg.get('name', 'Buggy')
+            # Current buggy status: idle, traveling, or returned
+            from datetime import datetime, timezone
+            buggy_now = next((e for e in active_expeditions if e.get('vehicle_type') == 'buggy' and e.get('status') == 'traveling'), None)
+            if buggy_now:
+                lbe['buggy_status'] = 'traveling'
+                lbe['buggy_current_dest'] = buggy_now.get('destination_name', '')
+                lbe['buggy_current_distance'] = float(buggy_now.get('distance_km', 0))
+            else:
+                lbe['buggy_status'] = 'idle'
+                # How long since the last expedition returned
+                if lbe.get('completed_at'):
+                    now = datetime.now(timezone.utc) if lbe['completed_at'].tzinfo else datetime.now()
+                    idle_hours = (now - lbe['completed_at']).total_seconds() / 3600
+                    lbe['buggy_idle_hours'] = round(idle_hours, 1)
             last_buggy_expedition = lbe
     except Exception as e:
         logger.warning(f"Could not fetch last buggy expedition: {e}")

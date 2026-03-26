@@ -427,8 +427,30 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
     {% endif %}
 
     <div class="lbe-footer">
-        <span style="font-size: 11px; color: var(--text-muted);">{{ lbe.completed_at.strftime('%b %d, %Y') if lbe.completed_at else '' }}</span>
-        <span style="font-size: 11px; color: var(--color-warning); font-weight: 600;">View Full Haul →</span>
+        <span style="font-size: 11px; color: var(--text-muted);">Returned {{ lbe.completed_at.strftime('%b %d') if lbe.completed_at else '' }}</span>
+        {% if lbe.buggy_status == 'traveling' %}
+        <span style="font-size: 11px; color: var(--color-success); font-weight: 600;">
+            Buggy en route to {{ lbe.buggy_current_dest }} ({{ '{:,.0f}'.format(lbe.buggy_current_distance) }} km) →
+        </span>
+        {% elif lbe.buggy_status == 'idle' %}
+        {% set idle_h = lbe.buggy_idle_hours|default(0) %}
+        {% if idle_h > 48 %}
+        <span style="font-size: 11px; color: var(--color-warning); font-weight: 600;">
+            Buggy idle {{ (idle_h / 24)|round(1) }}d — <a href="/expeditions" style="color: var(--color-warning); text-decoration: underline;">Launch next expedition →</a>
+        </span>
+        {% elif idle_h > 1 %}
+        <span style="font-size: 11px; color: var(--text-secondary);">
+            Buggy idle {{ idle_h|round|int }}h — <a href="/expeditions" style="color: var(--color-warning); text-decoration: none;">Launch next →</a>
+        </span>
+        {% else %}
+        <span style="font-size: 11px; color: var(--text-secondary);">
+            Buggy at base — <a href="/expeditions" style="color: var(--color-warning); text-decoration: none;">Launch next →</a>
+        </span>
+        {% endif %}
+        {% endif %}
+    </div>
+    <div style="padding: 0 16px 10px;">
+        <span style="font-size: 10px; color: var(--text-muted); cursor: pointer;" onclick="event.stopPropagation(); showExpeditionHaulModal({{ lbe.id }}, true);">View Full Haul →</span>
     </div>
 </div>
 {% endif %}
