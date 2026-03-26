@@ -2240,6 +2240,21 @@ def load_colony_snapshot(user_id: int) -> dict:
             snapshot['expeditions']['recent'] = [row['destination_name'] for row in cur.fetchall()]
             snapshot['expeditions']['total'] = tier_info['expeditions']
 
+            # Last completed buggy expedition
+            try:
+                from utilities.db_expeditions import get_last_completed_buggy_expedition
+                lbe = get_last_completed_buggy_expedition(user_id)
+                if lbe:
+                    snapshot['expeditions']['last_buggy'] = {
+                        'destination': lbe['destination_name'],
+                        'distance_km': float(lbe['distance_km']),
+                        'discoveries': int(lbe['total_discoveries']),
+                        'sv_earned': lbe['sv_earned'],
+                        'completed': lbe['completed_at'].isoformat() if lbe.get('completed_at') else None,
+                    }
+            except Exception:
+                pass
+
             # Discoveries + Storage capacity
             cur.execute("""
                 SELECT

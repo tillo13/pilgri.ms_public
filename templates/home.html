@@ -359,6 +359,80 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
 {% endif %}
 {% endif %}
 
+{% if last_buggy_expedition %}
+<!-- Last Buggy Expedition Cinematic Card -->
+{% set lbe = last_buggy_expedition %}
+{% set travel_days = ((lbe.travel_hours or 0) / 24)|round(1) %}
+{% set travel_display = '{:.0f}d {}h'.format((lbe.travel_hours or 0) // 24, ((lbe.travel_hours or 0) % 24)|round|int) %}
+{% set distance_label = 'Legendary Journey' if lbe.distance_km >= 2000 else 'Frontier Run' if lbe.distance_km >= 1000 else 'Deep Expedition' if lbe.distance_km >= 500 else 'Expedition' %}
+<div class="lbe-card" data-expedition-id="{{ lbe.id }}" style="cursor: pointer;" title="Click to view full haul">
+    {% if lbe.longhaul_image_url %}
+    <div class="lbe-hero">
+        <img src="{{ lbe.longhaul_image_url }}" alt="{{ lbe.buggy_name }} returning from {{ lbe.destination_name }}" loading="eager">
+    </div>
+    {% endif %}
+    <div class="lbe-header">
+        <div class="lbe-badge">LAST BUGGY EXPEDITION · {{ lbe.buggy_name }}</div>
+        <div class="lbe-destination">{{ lbe.destination_name }}</div>
+        <div class="lbe-subtitle">{{ lbe.destination_type }} · {{ '{:,.0f}'.format(lbe.distance_km) }} km · {{ distance_label }}</div>
+    </div>
+
+    <!-- Animated Route -->
+    <div class="lbe-route">
+        <div class="lbe-route-track">
+            <div class="lbe-route-fill"></div>
+            {% set total_disc = lbe.total_discoveries|int %}
+            {% if total_disc > 0 %}
+            {% for i in range(total_disc) %}
+            {% set pct = ((i + 1) / (total_disc + 1) * 100)|round(1) %}
+            {% set pip_rarity = 'legendary' if i == 0 and lbe.legendary_count|int > 0 else 'rare' if i < (lbe.rare_count|int + lbe.legendary_count|int) and i >= lbe.legendary_count|int else 'uncommon' if i < (lbe.uncommon_count|int + lbe.rare_count|int + lbe.legendary_count|int) else 'common' %}
+            <div class="lbe-pip lbe-pip-{{ pip_rarity }}" style="left: {{ pct }}%; animation-delay: {{ (pct / 100 * 3)|round(1) }}s;"></div>
+            {% endfor %}
+            {% endif %}
+        </div>
+        <div class="lbe-route-labels">
+            <span>Base</span>
+            <span>{{ lbe.destination_name[:20] }}</span>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="lbe-stats">
+        <div class="lbe-stat">
+            <div class="lbe-stat-value">{{ travel_display }}</div>
+            <div class="lbe-stat-label">Travel Time</div>
+        </div>
+        <div class="lbe-stat">
+            <div class="lbe-stat-value">{{ total_disc }}</div>
+            <div class="lbe-stat-label">Discoveries</div>
+        </div>
+        <div class="lbe-stat">
+            <div class="lbe-stat-value">{{ '{:,}'.format(lbe.shards_display|int) }}</div>
+            <div class="lbe-stat-label">Shards</div>
+        </div>
+        <div class="lbe-stat">
+            <div class="lbe-stat-value">{{ '{:,}'.format(lbe.sv_earned|int) }}</div>
+            <div class="lbe-stat-label">SV Earned</div>
+        </div>
+    </div>
+
+    <!-- Rarity Breakdown -->
+    {% if total_disc > 0 %}
+    <div class="lbe-rarity">
+        {% if lbe.legendary_count|int > 0 %}<span class="lbe-rarity-pill lbe-rarity-legendary">{{ lbe.legendary_count }} Legendary</span>{% endif %}
+        {% if lbe.rare_count|int > 0 %}<span class="lbe-rarity-pill lbe-rarity-rare">{{ lbe.rare_count }} Rare</span>{% endif %}
+        {% if lbe.uncommon_count|int > 0 %}<span class="lbe-rarity-pill lbe-rarity-uncommon">{{ lbe.uncommon_count }} Uncommon</span>{% endif %}
+        {% if lbe.common_count|int > 0 %}<span class="lbe-rarity-pill lbe-rarity-common">{{ lbe.common_count }} Common</span>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="lbe-footer">
+        <span style="font-size: 11px; color: var(--text-muted);">{{ lbe.completed_at.strftime('%b %d, %Y') if lbe.completed_at else '' }}</span>
+        <span style="font-size: 11px; color: var(--color-warning); font-weight: 600;">View Full Haul →</span>
+    </div>
+</div>
+{% endif %}
+
 {% if away_summary and away_summary.show_briefing %}
 <!-- Compute idle/active crew early (needed for Priority Actions) -->
 {% set active_crew = [] %}

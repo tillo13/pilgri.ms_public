@@ -1357,15 +1357,15 @@
       "update_expedition_complete — Mark expedition as complete",
       "get_user_completed_expeditions_count — Get count of completed expeditions",
       "get_user_visited_locations_count — Get count of unique locations visited by user",
+      "calculate_expedition_sv — Calculate SV earned from expedition distance. Single source of truth.",
+      "get_last_completed_buggy_expedition — Get most recent completed buggy expedition with aggregated discovery stats.",
       "get_user_expedition_history — Get expedition history with discoveries for user.",
       "get_expedition_discovery_items — Get all discovery items for a specific expedition with item details.",
       "record_landmark_discovery — Record landmark discovery",
       "get_user_discovered_landmarks — Get all landmarks user has discovered",
       "get_discovery_items_catalog — Get all active discovery items WITH MISSION DATA",
       "create_expedition_discoveries — Bulk insert expedition discoveries",
-      "get_expedition_discoveries — Get discoveries for expedition",
-      "unlock_discoveries_by_distance — Unlock discoveries at or before current distance",
-      "claim_expedition_discovery — Mark discovery as claimed — only if expedition has returned (complete/recalled)"
+      "get_expedition_discoveries — Get discoveries for expedition"
     ],
     "keywords": "expedition CRUD, discovery items, expedition status"
   },
@@ -1846,6 +1846,17 @@
     ],
     "keywords": "signal decoder, origin sites, echo messages, ARG, shard network, puzzle"
   },
+  "utilities/speedrun_expedition.py": {
+    "description": "Expedition Speedrun / Replay Tool",
+    "exports": [
+      "load_expedition_context — Load all context needed to replay an expedition from DB.",
+      "replay_expedition — Replay discovery generation for an expedition. Returns full report.",
+      "apply_replay — Apply replayed discoveries to DB — replaces old discoveries with new ones.",
+      "save_report — Save report JSON to tools/speedrun_results/.",
+      "print_report — Pretty-print a speedrun report to console.",
+      "main"
+    ]
+  },
   "utilities/sv_milestones.py": {
     "description": "SV Economy: Collection Milestones (Dr. Bo's Research Program)",
     "exports": [
@@ -2186,6 +2197,7 @@
     "exports": [
       "updateFleetETAs",
       "initFleetReviewButtons",
+      "initLastBuggyExpedition",
       "autoShowReturnedExpedition",
       "showExpeditionHaulModal",
       "renderHaulModal",
@@ -2197,8 +2209,7 @@
       "runAnonDemoAnimations",
       "triggerMining",
       "claimAdditionalCache",
-      "loadInfrastructureCount",
-      "checkInfrastructureIncome"
+      "loadInfrastructureCount"
     ],
     "keywords": "income display, effective rate UI, mining drone bonus display, base total display, harvest"
   },
@@ -2466,7 +2477,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2544,7 +2555,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

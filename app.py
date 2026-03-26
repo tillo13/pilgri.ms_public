@@ -1411,17 +1411,10 @@ def api_expedition_haul(expedition_id):
     from utilities.depot_utils import eth_to_display
     shards_display = eth_to_display(float(expedition.get('sepolia_earned') or 0))
 
-    # Calculate SV earned from distance (same formula as expedition_utils.py:1654)
+    # Calculate SV earned from distance
+    from utilities.db_expeditions import calculate_expedition_sv
     distance = float(expedition['distance_km'])
-    if distance <= 200:
-        sv_earned = 100 + int(distance * 0.5)
-    elif distance <= 500:
-        sv_earned = 200 + int((distance - 200) * 1.0)
-    elif distance <= 1500:
-        sv_earned = 500 + int((distance - 500) * 0.5)
-    else:
-        sv_earned = 1000 + int((distance - 1500) * 0.4)
-    sv_earned = max(100, min(sv_earned, 2000))
+    sv_earned = calculate_expedition_sv(distance)
 
     # Mark as seen (sets notified_at so it stops showing as "new return" on dashboard)
     if expedition['status'] == 'complete' and not expedition.get('notified_at'):

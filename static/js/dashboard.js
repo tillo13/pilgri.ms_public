@@ -14,7 +14,8 @@ window.addEventListener('DOMContentLoaded', function() {
         updateFleetETAs();
         setInterval(updateFleetETAs, 1000);
         initFleetReviewButtons();
-        // Auto-popup haul modal for first unseen returned expedition
+        initLastBuggyExpedition();
+        // Auto-popup haul modal for first unseen returned expedition (non-buggy fallback)
         autoShowReturnedExpedition();
     } else {
         // Anonymous user - run demo animations
@@ -61,6 +62,15 @@ function initFleetReviewButtons() {
             }
         });
     });
+}
+
+function initLastBuggyExpedition() {
+    const card = document.querySelector('.lbe-card');
+    if (!card) return;
+    const expId = parseInt(card.dataset.expeditionId) || 0;
+    if (expId > 0) {
+        card.addEventListener('click', () => showExpeditionHaulModal(expId, true));
+    }
 }
 
 function autoShowReturnedExpedition() {

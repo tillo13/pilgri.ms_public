@@ -374,6 +374,19 @@ def test_stat_names():
 # TIER 2: DEFAULT TESTS (~50, medium coverage)
 # =============================================================================
 
+@test("last buggy expedition query", tier=2, features=['db', 'expeditions'])
+def test_last_buggy_expedition():
+    from utilities.db_expeditions import get_last_completed_buggy_expedition, calculate_expedition_sv
+    # SV helper
+    assert calculate_expedition_sv(200) == 200
+    assert calculate_expedition_sv(3500) == 1800
+    # Query returns dict or None (not error)
+    result = get_last_completed_buggy_expedition(112)
+    if result:
+        assert 'destination_name' in result and 'total_discoveries' in result and 'sv_earned' in result
+    return True
+
+
 @test("expeditions table exists", tier=2, features=['db', 'expeditions'])
 def test_expeditions_table():
     from utilities.postgres_utils import db_cursor

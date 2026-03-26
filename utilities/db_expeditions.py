@@ -117,6 +117,55 @@ def get_user_visited_locations_count(user_id):
         return 0
 
 
+def calculate_expedition_sv(distance_km: float) -> int:
+    """Calculate SV earned from expedition distance. Single source of truth."""
+    d = float(distance_km)
+    if d <= 200:
+        sv = 100 + int(d * 0.5)
+    elif d <= 500:
+        sv = 200 + int((d - 200) * 1.0)
+    elif d <= 1500:
+        sv = 500 + int((d - 500) * 0.5)
+    else:
+        sv = 1000 + int((d - 1500) * 0.4)
+    return max(100, min(sv, 2000))
+
+
+def get_last_completed_buggy_expedition(user_id: int) -> Optional[Dict]:
+    """Get most recent completed buggy expedition with aggregated discovery stats.
+    Used for the 'Last Buggy Expedition' cinematic card on Base HQ."""
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT e.id, e.destination_name, e.destination_type, e.distance_km,
+                       e.departed_at, e.completed_at, e.sepolia_earned, e.vehicle_type,
+                       e.cargo_capacity, e.discovery_count,
+                       COUNT(ed.id) as total_discoveries,
+                       SUM(CASE WHEN di.rarity = 'common' THEN 1 ELSE 0 END) as common_count,
+                       SUM(CASE WHEN di.rarity = 'uncommon' THEN 1 ELSE 0 END) as uncommon_count,
+                       SUM(CASE WHEN di.rarity = 'rare' THEN 1 ELSE 0 END) as rare_count,
+                       SUM(CASE WHEN di.rarity = 'legendary' THEN 1 ELSE 0 END) as legendary_count,
+                       COALESCE(SUM(ed.enhanced_value), 0) as total_value,
+                       COALESCE(SUM(di.base_scientific_value), 0) as total_sv_from_items
+                FROM pilgrim.expeditions e
+                LEFT JOIN pilgrim.expedition_discoveries ed ON ed.expedition_id = e.id
+                LEFT JOIN pilgrim.discovery_items di ON ed.discovery_item_id = di.id
+                WHERE e.user_id = %s AND e.status = 'complete' AND e.vehicle_type = 'buggy'
+                GROUP BY e.id
+                ORDER BY e.completed_at DESC
+                LIMIT 1
+            """, (user_id,))
+            row = cur.fetchone()
+            if not row:
+                return None
+            result = dict(row)
+            result['sv_earned'] = calculate_expedition_sv(float(result['distance_km']))
+            return result
+    except Exception as e:
+        logger.error(f"❌ Failed to get last buggy expedition: {e}")
+        return None
+
+
 def get_user_expedition_history(user_id: int, limit: int = 50, offset: int = 0) -> Dict:
     """
     Get expedition history with discoveries for user.

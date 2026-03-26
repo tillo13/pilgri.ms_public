@@ -1069,6 +1069,27 @@ def get_dashboard_page_data(user_id, auth):
     except Exception as e:
         logger.warning(f"Could not fetch completed bonds: {e}")
 
+    # Last completed buggy expedition for cinematic card
+    last_buggy_expedition = None
+    try:
+        from utilities.db_expeditions import get_last_completed_buggy_expedition
+        from utilities.upgrades_utils import get_user_upgrade_level
+        lbe = get_last_completed_buggy_expedition(user_id)
+        if lbe:
+            buggy_level = get_user_upgrade_level(user_id, 'vehicles', 'buggy')
+            lbe['buggy_level'] = buggy_level
+            lbe['shards_display'] = int(float(lbe.get('sepolia_earned') or 0) * 10000000)
+            if lbe.get('departed_at') and lbe.get('completed_at'):
+                lbe['travel_hours'] = round((lbe['completed_at'] - lbe['departed_at']).total_seconds() / 3600, 1)
+            # Get longhaul hero image for player's buggy level
+            from config_upgrades import UPGRADE_CATALOG
+            buggy_cfg = UPGRADE_CATALOG.get('vehicles', {}).get('buggy', {}).get('levels', {}).get(buggy_level, {})
+            lbe['longhaul_image_url'] = buggy_cfg.get('longhaul_image_url') or buggy_cfg.get('image_url', '')
+            lbe['buggy_name'] = buggy_cfg.get('name', 'Buggy')
+            last_buggy_expedition = lbe
+    except Exception as e:
+        logger.warning(f"Could not fetch last buggy expedition: {e}")
+
     return {
         'user': user, 'wallets': wallets, 'primary_wallet': primary_wallet,
         'total_balance': total_balance, 'primary_balance': total_balance, 'has_commander': has_commander,
@@ -1092,6 +1113,7 @@ def get_dashboard_page_data(user_id, auth):
         'fleet_debug': fleet_debug,
         'welcome_back': welcome_back,
         'completed_bonds': completed_bonds,
+        'last_buggy_expedition': last_buggy_expedition,
     }
 
 def get_profile_page_data(user_id, auth):
