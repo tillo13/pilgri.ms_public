@@ -1236,28 +1236,18 @@ def get_colony_page_data(user_id, auth):
                 'arrives_at': row['arrives_at'],
                 'returns_at': row['return_arrives_at'],
             }
-        # Lifetime stats per vehicle type (trips, km, finds)
+        # Lifetime stats per vehicle type (trips + km only — fast query, no JOIN)
         cur.execute("""
-            SELECT vehicle_type, trips, total_km, COALESCE(finds.total_finds, 0) as total_finds
-            FROM (
-                SELECT vehicle_type, COUNT(*) as trips, SUM(distance_km) as total_km
-                FROM pilgrim.expeditions
-                WHERE user_id = %s AND status = 'complete'
-                GROUP BY vehicle_type
-            ) exp
-            LEFT JOIN (
-                SELECT e.vehicle_type, COUNT(ed.id) as total_finds
-                FROM pilgrim.expeditions e
-                JOIN pilgrim.expedition_discoveries ed ON ed.expedition_id = e.id
-                WHERE e.user_id = %s AND e.status = 'complete'
-                GROUP BY e.vehicle_type
-            ) finds USING (vehicle_type)
-        """, (user_id, user_id))
+            SELECT vehicle_type, COUNT(*) as trips, SUM(distance_km) as total_km
+            FROM pilgrim.expeditions
+            WHERE user_id = %s AND status = 'complete'
+            GROUP BY vehicle_type
+        """, (user_id,))
         for row in cur.fetchall():
             vehicle_lifetime_stats[row['vehicle_type']] = {
                 'trips': row['trips'],
                 'total_km': float(row['total_km']),
-                'total_finds': row['total_finds'],
+                'total_finds': 0,  # Skipped — discovery JOIN was 5s+, not worth it
             }
 
     # Bulk-fetch ALL vehicle acquisition dates in one query (not per-vehicle)
