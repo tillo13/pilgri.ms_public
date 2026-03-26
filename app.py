@@ -185,6 +185,23 @@ except Exception as e:
     logger.error(f"Failed to initialize FluxGenerator: {e}")
     flux = None
 
+def _calc_time_on_mars(first_login_str):
+    """Calculate how many sols a user has been on Mars."""
+    if not first_login_str:
+        return None
+    try:
+        from utilities.mars_environment_utils import get_mars_sol_number
+        from datetime import datetime
+        if isinstance(first_login_str, str):
+            fl = datetime.fromisoformat(first_login_str.replace('Z', '+00:00').replace('+00:00', ''))
+        else:
+            fl = first_login_str
+        first_sol = get_mars_sol_number(fl)
+        current_sol = get_mars_sol_number()
+        return max(1, current_sol - first_sol + 1)
+    except Exception:
+        return None
+
 @app.context_processor
 def inject_global_stats():
     """Inject global user stats into all templates for nav bar and user menu.
@@ -433,6 +450,7 @@ def inject_global_stats():
             'sv_rate': session.get('_svr', 0),
             'shard_rate': session.get('_shr', 0),
             'first_login': session.get('_fl'),
+            'time_on_mars_sols': _calc_time_on_mars(session.get('_fl')),
             'static_v': STATIC_V,
             'mimic_email': session.get('_mimic_email'),
         }
