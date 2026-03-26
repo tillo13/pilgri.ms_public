@@ -497,25 +497,40 @@ function showStatus(message, isError) {
     el.style.color = isError ? '#ef4444' : '#4ade80';
 }
 
-async function generateAriaSnapshot() {
-    var userIdStr = prompt('Generate for specific user ID (leave blank for all active users):');
-    if (userIdStr === null) return;
-    var userId = userIdStr.trim() ? parseInt(userIdStr.trim()) : null;
-    var dryRun = confirm('Dry run? (OK = dry run, Cancel = real generation)');
-    showStatus((dryRun ? 'Dry run' : 'Generating') + ' ARIA snapshot' + (userId ? ' for user ' + userId : ' for all active users') + '...');
-    try {
-        var resp = await fetch('/api/admin/generate_snapshots', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, dry_run: dryRun })
-        });
-        var data = await resp.json();
-        if (data.success) {
-            showStatus('Done! ' + (data.snapshots_generated || data.total_generated || '?') + ' snapshot(s) generated' + (dryRun ? ' (dry run)' : '') + '.');
-        } else {
-            showStatus('Error: ' + (data.error || 'Unknown error'), true);
-        }
-    } catch (e) { showStatus('Error: ' + e.message, true); }
+function generateAriaSnapshot() {
+    MarsModal.show({
+        title: 'Generate ARIA Photos', badge: 'Admin',
+        body: '<div style="padding:8px 0;">' +
+            '<p style="margin-bottom:12px;">Generate daily ARIA Photo Journal snapshots for active users.</p>' +
+            '<div style="margin-bottom:12px;"><label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px;">User ID (blank = all active users)</label>' +
+            '<input type="text" id="snapshotUserId" placeholder="e.g. 112" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border-default);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;"></div>' +
+            '</div>',
+        footer: '<div style="display:flex;gap:8px;"><button class="btn btn-secondary" style="flex:1;" onclick="MarsModal.hide()">Cancel</button>' +
+            '<button class="btn btn-primary" style="flex:2;" id="mmActionBtn">Generate Photos</button></div>',
+        width: 'sm'
+    });
+    document.getElementById('mmActionBtn').onclick = async function() {
+        var userIdStr = document.getElementById('snapshotUserId').value.trim();
+        var userId = userIdStr ? parseInt(userIdStr) : null;
+        MarsModal.show({ title: 'Generating...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">Creating ARIA photos' + (userId ? ' for user ' + userId : ' for all active users') + '... this may take a minute.</div>', width: 'sm' });
+        try {
+            var resp = await fetch('/api/admin/generate_snapshots', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, dry_run: false })
+            });
+            var data = await resp.json();
+            if (data.success) {
+                var count = data.snapshots_generated || data.total_snapshots || '?';
+                MarsModal.show({ title: 'Photos Generated!', badge: 'Complete', theme: 'success',
+                    body: '<div style="text-align:center;padding:12px 0;"><p style="font-size:18px;font-weight:700;">' + count + ' photo(s) created</p></div>',
+                    footer: '<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Done</button>', width: 'sm' });
+            } else {
+                MarsModal.hide();
+                showStatus('Error: ' + (data.error || 'Unknown error'), true);
+            }
+        } catch (e) { MarsModal.hide(); showStatus('Error: ' + e.message, true); }
+    };
 }
 
 async function sendTestEmail() {
