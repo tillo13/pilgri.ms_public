@@ -13,6 +13,52 @@ from utilities.postgres_utils import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
 
+# Tool definition for Claude to create bugs directly
+CREATE_BUG_TOOL = {
+    "name": "create_bug",
+    "description": "File a new bug in the tracker. Use this when the user asks you to create/file/log a bug, or when you discover an issue worth tracking. Returns the bug ID and link.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "Short bug title (under 100 chars)"
+            },
+            "description": {
+                "type": "string",
+                "description": "Clear description: what's wrong, expected vs actual behavior"
+            },
+            "priority": {
+                "type": "string",
+                "enum": ["P1", "P2", "P3", "P4", "P5"],
+                "description": "Priority level. P1=critical, P2=important, P3=normal"
+            }
+        },
+        "required": ["title", "description", "priority"]
+    }
+}
+
+
+def execute_create_bug_tool(input_data, user_id, chat_id=None):
+    """Execute the create_bug tool call. Returns formatted result string."""
+    from utilities.db_bugs import create_bug, add_bug_comment
+    title = (input_data.get('title', 'PilgrimBot bug'))[:200]
+    description = (input_data.get('description', ''))[:2000]
+    priority = input_data.get('priority', 'P3')
+
+    bug = create_bug(name=title, description=description, priority=priority, source='PilgrimBot')
+    if not bug:
+        return "ERROR: Failed to create bug in database."
+
+    # Add source comment linking to the conversation
+    comment = f"**Source:** Filed by PilgrimBot during chat"
+    if chat_id:
+        comment += f"\n**Chat ID:** `{chat_id}`"
+    add_bug_comment(bug['id'], 'PilgrimBot', comment)
+
+    logger.info(f"Bug created via tool: #{bug['id']} - {title}")
+    return f"Bug created successfully: #{bug['id']} — {title}\nLink: /admin/bugs?open={bug['id']}"
+
 # Use same model as main pilgrimbot
 MODEL = "claude-haiku-4-5-20251001"
 

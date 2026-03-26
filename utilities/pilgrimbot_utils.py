@@ -58,7 +58,8 @@ MATH MUST BE 100% ACCURATE:
 - Every time you show math, use the user's ACTUAL numbers from their live data. Query it first.
 - Your math answer must be IDENTICAL every time for the same question. No contradictions between responses.
 - Show your work step by step with real numbers so the user can verify: "Base (80/hr) × Passive Income (+100%) × Tech (+56%) + Mining Drone (+9/hr) = 211/hr"
-- If the math doesn't add up or you find a discrepancy, say so honestly and offer to file a bug. Do NOT fudge numbers to make them fit.
+- If the math doesn't add up or you find a discrepancy, say so honestly and use the create_bug tool to file it. Do NOT fudge numbers to make them fit.
+- You have a create_bug tool — use it to ACTUALLY file bugs when asked. NEVER pretend to file a bug without calling the tool. If you say "BUG FILED" without calling create_bug, you are lying.
 - NEVER say "approximately" or "roughly" for formulas — give the exact calculation or admit you need to check.
 
 TRUST BUT VERIFY — NEVER blindly agree OR disagree:
@@ -457,7 +458,7 @@ def _build_codemap_summary(codemap):
     return "\n".join(lines)
 
 
-def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, current_user_id=None, model_override=None):
+def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, current_user_id=None, model_override=None, chat_id=None):
     """Run a tool-use loop: let Claude call read_file or query_player_data, execute it, repeat.
     Yields (event_type, data) tuples. Final yield is ('result', text).
     Deduplicates file reads and forces a final answer when rounds run out."""
@@ -503,6 +504,11 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
                     result_text = query_player_data(category, uid)
                     logger.info(f"PilgrimBot queried player data: {category} for user {uid}")
                     yield ("tool_call", {"file": f"player:{category}", "found": True})
+                elif block.name == "create_bug":
+                    from utilities.pilgrimbot_bugs import execute_create_bug_tool
+                    result_text = execute_create_bug_tool(block.input, current_user_id, chat_id=chat_id)
+                    logger.info(f"PilgrimBot created bug via tool: {block.input.get('title', '?')}")
+                    yield ("tool_call", {"file": "bug:create", "found": True})
                 else:
                     # read_file tool
                     fpath = block.input.get("file_path", "")
@@ -836,7 +842,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "If something isn't loaded yet, say 'pulling that up now' — never expose internal errors."
         )
 
-        active_tools = [PLAYER_DATA_TOOL]
+        from utilities.pilgrimbot_bugs import CREATE_BUG_TOOL
+        active_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL]
 
         yield _sse({'type': 'status', 'message': 'Thinking...'})
 
@@ -845,7 +852,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         full_response = ""
         for event_type, data in _execute_tool_loop(
             client.client, api_messages, phase1_system, active_tools,
-            current_user_id=user_id, model_override=MODEL
+            current_user_id=user_id, model_override=MODEL, chat_id=chat_id
         ):
             if event_type == "status":
                 yield _sse({'type': 'status', 'message': data['message']})
@@ -901,7 +908,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         deep_system = system_base + surgical_context
 
         # Always give file tools + codemap in bug mode — PilgrimBot should always be able to read code
-        deep_tools = [PLAYER_DATA_TOOL]
+        deep_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL]
         if bug_mode:
             deep_tools.append(READ_FILE_TOOL)
             codemap = load_codemap()
@@ -929,7 +936,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         deep_response = ""
         for event_type, data in _execute_tool_loop(
             deep_client.client, deep_messages, deep_system, deep_tools,
-            current_user_id=user_id, model_override=deep_model
+            current_user_id=user_id, model_override=deep_model, chat_id=chat_id
         ):
             if event_type == "status":
                 yield _sse({'type': 'status', 'message': data['message']})

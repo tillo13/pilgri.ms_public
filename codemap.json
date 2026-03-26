@@ -1714,6 +1714,7 @@
   "utilities/pilgrimbot_bugs.py": {
     "description": "PilgrimBot bug creation and cross-linking utilities.",
     "exports": [
+      "execute_create_bug_tool — Execute the create_bug tool call. Returns formatted result string.",
       "create_bug_from_question — Save a bug/feature report via the unified bug tracker.",
       "create_bug_from_conversation — Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.",
       "create_bug_from_response — Create a bug from a SINGLE PilgrimBot response (not the full conversation).",
@@ -2541,7 +2542,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
