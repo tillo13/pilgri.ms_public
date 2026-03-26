@@ -54,9 +54,13 @@ def get_passive_income_source(user_id: int) -> Dict:
     if mult <= 1.0:
         return None
 
+    from config_upgrades import UPGRADE_CATALOG
+    parent_name = UPGRADE_CATALOG.get('power', {}).get('generator', {}).get('name', 'Shard Generator')
+    level_name = stats.get('name', f'Lv{level}')
     return {
         'id': f'power_generator_lv{level}',
-        'name': stats.get('name', f'Generator Lv{level}'),
+        'name': f'{parent_name} Lv{level}',
+        'level_name': level_name,
         'icon': '',
         'mult': mult,
     }

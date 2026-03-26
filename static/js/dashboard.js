@@ -264,15 +264,16 @@ async function checkInfrastructureIncome() {
             // Power equipment row (show if mult > 1) - displays the actual item name
             const solarRow = $('solarUpgradeRow');
             if (solarRow) {
-                if (bonuses.passive_income_mult > 1.0) {
+                const source = bonuses.passive_income_source;
+                if (source && source.mult > 1.0) {
                     solarRow.style.display = 'flex';
-                    // Show actual item name if available (e.g., "Nuclear RTG")
-                    const source = bonuses.passive_income_source;
                     const label = $('powerEquipmentLabel');
-                    if (label && source && source.name) {
-                        label.textContent = source.icon + ' ' + source.name;
+                    if (label && source.name) {
+                        const levelName = source.level_name ? ` (${source.level_name})` : '';
+                        label.textContent = (source.icon || '') + ' ' + source.name + levelName;
                     }
-                    $('solarUpgradeMult').textContent = '× ' + bonuses.passive_income_mult.toFixed(1);
+                    // Show the Shard Generator's own mult (not combined with tech)
+                    $('solarUpgradeMult').textContent = '× ' + source.mult.toFixed(2);
                 } else {
                     solarRow.style.display = 'none';
                 }
