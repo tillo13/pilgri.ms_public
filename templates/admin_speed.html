@@ -13,6 +13,48 @@
         </div>
     </div>
 
+    <!-- DB Pool Health -->
+    <div class="speed-section">
+        <div class="speed-section-header">
+            <span>DB Connection Pool</span>
+            <button class="speed-detail-btn" onclick="refreshPool();" id="pool-refresh-btn">Refresh</button>
+        </div>
+        <div id="pool-health" style="padding: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                {% set pool_color = '#4ade80' if pool.status == 'healthy' else '#ef4444' if pool.status == 'exhausted' else '#f59e0b' %}
+                <div class="pool-stat">
+                    <div class="pool-stat-value" style="color: {{ pool_color }};">{{ pool.status | upper }}</div>
+                    <div class="pool-stat-label">Pool Status</div>
+                </div>
+                <div class="pool-stat">
+                    <div class="pool-stat-value">{{ pool.used | default(0) }} / {{ pool.maxconn }}</div>
+                    <div class="pool-stat-label">Used / Max</div>
+                </div>
+                <div class="pool-stat">
+                    <div class="pool-stat-value">{{ pool.available | default(0) }}</div>
+                    <div class="pool-stat-label">Available</div>
+                </div>
+                <div class="pool-stat">
+                    {% set fb_color = '#4ade80' if pool.fallbacks == 0 else '#f59e0b' if pool.fallbacks < 10 else '#ef4444' %}
+                    <div class="pool-stat-value" style="color: {{ fb_color }};">{{ pool.fallbacks }}</div>
+                    <div class="pool-stat-label">Fallbacks (since boot)</div>
+                </div>
+                {% if db_stats and not db_stats.error %}
+                <div class="pool-stat">
+                    {% set db_pct = db_stats.pct_used %}
+                    {% set db_color = '#4ade80' if db_pct < 50 else '#f59e0b' if db_pct < 80 else '#ef4444' %}
+                    <div class="pool-stat-value" style="color: {{ db_color }};">{{ db_stats.total_used }} / {{ db_stats.max_connections }}</div>
+                    <div class="pool-stat-label">Global DB Connections ({{ db_pct }}%)</div>
+                </div>
+                <div class="pool-stat">
+                    <div class="pool-stat-value">{{ db_stats.by_state.get('active', 0) }}a / {{ db_stats.by_state.get('idle', 0) }}i</div>
+                    <div class="pool-stat-label">Active / Idle</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- Current Results -->
     <div id="current-results" class="speed-section">
         <div class="speed-section-header">
@@ -261,6 +303,23 @@
     border-radius: 4px;
     font-size: 12px;
 }
+.pool-stat {
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+}
+.pool-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.pool-stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
 @media (max-width: 600px) {
     .speed-bar-row { grid-template-columns: 120px 1fr 50px; }
     .speed-bar-label span { display: none; }
@@ -277,6 +336,36 @@ function toggleDetail(btn, id) {
         el.style.display = 'none';
         btn.textContent = 'Show';
     }
+}
+
+async function refreshPool() {
+    const btn = document.getElementById('pool-refresh-btn');
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+        const resp = await fetch('/api/admin/pool_health');
+        const data = await resp.json();
+        if (!data.success) return;
+        const p = data.pool, d = data.db;
+        const el = document.getElementById('pool-health');
+        const pc = p.status === 'healthy' ? '#4ade80' : '#ef4444';
+        const fc = p.fallbacks === 0 ? '#4ade80' : p.fallbacks < 10 ? '#f59e0b' : '#ef4444';
+        const dp = d.pct_used || 0;
+        const dc = dp < 50 ? '#4ade80' : dp < 80 ? '#f59e0b' : '#ef4444';
+        let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">';
+        html += `<div class="pool-stat"><div class="pool-stat-value" style="color:${pc}">${p.status.toUpperCase()}</div><div class="pool-stat-label">Pool Status</div></div>`;
+        html += `<div class="pool-stat"><div class="pool-stat-value">${p.used||0} / ${p.maxconn}</div><div class="pool-stat-label">Used / Max</div></div>`;
+        html += `<div class="pool-stat"><div class="pool-stat-value">${p.available||0}</div><div class="pool-stat-label">Available</div></div>`;
+        html += `<div class="pool-stat"><div class="pool-stat-value" style="color:${fc}">${p.fallbacks}</div><div class="pool-stat-label">Fallbacks (since boot)</div></div>`;
+        if (d && !d.error) {
+            html += `<div class="pool-stat"><div class="pool-stat-value" style="color:${dc}">${d.total_used} / ${d.max_connections}</div><div class="pool-stat-label">Global DB Connections (${dp}%)</div></div>`;
+            const bs = d.by_state || {};
+            html += `<div class="pool-stat"><div class="pool-stat-value">${bs.active||0}a / ${bs.idle||0}i</div><div class="pool-stat-label">Active / Idle</div></div>`;
+        }
+        html += '</div>';
+        el.innerHTML = html;
+    } catch(e) { console.error(e); }
+    finally { btn.disabled = false; btn.textContent = 'Refresh'; }
 }
 
 async function runSpeedTest() {

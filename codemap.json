@@ -1761,6 +1761,8 @@
     "exports": [
       "get_secret — Get secret from environment variable first, then Google Secret Manager (cached)",
       "get_db_connection — Get a connection from the pool (fast!) or create new if pool fails.",
+      "get_pool_health — Return connection pool health stats for admin monitoring.",
+      "get_db_connection_stats — Query pg_stat_activity for global connection stats.",
       "db_cursor — Context manager for database operations - uses connection pool for speed.",
       "json_serial — JSON serializer for datetime objects",
       "test_connection — Test database connection"
@@ -2477,7 +2479,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

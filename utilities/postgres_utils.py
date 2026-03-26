@@ -29,6 +29,7 @@ load_dotenv()
 
 _connection_pool = None
 _pool_lock = threading.Lock()
+_pool_fallback_count = 0  # Track pool exhaustion events
 
 
 _secrets_cache = {}
@@ -86,6 +87,8 @@ def get_db_connection():
         return conn
     except Exception as e:
         # Fallback to direct connection if pool fails
+        global _pool_fallback_count
+        _pool_fallback_count += 1
         logger.warning(f"⚠️ Pool connection failed, using direct: {e}")
         is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
         host = f"/cloudsql/{get_secret('PILGRIM_POSTGRES_CONNECTION_NAME')}" if is_gcp else get_secret('PILGRIM_POSTGRES_IP')
@@ -107,6 +110,46 @@ def _return_connection(conn):
             conn.close()
         except Exception:
             pass
+
+
+def get_pool_health():
+    """Return connection pool health stats for admin monitoring."""
+    pool = _connection_pool
+    if pool is None:
+        return {'status': 'not_initialized', 'maxconn': 12, 'fallbacks': _pool_fallback_count}
+    # ThreadedConnectionPool tracks used keys internally
+    used = len(pool._used) if hasattr(pool, '_used') else 0
+    available = len(pool._pool) if hasattr(pool, '_pool') else 0
+    return {
+        'status': 'healthy' if used < pool.maxconn else 'exhausted',
+        'used': used,
+        'available': available,
+        'maxconn': pool.maxconn,
+        'minconn': pool.minconn,
+        'fallbacks': _pool_fallback_count,
+    }
+
+
+def get_db_connection_stats():
+    """Query pg_stat_activity for global connection stats."""
+    try:
+        with db_cursor() as cur:
+            cur.execute("""SELECT state, count(*) as cnt
+                          FROM pg_stat_activity WHERE usename = 'postgres'
+                          GROUP BY state ORDER BY cnt DESC""")
+            states = {r['state'] or 'null': r['cnt'] for r in cur.fetchall()}
+            cur.execute("SHOW max_connections")
+            max_conn = int(cur.fetchone()['max_connections'])
+            cur.execute("SELECT count(*) as total FROM pg_stat_activity WHERE usename IS NOT NULL")
+            total = cur.fetchone()['total']
+            return {
+                'max_connections': max_conn,
+                'total_used': total,
+                'pct_used': round(total / max_conn * 100, 1),
+                'by_state': states,
+            }
+    except Exception as e:
+        return {'error': str(e)[:100]}
 
 
 @contextmanager

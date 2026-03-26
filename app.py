@@ -2532,24 +2532,26 @@ def admin_speed():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres_utils import db_cursor, get_pool_health, get_db_connection_stats
     import json
     with db_cursor() as cur:
         cur.execute("SELECT id, tested_by, results, slowest_page, slowest_time, all_ok, tested_at FROM speed_test_runs ORDER BY tested_at DESC LIMIT 30")
         history = cur.fetchall()
-    # Parse JSONB results
     for run in history:
         if isinstance(run['results'], str):
             run['results'] = json.loads(run['results'])
     latest = history[0] if history else None
-    return render_template('admin_speed.html', active_tab=None, user=auth.get_current_user(), latest=latest, history=history)
+    pool = get_pool_health()
+    db_stats = get_db_connection_stats()
+    return render_template('admin_speed.html', active_tab=None, user=auth.get_current_user(),
+                          latest=latest, history=history, pool=pool, db_stats=db_stats)
 
 
 def _execute_speed_test(test_user_id):
     """Core speed test: time page data functions, save to DB. Returns (pages, all_ok)."""
     import time
     import json as json_lib
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres_utils import db_cursor, get_pool_health
     THRESHOLD = 3.0
     pages = []
     tests = [
@@ -2571,9 +2573,15 @@ def _execute_speed_test(test_user_id):
             elapsed = round(time.time() - start, 3)
             status = str(e)[:100]
         pages.append({'page': label, 'function': func_name, 'time_s': elapsed, 'status': status})
+    # Capture pool health snapshot with each test
+    pool_snap = get_pool_health()
+    pages.append({'page': 'DB Pool', 'function': 'pool_health',
+                  'time_s': 0, 'status': f"{pool_snap['status']} ({pool_snap.get('used',0)}/{pool_snap['maxconn']}, {pool_snap['fallbacks']} fallbacks)"})
     pages.sort(key=lambda x: x['time_s'], reverse=True)
-    slowest = pages[0] if pages else None
-    all_ok = all(r['status'] == 'ok' and r['time_s'] < THRESHOLD for r in pages)
+    slowest = next((p for p in pages if p['function'] != 'pool_health'), pages[0]) if pages else None
+    all_ok = all(r['status'] == 'ok' and r['time_s'] < THRESHOLD for r in pages if r['function'] != 'pool_health')
+    if pool_snap['fallbacks'] > 0:
+        all_ok = False  # Flag if any pool fallbacks occurred
     with db_cursor(commit=True) as cur:
         cur.execute(
             "INSERT INTO speed_test_runs (tested_by, results, slowest_page, slowest_time, all_ok) VALUES (%s, %s, %s, %s, %s)",
@@ -2591,6 +2599,17 @@ def api_admin_speed_test():
         return jsonify({'success': False, 'error': 'Admin only'}), 403
     pages, all_ok = _execute_speed_test(real_user_id)
     return jsonify({'success': True, 'results': pages, 'threshold_s': 3.0, 'all_ok': all_ok})
+
+
+@app.route('/api/admin/pool_health', methods=['GET'])
+@handle_api_error
+def api_admin_pool_health():
+    """Admin-only: Connection pool + DB health stats."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.postgres_utils import get_pool_health, get_db_connection_stats
+    return jsonify({'success': True, 'pool': get_pool_health(), 'db': get_db_connection_stats()})
 
 
 # =============================================================================
@@ -2871,6 +2890,23 @@ def api_pilgrimbot_chat():
     # PilgrimBot actions — detect and execute before streaming
     action_context = ""
     msg_lower = message.lower()
+
+    # Pool health check
+    pool_triggers = ['pool health', 'pool status', 'db health', 'db pool', 'connection pool',
+                     'check pool', 'check connections', 'db connections']
+    if any(t in msg_lower for t in pool_triggers):
+        try:
+            from utilities.postgres_utils import get_pool_health, get_db_connection_stats
+            ph = get_pool_health()
+            ds = get_db_connection_stats()
+            action_context += "\n--- DB POOL HEALTH (live) ---\n"
+            action_context += f"Pool: {ph['status'].upper()} — {ph.get('used',0)}/{ph['maxconn']} used, {ph.get('available',0)} available\n"
+            action_context += f"Fallbacks since boot: {ph['fallbacks']} {'(NONE — healthy!)' if ph['fallbacks'] == 0 else '(pool was exhausted this many times)'}\n"
+            if ds and not ds.get('error'):
+                action_context += f"Global DB: {ds['total_used']}/{ds['max_connections']} connections ({ds['pct_used']}% used)\n"
+                action_context += f"States: {ds['by_state']}\n"
+        except Exception as e:
+            action_context += f"\n--- Pool health check failed: {e} ---\n"
 
     # Speed test
     speed_triggers = ['run speed test', 'run the speed', 'check the speed', 'test the speed',
