@@ -182,20 +182,20 @@ def _create_bond(user_id: int, other_id: int, landmark_name: str) -> dict | None
 
 
 def _send_bond_transaction(miner, wallet_address: str, private_key: str, message: str) -> str | None:
-    """Send a transaction with the bond message embedded."""
+    """Send a transaction with the bond message embedded. Uses MarsAsteroidMiner's internal APIs."""
     try:
-        input_data = miner.encode_message_to_hex(message)
-        gas_config = miner.get_gas_config()
+        input_data = '0x' + message.encode('utf-8').hex() if message else '0x'
+        gas_config = miner.gas_estimator.get_optimal_gas_price(use_dynamic=True, manual_gwei=1, speed='standard')
         nonce = miner.w3.eth.get_transaction_count(wallet_address)
 
-        # Minimal value tx (just to have a transaction)
+        # Minimal value tx (just to carry the bond message in data field)
         value_wei = miner.w3.to_wei(0.0000001, 'ether')
 
         if gas_config['type'] == 'eip1559':
             tx = {
                 'to': wallet_address,
                 'value': value_wei,
-                'gas': 50000,  # Slightly more gas for longer message
+                'gas': 50000,
                 'maxFeePerGas': gas_config['maxFeePerGas'],
                 'maxPriorityFeePerGas': gas_config['maxPriorityFeePerGas'],
                 'nonce': nonce,
@@ -213,7 +213,7 @@ def _send_bond_transaction(miner, wallet_address: str, private_key: str, message
                 'data': input_data
             }
 
-        tx_hash = miner.sign_and_send_transaction(tx, private_key, context="aria_bond")
+        tx_hash = miner.transaction_manager.sign_and_send_transaction(tx, private_key, context="aria_bond")
         return tx_hash
     except Exception as e:
         logger.error(f"Bond transaction failed: {e}")
