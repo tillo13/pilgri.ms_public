@@ -543,16 +543,20 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
 
             # ===== CHECK FOR PENDING ARIA BOND FRAGMENTS =====
             pending_fragments = []
+            processing_bonds = []  # bonds where tx hasn't fired yet
             try:
                 from utilities.aria_bond_utils import get_pending_fragments
-                all_pending = get_pending_fragments(user_id)
-                # Only include fragments that have a tx_hash and haven't been submitted
+                all_pending = get_pending_fragments(user_id, include_processing=True)
                 for p in all_pending:
                     tx_hash = p.get('my_fragment')
                     if tx_hash and not p.get('my_submitted'):
                         pending_fragments.append({
                             'landmark': p.get('landmark_name'),
                             'tx_hash': tx_hash
+                        })
+                    elif not tx_hash and p.get('processing'):
+                        processing_bonds.append({
+                            'landmark': p.get('landmark_name'),
                         })
             except Exception as e:
                 logger.warning(f"Could not check ARIA fragments: {e}")
@@ -627,6 +631,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
                 pending_discoveries > 0 or
                 total_discoveries > 0 or
                 len(pending_fragments) > 0 or  # Show briefing if pending fragments!
+                len(processing_bonds) > 0 or  # Show briefing if ARIA bond processing!
                 len(snapshots) > 0  # Show briefing if ARIA took photos!
             )
 
@@ -683,6 +688,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
 
                 # Pending ARIA bond fragments (for nagging reminder)
                 'pending_fragments': pending_fragments,
+                'processing_bonds': processing_bonds,
 
                 # Tech tree progress
                 'tech_progress': tech_progress,

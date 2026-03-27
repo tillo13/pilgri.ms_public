@@ -1237,7 +1237,8 @@
       "get_bonds_for_display — Get bonds formatted for template display. Single source of truth for all pages",
       "get_pending_first_contact — Check if user has a pending bond where they haven't seen the First Contact cinematic.",
       "get_pending_fragments — Get pending bonds for this user - returns the SHARED tx hash.",
-      "send_bond_notification_email — Send individual bond notification emails to BOTH captains."
+      "send_bond_notification_email — Send individual bond notification emails to BOTH captains.",
+      "retry_stuck_bonds — Safety net: find pending bonds with no tx_hash and retry them."
     ]
   },
   "utilities/aria_utils.py": {
@@ -2477,7 +2478,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2555,7 +2556,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

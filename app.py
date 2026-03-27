@@ -129,8 +129,9 @@ def check_first_contact():
         return
     if request.method != 'GET':
         return
-    # Session flag: skip check once the cinematic has been shown this session
-    if session.get('_fc_shown'):
+    # Session flag: skip check once ALL pending cinematics have been shown this session
+    # Stores set of bond IDs already shown
+    if session.get('_fc_shown_all'):
         return
     user_id = session.get('user_id')
     if not user_id:
@@ -140,6 +141,10 @@ def check_first_contact():
         bond = get_pending_first_contact(user_id)
         if bond:
             return redirect('/aria-first-contact')
+        else:
+            # No more pending cinematics — stop checking this session
+            session['_fc_shown_all'] = True
+            session.modified = True
     except Exception as e:
         logger.warning(f"First contact check failed: {e}")
 
@@ -2299,6 +2304,20 @@ def cron_qa_bot():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/cron/retry_bonds', methods=['GET'])
+def cron_retry_bonds():
+    """Safety net: retry stuck ARIA bonds that failed to create blockchain tx."""
+    if not request.headers.get('X-Appengine-Cron') and not app.debug:
+        return jsonify({'error': 'Forbidden'}), 403
+    try:
+        from utilities.aria_bond_utils import retry_stuck_bonds
+        result = retry_stuck_bonds()
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        logger.error(f"Bond retry cron failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # =============================================================================
 # ADMIN FUNCTIONS & ROUTES
 # =============================================================================
@@ -2351,12 +2370,14 @@ def aria_first_contact():
     except Exception as e:
         logger.warning(f"Bond completion on load failed (may already be bonded): {e}")
 
-    # Mark first_contact_shown for this user + set session flag
+    # Mark first_contact_shown for this user — DB tracks per-bond, session tracks "all shown"
     is_user_1 = (user_id == bond['user_id_1'])
     field = 'first_contact_shown_user_1' if is_user_1 else 'first_contact_shown_user_2'
     with db_cursor(commit=True) as cur:
         cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond['id'],))
-    session['_fc_shown'] = True
+    # Clear the "all shown" flag so check_first_contact re-checks for more pending bonds
+    session.pop('_fc_shown_all', None)
+    session.pop('_fc_shown', None)  # Clear old flag too
     session.modified = True
 
     from types import SimpleNamespace

@@ -143,7 +143,7 @@ def _create_bond(user_id: int, other_id: int, landmark_name: str) -> dict | None
             from utilities.sepolia_utils import MarsAsteroidMiner
             miner = MarsAsteroidMiner()
             if not miner.connect():
-                logger.error("Failed to connect for bond tx")
+                logger.error(f"Bond {bond_id}: Failed to connect to Sepolia RPC")
                 return
 
             tx_hash = _send_bond_transaction(
@@ -163,8 +163,10 @@ def _create_bond(user_id: int, other_id: int, landmark_name: str) -> dict | None
                 # Now generate the image (after we have the tx hash)
                 _generate_bond_image_async(bond_id, user_id_1, user_id_2, landmark_name,
                                           captain_1, captain_2, current_sol, bond_number, tx_hash)
+            else:
+                logger.error(f"Bond {bond_id}: _send_bond_transaction returned None (wallet: {wallet_1['wallet_address'][:12]}...)")
         except Exception as e:
-            logger.error(f"Bond tx creation failed: {e}")
+            logger.error(f"Bond {bond_id}: tx creation failed: {type(e).__name__}: {e}", exc_info=True)
 
     thread = threading.Thread(target=create_bond_tx_async)
     thread.start()
@@ -614,28 +616,39 @@ def get_pending_first_contact(user_id: int) -> dict | None:
     return dict(bond)
 
 
-def get_pending_fragments(user_id: int) -> list:
+def get_pending_fragments(user_id: int, include_processing: bool = False) -> list:
     """
     Get pending bonds for this user - returns the SHARED tx hash.
     Both users get the same code to enter on /signal.
+    If include_processing=True, also returns bonds where tx hasn't fired yet.
     """
     with db_cursor() as cur:
-        cur.execute("""
-            SELECT b.id, b.landmark_name, b.bond_tx_hash,
-                   CASE WHEN b.user_id_1 = %s THEN b.fragment_1_submitted ELSE b.fragment_2_submitted END as my_submitted
-            FROM pilgrim.aria_bonds b
-            WHERE (b.user_id_1 = %s OR b.user_id_2 = %s)
-            AND b.status = 'pending'
-            AND b.bond_tx_hash IS NOT NULL
-        """, (user_id, user_id, user_id))
+        if include_processing:
+            # Include ALL pending bonds (with or without tx_hash)
+            cur.execute("""
+                SELECT b.id, b.landmark_name, b.bond_tx_hash,
+                       CASE WHEN b.user_id_1 = %s THEN b.fragment_1_submitted ELSE b.fragment_2_submitted END as my_submitted
+                FROM pilgrim.aria_bonds b
+                WHERE (b.user_id_1 = %s OR b.user_id_2 = %s)
+                AND b.status = 'pending'
+            """, (user_id, user_id, user_id))
+        else:
+            cur.execute("""
+                SELECT b.id, b.landmark_name, b.bond_tx_hash,
+                       CASE WHEN b.user_id_1 = %s THEN b.fragment_1_submitted ELSE b.fragment_2_submitted END as my_submitted
+                FROM pilgrim.aria_bonds b
+                WHERE (b.user_id_1 = %s OR b.user_id_2 = %s)
+                AND b.status = 'pending'
+                AND b.bond_tx_hash IS NOT NULL
+            """, (user_id, user_id, user_id))
         results = cur.fetchall() or []
 
-        # Format for compatibility with existing code
         return [{
             'id': r['id'],
             'landmark_name': r['landmark_name'],
-            'my_fragment': r['bond_tx_hash'],  # The shared tx hash
-            'my_submitted': r['my_submitted']
+            'my_fragment': r['bond_tx_hash'],  # The shared tx hash (None if still processing)
+            'my_submitted': r['my_submitted'],
+            'processing': r['bond_tx_hash'] is None,
         } for r in results]
 
 
@@ -724,3 +737,102 @@ def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
 
     except Exception as e:
         logger.error(f"Failed to send bond notification emails: {e}")
+
+
+def retry_stuck_bonds(max_age_minutes: int = 60, max_retries: int = 3) -> dict:
+    """
+    Safety net: find pending bonds with no tx_hash and retry them.
+    Called by /api/cron/retry_bonds every 10 minutes.
+
+    Returns dict with counts of retried/skipped/failed bonds.
+    """
+    from datetime import timedelta
+
+    results = {'retried': 0, 'skipped': 0, 'failed': 0, 'details': []}
+
+    with db_cursor() as cur:
+        # Find stuck bonds: pending, no tx_hash, older than 5 min (give thread time), younger than max_age
+        cur.execute("""
+            SELECT b.id, b.user_id_1, b.user_id_2, b.landmark_name, b.created_at,
+                   COALESCE(b.retry_count, 0) as retry_count
+            FROM pilgrim.aria_bonds b
+            WHERE b.status = 'pending'
+              AND b.bond_tx_hash IS NULL
+              AND b.created_at < NOW() - INTERVAL '5 minutes'
+              AND b.created_at > NOW() - INTERVAL '%s minutes'
+        """, (max_age_minutes,))
+        stuck = cur.fetchall()
+
+    if not stuck:
+        return results
+
+    for bond in stuck:
+        bond_id = bond['id']
+        retries = bond['retry_count']
+
+        if retries >= max_retries:
+            results['skipped'] += 1
+            results['details'].append(f"#{bond_id}: skipped (max retries {max_retries} reached)")
+            continue
+
+        # Increment retry count
+        with db_cursor(commit=True) as cur:
+            cur.execute("UPDATE pilgrim.aria_bonds SET retry_count = COALESCE(retry_count, 0) + 1 WHERE id = %s", (bond_id,))
+
+        try:
+            user_id_1, user_id_2 = bond['user_id_1'], bond['user_id_2']
+            landmark_name = bond['landmark_name']
+
+            captain_1 = _get_commander_name(user_id_1) or f"Captain {user_id_1}"
+            captain_2 = _get_commander_name(user_id_2) or f"Captain {user_id_2}"
+            wallet_1 = get_user_primary_sepolia_wallet(user_id_1)
+            wallet_2 = get_user_primary_sepolia_wallet(user_id_2)
+
+            if not wallet_1 or not wallet_2:
+                results['failed'] += 1
+                results['details'].append(f"#{bond_id}: missing wallet (u1={bool(wallet_1)}, u2={bool(wallet_2)})")
+                continue
+
+            # Get bond number and sol
+            with db_cursor() as cur:
+                cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id < %s", (bond_id,))
+                bond_number = cur.fetchone()['count'] + 1
+                cur.execute("SELECT EXTRACT(EPOCH FROM NOW())::INTEGER / 86400 as sol")
+                current_sol = cur.fetchone()['sol']
+
+            bond_message = (
+                f"ARIA_BOND #{bond_number} | {landmark_name} | "
+                f"{captain_1} + {captain_2} | SOL:{current_sol} | "
+                f"{wallet_1['wallet_address']} + {wallet_2['wallet_address']}"
+            )
+
+            from utilities.sepolia_utils import MarsAsteroidMiner
+            miner = MarsAsteroidMiner()
+            if not miner.connect():
+                results['failed'] += 1
+                results['details'].append(f"#{bond_id}: Sepolia RPC connect failed")
+                continue
+
+            tx_hash = _send_bond_transaction(miner, wallet_1['wallet_address'], wallet_1['wallet_private_key'], bond_message)
+
+            if tx_hash:
+                with db_cursor(commit=True) as cur:
+                    cur.execute("UPDATE pilgrim.aria_bonds SET bond_tx_hash = %s WHERE id = %s", (tx_hash, bond_id))
+                logger.info(f"✅ Bond {bond_id} retry succeeded: {tx_hash[:20]}...")
+                results['retried'] += 1
+                results['details'].append(f"#{bond_id}: tx={tx_hash[:20]}...")
+
+                # Generate image too
+                _generate_bond_image_async(bond_id, user_id_1, user_id_2, landmark_name,
+                                          captain_1, captain_2, current_sol, bond_number, tx_hash)
+            else:
+                results['failed'] += 1
+                results['details'].append(f"#{bond_id}: tx returned None (retry {retries + 1}/{max_retries})")
+
+        except Exception as e:
+            results['failed'] += 1
+            results['details'].append(f"#{bond_id}: {type(e).__name__}: {e}")
+            logger.error(f"Bond {bond_id} retry failed: {e}", exc_info=True)
+
+    logger.info(f"Bond retry sweep: retried={results['retried']} skipped={results['skipped']} failed={results['failed']}")
+    return results
