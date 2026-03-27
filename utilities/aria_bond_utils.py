@@ -678,9 +678,8 @@ def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
                 continue
 
             partner_id = user_id_2 if uid == user_id_1 else user_id_1
-            partner = users.get(partner_id, {})
-            my_name = user.get('name') or f'Captain {uid}'
-            partner_name = partner.get('name') or f'Captain {partner_id}'
+            my_name = _get_commander_name(uid) or f'Captain {uid}'
+            partner_name = _get_commander_name(partner_id) or f'Captain {partner_id}'
 
             subject = f"ARIA Bond Detected at {landmark_name}"
             img_block = f'<img src="{bond_image_url}" alt="Bond at {landmark_name}" style="width:100%;max-width:480px;border-radius:12px;margin:16px auto;display:block;">' if bond_image_url else ''
