@@ -739,7 +739,7 @@ def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
         logger.error(f"Failed to send bond notification emails: {e}")
 
 
-def retry_stuck_bonds(max_age_minutes: int = 60, max_retries: int = 3) -> dict:
+def retry_stuck_bonds(max_age_minutes: int = 1440, max_retries: int = 3) -> dict:
     """
     Safety net: find pending bonds with no tx_hash and retry them.
     Called by /api/cron/retry_bonds every 10 minutes.
