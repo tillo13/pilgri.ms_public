@@ -664,7 +664,7 @@ def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
     try:
         # Get emails for both users
         with db_cursor() as cur:
-            cur.execute("SELECT id, email, commander_name FROM pilgrim.users WHERE id IN (%s, %s)", (user_id_1, user_id_2))
+            cur.execute("SELECT id, email, name FROM pilgrim.users WHERE id IN (%s, %s)", (user_id_1, user_id_2))
             users = {row['id']: row for row in cur.fetchall()}
 
         for uid in [user_id_1, user_id_2]:
@@ -675,8 +675,8 @@ def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
 
             partner_id = user_id_2 if uid == user_id_1 else user_id_1
             partner = users.get(partner_id, {})
-            my_name = user.get('commander_name') or f'Captain {uid}'
-            partner_name = partner.get('commander_name') or f'Captain {partner_id}'
+            my_name = user.get('name') or f'Captain {uid}'
+            partner_name = partner.get('name') or f'Captain {partner_id}'
 
             subject = f"ARIA Bond Detected at {landmark_name}"
             img_block = f'<img src="{bond_image_url}" alt="Bond at {landmark_name}" style="width:100%;max-width:480px;border-radius:12px;margin:16px auto;display:block;">' if bond_image_url else ''
