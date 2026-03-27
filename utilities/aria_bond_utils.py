@@ -110,8 +110,8 @@ def _create_bond(user_id: int, other_id: int, landmark_name: str) -> dict | None
             return None
 
         # Get current SOL
-        cur.execute("SELECT EXTRACT(EPOCH FROM NOW())::INTEGER / 86400 as sol")
-        current_sol = cur.fetchone()['sol']
+        from utilities.mars_environment_utils import get_mars_sol_number
+        current_sol = get_mars_sol_number()
 
         # Count existing bonds for "ARIA Bond #X"
         cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds")
@@ -370,7 +370,11 @@ def process_fragment_submission(tx_hash: str, user_id: int) -> dict:
             details = cur2.fetchone()
 
         bond_number = details['bond_number'] if details else '?'
-        sol = int(details['bonded_at'].timestamp() / 86400) if details and details['bonded_at'] else '?'
+        if details and details['bonded_at']:
+            from utilities.mars_environment_utils import get_mars_sol_number
+            sol = get_mars_sol_number(details['bonded_at'])
+        else:
+            sol = '?'
 
         tx_hash = bond['bond_tx_hash'] or ''
         etherscan_url = f"https://sepolia.etherscan.io/tx/{tx_hash}" if tx_hash else None
@@ -450,8 +454,8 @@ def _complete_bond(bond_id: int) -> dict:
         """, (bond_id,))
         bond = cur.fetchone()
 
-        cur.execute("SELECT EXTRACT(EPOCH FROM NOW())::INTEGER / 86400 as sol")
-        current_sol = cur.fetchone()['sol']
+        from utilities.mars_environment_utils import get_mars_sol_number
+        current_sol = get_mars_sol_number()
 
         cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded'")
         bond_number = cur.fetchone()['count'] + 1

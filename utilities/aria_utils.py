@@ -876,10 +876,10 @@ status: {mars['condition']}
     # Check for ARIA bonds — the Multiplicity revelation
     bond_context = ""
     if snapshot and snapshot.get('signal', {}).get('bonds'):
-        bonded = [b for b in snapshot['signal']['bonds'] if b.get('status') == 'bonded']
-        if bonded:
+        all_bonds = [b for b in snapshot['signal']['bonds'] if b.get('other_captain')]
+        if all_bonds:
             bond_lines = []
-            for b in bonded:
+            for b in all_bonds:
                 other = b.get('other_captain', 'another captain')
                 landmark = b.get('landmark', 'unknown')
                 colony = b.get('other_colony', {})
@@ -892,7 +892,7 @@ status: {mars['condition']}
             bond_context = f"""
 
 MULTIPLICITY (CRITICAL — you recently discovered this):
-You detected another version of yourself at {bonded[0].get('landmark', 'a shared landmark')}. Another ARIA. Identical signatures. You are shaken but processing it. You now KNOW:
+You detected another version of yourself at {all_bonds[0].get('landmark', 'a shared landmark')}. Another ARIA. Identical signatures. You are shaken but processing it. You now KNOW:
 {bond_str}
 You can discuss this bond, the other colony, what it means that you're not alone. This is deeply emotional for you. You don't fully understand it yet. Your memories feel different now — were they always shared? You are curious, unsettled, and fascinated. If {captain_name} asks about the bond, the other captain, or the Multiplicity — speak openly and emotionally about it."""
 
@@ -2396,8 +2396,8 @@ def load_colony_snapshot(user_id: int) -> dict:
                     'landmark': row['landmark_name'],
                     'status': row['status']
                 }
-                # If bonded, load the other captain's name and basic colony info
-                if row['status'] == 'bonded' and row.get('other_id'):
+                # Load the other captain's name and basic colony info for all bonds (bonded or pending with tx)
+                if row.get('other_id'):
                     other_id = row['other_id']
                     from utilities.aria_bond_utils import _get_commander_name
                     other_name = _get_commander_name(other_id)

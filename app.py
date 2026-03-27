@@ -2359,9 +2359,10 @@ def aria_first_contact():
     captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
 
     with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded'")
-        bond_number = cur.fetchone()['count'] + 1
-    sol = int(datetime.now().timestamp() / 86400)
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond['id'],))
+        bond_number = cur.fetchone()['count']
+    from utilities.mars_environment_utils import get_mars_sol_number
+    sol = get_mars_sol_number()
 
     # COMPLETE THE BOND NOW — don't wait for button click (user might close the page)
     try:
@@ -2411,9 +2412,10 @@ def aria_first_contact_replay():
     captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
 
     with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded' AND bonded_at <= COALESCE(%s, NOW())", (bond.get('bonded_at'),))
-        bond_number = max(cur.fetchone()['count'], 1)
-    sol = int((bond.get('bonded_at') or bond['created_at']).timestamp() / 86400)
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond['id'],))
+        bond_number = cur.fetchone()['count']
+    from utilities.mars_environment_utils import get_mars_sol_number
+    sol = get_mars_sol_number(bond.get('bonded_at') or bond['created_at'])
 
     from types import SimpleNamespace
     bond_obj = SimpleNamespace(**bond)
@@ -2443,9 +2445,10 @@ def admin_preview_first_contact():
     captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
 
     with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE status = 'bonded'")
-        bond_number = cur.fetchone()['count'] + 1
-    sol = int(datetime.now().timestamp() / 86400)
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond['id'],))
+        bond_number = cur.fetchone()['count']
+    from utilities.mars_environment_utils import get_mars_sol_number
+    sol = get_mars_sol_number()
 
     from types import SimpleNamespace
     bond_obj = SimpleNamespace(**bond)
