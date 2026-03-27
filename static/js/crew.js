@@ -223,6 +223,29 @@ async function saveCaptainName() {
 }
 
 
+async function saveCaptainNameFromServices() {
+    const input = document.getElementById('captainNameInputServices');
+    const newName = input.value.trim();
+    if (!newName || newName.length < 1) { showToast('Name cannot be empty', 'error'); return; }
+    if (newName.length > 30) { showToast('Name must be 30 characters or less', 'error'); return; }
+    try {
+        const res = await fetch('/api/commander/rename', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: newName})
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('captainNameText').textContent = newName;
+            const navName = document.getElementById('commanderNameText');
+            if (navName) navName.textContent = newName;
+            showToast('Captain renamed to ' + newName + '!', 'success');
+        } else {
+            showToast(data.error || 'Failed to update name', 'error');
+        }
+    } catch (e) { showToast('Network error', 'error'); }
+}
+
 /* ─── Captain Management ─── */
 const imageTabButton = document.getElementById('imageTabButton');
 const videoTabButton = document.getElementById('videoTabButton');

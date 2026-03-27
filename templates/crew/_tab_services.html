@@ -54,6 +54,30 @@
         </button>
     </div>
 
+    <!-- Rename Captain -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="{{ icons.edit_pencil }}"
+                 alt="Rename" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; padding: 16px; background: var(--bg-tertiary);" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Rename Captain</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            Change your captain's callsign. This is how other captains see you in bonds, expeditions, and the Signal.
+        </p>
+        <p class="text-xs opacity-50" style="text-align: center; margin-bottom: 16px;">
+            Current name: <strong>{{ commander.commander_name or 'Captain' }}</strong>
+        </p>
+        <div style="flex-grow: 1;"></div>
+        <input type="text" id="captainNameInputServices" value="{{ commander.commander_name if commander and commander.commander_name else '' }}" maxlength="30" placeholder="New captain name"
+               style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; text-align: center; margin-bottom: 12px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-success);">Free</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="saveCaptainNameFromServices()">
+            <img src="{{ icons.edit_pencil }}" alt="" class="inline-icon-sm"> Update Name
+        </button>
+    </div>
+
     <!-- Video Briefing -->
     <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
         <div style="text-align: center; margin-bottom: 12px;">
