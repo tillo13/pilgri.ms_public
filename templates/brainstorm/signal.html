@@ -456,6 +456,267 @@ window.BRAINSTORM_PAGE_KEY = 'signal';
     </div>
 
     <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6.5. VISITOR TIER REWARD SYSTEM (IMPLEMENTED) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Visitor Tier Rewards — What You Get For Finding a Site</div>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-success);">
+            <strong>IMPLEMENTED (March 2026)</strong> — Full 5-tier visitor reward system live in <code>signal_utils.py</code>. Every visitor to an Origin Site receives a unique Flux-generated item based on their arrival rank.
+        </div>
+
+        <p>The Founder gets the legendary item, but <strong>every visitor after gets something too</strong> — scaled by how early they arrived. This creates ongoing incentive to visit claimed sites, not just hunt unclaimed ones.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Tier</th>
+                    <th>Item Awarded</th>
+                    <th>Rarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>1st</strong></td>
+                    <td style="color: #fbbf24;">Founder</td>
+                    <td>Custom legendary artifact with captain name engraved on-chain</td>
+                    <td style="color: #fbbf24;">Legendary</td>
+                </tr>
+                <tr>
+                    <td><strong>2nd-3rd</strong></td>
+                    <td style="color: #10b981;">Early Witness</td>
+                    <td>Witness Shard: {mission}</td>
+                    <td style="color: #10b981;">Rare</td>
+                </tr>
+                <tr>
+                    <td><strong>4th-10th</strong></td>
+                    <td style="color: #3b82f6;">Pioneer</td>
+                    <td>Pioneer Fragment: {mission}</td>
+                    <td style="color: #3b82f6;">Uncommon</td>
+                </tr>
+                <tr>
+                    <td><strong>11th-42nd</strong></td>
+                    <td style="color: #8b5cf6;">Pilgrim</td>
+                    <td>Pilgrim Stone: {mission}</td>
+                    <td style="color: #8b5cf6;">Common</td>
+                </tr>
+                <tr>
+                    <td><strong>43rd+</strong></td>
+                    <td style="color: #6b7280;">Wanderer</td>
+                    <td>Wanderer's Mark: {mission}</td>
+                    <td style="color: #6b7280;">Common</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin: 16px 0 8px;">How It Works</h4>
+        <ul>
+            <li><strong>Every visitor</strong> gets a unique Flux-generated image with their captain name + wallet engraved</li>
+            <li><strong>Every visit</strong> writes a Sepolia blockchain transaction: <code>ORIGIN_VISIT #N | {mission} | {captain} | {wallet}</code></li>
+            <li><strong>Rank 42</strong> gets a special blockchain message: <em>"You found the answer"</em> (Hitchhiker's Guide easter egg)</li>
+            <li><strong>No visitor cap</strong> — rank 43+ continues as Wanderer tier indefinitely</li>
+            <li>Items stored in GCS (<code>origin_visitor_rewards/</code>) and linked to player inventory via <code>replicate_assets</code></li>
+        </ul>
+
+        <h4 style="margin: 16px 0 8px;">Per-Tier Flux Prompts</h4>
+        <div class="mockup-box">
+            <div class="mockup-header">Each tier has a distinct visual style</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label" style="color: #10b981;">Early Witness</span><span class="mockup-value">Glowing amber crystal shard with etched circuit patterns, holographic inscription, golden edges, rare quality</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #3b82f6;">Pioneer</span><span class="mockup-value">Rough-hewn crystal fragment, blue-purple Sepolia veins, weathered pilgrim memento</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #8b5cf6;">Pilgrim</span><span class="mockup-value">Small polished Mars stone with single Sepolia crystal chip, simple but meaningful keepsake</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #6b7280;">Wanderer</span><span class="mockup-value">Worn pebble of compressed Martian dust, tiny crystal fleck, humble traveler token</span></div>
+            </div>
+        </div>
+
+        <p><strong>Code:</strong> <code>VISITOR_TIERS</code> + <code>VISITOR_ITEM_CONFIG</code> in <code>signal_utils.py:263-298</code>, visitor logic in <code>visit_origin_site()</code> lines 308-445, image generation in lines 1554-1649.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Are 5 tiers right, or should there be fewer? (e.g., collapse Pilgrim + Wanderer into one)</li>
+                <li>Should the Founder get ongoing benefits from visitors? (e.g., small shard cut per visit, "royalties")</li>
+                <li>Is rank 42 special enough? Should that player get a unique item instead of a regular Pilgrim Stone?</li>
+                <li>Should visitors see their rank prominently? "You are the 7th Pioneer of Curiosity" — does that create FOMO or pride?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6.6. ECHO SITES (IMPLEMENTED) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Echo Sites — Dynamic Discovery Events</div>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-success);">
+            <strong>IMPLEMENTED (March 2026)</strong> — Echo Sites are temporary signal events that spawn from expeditions. They give every player a chance at ranked discovery without requiring proximity to the 14 permanent Origin Sites.
+        </div>
+
+        <p>While Origin Sites are the endgame, Echo Sites keep discovery feeling alive <strong>every day</strong>. They're the "mini-bosses" of the signal system — accessible, time-limited, and competitive.</p>
+
+        <h4 style="margin: 16px 0 8px;">Spawn Mechanics</h4>
+        <div class="mockup-box">
+            <div class="mockup-header">How Echo Sites Appear</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Base spawn chance</span><span class="mockup-value">2% per expedition completion</span></div>
+                <div class="mockup-row"><span class="mockup-label">Pity timer</span><span class="mockup-value">Guaranteed spawn after 50 expeditions without one (chance ramps linearly)</span></div>
+                <div class="mockup-row"><span class="mockup-label">Location</span><span class="mockup-value">Offset 5-30km from expedition destination (not exact endpoint)</span></div>
+                <div class="mockup-row"><span class="mockup-label">Memory text</span><span class="mockup-value">Random Mars mission quote from <code>signal_messages</code> table (208 quotes)</span></div>
+                <div class="mockup-row"><span class="mockup-label">Expiry</span><span class="mockup-value">7 days after spawn — then deactivated</span></div>
+                <div class="mockup-row"><span class="mockup-label">Depletion</span><span class="mockup-value">Marked "depleted" after <code>max_ranked_claims x 5</code> total claims</span></div>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Claim Tiers</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Tier</th>
+                    <th>Rarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>1st</strong></td><td>First Finder</td><td>Rare</td></tr>
+                <tr><td><strong>2nd-3rd</strong></td><td>Early Finder</td><td>Rare</td></tr>
+                <tr><td><strong>4th-10th</strong></td><td>Ranked Finder</td><td>Uncommon</td></tr>
+                <tr><td><strong>11th+</strong></td><td>Late Finder</td><td>Common</td></tr>
+            </tbody>
+        </table>
+
+        <p><strong>Key difference from Origin Sites:</strong> Echo Sites don't generate Flux images or blockchain transactions per claim. They're lighter-weight discovery events — more frequent, lower stakes, but still competitively ranked.</p>
+
+        <h4 style="margin: 16px 0 8px;">Blockchain Integration</h4>
+        <p>Echo claims write to Sepolia with format: <code>ECHO://[SITE]//RANK:[N]//FINDER:[NAME]//SOL:[DAY]</code></p>
+
+        <p><strong>Code:</strong> Constants at <code>signal_utils.py:25-28</code>, spawn logic in <code>maybe_spawn_echo_site()</code> line 742, claim logic in <code>claim_echo_site()</code> line 840.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Is 2% spawn rate + 50-expedition pity timer the right feel? Too rare, too common?</li>
+                <li>Should Echo Sites be visible to ALL players (competitive race) or only the spawner?</li>
+                <li>7-day expiry — is that enough time? Should it scale with player count?</li>
+                <li>Should Echo Sites show on the expedition map like Origin Sites do?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6.7. ARIA BONDS (CROSS-REFERENCE) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;">ARIA Bonds at Origin Sites</div>
+
+        <div class="summary-box">
+            <strong>Documented separately:</strong> ARIA Bonds have their own brainstorm page at <a href="/brainstorm/aria_meetings" style="color: #06b6d4;">/brainstorm/aria_meetings</a>. This section covers only how bonds intersect with the Signal system.
+        </div>
+
+        <p>When two captains visit the <strong>same Origin Site landmark</strong>, an ARIA Bond triggers — a shared blockchain transaction, a cinematic "Entangled Crystal" reveal, and a bond artifact generated for both players. This creates a social layer on top of the Signal hunt: visiting a claimed Origin Site isn't just "seeing someone else's discovery" — it might create a permanent bond.</p>
+
+        <h4 style="margin: 16px 0 8px;">Signal System Touchpoints</h4>
+        <ul>
+            <li><strong>Bond trigger:</strong> Two players visiting the same landmark (not just Origin Sites, but Origin Sites are the most meaningful)</li>
+            <li><strong>Decoder Terminal:</strong> Bond fragment codes appear as <code>ARIA_BOND #N</code> in decoded transactions — triggers the EpicReveal cinematic</li>
+            <li><strong>Blockchain format:</strong> <code>ARIA_BOND #N | [LANDMARK] | [CAPTAIN1] + [CAPTAIN2] | SOL: [N] | [WALLET1] + [WALLET2]</code></li>
+        </ul>
+
+        <p><strong>Full details:</strong> See the <a href="/brainstorm/aria_meetings" style="color: #06b6d4;">ARIA Meetings brainstorm</a> for bond mechanics, cinematic reveals, and the full crystal entanglement system.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6.8. IMPLEMENTATION STATUS SUMMARY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--text-muted);">
+        <div class="section-title">Implementation Status — What's Built vs Designed</div>
+
+        <p>Quick reference for what's live in code vs still on the brainstorm board. Updated March 2026.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>14 Origin Sites</strong></td>
+                    <td style="color: var(--color-success);">LIVE</td>
+                    <td>Claiming, visiting, map markers, blockchain txs</td>
+                </tr>
+                <tr>
+                    <td><strong>Visitor Tier Rewards</strong></td>
+                    <td style="color: var(--color-success);">LIVE</td>
+                    <td>5 tiers, Flux image per visitor, blockchain per visit</td>
+                </tr>
+                <tr>
+                    <td><strong>Echo Sites</strong></td>
+                    <td style="color: var(--color-success);">LIVE</td>
+                    <td>2% spawn, pity timer, 7-day expiry, ranked claims</td>
+                </tr>
+                <tr>
+                    <td><strong>Decoder Terminal</strong></td>
+                    <td style="color: var(--color-success);">LIVE</td>
+                    <td>Tx decode, 3-phase animation, ARIA bond detection</td>
+                </tr>
+                <tr>
+                    <td><strong>Map Gold Markers</strong></td>
+                    <td style="color: var(--color-success);">LIVE</td>
+                    <td>All 14 pulsing on expedition map, popups with claim/visit</td>
+                </tr>
+                <tr>
+                    <td><strong>ARIA Bonds at Landmarks</strong></td>
+                    <td style="color: var(--color-success);">LIVE</td>
+                    <td>See <a href="/brainstorm/aria_meetings">/brainstorm/aria_meetings</a></td>
+                </tr>
+                <tr>
+                    <td><strong>Puzzle Infrastructure</strong></td>
+                    <td style="color: var(--color-warning);">PARTIAL</td>
+                    <td>1 puzzle seeded (HITCHHIKER), solver tracking built, no codes in txs yet</td>
+                </tr>
+                <tr>
+                    <td><strong>Lost Signal 3-Act Chain</strong></td>
+                    <td style="color: var(--color-warning);">PARTIAL</td>
+                    <td>DB flags + decode route exist, no tx_hash linking</td>
+                </tr>
+                <tr>
+                    <td><strong>Progressive Distance Tiers</strong></td>
+                    <td style="color: var(--color-danger);">NOT BUILT</td>
+                    <td>Currently binary 42km check — no "getting warmer" feedback</td>
+                </tr>
+                <tr>
+                    <td><strong>Path Proximity Detection</strong></td>
+                    <td style="color: var(--color-danger);">NOT BUILT</td>
+                    <td>Function exists (<code>point_to_path_distance</code>) but not wired in</td>
+                </tr>
+                <tr>
+                    <td><strong>Signal Artifacts</strong></td>
+                    <td style="color: var(--color-danger);">NOT BUILT</td>
+                    <td>Fragments, crystals, memory shards — designed but zero code</td>
+                </tr>
+                <tr>
+                    <td><strong>Discovery Cinematic</strong></td>
+                    <td style="color: var(--color-danger);">NOT BUILT</td>
+                    <td>Currently a modal — full-page takeover not implemented</td>
+                </tr>
+                <tr>
+                    <td><strong>Signal Strength Bars</strong></td>
+                    <td style="color: var(--color-danger);">NOT BUILT</td>
+                    <td>No personal proximity tracker on /signal page</td>
+                </tr>
+                <tr>
+                    <td><strong>Map Rings / Heat Map / Arrows</strong></td>
+                    <td style="color: var(--color-danger);">NOT BUILT</td>
+                    <td>Visual layers designed but no code</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
     <!-- 7. SIGNAL PAGE REDESIGN -->
     <!-- ═══════════════════════════════════════════════════════ -->
     <div class="section" style="border-left: 4px solid var(--color-primary);">

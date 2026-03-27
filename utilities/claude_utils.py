@@ -47,20 +47,28 @@ CLAUDE_MODELS = {
 
 # ACCURATE MODEL PRICING (per token, not per million tokens)
 MODEL_PRICING = {
+    # Claude 4.5/4.6 models
+    'claude-opus-4-6': {'input': 0.000015, 'output': 0.000075},    # $15/$75 per million
+    'claude-sonnet-4-5': {'input': 0.000003, 'output': 0.000015},  # $3/$15 per million
+    'claude-haiku-4-5': {'input': 0.0000008, 'output': 0.000004},  # $0.80/$4 per million
+
     # Claude 4.1 models
     'claude-opus-4-1': {'input': 0.000020, 'output': 0.000080},  # $20/$80 per million
-    
+
     # Claude 4 models
     'claude-opus-4': {'input': 0.000015, 'output': 0.000075},    # $15/$75 per million
     'claude-sonnet-4': {'input': 0.000003, 'output': 0.000015},  # $3/$15 per million
-    
-    # Claude 3.7 models  
+
+    # Claude 3.7 models
     'claude-3-7-sonnet': {'input': 0.000003, 'output': 0.000015}, # $3/$15 per million
-    
+
     # Claude 3.5 models
     'claude-3-5-sonnet': {'input': 0.000003, 'output': 0.000015}, # $3/$15 per million
     'claude-3-5-haiku': {'input': 0.00000025, 'output': 0.00000125}, # $0.25/$1.25 per million
-    
+
+    # Claude 3 models
+    'claude-3-haiku': {'input': 0.00000025, 'output': 0.00000125}, # $0.25/$1.25 per million
+
     # Default fallback (Sonnet pricing)
     'default': {'input': 0.000003, 'output': 0.000015}
 }
@@ -170,13 +178,19 @@ def get_model_pricing(model_name: str) -> Dict[str, float]:
         if model_key in model_lower:
             return prices
     
-    # Fallback to partial matches
-    if 'haiku' in model_lower:
-        return MODEL_PRICING['claude-3-5-haiku']
+    # Fallback to partial matches (newest first)
+    if 'haiku-4-5' in model_lower or 'haiku-4.5' in model_lower:
+        return MODEL_PRICING['claude-haiku-4-5']
+    elif 'haiku' in model_lower:
+        return MODEL_PRICING['claude-3-haiku']
+    elif 'sonnet-4-5' in model_lower or 'sonnet-4.5' in model_lower:
+        return MODEL_PRICING['claude-sonnet-4-5']
     elif 'sonnet-4' in model_lower:
         return MODEL_PRICING['claude-sonnet-4']
     elif 'sonnet' in model_lower:
         return MODEL_PRICING['claude-3-5-sonnet']
+    elif 'opus-4-6' in model_lower or 'opus-4.6' in model_lower:
+        return MODEL_PRICING['claude-opus-4-6']
     elif 'opus-4-1' in model_lower:
         return MODEL_PRICING['claude-opus-4-1']
     elif 'opus' in model_lower:
