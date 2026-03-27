@@ -3018,7 +3018,8 @@ def api_pilgrimbot_chat():
         except Exception as e:
             action_context += f"\n--- Balance sync failed: {e} ---\n"
 
-    generator = handle_chat_streaming(message, chat_id, real_user_id, bug_mode=bug_mode, action_context=action_context, user_role=user_role)
+    image_url = data.get('image_url')
+    generator = handle_chat_streaming(message, chat_id, real_user_id, bug_mode=bug_mode, action_context=action_context, user_role=user_role, image_url=image_url)
     return Response(
         stream_with_context(generator),
         mimetype='text/event-stream',

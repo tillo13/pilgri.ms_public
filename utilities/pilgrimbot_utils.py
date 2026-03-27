@@ -757,7 +757,7 @@ def _sse(data_dict):
     return f"data: {json.dumps(data_dict)}\n\n" + _SSE_PAD
 
 
-def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=False, action_context="", user_role="captain"):
+def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=False, action_context="", user_role="captain", image_url=None):
     """Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."""
     ensure_pilgrimbot_table()
 
@@ -814,7 +814,16 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         api_messages = []
         for h in history[-MAX_HISTORY:]:
             api_messages.append({"role": h["role"], "content": h["content"]})
-        api_messages.append({"role": "user", "content": message})
+
+        # If user attached an image, build multimodal content blocks for Claude Vision
+        if image_url:
+            user_content = [
+                {"type": "image", "source": {"type": "url", "url": image_url}},
+                {"type": "text", "text": message}
+            ]
+        else:
+            user_content = message
+        api_messages.append({"role": "user", "content": user_content})
 
         # Phase 1: Quick Haiku call with just persona + knowledge (~10KB)
         phase1_system = system_base + (
