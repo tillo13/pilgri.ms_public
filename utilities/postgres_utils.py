@@ -64,10 +64,11 @@ def _get_connection_pool():
 
                 # ThreadedConnectionPool is thread-safe
                 # Budget: 50 max_connections shared across 8+ apps on db-f1-micro
-                # Galactica gets biggest share: 2/12 (heaviest app, QA bot + ARIA + pages)
+                # Galactica gets biggest share: 2/20 (heaviest app, QA bot + ARIA + pages)
+                # Was maxconn=12 but exhausted constantly (2k+ fallbacks). Global at ~22%.
                 _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                     minconn=2,
-                    maxconn=12,
+                    maxconn=20,
                     host=host,
                     database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
                     user=get_secret('PILGRIM_POSTGRES_USERNAME'),
@@ -75,7 +76,7 @@ def _get_connection_pool():
                     connect_timeout=10,
                     options='-c statement_timeout=30000'
                 )
-                logger.info("✅ Database connection pool initialized (2-10 connections)")
+                logger.info("✅ Database connection pool initialized (2-20 connections)")
     return _connection_pool
 
 
@@ -116,7 +117,7 @@ def get_pool_health():
     """Return connection pool health stats for admin monitoring."""
     pool = _connection_pool
     if pool is None:
-        return {'status': 'not_initialized', 'maxconn': 12, 'fallbacks': _pool_fallback_count}
+        return {'status': 'not_initialized', 'maxconn': 20, 'fallbacks': _pool_fallback_count}
     # ThreadedConnectionPool tracks used keys internally
     used = len(pool._used) if hasattr(pool, '_used') else 0
     available = len(pool._pool) if hasattr(pool, '_pool') else 0

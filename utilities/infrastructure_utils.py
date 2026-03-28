@@ -928,22 +928,18 @@ def claim_accumulated_income(user_id, session=None):
         )
         
         # Update last_payout_at for all structures AND clear dust
-        conn = get_db_connection()
-        cur = conn.cursor()
-        for structure in calc['details']:
-            # Reset last_payout_at, add to total_generated, AND clear dust_covered
-            cur.execute("""
-                UPDATE pilgrim.colony_infrastructure
-                SET last_payout_at = NOW(),
-                    total_generated = total_generated + %s,
-                    dust_covered = FALSE,
-                    dust_covered_at = NULL,
-                    updated_at = NOW()
-                WHERE user_id = %s AND structure_type = %s AND status = 'active'
-            """, (structure['accumulated'], user_id, structure['structure_type']))
-        conn.commit()
-        cur.close()
-        conn.close()
+        with db_cursor(commit=True) as cur:
+            for structure in calc['details']:
+                # Reset last_payout_at, add to total_generated, AND clear dust_covered
+                cur.execute("""
+                    UPDATE pilgrim.colony_infrastructure
+                    SET last_payout_at = NOW(),
+                        total_generated = total_generated + %s,
+                        dust_covered = FALSE,
+                        dust_covered_at = NULL,
+                        updated_at = NOW()
+                    WHERE user_id = %s AND structure_type = %s AND status = 'active'
+                """, (structure['accumulated'], user_id, structure['structure_type']))
 
         # Log dust clearing if any were covered
         dust_cleared = calc.get('any_dust_covered', False)
