@@ -1095,7 +1095,6 @@ def get_dashboard_page_data(user_id, auth):
             lbe['longhaul_image_url'] = buggy_cfg.get('longhaul_image_url') or buggy_cfg.get('image_url', '')
             lbe['buggy_name'] = buggy_cfg.get('name', 'Buggy')
             # Sol date for return
-            from datetime import datetime, timezone
             SOL_EPOCH = datetime(2025, 10, 4, tzinfo=timezone.utc)
             if lbe.get('completed_at'):
                 completed_utc = lbe['completed_at'].replace(tzinfo=timezone.utc) if not lbe['completed_at'].tzinfo else lbe['completed_at']

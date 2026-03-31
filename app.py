@@ -1384,8 +1384,8 @@ def api_expedition_haul(expedition_id):
     destination_image = None
     try:
         with db_cursor() as cur:
-            cur.execute("SELECT image_url FROM pilgrim.mars_mappings WHERE name = %s OR display_name = %s LIMIT 1",
-                        (expedition['destination_name'], expedition['destination_name']))
+            cur.execute("SELECT image_url FROM pilgrim.mars_mappings WHERE name = %s LIMIT 1",
+                        (expedition['destination_name'],))
             row = cur.fetchone()
             if row:
                 destination_image = row.get('image_url')
