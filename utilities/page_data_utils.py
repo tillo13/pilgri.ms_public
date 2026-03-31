@@ -816,10 +816,11 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
                     if return_arrives_at and now >= return_arrives_at:
                         # Get discovery breakdown for this expedition
                         cur.execute("""
-                            SELECT rarity, COUNT(*) as count
-                            FROM pilgrim.expedition_discoveries
-                            WHERE expedition_id = %s AND claimed_by_user = false
-                            GROUP BY rarity
+                            SELECT di.rarity, COUNT(*) as count
+                            FROM pilgrim.expedition_discoveries ed
+                            JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+                            WHERE ed.expedition_id = %s AND ed.claimed_by_user = false
+                            GROUP BY di.rarity
                         """, (exp['id'],))
                         discoveries = []
                         total_disc = 0
@@ -848,10 +849,11 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
                 elif exp['status'] == 'complete' and exp['unclaimed_discoveries'] > 0:
                     # Returned with unclaimed discoveries
                     cur.execute("""
-                        SELECT rarity, COUNT(*) as count
-                        FROM pilgrim.expedition_discoveries
-                        WHERE expedition_id = %s AND claimed_by_user = false
-                        GROUP BY rarity
+                        SELECT di.rarity, COUNT(*) as count
+                        FROM pilgrim.expedition_discoveries ed
+                        JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+                        WHERE ed.expedition_id = %s AND ed.claimed_by_user = false
+                        GROUP BY di.rarity
                     """, (exp['id'],))
                     discoveries = []
                     total_disc = 0
