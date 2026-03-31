@@ -113,7 +113,7 @@
                 ('Nav', scientist.stats.navigation if scientist.stats else 0, 'var(--color-sepolia)', '×' ~ "%.1f"|format(1 + (scientist.stats.navigation if scientist.stats else 0) / 150) ~ ' trail speed'),
                 ('Anl', scientist.stats.analysis if scientist.stats else 0, 'var(--color-success)', '+' ~ ((scientist.stats.analysis if scientist.stats else 0) / 2)|int ~ '% disc value'),
                 ('Geo', scientist.stats.geology if scientist.stats else 0, 'var(--color-mars)', '+' ~ (scientist.stats.geology if scientist.stats else 0) ~ '% minerals'),
-                ('Eng', scientist.stats.engineering if scientist.stats else 0, 'var(--color-primary)', '+' ~ ((scientist.stats.engineering if scientist.stats else 0) / 25)|int ~ ' cargo')
+                ('Eng', scientist.stats.engineering if scientist.stats else 0, 'var(--color-primary)', '+' ~ ((scientist.stats.engineering if scientist.stats else 0) / 10)|int ~ ' cargo')
             ] %}
             {% for label, val, color, desc in stats %}
             <div style="text-align: center;">
