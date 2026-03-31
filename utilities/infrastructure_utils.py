@@ -65,7 +65,8 @@ from config_infrastructure import INFRASTRUCTURE_CATALOG
 from utilities.postgres_utils import (
     create_infrastructure, get_user_infrastructure, update_infrastructure_status,
     get_infrastructure_by_id, get_user_primary_sepolia_wallet, create_depot_transaction,
-    get_db_connection, update_sepolia_wallet_balance, get_or_set_user_mars_home
+    get_db_connection, update_sepolia_wallet_balance, get_or_set_user_mars_home,
+    db_cursor
 )
 from utilities.sepolia_utils import MarsAsteroidMiner, sanitize_tx_error
 
