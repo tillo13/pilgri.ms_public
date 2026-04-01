@@ -377,3 +377,49 @@ async function updateSolarConditions() {
     }
 }
 
+// Map landmark search
+function searchMapLandmark(query) {
+    const results = $('map-search-results');
+    if (!results) return;
+    if (!query || query.length < 2) { results.style.display = 'none'; return; }
+
+    const q = query.toLowerCase();
+    const matches = landmarksData
+        .filter(l => l.name && l.name.toLowerCase().includes(q))
+        .slice(0, 8);
+
+    if (!matches.length) {
+        results.style.display = 'none';
+        return;
+    }
+
+    results.innerHTML = matches.map(l => {
+        const disc = l.is_discovered;
+        const dot = disc ? '🟢' : '🔴';
+        const dist = l.distance_km ? `${Math.round(l.distance_km).toLocaleString()} km` : '';
+        return `<div onclick="zoomToLandmark('${l.name.replace(/'/g, "\\'")}')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border-default); font-size: 12px;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background=''">${dot} <strong>${l.name}</strong> <span style="opacity:0.6; margin-left:4px;">${l.type || ''}</span> <span style="float:right; color:var(--text-muted);">${dist}</span></div>`;
+    }).join('');
+    results.style.display = 'block';
+}
+
+function zoomToLandmark(name) {
+    const results = $('map-search-results');
+    const searchInput = $('map-search');
+    if (results) results.style.display = 'none';
+    if (searchInput) searchInput.value = name;
+
+    const idx = landmarksData.findIndex(l => l.name === name);
+    if (idx < 0 || !map) return;
+
+    const l = landmarksData[idx];
+    map.setView([l.latitude, l.longitude], 6, { animate: true });
+
+    // Flash the marker
+    const marker = expeditionMarkers[idx];
+    if (marker) {
+        marker.setRadius(16);
+        marker.openPopup();
+        setTimeout(() => marker.setRadius(8), 2000);
+    }
+}
+

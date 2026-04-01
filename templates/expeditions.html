@@ -200,6 +200,12 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endfor %}
     </div>
     {% endif %}
+    <div style="position: relative;">
+        <input type="text" id="map-search" placeholder="Search landmarks..." autocomplete="off"
+            style="width: 100%; padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px;"
+            oninput="searchMapLandmark(this.value)">
+        <div id="map-search-results" style="display: none; position: absolute; top: 36px; left: 0; right: 0; z-index: 1000; background: var(--bg-secondary); border: 1px solid var(--border-default); border-radius: 8px; max-height: 200px; overflow-y: auto;"></div>
+    </div>
     <div id="mars-map"></div>
 </details>
 
