@@ -149,6 +149,11 @@ def _auto_complete_research(user_id: int) -> Optional[Dict]:
                 context="tech_complete"
             )
             if result and result.get('tx_hash'):
+                from utilities.postgres_utils import update_sepolia_wallet_balance
+                update_sepolia_wallet_balance(
+                    wallet['wallet_address'],
+                    wallet.get('current_balance_eth', 0) + 0.0000001
+                )
                 with db_cursor(commit=True) as cur2:
                     cur2.execute("""
                         UPDATE pilgrim.player_techs SET tx_hash = %s

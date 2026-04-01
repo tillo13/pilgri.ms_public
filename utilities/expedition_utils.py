@@ -1606,11 +1606,16 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
                         etherscan_url=reward_result['etherscan_url'],
                         item_details={
                             'destination': expedition['destination_name'],
-                            'expedition_id': expedition_id,  # Store in item_details instead of related_asset_id
+                            'expedition_id': expedition_id,
                             'discovery_type': discovery['discovery_type'],
                             'discovery_quality': discovery['discovery_quality'],
                             'breakdown': discovery['breakdown']
                         }
+                    )
+                    # Persist new balance to DB so it survives session expiry (same fix as #1144)
+                    update_sepolia_wallet_balance(
+                        wallet['wallet_address'],
+                        wallet.get('current_balance_eth', 0) + discovery['sepolia_earned']
                     )
             except Exception as e:
                 logger.error(f"Failed to send expedition reward: {e}")

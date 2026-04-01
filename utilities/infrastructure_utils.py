@@ -335,6 +335,10 @@ def start_construction(user_id, structure_type, latitude, longitude):
                             'structure_type': structure_type
                         }
                     )
+                    update_sepolia_wallet_balance(
+                        wallet['wallet_address'],
+                        wallet.get('current_balance_eth', 0) + initial_reward_eth
+                    )
                     logger.info(f"⚡ Infrastructure reward broadcast for user {user_id}: {initial_reward_eth * 10000000:.1f} Sepolia")
             except Exception as e:
                 logger.error(f"Failed to send async infrastructure reward: {e}")
@@ -479,6 +483,10 @@ def send_completion_reward(construction_id, user_id):
                 'construction_id': construction_id,
                 'structure_type': building['structure_type']
             }
+        )
+        update_sepolia_wallet_balance(
+            wallet['wallet_address'],
+            wallet.get('current_balance_eth', 0) + amount_eth
         )
         return {
             'success': True,
@@ -960,6 +968,10 @@ def claim_accumulated_income(user_id, session=None):
             from utilities.depot_utils import get__bal
             old_balance = get__bal(user_id)
             new_balance = old_balance + calc['total_accumulated']
+
+        # Persist new balance to DB so it survives session expiry (same fix as #1144)
+        update_sepolia_wallet_balance(wallet['wallet_address'],
+                                      wallet.get('current_balance_eth', 0) + amount_eth)
 
         # Update activity timestamp for ARIA photo generation
         from utilities.postgres_utils import update_user_activity
