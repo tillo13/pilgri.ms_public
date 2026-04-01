@@ -304,20 +304,20 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="tech-effects">
                 {% for eff_key, eff_val in tech.effects.items() %}
                 <span class="tech-effect">
-                    {% if eff_key == 'expedition_speed_mult' %}<img src="{{ icons.speed_fast }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% speed
+                    {% if eff_key == 'expedition_speed_mult' %}<img src="{{ icons.speed_fast }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x speed
                     {% elif eff_key == 'discovery_chance_bonus' %}<img src="{{ icons.magnifier_discovery }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% discovery
                     {% elif eff_key == 'rare_chance_bonus' %}<img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% rare
                     {% elif eff_key == 'legendary_chance_bonus' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% legendary
                     {% elif eff_key == 'dust_storm_resistance' and eff_val >= 1.0 %}<img src="{{ icons.tornado_dust }}" alt="" class="inline-icon-sm"> Dust immune
-                    {% elif eff_key == 'fuel_cost_mult' %}<img src="{{ icons.fuel_pump }}" alt="" class="inline-icon-sm"> -{{ "%.0f"|format((1 - eff_val) * 100) }}% cost
-                    {% elif eff_key == 'cargo_capacity_mult' %}<img src="{{ icons.cargo_capacity }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% cargo
-                    {% elif eff_key == 'passive_income_mult' %}<img src="{{ icons.income_coins }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% income
-                    {% elif eff_key == 'night_generation_mult' %}<img src="{{ icons.night_moon }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% night gen
+                    {% elif eff_key == 'fuel_cost_mult' %}<img src="{{ icons.fuel_pump }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x cost
+                    {% elif eff_key == 'cargo_capacity_mult' %}<img src="{{ icons.cargo_capacity }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x cargo
+                    {% elif eff_key == 'passive_income_mult' %}<img src="{{ icons.income_coins }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x income
+                    {% elif eff_key == 'night_generation_mult' %}<img src="{{ icons.night_moon }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x night gen
                     {% elif eff_key == 'all_generation_mult' %}<img src="{{ icons.lightning_power }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x all gen
-                    {% elif eff_key == 'discovery_value_mult' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% value
+                    {% elif eff_key == 'discovery_value_mult' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x value
                     {% elif eff_key == 'extraction_bonus' %}<img src="{{ icons.pickaxe_mining }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format(eff_val * 100) }}% yield
-                    {% elif eff_key == 'rare_value_mult' %}<img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% rare value
-                    {% elif eff_key == 'legendary_value_mult' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> +{{ "%.0f"|format((eff_val - 1) * 100) }}% legendary value
+                    {% elif eff_key == 'rare_value_mult' %}<img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x rare value
+                    {% elif eff_key == 'legendary_value_mult' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x legendary value
                     {% endif %}
                 </span>
                 {% endfor %}

@@ -391,16 +391,16 @@ async function executeShardItAll() {
 // Format equipment effects for display (shared by colony + inventory)
 function formatEffects(effects) {
     return Object.entries(effects).map(([k, v]) => {
-        if (k === 'expedition_speed_mult') return `+${((v - 1) * 100).toFixed(0)}% speed`;
-        if (k === 'discovery_chance_mult') return `+${((v - 1) * 100).toFixed(0)}% discovery`;
+        if (k === 'expedition_speed_mult') return `${v.toFixed(2)}x speed`;
+        if (k === 'discovery_chance_mult') return `${v.toFixed(2)}x discovery`;
         if (k === 'discovery_chance_bonus') return `+${(v * 100).toFixed(0)}% discovery`;
-        if (k === 'rare_find_mult') return `+${((v - 1) * 100).toFixed(0)}% rare finds`;
+        if (k === 'rare_find_mult') return `${v.toFixed(2)}x rare finds`;
         if (k === 'rare_chance_bonus') return `+${(v * 100).toFixed(0)}% rare finds`;
         if (k === 'legendary_chance_bonus') return `+${(v * 100).toFixed(0)}% legendary`;
         if (k === 'cargo_slots') return `+${v} cargo`;
-        if (k === 'fuel_cost_mult') return `-${((1 - v) * 100).toFixed(0)}% cost`;
-        if (k === 'life_support_cost_mult') return `-${((1 - v) * 100).toFixed(0)}% life support`;
-        if (k === 'passive_income_mult') return `+${((v - 1) * 100).toFixed(0)}% passive`;
+        if (k === 'fuel_cost_mult') return `${v.toFixed(2)}x cost`;
+        if (k === 'life_support_cost_mult') return `${v.toFixed(2)}x life support`;
+        if (k === 'passive_income_mult') return `${v.toFixed(2)}x passive`;
         if (k === 'passive_income_base') return `+${v}/hr passive`;
         return `${k}: ${v}`;
     }).join(' &bull; ');

@@ -200,9 +200,9 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if passive_mult > 1.0 or passive_base > 0 or scientist_mult > 1.0 %}
             <div style="font-size: 9px; color: var(--color-success); margin-top: 2px;">
                 {{ "%.0f"|format(base_rate) }} base
-                {% if passive_mult > 1.0 %} +{{ "%.0f"|format((passive_mult - 1) * 100) }}%{% endif %}
+                {% if passive_mult > 1.0 %} {{ "%.2f"|format(passive_mult) }}x{% endif %}
                 {% if passive_base > 0 %} +{{ passive_base }}/hr{% endif %}
-                {% if scientist_mult > 1.0 %} +{{ "%.0f"|format((scientist_mult - 1) * 100) }}% sci{% endif %}
+                {% if scientist_mult > 1.0 %} {{ "%.2f"|format(scientist_mult) }}x sci{% endif %}
             </div>
             {% endif %}
         </div>

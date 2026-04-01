@@ -121,12 +121,12 @@ function formatLevelStats(stats, category) {
 
     // === GENERATOR (passive_income_mult) ===
     if (stats.passive_income_mult && stats.passive_income_mult > 1.0) {
-        parts.push(gold(`+${Math.round((stats.passive_income_mult - 1) * 100)}% passive income`));
+        parts.push(gold(`${stats.passive_income_mult.toFixed(2)}x passive income`));
     }
 
     // === RESEARCH (discovery_value_mult) ===
     if (stats.discovery_value_mult && stats.discovery_value_mult > 1.0) {
-        parts.push(gold(`+${Math.round((stats.discovery_value_mult - 1) * 100)}% disc value`));
+        parts.push(gold(`${stats.discovery_value_mult.toFixed(2)}x disc value`));
     }
 
     // === GEAR (EVA Suit) ===

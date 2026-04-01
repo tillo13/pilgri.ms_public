@@ -139,7 +139,7 @@ function showInfrastructureModal(el) {
         let effectStr = d.effect.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         if (d.effectValue) {
             const val = parseFloat(d.effectValue);
-            if (d.effect.includes('mult')) effectStr = '+' + ((val - 1) * 100).toFixed(0) + '% ' + d.effect.replace('_mult', '').replace(/_/g, ' ');
+            if (d.effect.includes('mult')) effectStr = val.toFixed(2) + 'x ' + d.effect.replace('_mult', '').replace(/_/g, ' ');
             else if (d.effect.includes('bonus')) effectStr = '+' + (val * 100).toFixed(0) + '% ' + d.effect.replace('_bonus', '').replace(/_/g, ' ');
         }
         stats.push({ label: isBuilding ? 'Effect (when complete)' : 'Active Effect', value: effectStr });
@@ -332,8 +332,8 @@ function showVehicleModal(el) {
     rangeCalc += ' = ' + effectiveRange.toLocaleString() + ' km';
     stats.push({ label: 'Max Range', value: effectiveRange.toLocaleString() + ' km', detail: rangeCalc });
     const fuelMult = parseFloat(d.fuelMult) || 1.0;
-    if (fuelMult < 1.0) stats.push({ label: 'Cost Efficiency', value: '-' + ((1 - fuelMult) * 100).toFixed(0) + '% expedition cost' });
-    else if (fuelMult > 1.0) stats.push({ label: 'Expedition Cost', value: '+' + ((fuelMult - 1) * 100).toFixed(0) + '% (less efficient)' });
+    if (fuelMult < 1.0) stats.push({ label: 'Cost Efficiency', value: fuelMult.toFixed(2) + 'x expedition cost' });
+    else if (fuelMult > 1.0) stats.push({ label: 'Expedition Cost', value: fuelMult.toFixed(2) + 'x (less efficient)' });
     else stats.push({ label: 'Cost Efficiency', value: 'Standard' });
     const discoveryBonus = parseFloat(d.discoveryBonus) || 0;
     const rareBonus = parseFloat(d.rareBonus) || 0;
@@ -402,16 +402,16 @@ function showEquipmentModal(item) {
         Object.entries(item.effects).forEach(([key, value]) => {
             let label, displayValue;
             switch(key) {
-                case 'expedition_speed_mult': label = 'Expedition Speed'; displayValue = value >= 1 ? '+' + ((value - 1) * 100).toFixed(0) + '%' : '-' + ((1 - value) * 100).toFixed(0) + '%'; break;
-                case 'discovery_chance_mult': label = 'Discovery Rate'; displayValue = '+' + ((value - 1) * 100).toFixed(0) + '%'; break;
+                case 'expedition_speed_mult': label = 'Expedition Speed'; displayValue = value.toFixed(2) + 'x'; break;
+                case 'discovery_chance_mult': label = 'Discovery Rate'; displayValue = value.toFixed(2) + 'x'; break;
                 case 'discovery_chance_bonus': label = 'Discovery Rate'; displayValue = '+' + (value * 100).toFixed(0) + '%'; break;
-                case 'rare_find_mult': label = 'Rare Find Chance'; displayValue = '+' + ((value - 1) * 100).toFixed(0) + '%'; break;
+                case 'rare_find_mult': label = 'Rare Find Chance'; displayValue = value.toFixed(2) + 'x'; break;
                 case 'rare_chance_bonus': label = 'Rare Find Chance'; displayValue = '+' + (value * 100).toFixed(0) + '%'; break;
                 case 'legendary_chance_bonus': label = 'Legendary Chance'; displayValue = '+' + (value * 100).toFixed(0) + '%'; break;
                 case 'cargo_slots': label = 'Extra Cargo'; displayValue = '+' + value + ' slots'; break;
-                case 'fuel_cost_mult': label = 'Cost Efficiency'; displayValue = value < 1 ? '-' + ((1 - value) * 100).toFixed(0) + '% expedition cost' : '+' + ((value - 1) * 100).toFixed(0) + '% expedition cost'; break;
-                case 'life_support_cost_mult': label = 'Life Support'; displayValue = value < 1 ? '-' + ((1 - value) * 100).toFixed(0) + '% cost' : 'Standard'; break;
-                case 'passive_income_mult': label = 'Passive Income'; displayValue = '+' + ((value - 1) * 100).toFixed(0) + '%'; break;
+                case 'fuel_cost_mult': label = 'Cost Efficiency'; displayValue = value.toFixed(2) + 'x cost'; break;
+                case 'life_support_cost_mult': label = 'Life Support'; displayValue = value.toFixed(2) + 'x cost'; break;
+                case 'passive_income_mult': label = 'Passive Income'; displayValue = value.toFixed(2) + 'x'; break;
                 case 'passive_income_base': label = 'Passive Income'; displayValue = '+' + value + ' shards/hr'; break;
                 default: label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); displayValue = String(value);
             }

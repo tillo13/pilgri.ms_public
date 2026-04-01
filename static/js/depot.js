@@ -217,7 +217,7 @@ function formatEffectValue(key, val) {
     if (val === true || val === 'true' || val === 'True') return 'Enabled';
     const n = parseFloat(val);
     if (isNaN(n)) return String(val);
-    if (key.includes('_mult')) return n > 1 ? `+${Math.round((n - 1) * 100)}%` : `-${Math.round((1 - n) * 100)}%`;
+    if (key.includes('_mult')) return `${n.toFixed(2)}x`;
     if (key.includes('_bonus') || key.includes('_chance') || key.includes('_reduction')) return `+${Math.round(n * 100)}%`;
     if (key === 'cargo_slots' || key === 'expedition_capacity') return `+${n}`;
     return String(val);
