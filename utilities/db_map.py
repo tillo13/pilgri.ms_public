@@ -176,17 +176,18 @@ def get_frontier_landmarks_beyond_point(
     furthest_lon: float,
     home_lat: float,
     home_lon: float,
-    limit: int = 3,
-    max_distance_km: float = 5000,
-    step_interval_km: float = 500
+    limit: int = 3
 ) -> List[Dict]:
     """Get landmarks beyond a point in a specific direction.
 
     These are the 'frontier dots' that extend exploration beyond the fog-of-war.
 
-    STEPPING STONES: Instead of just getting the closest N landmarks (which could
-    all cluster at similar distances), we ensure at least one landmark per distance
-    band (every step_interval_km). This prevents big gaps in exploration chains.
+    GUARANTEE: Always returns up to `limit` landmarks regardless of distance.
+    No hard distance cap — searches as far as needed so players always have a
+    "next step" in any direction (CLAUDE.md requirement, bugs #74 #207 #433 #1267).
+
+    STEPPING STONES: Uses adaptive band sizing — 500km bands near home, scaling
+    down to 200km bands at extreme distances — to prevent clustering.
     """
     # Build SQL conditions based on direction
     conditions = []
@@ -206,33 +207,36 @@ def get_frontier_landmarks_beyond_point(
 
     try:
         with db_cursor() as cur:
-            # Get more landmarks than needed, then filter for stepping stones
+            # Fetch plenty of candidates sorted by distance — no hard cap
             cur.execute(f"""
                 SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link,
                        SQRT(POW(latitude - {home_lat}, 2) + POW(longitude - {home_lon}, 2)) * 59 as distance_km
                 FROM pilgrim.mars_mappings
                 WHERE {where_clause}
                 ORDER BY SQRT(POW(latitude - {home_lat}, 2) + POW(longitude - {home_lon}, 2))
-                LIMIT 50
+                LIMIT 150
             """)
             all_landmarks = _fetchall(cur)
 
             if not all_landmarks:
                 return []
 
-            # STEPPING STONE SELECTION: Pick one landmark per distance band
-            # This ensures continuous exploration chains without big gaps
+            # STEPPING STONE SELECTION: Pick one landmark per distance band.
+            # Adaptive band size: 500km for nearby, shrinks for distant exploration.
             result = []
             covered_bands = set()
-            start_distance = calculate_mars_distance(home_lat, home_lon, furthest_lat, furthest_lon)
 
             for lm in all_landmarks:
                 dist = float(lm['distance_km'])
-                if dist > max_distance_km:
-                    break
 
-                # Which distance band is this? (e.g., 1000-1500, 1500-2000, etc.)
-                band = int(dist / step_interval_km)
+                # Adaptive band size: 500km up to 2000km, 300km up to 4000km, 200km beyond
+                if dist < 2000:
+                    band_size = 500
+                elif dist < 4000:
+                    band_size = 300
+                else:
+                    band_size = 200
+                band = int(dist / band_size)
 
                 # Take first landmark in each band (ensures stepping stones)
                 if band not in covered_bands:
@@ -378,7 +382,7 @@ def get_available_landmarks_by_discovery(user_id: int, base_coords: dict, limit:
     # Players should ALWAYS see 1-3 dots in each of 8 directions beyond their furthest point
     # This creates exploration chains and ensures there's always a "next step" in any direction
     try:
-        frontier_landmarks = get_all_frontier_landmarks(user_id, base_lat, base_lon, dots_per_direction=3)
+        frontier_landmarks = get_all_frontier_landmarks(user_id, base_lat, base_lon, dots_per_direction=5)
         for lm in frontier_landmarks:
             if lm['name'] not in all_candidates:
                 lm['is_discovered'] = lm['name'] in discovered_names
