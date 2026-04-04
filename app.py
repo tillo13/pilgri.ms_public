@@ -26,7 +26,7 @@ from utilities.postgres_utils import (
     get_user_commander, get_user_scientist, hydrate_user_session,
     get_user_expedition_history, get_expedition_by_id, get_expedition_discovery_items,
     get_crew_mission_status, get_aria_skills, get_visited_sites_for_trails,
-    start_crew_mission, get_nearby_trails_for_missions, complete_crew_mission,
+    start_crew_mission, complete_crew_mission,
     use_aria_resonance, get_trail_progress, get_user_by_id,
     ensure_action_tokens_table, sync_all_wallet_balances,
 )
@@ -1677,48 +1677,6 @@ def api_crew_mission_nearby():
     return jsonify({'success': True, 'trails': formatted, 'base_coords': base_coords})
 
 
-@app.route('/api/crew/mission/start', methods=['POST'])
-@login_required
-def api_crew_mission_start():
-    """Start a crew mission (captain survey or scientist analysis)"""
-    from utilities.depot_utils import deduct_sepolia  # inline: pre-existing function, may not exist
-
-    data = request.json or {}
-    crew_member = data.get('crew_member', '').lower()
-    destination = data.get('destination_name', '')
-
-    if crew_member not in ['captain', 'scientist']:
-        return jsonify({'success': False, 'error': 'Invalid crew member. Use "captain" or "scientist".'})
-
-    if not destination:
-        return jsonify({'success': False, 'error': 'No destination specified'})
-
-    status = get_crew_mission_status(g.user_id)
-    if status.get(crew_member, {}).get('busy'):
-        return jsonify({'success': False, 'error': f'{crew_member.title()} is already on a mission'})
-
-    nearby = get_nearby_trails_for_missions(g.user_id, max_distance_km=150.0)
-    trail = next((t for t in nearby if t['name'] == destination), None)
-    if not trail:
-        return jsonify({'success': False, 'error': 'Destination not within mission range (150km)'})
-
-    if crew_member == 'scientist':
-        balance, _, _ = get_live_balance_and_wallet_info(g.user_id)
-        cost = 500
-        if balance < cost:
-            return jsonify({'success': False, 'error': f'Insufficient shards. Need {cost}, have {balance:.0f}'})
-        deduct_result = deduct_sepolia(g.user_id, cost, f"Scientist analysis mission to {destination}")
-        if not deduct_result.get('success'):
-            return jsonify({'success': False, 'error': 'Failed to deduct shards'})
-
-    # Calculate duration and km to add
-    distance = float(trail['distance_km'])
-    duration = max(5, min(10, 5 + distance * 0.1))
-    km_to_add = 0.15 * duration  # 0.15 km per minute base rate
-
-    result = start_crew_mission(g.user_id, crew_member, destination, int(duration), km_to_add)
-    return jsonify(result)
-
 
 @app.route('/api/crew/mission/complete', methods=['POST'])
 @login_required
@@ -2315,6 +2273,20 @@ def cron_retry_bonds():
         return jsonify({'success': True, **result})
     except Exception as e:
         logger.error(f"Bond retry cron failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cron/drone_trail_build', methods=['GET'])
+def cron_drone_trail_build():
+    """Passive trail building via Automation Drone upgrades. Runs every 30 min."""
+    if not request.headers.get('X-Appengine-Cron') and not app.debug:
+        return jsonify({'error': 'Forbidden'}), 403
+    try:
+        from utilities.db_trails import cron_drone_trail_build
+        results = cron_drone_trail_build()
+        return jsonify({'success': True, 'results': results, 'count': len(results)})
+    except Exception as e:
+        logger.error(f"Drone trail cron failed: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

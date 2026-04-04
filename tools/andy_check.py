@@ -57,12 +57,13 @@ def check_crew_trails():
             # Pick a random trail destination
             trail = random.choice(trails)
             dest = trail['name']
-            distance = float(trail.get('distance_km', 10))
-            duration = max(5, min(10, 5 + distance * 0.1))
-            km_to_add = 0.15 * duration
+            from config_shop import calculate_trail_km
+            trail_calc = calculate_trail_km(1.0)  # Base rate, no stat bonuses for auto-runner
+            duration = trail_calc['duration_minutes']
+            km_to_add = trail_calc['km_to_add']
 
             result = start_crew_mission(
-                ANDY_USER_ID, member, dest, int(duration), km_to_add
+                ANDY_USER_ID, member, dest, duration, km_to_add
             )
             if result.get('success'):
                 actions.append(f"sent {member} → {dest} ({int(duration)}min)")

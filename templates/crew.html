@@ -165,22 +165,29 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="text-sm" style="color: #a855f7;">Your guide to the Sepolia mysteries</div>
         </div>
 
-        <!-- ARIA Stats (Mysterious/Unknown) -->
+        <!-- ARIA Skills -->
+        {% set skills = aria_skills or {} %}
+        {% set res_lvl = skills.get('resonance_level', 1) %}
+        {% set res_xp = skills.get('resonance_xp', 0) %}
+        {% set cs_lvl = skills.get('crystal_sensing_level', 1) %}
+        {% set cs_xp = skills.get('crystal_sensing_xp', 0) %}
+        {% set lm_lvl = skills.get('lore_memory_level', 1) %}
+        {% set lm_xp = skills.get('lore_memory_xp', 0) %}
         <div class="commander-stats-panel">
             <div class="stat-pill">
-                <div class="stat-pill-header"><span class="stat-name">Origin</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
-                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
-                <div class="stat-desc" style="opacity: 0.4;">Data corrupted</div>
+                <div class="stat-pill-header"><span class="stat-name">Resonance</span><span class="stat-value" style="color: #a855f7;">Lv{{ res_lvl }}/100</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ res_lvl }}%; background: #a855f7;"></div></div>
+                <div class="stat-desc">Trail speed {{ "%.1f"|format(1.0 + res_lvl / 20) }}x &middot; {{ res_xp % 100 }}/100 XP to next</div>
             </div>
             <div class="stat-pill">
-                <div class="stat-pill-header"><span class="stat-name">Memory</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
-                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
-                <div class="stat-desc" style="opacity: 0.4;">Files won't parse</div>
+                <div class="stat-pill-header"><span class="stat-name">Crystal Sensing</span><span class="stat-value" style="color: #a855f7;">Lv{{ cs_lvl }}/100</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ cs_lvl }}%; background: #c084fc;"></div></div>
+                <div class="stat-desc">Trail discovery {{ "%.1f"|format(1.0 + cs_lvl * 0.05) }}% &middot; {{ cs_xp % 100 }}/100 XP to next</div>
             </div>
             <div class="stat-pill">
-                <div class="stat-pill-header"><span class="stat-name">Purpose</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>
-                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 0%; background: #a855f7;"></div></div>
-                <div class="stat-desc" style="opacity: 0.4;">Waiting for something</div>
+                <div class="stat-pill-header"><span class="stat-name">Lore Memory</span><span class="stat-value" style="color: #a855f7;">Lv{{ lm_lvl }}/100</span></div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ lm_lvl }}%; background: #7c3aed;"></div></div>
+                <div class="stat-desc">Trail efficiency +{{ "%.1f"|format(lm_lvl / 2) }}% &middot; {{ lm_xp % 100 }}/100 XP to next</div>
             </div>
             <div class="stat-pill">
                 <div class="stat-pill-header"><span class="stat-name">Age</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>

@@ -13,15 +13,14 @@ let trailConsumables = [];
 let trailScannerBonus = { bonus_percent: 0, scanner_name: null };
 let selectedConsumableId = null;
 
-// Duration tiers based on total bonus (matches config.py TRAIL_BONUS_DURATIONS)
+// Duration tiers: higher bonus = LONGER session (rewards investment with more build time)
+// Frontend estimate — server calculates actual duration from total_multiplier
 const BONUS_DURATION_TIERS = [
-    { bonus: 15, duration: 3 },   // +15%+ → 3 min
-    { bonus: 12, duration: 4 },   // +12-14% → 4 min
-    { bonus: 10, duration: 5 },   // +10-11% → 5 min
-    { bonus: 8, duration: 6 },    // +8-9% → 6 min
-    { bonus: 5, duration: 8 },    // +5-7% → 8 min
-    { bonus: 2, duration: 12 },   // +2-4% → 12 min (scanner only)
-    { bonus: 0, duration: 15 },   // 0% → 15 min (no bonus)
+    { bonus: 15, duration: 30 },   // +15%+ → 30 min (experienced crew)
+    { bonus: 12, duration: 25 },   // +12-14% → 25 min
+    { bonus: 8, duration: 20 },    // +8-11% → 20 min
+    { bonus: 5, duration: 18 },    // +5-7% → 18 min
+    { bonus: 0, duration: 15 },    // 0% → 15 min (no bonus)
 ];
 
 function getDurationFromBonus(totalBonusPercent) {

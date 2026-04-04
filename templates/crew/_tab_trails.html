@@ -149,25 +149,43 @@
                 </div>
             </div>
 
-            <!-- Mars Physics Explanation -->
+            <!-- Trail Speed Math (Luke loves math!) -->
+            {% set skills = aria_skills or {} %}
+            {% set cmd_stats = commander_stats or {} %}
+            {% set cmd_log = cmd_stats.get('logistics', 0)|float %}
+            {% set log_xp = (commander or {}).get('captain_logistics_xp', 0)|default(0)|int %}
+            {% set capt_mult = 1.0 + (cmd_log / 30) + (log_xp / 2000) %}
             <div class="p-12 mb-12" style="background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid var(--color-sepolia);">
-                <div class="font-semibold mb-8" style="color: var(--text-primary); font-size: 13px;"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Real Mars Physics</div>
-                <div style="color: var(--text-secondary); font-size: 12px; line-height: 1.7;">
-                    <div class="mb-6">Human walking speed on Earth: <strong style="color: var(--text-primary);">~5 km/h</strong></div>
-                    <div class="mb-6">Mars terrain & 0.38g adjustment: <strong style="color: var(--text-primary);">×0.4</strong></div>
-                    <div class="mb-6">Trail construction work: <strong style="color: var(--text-primary);">×0.2</strong> <span class="opacity-70">(marking, clearing, compacting regolith)</span></div>
-                    <div class="mb-6">EVA Suit bonus: <strong style="color: var(--color-success);">+5% per level</strong> <span class="opacity-70">(better mobility, servo-assisted movement)</span></div>
-                    <div class="mb-8 pt-8" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                        <span style="color: #FFD700;">Base build rate:</span> 5 × 0.4 × 0.2 = <strong style="color: #FFD700;">0.4 km/h</strong> → <strong style="color: #FFD700;">~0.033 km per 5 min</strong>
+                <div class="font-semibold mb-8" style="color: var(--text-primary); font-size: 13px;"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Trail Speed Math</div>
+                <div style="color: var(--text-secondary); font-size: 12px; line-height: 1.8;">
+                    <div class="mb-4">Base rate: <strong style="color: #FFD700;">0.75 km/hr</strong></div>
+                    <div class="mb-8 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="font-semibold mb-4" style="color: var(--color-success);">Crew Multipliers (your stats):</div>
+                        <div class="mb-4">Captain: Logistics {{ cmd_log|int }} + {{ log_xp }} XP → <strong style="color: var(--color-success);">{{ "%.1f"|format(capt_mult) }}x</strong></div>
+                        <div class="mb-4">Scientist: Nav XP + {{ (scientist or {}).get('specialty', 'Specialty') }} → <strong style="color: var(--color-sepolia);">stat-dependent</strong></div>
+                        <div class="mb-4">ARIA: Resonance Lv{{ (skills.get('resonance_level', 1)) }} + Lore Lv{{ (skills.get('lore_memory_level', 1)) }} → <strong style="color: #a855f7;">{{ "%.1f"|format(1.0 + (skills.get('resonance_level', 1)) / 20 + (skills.get('lore_memory_level', 1)) / 200) }}x</strong></div>
                     </div>
-                    <div class="opacity-80" style="font-size: 11px;">
-                        EVA Suit, crew stats, scanners, and consumables multiply this. A well-equipped team builds 2-3× faster!
+                    <div class="mb-8 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="font-semibold mb-4" style="color: var(--color-sepolia);">Equipment Bonuses (stack on top):</div>
+                        <div class="mb-4">Scanner: <strong>+1-10%</strong> per level</div>
+                        <div class="mb-4">EVA Suit: <strong style="color: var(--color-success);">+5%</strong> per level</div>
+                        <div class="mb-4">Consumables: <strong>+6-15%</strong> (one-use items)</div>
+                    </div>
+                    <div class="mb-8 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="font-semibold mb-4" style="color: #FFD700;">Session Duration:</div>
+                        <div class="mb-4">Higher multiplier = longer session (15→30 min)</div>
+                        <div class="mb-4">Double benefit: faster rate AND more time</div>
+                    </div>
+                    <div class="pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="font-semibold mb-4" style="color: var(--color-success);">Automation Drone (passive 24/7):</div>
+                        <div class="mb-4">Lv1: 0.5 km/hr → Lv5: 2.0 km/hr → Lv10: 8.0 km/hr</div>
+                        <div class="opacity-70">Builds trails while you're away</div>
                     </div>
                 </div>
             </div>
 
             <div class="p-10" style="background: rgba(0,0,0,0.2); border-radius: 6px; color: var(--text-secondary); font-size: 12px;">
-                <strong style="color: var(--text-primary);">Trip time:</strong> 3-15 min based on total bonuses. Higher multiplier = faster trip & more km per session.
+                <strong style="color: var(--text-primary);">Session:</strong> 15-30 min based on total multiplier. <strong style="color: var(--text-primary);">Formula:</strong> 0.75 × crew_mult × scanner × suit × consumable × (duration/60) = km per session.
             </div>
         </div>
 

@@ -2260,17 +2260,27 @@ def handle_trail_build_request(user_id, data):
                 return {'success': False, 'error': 'Destination not available for trail building'}
 
     # Calculate km based on crew stats, scanner, and consumable
-    base_build_rate_kmh = 0.15
+    # Stats are the PRIMARY driver (1x-6x). See config_shop.BASE_TRAIL_RATE_KMH.
+    from config_shop import calculate_trail_km
     stat_multiplier = 1.0
     stat_bonus_desc = ""
 
     with db_cursor() as cur:
         if worker_type == 'captain':
+            # Captain: commander_logistics stat (0-90) is primary, XP is secondary
             cur.execute("SELECT captain_logistics_xp FROM pilgrim.users WHERE id = %s", (user_id,))
             r = cur.fetchone()
             logistics_xp = r.get('captain_logistics_xp') or 0 if r else 0
-            stat_multiplier = 1.0 + (logistics_xp / 1000)
-            stat_bonus_desc = f"Logistics {logistics_xp} XP (+{int((stat_multiplier-1)*100)}%)"
+            # Get the actual character stat (commander_logistics) from replicate_assets
+            cur.execute("""
+                SELECT commander_logistics FROM pilgrim.replicate_assets
+                WHERE user_id = %s AND asset_type = 'character_image' AND is_deleted = FALSE
+                ORDER BY created_at DESC LIMIT 1
+            """, (user_id,))
+            asset = cur.fetchone()
+            commander_logistics = float(asset.get('commander_logistics') or 0) if asset else 0
+            stat_multiplier = 1.0 + (commander_logistics / 30) + (logistics_xp / 2000)
+            stat_bonus_desc = f"Logistics {int(commander_logistics)} + {logistics_xp} XP ({stat_multiplier:.1f}x)"
 
         elif worker_type == 'scientist':
             cur.execute("SELECT scientist_navigation_xp, scientist_key FROM pilgrim.users WHERE id = %s", (user_id,))
@@ -2281,14 +2291,16 @@ def handle_trail_build_request(user_id, data):
             specialty_geology_bonus = get_scientist_trail_bonus(scientist_key) if scientist_key else 0
             stat_multiplier = nav_multiplier * (1.0 + specialty_geology_bonus)
             scientist_name = COLONY_SCIENTISTS.get(scientist_key, {}).get('specialty', 'Science') if scientist_key else 'Science'
-            stat_bonus_desc = f"Nav {nav_xp} XP + {scientist_name} (+{int((stat_multiplier-1)*100)}%)"
+            stat_bonus_desc = f"Nav {nav_xp} XP + {scientist_name} ({stat_multiplier:.1f}x)"
 
         elif worker_type == 'aria':
-            cur.execute("SELECT resonance_level FROM pilgrim.aria_skills WHERE user_id = %s", (user_id,))
+            # ARIA: resonance is primary multiplier, lore_memory adds efficiency
+            cur.execute("SELECT resonance_level, lore_memory_level FROM pilgrim.aria_skills WHERE user_id = %s", (user_id,))
             r = cur.fetchone()
             resonance_level = r.get('resonance_level') or 1 if r else 1
-            stat_multiplier = 1.0 + (resonance_level / 100)
-            stat_bonus_desc = f"Resonance Lv{resonance_level} (+{int((stat_multiplier-1)*100)}%)"
+            lore_memory_level = r.get('lore_memory_level') or 1 if r else 1
+            stat_multiplier = 1.0 + (resonance_level / 20) + (lore_memory_level / 200)
+            stat_bonus_desc = f"Resonance Lv{resonance_level} + Lore Lv{lore_memory_level} ({stat_multiplier:.1f}x)"
 
     scanner_bonus = get_scanner_trail_bonus(user_id)
     scanner_multiplier = scanner_bonus['multiplier']
@@ -2309,9 +2321,9 @@ def handle_trail_build_request(user_id, data):
             consumable_used = consume_result
 
     total_multiplier = stat_multiplier * scanner_multiplier * suit_multiplier * consumable_multiplier
-    duration_minutes = get_trail_duration_from_multiplier(total_multiplier)
-    build_rate = base_build_rate_kmh * total_multiplier
-    km_to_add = build_rate * (duration_minutes / 60)
+    trail_calc = calculate_trail_km(total_multiplier)
+    duration_minutes = trail_calc['duration_minutes']
+    km_to_add = trail_calc['km_to_add']
 
     # Chain routing: find nearest connected node to build from
     from utilities.db_trails import find_nearest_trail_origin

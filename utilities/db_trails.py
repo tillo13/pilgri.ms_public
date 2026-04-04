@@ -62,6 +62,14 @@ def ensure_trail_segments_table():
     except Exception:
         pass
 
+    # Migration: add drone_km column for Automation Drone passive trail building
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("ALTER TABLE pilgrim.trail_segments ADD COLUMN IF NOT EXISTS drone_km DOUBLE PRECISION DEFAULT 0")
+    except Exception:
+        pass
+
+
 def get_user_trail(user_id: int, destination_name: str, from_landmark: str = 'HOME') -> dict:
     """Get trail data for a specific route segment, including km-based progress"""
     default = {
@@ -180,7 +188,7 @@ def add_km_to_trail(user_id: int, destination_name: str, km_amount: float,
         if km_amount > 0:
             try:
                 from utilities.db_users import add_passive_sv
-                trail_sv = int(km_amount * 5)
+                trail_sv = int(km_amount * 2)
                 if trail_sv > 0:
                     add_passive_sv(user_id, trail_sv)
                     logger.info(f"🛤️ Trail SV: user {user_id} earned {trail_sv} SV from {km_amount:.1f} km built on {destination_name}")
@@ -648,6 +656,8 @@ def complete_crew_mission(user_id: int, crew_member: str) -> dict:
                 """, (user_id,))
 
                 add_aria_skill_xp(user_id, 'resonance', xp_gain)
+                add_aria_skill_xp(user_id, 'crystal_sensing', xp_gain)
+                add_aria_skill_xp(user_id, 'lore_memory', xp_gain)
             else:
                 return {'success': False, 'error': 'Invalid crew member'}
 
@@ -861,6 +871,22 @@ def use_aria_resonance(user_id: int, destination_name: str) -> dict:
                 WHERE user_id = %s AND from_landmark = 'HOME' AND destination_name = %s
             """, (new_level, user_id, destination_name))
 
+            # Also add km (resonance gives ~1 base session worth of trail progress)
+            from config_shop import BASE_TRAIL_RATE_KMH
+            resonance_km = BASE_TRAIL_RATE_KMH * (15 / 60)  # Base rate × 15min session
+            # Get total_distance_km for the trail segment
+            cur.execute("""
+                SELECT total_distance_km FROM pilgrim.trail_segments
+                WHERE user_id = %s AND from_landmark = 'HOME' AND destination_name = %s
+            """, (user_id, destination_name))
+            seg = cur.fetchone()
+            seg_dist = float(seg['total_distance_km']) if seg and seg['total_distance_km'] else None
+
+        # Add km outside the main transaction (same pattern as complete_crew_mission)
+        if seg_dist:
+            add_km_to_trail(user_id, destination_name, resonance_km, 'aria', seg_dist, 'HOME')
+
+        with db_cursor(commit=True) as cur:
             # Log the resonance
             cur.execute("""
                 INSERT INTO pilgrim.crew_missions (user_id, crew_member, mission_type, destination_name, started_at, completed_at, trip_count_added)
@@ -868,12 +894,13 @@ def use_aria_resonance(user_id: int, destination_name: str) -> dict:
             """, (user_id, destination_name, now, now))
             from utilities.db_activity import log_activity
             log_activity(user_id, 'trail', 'trail_resonance', f"ARIA Resonance: {destination_name}",
-                         detail=f"Trail Lv{new_level} · {new_count} trips", source_table='crew_missions')
+                         detail=f"+{resonance_km:.2f}km · Trail Lv{new_level} · {new_count} trips", source_table='crew_missions')
 
         return {
             'success': True,
             'destination': destination_name,
             'trip_count_added': 2,
+            'km_added': round(resonance_km, 4),
             'trail': {'destination_name': destination_name, 'trip_count': new_count, 'trail_level': new_level}
         }
     except Exception as e:
@@ -1056,3 +1083,97 @@ def spawn_next_trail(user_id: int, completed_destination: str) -> Optional[dict]
     except Exception as e:
         logger.error(f"Failed to spawn next trail: {e}")
         return None
+
+
+# ============================================================================
+# AUTOMATION DRONE — Passive Trail Building (cron job, runs every 30 min)
+# ============================================================================
+
+def cron_drone_trail_build():
+    """Passive trail building for users with Automation Drone upgrades.
+
+    Called by /api/cron/drone_trail_build every 30 minutes.
+    Adds km based on drone level's trail_km_per_hour config.
+    Builds on the trail closest to completion (most km_built / total_distance_km).
+    """
+    from config_upgrades import UPGRADE_CATALOG
+    from utilities.upgrades_utils import get_user_upgrade_level
+
+    ensure_trail_segments_table()
+    results = []
+
+    try:
+        with db_cursor() as cur:
+            # Get all users who have active trail segments
+            cur.execute("SELECT DISTINCT user_id FROM pilgrim.trail_segments WHERE km_built < total_distance_km AND total_distance_km > 0")
+            users = cur.fetchall()
+
+        for u in users:
+            user_id = u['user_id']
+            drone_level = get_user_upgrade_level(user_id, 'automation', 'automation')
+            if drone_level < 1:
+                continue
+
+            # Get drone trail_km_per_hour from config
+            drone_config = UPGRADE_CATALOG.get('automation', {}).get('automation', {}).get('levels', {}).get(drone_level, {})
+            km_per_hour = drone_config.get('trail_km_per_hour', 0)
+            if km_per_hour <= 0:
+                continue
+
+            # 30 min cron interval = 0.5 hours
+            km_to_add = km_per_hour * 0.5
+
+            # Find the trail closest to completion (highest % built)
+            with db_cursor() as cur:
+                cur.execute("""
+                    SELECT destination_name, from_landmark, km_built, total_distance_km
+                    FROM pilgrim.trail_segments
+                    WHERE user_id = %s AND total_distance_km > 0 AND km_built < total_distance_km
+                    ORDER BY (km_built / total_distance_km) DESC
+                    LIMIT 1
+                """, (user_id,))
+                trail = cur.fetchone()
+
+            if not trail:
+                continue
+
+            dest = trail['destination_name']
+            from_lm = trail['from_landmark']
+            total_dist = float(trail['total_distance_km'])
+
+            # Cap km_to_add so we don't overshoot
+            remaining = total_dist - float(trail['km_built'])
+            actual_km = min(km_to_add, remaining)
+
+            # Add km as 'drone' worker type
+            with db_cursor(commit=True) as cur:
+                cur.execute("""
+                    UPDATE pilgrim.trail_segments
+                    SET km_built = COALESCE(km_built, 0) + %s,
+                        drone_km = COALESCE(drone_km, 0) + %s,
+                        last_used_at = NOW()
+                    WHERE user_id = %s AND from_landmark = %s AND destination_name = %s
+                """, (actual_km, actual_km, user_id, from_lm, dest))
+
+            # Award SV (2 SV/km, same as manual)
+            if actual_km > 0:
+                try:
+                    from utilities.db_users import add_passive_sv
+                    trail_sv = int(actual_km * 2)
+                    if trail_sv > 0:
+                        add_passive_sv(user_id, trail_sv)
+                except Exception:
+                    pass
+
+            # Check if trail just completed — spawn next
+            new_built = float(trail['km_built']) + actual_km
+            if new_built >= total_dist:
+                spawn_next_trail(user_id, dest)
+
+            results.append(f"user {user_id}: +{actual_km:.2f}km to {dest} (drone Lv{drone_level})")
+
+    except Exception as e:
+        logger.error(f"Drone trail cron error: {e}")
+        results.append(f"ERROR: {e}")
+
+    return results

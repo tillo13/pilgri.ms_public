@@ -105,6 +105,10 @@ def get_command_page_data(user_id):
     from utilities.infrastructure_utils import get_or_set_user_mars_home
     base_coords = get_or_set_user_mars_home(user_id)
 
+    # ARIA skills for crew page display (Resonance, Crystal Sensing, Lore Memory)
+    from utilities.db_trails import get_aria_skills
+    aria_skills = get_aria_skills(user_id)
+
     return {
         'has_commander': has_commander, 'commander': commander, 'character_url': character_url,
         'character_video_url': character_video_url, 'commander_stats': commander_stats,
@@ -115,6 +119,7 @@ def get_command_page_data(user_id):
         'scientist': scientist, 'has_research_station': has_research_station,
         'scientist_research': scientist_research, 'base_coords': base_coords,
         'all_scientists': _get_all_scientists_with_bonuses(),
+        'aria_skills': aria_skills,
     }
 
 def _get_all_scientists_with_bonuses():
