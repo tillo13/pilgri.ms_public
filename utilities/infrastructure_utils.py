@@ -966,12 +966,12 @@ def claim_accumulated_income(user_id, session=None):
         else:
             # No session - use DB cached balance as fallback
             from utilities.depot_utils import get__bal
-            old_balance = get__bal(user_id)
+            old_balance = float(get__bal(user_id))
             new_balance = old_balance + calc['total_accumulated']
 
         # Persist new balance to DB so it survives session expiry (same fix as #1144)
         update_sepolia_wallet_balance(wallet['wallet_address'],
-                                      wallet.get('current_balance_eth', 0) + amount_eth)
+                                      float(wallet.get('current_balance_eth', 0)) + amount_eth)
 
         # Update activity timestamp for ARIA photo generation
         from utilities.postgres_utils import update_user_activity
