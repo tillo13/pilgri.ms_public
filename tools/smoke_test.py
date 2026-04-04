@@ -906,6 +906,75 @@ def test_activity_limit():
     return True
 
 
+@test("API: brainstorm pages respond", tier=2, features=['api'])
+def test_brainstorm_pages():
+    """Verify all brainstorm pages return 200."""
+    pages = [
+        '/brainstorm/signal', '/brainstorm/signal-phase-2',
+        '/brainstorm/robot-crew', '/brainstorm/captain-stats',
+        '/brainstorm/depot-recalibration', '/brainstorm/trail-network',
+        '/brainstorm/tech-tree', '/brainstorm/aria-meetings',
+        '/brainstorm/sv-economy', '/brainstorm/icon-redesign',
+    ]
+    for page in pages:
+        result = _test_endpoint(page)
+        if result is not True:
+            return f"{page}: {result}"
+    return True
+
+
+@test("Harvest claim is atomic (no split transactions)", tier=2, features=['infrastructure'])
+def test_harvest_atomic():
+    """Verify claim_accumulated_income uses single db_cursor for balance+timer."""
+    import inspect
+    from utilities.infrastructure_utils import claim_accumulated_income
+    source = inspect.getsource(claim_accumulated_income)
+    # The fix: balance update and last_payout_at must be in the SAME db_cursor block
+    # Old bug: two separate db_cursor(commit=True) blocks = shards lost on failure
+    assert 'threading.Thread' in source, "Harvest should use background thread for blockchain tx"
+    assert source.count('with db_cursor(commit=True)') == 1, "Harvest should have exactly 1 atomic db_cursor block (balance + timer together)"
+    return True
+
+
+@test("Screenshot delete endpoint exists", tier=2, features=['bugs'])
+def test_screenshot_delete_route():
+    """Verify DELETE /api/admin/bugs/<id>/screenshot/<field> route exists."""
+    from app import app
+    rules = [r.rule for r in app.url_map.iter_rules()]
+    assert '/api/admin/bugs/<int:bug_id>/screenshot/<field>' in rules, "Screenshot delete route missing"
+    return True
+
+
+@test("Environmental impact capped at 100%", tier=2, features=['infrastructure'])
+def test_env_impact_cap():
+    """Verify environmental combined factor can't exceed 1.0."""
+    from utilities.infrastructure_utils import _get_mars_environment_factors
+    # Test with equatorial latitude (best case for exceeding 100%)
+    factors = _get_mars_environment_factors(0.0)
+    assert factors['combined'] <= 1.0, f"Combined factor {factors['combined']} exceeds 1.0"
+    return True
+
+
+@test("Recent discoveries filter by complete expeditions", tier=2, features=['db', 'expeditions'])
+def test_recent_discoveries_filter():
+    """Verify get_recent_discoveries query includes expedition status check."""
+    import inspect
+    from utilities.db_expeditions import get_recent_discoveries
+    source = inspect.getsource(get_recent_discoveries)
+    assert "e.status = 'complete'" in source, "Recent discoveries query must filter by expedition status='complete'"
+    return True
+
+
+@test("ARIA trail context includes all crew members", tier=2, features=['aria'])
+def test_aria_trail_context():
+    """Verify ARIA context builder checks captain, scientist, AND aria trail missions."""
+    import inspect
+    from utilities.aria_utils import _build_friend_prompt
+    source = inspect.getsource(_build_friend_prompt)
+    assert "crew.get('aria')" in source, "ARIA context must check for aria trail missions"
+    return True
+
+
 # =============================================================================
 # TIER 3: FULL TESTS (comprehensive, slower)
 # =============================================================================
