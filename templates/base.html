@@ -18,6 +18,7 @@
     <meta property="og:url" content="https://pilgri.ms{{ request.path }}">
     <meta property="og:image" content="https://pilgri.ms/static/images/icon-512.png">
 
+    <link rel="alternate" type="application/atom+xml" title="Pilgrims Changelog Feed" href="/feed.xml">
     <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
     <link rel="stylesheet" href="/static/css/epic-reveal.css?v={{ static_v }}">
     {% block extra_css %}{% endblock %}
@@ -379,6 +380,18 @@
             <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Colony" class="nav-icon-img"><span class="nav-label">Colony</span>
         </a>
     </nav>
+
+    <!-- Cross-links -->
+    <div style="padding: 12px 16px 8px; text-align: center; border-top: 1px solid rgba(255,255,255,0.06);">
+        <span style="font-size: 10px; color: rgba(255,255,255,0.2); letter-spacing: 0.05em;">More projects</span>
+        <div style="margin-top: 4px; display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;">
+            <a href="https://scatterbrain.us" style="font-size: 11px; color: rgba(255,255,255,0.25); text-decoration: none;">Scatterbrain</a>
+            <a href="https://kindness.social" style="font-size: 11px; color: rgba(255,255,255,0.25); text-decoration: none;">Kindness</a>
+            <a href="https://crab.travel" style="font-size: 11px; color: rgba(255,255,255,0.25); text-decoration: none;">Crab Travel</a>
+            <a href="https://wattson.ac" style="font-size: 11px; color: rgba(255,255,255,0.25); text-decoration: none;">Wattson</a>
+            <a href="https://noqout.com" style="font-size: 11px; color: rgba(255,255,255,0.25); text-decoration: none;">Noqout</a>
+        </div>
+    </div>
 </div>
 
 <!-- Processing Overlay -->

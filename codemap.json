@@ -53,9 +53,9 @@
       "indexnow_key — Serve IndexNow verification key.",
       "sitemap",
       "robots",
+      "atom_feed — Atom feed of changelog entries for search engine discovery.",
       "home — Home page - works for both anonymous and authenticated users",
-      "about — About page - redirects to /lore which now includes 'Why This Exists' section",
-      "crew — Crew page - works for both anonymous and authenticated users"
+      "about — About page - redirects to /lore which now includes 'Why This Exists' section"
     ]
   },
   "config.py": {
@@ -2480,7 +2480,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2538,7 +2538,7 @@
     ]
   },
   "templates/home.html": {
-    "description": "Page: Base HQ - Pilgrims"
+    "description": "Page: Pilgrims — Mars Colony Strategy Game"
   },
   "templates/inventory.html": {
     "description": "Page: Inventory - Pilgrims",
@@ -2558,7 +2558,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
