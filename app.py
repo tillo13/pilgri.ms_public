@@ -488,6 +488,12 @@ def login_required(f):
 # PAGE ROUTES
 # ============================================================================
 
+@app.route('/b4c9ebbc8faa4d7b8b2b8104b6511fee.txt')
+def indexnow_key():
+    """Serve IndexNow verification key."""
+    return Response('b4c9ebbc8faa4d7b8b2b8104b6511fee', mimetype='text/plain')
+
+
 @app.route('/sitemap.xml')
 def sitemap():
     xml = '''<?xml version="1.0" encoding="UTF-8"?>

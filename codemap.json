@@ -50,12 +50,12 @@
       "inject_global_stats — Inject global user stats into all templates for nav bar and user menu.",
       "handle_api_error — Decorator for consistent API error handling",
       "login_required — Require authentication for route. Sets g.user_id for convenience.",
+      "indexnow_key — Serve IndexNow verification key.",
       "sitemap",
       "robots",
       "home — Home page - works for both anonymous and authenticated users",
       "about — About page - redirects to /lore which now includes 'Why This Exists' section",
-      "crew — Crew page - works for both anonymous and authenticated users",
-      "depot — Depot page - works for both anonymous and authenticated users"
+      "crew — Crew page - works for both anonymous and authenticated users"
     ]
   },
   "config.py": {
@@ -2480,7 +2480,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2493,7 +2493,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

@@ -28,13 +28,31 @@
     <link rel="apple-touch-icon" href="/static/images/icon-192.png">
     <link rel="icon" type="image/png" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/favicon_crystal_1768501259.png">
     <!-- Preload OPTIMIZED nav icons (~2KB each vs 400-700KB originals!) -->
+    <!-- NOTE: research_icon_1769189735_nav.png is 605KB (not optimized like the others ~2KB) — excluded from preload -->
     <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/base_icon_1767579866_nav.png">
     <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png">
     <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/depot_icon_1767579883_nav.png">
     <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png">
     <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png">
-    <link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png">
-    <!-- shard icon preload removed: only used on /lore, not nav -->
+
+    <!-- Structured data: VideoGame schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Pilgrims",
+      "url": "https://pilgri.ms/",
+      "description": "A Mars colony strategy game that respects your time — build, survive, and explore with your crew.",
+      "genre": "Strategy",
+      "gamePlatform": "Web Browser",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web Browser",
+      "numberOfPlayers": {"@type": "QuantitativeValue", "minValue": 1},
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+      "author": {"@type": "Person", "name": "Andy Tillo"}
+    }
+    </script>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body data-page="{{ active_tab or 'home' }}">
@@ -61,7 +79,7 @@
                 <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt="Expeditions" class="nav-icon-img"><span class="tab-label">Expeditions</span>
             </a>
             <a href="/research" class="nav-tab {{ 'active' if active_tab == 'research' }}">
-                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="Lab" class="nav-icon-img"><span class="tab-label">Lab</span>
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="Lab" class="nav-icon-img" loading="lazy"><span class="tab-label">Lab</span>
             </a>
             <a href="/colony" class="nav-tab {{ 'active' if active_tab == 'colony' }}">
                 <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Colony" class="nav-icon-img"><span class="tab-label">Colony</span>
@@ -355,7 +373,7 @@
             <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/expeditions_icon_1767579891_nav.png" alt="Expeditions" class="nav-icon-img"><span class="nav-label">Expeditions</span>
         </a>
         <a href="/research" class="nav-item {{ 'active' if active_tab == 'research' }}">
-            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="Lab" class="nav-icon-img"><span class="nav-label">Lab</span>
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/research_icon_1769189735_nav.png" alt="Lab" class="nav-icon-img" loading="lazy"><span class="nav-label">Lab</span>
         </a>
         <a href="/colony" class="nav-item {{ 'active' if active_tab == 'colony' }}">
             <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Colony" class="nav-icon-img"><span class="nav-label">Colony</span>
