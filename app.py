@@ -722,6 +722,13 @@ def signal_brainstorm():
     return render_template('brainstorm/signal.html', active_tab=None, user=user)
 
 
+@app.route('/brainstorm/signal-phase-2')
+def signal_phase_2_brainstorm():
+    """Signal Phase 2 spec — synthesized from Luke's feedback."""
+    user = auth.get_current_user() if auth.is_authenticated() else None
+    return render_template('brainstorm/signal_phase_2.html', active_tab=None, user=user)
+
+
 @app.route('/api/brainstorm/signal-chat', methods=['POST'])
 @handle_api_error
 def api_signal_brainstorm_chat():

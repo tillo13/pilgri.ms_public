@@ -1,0 +1,555 @@
+{% extends "base.html" %}
+{% block title %}Signal Phase 2 Spec — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>window.BRAINSTORM_PAGE_KEY = 'signal-phase-2';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-draft">Phase 2 Spec</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">The Signal — Phase 2 Spec</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Synthesized from Luke's QA feedback on the original Signal brainstorm</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">April 2026 — Design decisions confirmed, open questions identified</p>
+        <p style="margin-top: 12px;">
+            <a href="/brainstorm/signal" style="color: var(--color-sepolia); text-decoration: underline;">Original Signal Brainstorm</a>
+            &mdash; Luke's comments from March 27-28, 2026
+        </p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 1: DETECTION & FINDING -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title" style="color: var(--color-danger);">Detection & Finding — The Core Fix</div>
+
+        <div class="summary-box">
+            <strong>Confirmed:</strong> Closest-approach detection. NOT destination-only bubble.
+            <br>This is the single biggest change from the original design.
+        </div>
+
+        <div class="quote-box">
+            <p>"Has to be closest approach. I dont like the 'destination only bubble' logic at all"</p>
+            <span class="attribution">— Luke, Section 4</span>
+        </div>
+
+        <p>The original 42km detection radius only checked at the expedition destination. Phase 2 checks the <strong>entire path</strong> of each expedition — if your route passes within detection range of a signal at any point, you detect it.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Original Design</th>
+                        <th>Phase 2</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Detection check</td>
+                        <td>Destination only</td>
+                        <td><strong>Entire expedition path (closest approach)</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Detection radius</td>
+                        <td>Fixed 42km for all</td>
+                        <td><strong>Variable per signal</strong> (some easier, some harder)</td>
+                    </tr>
+                    <tr>
+                        <td>What affects detection</td>
+                        <td>Discovery Rate only</td>
+                        <td><strong>Crew stats + buildings + tech + Discovery Rate</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Past expeditions</td>
+                        <td>Not checked</td>
+                        <td><strong>Retroactive check when new code ships</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Variable Detection Radius</h4>
+
+        <div class="quote-box">
+            <p>"I like the idea some signals being easier to find (maybe bigger or smaller detection radius can have impact)"</p>
+            <span class="attribution">— Luke, Section 3</span>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Example Detection Radii</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Easy signals (2-3 of 14)</span><span class="mockup-value">80-100km radius</span></div>
+                <div class="mockup-row"><span class="mockup-label">Standard signals (8-9 of 14)</span><span class="mockup-value">42-60km radius</span></div>
+                <div class="mockup-row"><span class="mockup-label">Hard signals (2-3 of 14)</span><span class="mockup-value">15-25km radius</span></div>
+            </div>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Crew, Buildings & Tech as Detection Levers</h4>
+
+        <div class="quote-box">
+            <p>"There should be more impact from Crew stats on finding signal. More functions from buildings and tech that increase this as well. Instead of current system that focuses mostly on increasing your 'Discovery Rate', that just makes Rares and Legendary more likely, this should incorporate Signal finding"</p>
+            <span class="attribution">— Luke, Section 3</span>
+        </div>
+
+        <p>This means Depot building upgrades, Lab research, and crew stat progression all feed into Signal detection — not just item discovery rarity. <strong>Related bugs:</strong> "Scientist Stats do what?" (P1), "Recalibrate Depot building upgrades" (P1).</p>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Retroactive Check</h4>
+
+        <div class="quote-box">
+            <p>"I think we should do retroactive check based on new code, cuz we have been there, just wasnt part of game. Would be weird experience, for example if the signal you found popped up next time you went by a dot youd already visited 'wait, is that new? Why did it just pop up? Was it always there?'"</p>
+            <span class="attribution">— Luke, Section 5</span>
+        </div>
+
+        <div class="summary-box">
+            When the new detection code ships, all past expedition paths get re-evaluated. If a captain already passed within range, they get the detection retroactively — no confusion about "was this always here?"
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 2: ARIA PROGRESSION TRIGGERS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">ARIA Progression Triggers — Pacing the Reveal</div>
+
+        <div class="summary-box">
+            <strong>Confirmed:</strong> Option B — slow reveal, don't front-load.
+            <br>ARIA gives unprompted hints based on multiple triggers, not just time.
+        </div>
+
+        <div class="quote-box">
+            <p>"I like Option B better. Gives ARIA more to do, more inclusive. I dont like when games try to jam everything into first couple days of games... can be overwhelming"</p>
+            <span class="attribution">— Luke, Section 2</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"Would suggest the progression is based on Sol#, plus # of expeditions. Like ARIA gives unprompted hints based on Sol Day, but also gives them based on # of returned expeditions, or maybe even certain building upgrades. Maybe even build in prompts based on ARIA stat progression (not currently built out in game)"</p>
+            <span class="attribution">— Luke, Section 2</span>
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Trigger Type</th>
+                        <th>Example Threshold</th>
+                        <th>ARIA Behavior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Sol count</td>
+                        <td>Sol 30, 60, 90, 120</td>
+                        <td>Increasingly specific hints about Signal existence</td>
+                    </tr>
+                    <tr>
+                        <td>Returned expeditions</td>
+                        <td>10, 25, 50, 100</td>
+                        <td>Hints about what expeditions might find beyond resources</td>
+                    </tr>
+                    <tr>
+                        <td>Building upgrades</td>
+                        <td>Depot L3, Lab L3, Scanner L2</td>
+                        <td>"Your equipment is sensitive enough to detect... something"</td>
+                    </tr>
+                    <tr>
+                        <td>ARIA stats</td>
+                        <td>Bond level milestones</td>
+                        <td>More personal, cryptic whispers about what she senses</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Earlier Hints Needed</h4>
+
+        <div class="quote-box">
+            <p>"Hard to say when i realized it... cuz i could say 2 weeks ago? More, and earlier hints, would def improve game play"</p>
+            <span class="attribution">— Luke, Section 1</span>
+        </div>
+
+        <p>Luke didn't realize the Signal was a thing until ~Sol 150. Captains need breadcrumbs much earlier — not telling them <em>what</em> it is, but that <em>something</em> is out there.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 3: TWO-STEP CLAIMING FLOW -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">Two-Step Claiming Flow — Detection is Not Discovery</div>
+
+        <div class="summary-box">
+            <strong>Confirmed:</strong> Finding a signal (42km detection) is just step 1. You must send a <strong>separate expedition</strong> back to the site to claim it, with cinematic sequences.
+        </div>
+
+        <div class="quote-box">
+            <p>"I think once you 'find' a signal (42km), you should then have to go to the site on separate expedition, with cinematic (maybe pre and post cinematic)"</p>
+            <span class="attribution">— Luke, Section 5</span>
+        </div>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box" style="border-color: var(--color-primary);">
+                    <strong>Step 1: Detection</strong>
+                    <br>Expedition path passes within detection radius
+                    <br>Signal appears on your Signal page
+                    <br>ARIA whispers about what you sensed
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--text-muted);">
+                    <strong>Back at Colony</strong>
+                    <br>Review detection on Signal page
+                    <br>See approximate location on map
+                    <br>Plan your claiming expedition
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia);">
+                    <strong>Step 2: Claiming Expedition</strong>
+                    <br>Send expedition directly to signal site
+                    <br>Pre-cinematic on approach
+                    <br>Post-cinematic on discovery
+                    <br>Origin Site claimed
+                </div>
+            </div>
+        </div>
+
+        <p>This creates a multi-day arc per signal: detect it during a normal expedition, come home, see it on your Signal page, plan a return trip, experience the cinematic. The discovery moment is <strong>earned</strong>, not accidental.</p>
+
+        <div class="question-box">
+            <strong>Open question:</strong> What happens during the claiming expedition? Is it a special expedition type? Does it cost more? Can it fail? Does the crew need certain stats?
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 4: PUZZLE FRAGMENTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Puzzle Fragments — Collectibles with ARIA Whispers</div>
+
+        <div class="quote-box">
+            <p>"I like the concept of puzzle fragments alot! More collecting always plus for me! Puzzle fragments should then always be accompanied by aria whisper"</p>
+            <span class="attribution">— Luke, Section 6</span>
+        </div>
+
+        <div class="summary-box">
+            <strong>Confirmed:</strong> Puzzle fragment collecting system. Every fragment comes with an ARIA whisper — a short, cryptic message that builds the Signal narrative piece by piece.
+        </div>
+
+        <p>Fragments are found during expeditions (separate from Signal detection). They're breadcrumbs that build toward understanding the Signal. Each one triggers an ARIA whisper — a unique narrative moment that makes every fragment feel meaningful, not just a collectible counter.</p>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Trading Between Captains</h4>
+
+        <div class="quote-box">
+            <p>"Concept of Captain trading is interesting. Would depend on how 'easy' it was to get fragments. And if you didnt find other captains, are you severely penalized?"</p>
+            <span class="attribution">— Luke, Section 6</span>
+        </div>
+
+        <div class="question-box">
+            <strong>Open design question:</strong> If fragment trading exists, solo captains must NOT be severely penalized. Two possible approaches:
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Option A:</strong> All fragments findable solo. Trading just speeds it up.</li>
+                <li><strong>Option B:</strong> No trading. Fragments are personal. Aligns with Luke's "self-contained path" philosophy.</li>
+            </ul>
+            Luke's multiplayer stance (next section) suggests Option B may be the better fit.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 5: MULTIPLAYER PHILOSOPHY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Multiplayer Philosophy — Passive, Not Competitive</div>
+
+        <div class="summary-box">
+            <strong>Confirmed:</strong> The Signal is a self-contained journey for each captain. No competitive mechanics. No notifications. Passive evidence of others only.
+        </div>
+
+        <div class="quote-box">
+            <p>"Interesting question about other captains... im leaning towards no notification, as that would assume all other captains knew each other and/or knew about signal. I also think the signal should be mostly a self contained path for each captain"</p>
+            <span class="attribution">— Luke, Section 7</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"I do acknowledge the cool concept of competing with other captains and the multiplayer experience, but i generally try to avoid this type of game play"</p>
+            <span class="attribution">— Luke, Section 7</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"I still think the tier system below works for this, as first captain will have name on it, thus signifying to later captains have found this item already"</p>
+            <span class="attribution">— Luke, Section 7</span>
+        </div>
+
+        <p>The multiplayer element is <strong>passive</strong>: when you claim an Origin Site, you see that someone else was there first (their name on the tier). You don't race them, you don't get notified, you don't compete. You just see evidence of another captain's journey. This is the right balance — it feels like a shared world without the pressure of competitive mechanics.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Multiplayer Rules</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Notifications when others find signals</span><span class="mockup-value">NO</span></div>
+                <div class="mockup-row"><span class="mockup-label">Race/competition mechanics</span><span class="mockup-value">NO</span></div>
+                <div class="mockup-row"><span class="mockup-label">First captain's name on tier</span><span class="mockup-value">YES (passive)</span></div>
+                <div class="mockup-row"><span class="mockup-label">Self-contained path per captain</span><span class="mockup-value">YES</span></div>
+                <div class="mockup-row"><span class="mockup-label">Captain-to-captain trading</span><span class="mockup-value">TBD (see Puzzle Fragments)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 6: REWARDS & TIERS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Rewards & Tiers — What You Get</div>
+
+        <div class="quote-box">
+            <p>"3 tiers is enough. You get Andy, Luke, and Latent Wanderers. :)"</p>
+            <span class="attribution">— Luke, Section 8</span>
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tier</th>
+                        <th>Who</th>
+                        <th>Reward</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Tier 1 — First Captain</td>
+                        <td>Name permanently engraved</td>
+                        <td>Highest SV/hr and/or Shard/hr bonus</td>
+                    </tr>
+                    <tr>
+                        <td>Tier 2 — Early Captains</td>
+                        <td>Name on the wall</td>
+                        <td>Medium SV/hr and/or Shard/hr bonus</td>
+                    </tr>
+                    <tr>
+                        <td>Tier 3 — Latent Wanderers</td>
+                        <td>Everyone after</td>
+                        <td>Base SV/hr and/or Shard/hr bonus</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="quote-box">
+            <p>"Yes, you should *something* for finding it. Even if its just SV/hr and/or Shard/hr generation. These new values MUST show up in Base homepage calculations. :)"</p>
+            <span class="attribution">— Luke, Section 8</span>
+        </div>
+
+        <div class="summary-box">
+            <strong>Hard requirement:</strong> Signal rewards MUST appear in the colony Base page income calculations. If a captain finds an Origin Site and their Shard/hr goes up, that increase must be visible in the main colony dashboard — not hidden in a separate Signal page.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 7: SIGNAL PAGE UX -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">Signal Page UX — What /signal Should Become</div>
+
+        <div class="quote-box">
+            <p>"I think the Signal Page itself should be much more intuitive and comprehensive. Detailed notes that stay around telling you about each different signal you have detected"</p>
+            <span class="attribution">— Luke, Section 4</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"There needs to be more linking between The Signal page, and the Expedition Map (links to click, dots that are searchable... etc). Ie: Signal Page says '-30, 98', no idea what that means, or how to find that on the map. 'Signal detected near Havanna Plantia...' no idea where that is on map"</p>
+            <span class="attribution">— Luke, Section 3</span>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Signal Page Requirements</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Per-signal detail cards</span><span class="mockup-value">Persistent notes, detection history, closest approach</span></div>
+                <div class="mockup-row"><span class="mockup-label">Map linking</span><span class="mockup-value">Clickable coordinates that open expedition map at that location</span></div>
+                <div class="mockup-row"><span class="mockup-label">Detection tiers</span><span class="mockup-value">5 tiers of signal strength visualization</span></div>
+                <div class="mockup-row"><span class="mockup-label">Personal progress</span><span class="mockup-value">YOUR closest approach per signal, YOUR fragments collected</span></div>
+                <div class="mockup-row"><span class="mockup-label">Fuzzy indicators</span><span class="mockup-value">Direction/distance hints that get clearer as you get closer</span></div>
+            </div>
+        </div>
+
+        <div class="quote-box">
+            <p>"5 tiers feels right. Need to define what 'expedition log' really means."</p>
+            <span class="attribution">— Luke, Section 4</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"Personal progress for sure!"</p>
+            <span class="attribution">— Luke, Section 12</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"Fuzzy sounds right... would need to see it in action"</p>
+            <span class="attribution">— Luke, Section 12</span>
+        </div>
+
+        <p><strong>New bug created:</strong> "Signal page needs clickable links to Expedition Map" (P2 Feature) — this is a current UX gap, not just a Phase 2 item.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 8: WORLD 2 VISION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">World 2 — After All 14 Earth Signals</div>
+
+        <div class="quote-box">
+            <p>"My original thought was that finding all 14 earth objects, unlocks something new on MARS. Phase 2 being:<br>
+            1. Maybe 14 more signals that have something to do with Martian heritage (build story/lore around that)<br>
+            2. Excuse to revisit some dots you have already been to<br>
+            3. Unlocks new technology branch<br>
+            4. Maybe you even get a new Martian crew member?"</p>
+            <span class="attribution">— Luke, Section 10/15</span>
+        </div>
+
+        <div class="quote-box">
+            <p>"After you find the 14 new Martian objects/signals, THEN it opens up the Jupiter or Zachalakia Planet stuff"</p>
+            <span class="attribution">— Luke, Section 10/15</span>
+        </div>
+
+        <div class="summary-box">
+            <strong>World 2 Progression:</strong>
+            <ol style="margin: 8px 0 0 0;">
+                <li><strong>Phase 1 (current):</strong> Find 14 Earth Origin Sites</li>
+                <li><strong>Phase 2 — Martian Heritage:</strong> 14 new signals tied to Mars history/lore. Revisit already-explored dots. New tech branch unlocks. Possibly a new Martian crew member.</li>
+                <li><strong>Phase 3 — Beyond Mars:</strong> Jupiter, Zachalakia, or other planets open up</li>
+            </ol>
+        </div>
+
+        <p>This is long-horizon vision, not immediate Phase 2 scope. But it confirms the Signal system has legs well beyond the initial 14 sites — and Luke's design gives revisiting old dots a <em>reason</em>, which is elegant.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 9: HOLD / SKEPTICAL -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--text-muted);">
+        <div class="section-title">Hold / Skeptical — Don't Build Yet</div>
+
+        <p>Luke flagged these as potentially diluting the Signal experience. They should NOT be built without further discussion.</p>
+
+        <h4 style="color: var(--text-primary); margin-top: 16px;">Echo Sites</h4>
+        <div class="quote-box">
+            <p>"Hmmmmm, need to be convinced on this one. Im a little worried this feature dilutes The Signal part of the game. Cant really say i dont enjoy more 'stuff' on signal page but... would need to see how busy that page is once we implement 'phase 2' of that page"</p>
+            <span class="attribution">— Luke, Section 9</span>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 16px;">ARIA Bond Intersection</h4>
+        <div class="quote-box">
+            <p>"Similar comment on this as Echo Sites... this is cool, but does it dilute the Captain ARIA Bond? Maybe this increases Captain/Scientist/ARIA stats instead?"</p>
+            <span class="attribution">— Luke, Section 10</span>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 16px;">Blockchain / Decoder Terminal</h4>
+        <div class="quote-box">
+            <p>"No real thoughts on any of this. I wont be trying to decode blockchains any time soon"</p>
+            <span class="attribution">— Luke, Section 16</span>
+        </div>
+        <div class="quote-box">
+            <p>"I like puzzles though"</p>
+            <span class="attribution">— Luke, Section 16</span>
+        </div>
+
+        <div class="summary-box">
+            <strong>Takeaway:</strong> Keep the blockchain layer for players who want to dig deep, but don't make it required. Luke won't engage with it, but likes the puzzle framing. Echo Sites and ARIA Bond intersection are risky — revisit after the core Signal Phase 2 is built and the page isn't already too busy.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 10: IMPLEMENTATION PRIORITY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Implementation Priority — What to Build First</div>
+
+        <p>Based on Luke's feedback, ordered by impact and dependency:</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Priority</th>
+                        <th>Item</th>
+                        <th>Why First</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Closest-approach detection</strong></td>
+                        <td>Everything else depends on signals actually being findable</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>Variable detection radius</strong></td>
+                        <td>Pairs with #1, makes some signals achievable now</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><strong>Retroactive check</strong></td>
+                        <td>Rewards existing play, prevents confusion</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><strong>Signal page UX overhaul</strong></td>
+                        <td>Captains need to understand what they've found</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><strong>Signal ↔ Map linking</strong></td>
+                        <td>Usability gap in current product</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><strong>ARIA progression triggers</strong></td>
+                        <td>Gets players aware of Signal earlier</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><strong>Two-step claiming flow</strong></td>
+                        <td>Requires detection system working first</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td><strong>Puzzle fragments + ARIA whispers</strong></td>
+                        <td>Narrative layer, can come after core mechanics</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td><strong>Crew/building/tech detection levers</strong></td>
+                        <td>Depends on "Scientist Stats" and "Depot Recalibration" bugs</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td><strong>3-tier reward system</strong></td>
+                        <td>Needs claiming flow working first</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PILGRIMBOT BRAINSTORM LINK -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), var(--bg-secondary)); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#x1F9E0;</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">Brainstorm with PilgrimBot</h3>
+        <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 13px;">
+            Full PilgrimBot — streaming, markdown, code context, bug creation, endgame registry
+        </p>
+        <a href="/pilgrimbot?brainstorm=signal-phase-2" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; background: var(--color-sepolia); color: white;">
+            Open PilgrimBot — Signal Phase 2
+        </a>
+    </div>
+
+</div>
+{% endblock %}
