@@ -861,85 +861,43 @@ def calculate_accumulated_income(user_id):
 
 
 def claim_accumulated_income(user_id, session=None):
-    """Claim all accumulated Sepolia from generators and send to wallet"""
+    """Claim all accumulated Sepolia from generators and send to wallet.
+
+    Bug #1268 fix: LOCAL DB FIRST, blockchain in background thread.
+    Old code sent blockchain tx first — if anything after it threw an exception,
+    the timer was reset but balance never updated = shards lost.
+    Now: update balance + reset timer atomically in one DB transaction,
+    then fire blockchain tx in background. Shards can never be lost.
+    """
     calc = calculate_accumulated_income(user_id)
-    
+
     if not calc['can_claim']:
         return {
-            'success': False, 
-            'error': 'No income to claim (minimum: 0.1 Sepolia)', 
+            'success': False,
+            'error': 'No income to claim (minimum: 0.1 Sepolia)',
             'accumulated': calc['total_accumulated']
         }
-    
+
     wallet = get_user_primary_sepolia_wallet(user_id)
     if not wallet:
         return {'success': False, 'error': 'No wallet found'}
-    
+
     coords = get_or_set_user_mars_home(user_id)
-    
-    miner = MarsAsteroidMiner()
-    if not miner.connect():
-        return {'success': False, 'error': 'Network unavailable'}
-    
+    amount_eth = calc['total_accumulated'] / 10000000
+    total_hours = sum(d['hours_elapsed'] for d in calc['details'])
+
+    # === STEP 1: ATOMIC DB UPDATE — balance + timer reset in ONE transaction ===
     try:
-        amount_eth = calc['total_accumulated'] / 10000000
-        total_hours = sum(d['hours_elapsed'] for d in calc['details'])
-        
-        # Build harvest details
-        harvest_details = []
-        for detail in calc['details']:
-            if detail['structure_type'] == 'solar_array':
-                lat = abs(coords['latitude'])
-                efficiency = (1.0 - (lat / 90.0) * 0.4) * 100
-                harvest_details.append(
-                    f"Solar Array at {coords['latitude']:.2f}°N {coords['longitude']:.2f}°E: "
-                    f"{detail['accumulated']:.1f} Sepolia over {detail['hours_elapsed']:.1f}h. "
-                    f"Efficiency: {efficiency:.1f}%. "
-                )
-        
-        # Create harvest message
-        message = (
-            f"Colony shard systems generated {calc['total_accumulated']:.1f} Sepolia over {total_hours:.1f} hours. "
-            f"Base: {coords['latitude']:.2f}°N, {coords['longitude']:.2f}°E. "
-            f"{''.join(harvest_details)}"
-            f"Resources harvested and transferred to cache. "
-        )
-
-        # Use FAST method - broadcast immediately, don't wait for confirmation
-        result = miner.send_sepolia_reward_fast(
-            wallet['wallet_address'],
-            amount_eth,
-            message,
-            context="infrastructure_income"
-        )
-
-        if not result['success']:
-            return {'success': False, 'error': 'Transaction failed'}
-
-        # Log transaction
-        create_depot_transaction(
-            user_id=user_id,
-            wallet_address=wallet['wallet_address'],
-            purchase_type='infrastructure_income',
-            amount_eth=amount_eth,
-            tx_hash=result['tx_hash'],
-            etherscan_url=result['etherscan_url'],
-            item_details={
-                'hours_accumulated': total_hours,
-                'structures': [d['structure_type'] for d in calc['details']],
-                'base_coordinates': {
-                    'latitude': coords['latitude'],
-                    'longitude': coords['longitude']
-                },
-                'solar_efficiency_percent': (1.0 - (abs(coords['latitude']) / 90.0) * 0.4) * 100,
-                'structure_details': calc['details']
-            }
-        )
-        
-        # Update last_payout_at for all structures AND clear dust
         with db_cursor(commit=True) as cur:
+            # Update wallet balance
+            cur.execute("""
+                UPDATE pilgrim.sepolia_assets
+                SET current_balance_eth = current_balance_eth + %s, last_balance_check = NOW()
+                WHERE wallet_address = %s
+            """, (amount_eth, wallet['wallet_address']))
+
+            # Reset last_payout_at, add to total_generated, clear dust — all structures
             for structure in calc['details']:
-                # Reset last_payout_at, add to total_generated, AND clear dust_covered
                 cur.execute("""
                     UPDATE pilgrim.colony_infrastructure
                     SET last_payout_at = NOW(),
@@ -949,49 +907,91 @@ def claim_accumulated_income(user_id, session=None):
                         updated_at = NOW()
                     WHERE user_id = %s AND structure_type = %s AND status = 'active'
                 """, (structure['accumulated'], user_id, structure['structure_type']))
-
-        # Log dust clearing if any were covered
-        dust_cleared = calc.get('any_dust_covered', False)
-        if dust_cleared:
-            logger.info(f"✨ Dust cleared from solar arrays for user {user_id}")
-
-        logger.info(f"✅ User {user_id} harvested {calc['total_accumulated']} Sepolia from {coords['latitude']:.2f}°N, {coords['longitude']:.2f}°E")
-
-        # Calculate new balance: session cache + claimed amount (NO blockchain re-query)
-        if session is not None:
-            from utilities.depot_utils import update_session_balance
-            old_balance = session.get('_bal', 0)
-            new_balance = old_balance + calc['total_accumulated']
-            update_session_balance(session, new_balance)
-        else:
-            # No session - use DB cached balance as fallback
-            from utilities.depot_utils import get__bal
-            old_balance = float(get__bal(user_id))
-            new_balance = old_balance + calc['total_accumulated']
-
-        # Persist new balance to DB so it survives session expiry (same fix as #1144)
-        update_sepolia_wallet_balance(wallet['wallet_address'],
-                                      float(wallet.get('current_balance_eth', 0)) + amount_eth)
-
-        # Update activity timestamp for ARIA photo generation
-        from utilities.postgres_utils import update_user_activity
-        update_user_activity(user_id)
-
-        return {
-            'success': True,
-            'amount_claimed': calc['total_accumulated'],
-            'new_balance': new_balance,  # For immediate UI update - calculated, not re-queried
-            'tx_hash': result['tx_hash'],
-            'etherscan_url': result['etherscan_url'],
-            'details': calc['details'],
-            'base_coordinates': coords,
-            'dust_cleared': dust_cleared,
-            'panels_cleaned': len(calc.get('dust_covered_structures', []))
-        }
-
     except Exception as e:
-        logger.error(f"Failed to claim income for user {user_id}: {e}")
-        return {'success': False, 'error': str(e)}
+        logger.error(f"Failed to claim income for user {user_id} (DB update): {e}")
+        return {'success': False, 'error': 'Harvest failed — shards are safe, try again'}
+
+    # === STEP 2: UPDATE SESSION CACHE (fast, non-critical) ===
+    if session is not None:
+        from utilities.depot_utils import update_session_balance
+        old_balance = session.get('_bal', 0)
+        new_balance = old_balance + calc['total_accumulated']
+        update_session_balance(session, new_balance)
+    else:
+        from utilities.depot_utils import get__bal
+        old_balance = float(get__bal(user_id))
+        new_balance = old_balance + calc['total_accumulated']
+
+    dust_cleared = calc.get('any_dust_covered', False)
+    if dust_cleared:
+        logger.info(f"✨ Dust cleared from solar arrays for user {user_id}")
+
+    logger.info(f"✅ User {user_id} harvested {calc['total_accumulated']} Sepolia from {coords['latitude']:.2f}°N, {coords['longitude']:.2f}°E")
+
+    # Update activity timestamp for ARIA photo generation
+    from utilities.postgres_utils import update_user_activity
+    update_user_activity(user_id)
+
+    # === STEP 3: BLOCKCHAIN TX IN BACKGROUND — per CLAUDE.md pattern ===
+    import threading
+    def _background_harvest_tx():
+        try:
+            harvest_details = []
+            for detail in calc['details']:
+                if detail['structure_type'] == 'solar_array':
+                    lat = abs(coords['latitude'])
+                    efficiency = (1.0 - (lat / 90.0) * 0.4) * 100
+                    harvest_details.append(
+                        f"Solar Array at {coords['latitude']:.2f}°N {coords['longitude']:.2f}°E: "
+                        f"{detail['accumulated']:.1f} Sepolia over {detail['hours_elapsed']:.1f}h. "
+                        f"Efficiency: {efficiency:.1f}%. "
+                    )
+            message = (
+                f"Colony shard systems generated {calc['total_accumulated']:.1f} Sepolia over {total_hours:.1f} hours. "
+                f"Base: {coords['latitude']:.2f}°N, {coords['longitude']:.2f}°E. "
+                f"{''.join(harvest_details)}"
+                f"Resources harvested and transferred to cache. "
+            )
+            miner = MarsAsteroidMiner()
+            if miner.connect():
+                result = miner.send_sepolia_reward_fast(
+                    wallet['wallet_address'], amount_eth, message, context="infrastructure_income"
+                )
+                if result.get('success'):
+                    create_depot_transaction(
+                        user_id=user_id,
+                        wallet_address=wallet['wallet_address'],
+                        purchase_type='infrastructure_income',
+                        amount_eth=amount_eth,
+                        tx_hash=result['tx_hash'],
+                        etherscan_url=result['etherscan_url'],
+                        item_details={
+                            'hours_accumulated': total_hours,
+                            'structures': [d['structure_type'] for d in calc['details']],
+                            'base_coordinates': {'latitude': coords['latitude'], 'longitude': coords['longitude']},
+                            'solar_efficiency_percent': (1.0 - (abs(coords['latitude']) / 90.0) * 0.4) * 100,
+                            'structure_details': calc['details']
+                        }
+                    )
+                    logger.info(f"📡 Background harvest tx complete: {result['tx_hash']}")
+                else:
+                    logger.warning(f"⚠️ Background harvest tx failed for user {user_id}: {result.get('error')}")
+        except Exception as e:
+            logger.error(f"⚠️ Background harvest tx error for user {user_id}: {e}")
+
+    threading.Thread(target=_background_harvest_tx, daemon=True).start()
+
+    return {
+        'success': True,
+        'amount_claimed': calc['total_accumulated'],
+        'new_balance': new_balance,
+        'tx_hash': 'pending',
+        'etherscan_url': '',
+        'details': calc['details'],
+        'base_coordinates': coords,
+        'dust_cleared': dust_cleared,
+        'panels_cleaned': len(calc.get('dust_covered_structures', []))
+    }
 
 
 def record_science_value(user_id):

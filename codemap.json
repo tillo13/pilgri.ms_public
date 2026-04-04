@@ -1639,7 +1639,7 @@
       "send_completion_reward — Send first payout when construction completes",
       "user_has_maintenance_drone — Check if user has dust immunity from automation upgrade (level 3+ = Dust Guard)",
       "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
-      "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet",
+      "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet.",
       "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest.",
       "get_infrastructure_page_data — Get all data needed for the colony/infrastructure page.",
       "handle_infrastructure_build — Handle infrastructure build request - check prereqs, start construction, update session.",
@@ -2480,7 +2480,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
