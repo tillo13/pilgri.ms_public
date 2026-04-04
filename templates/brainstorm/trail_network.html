@@ -565,6 +565,146 @@ lore_memory_level    INT          -- Current Lore Memory level
         </ul>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- APRIL 2026 UPDATE — Trail System Rebuild (v73)               -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+
+    <div class="section" id="april-2026-update" style="border-left: 4px solid #22c55e; background: linear-gradient(135deg, rgba(34,197,94,0.05), var(--bg-secondary));">
+        <span class="status-badge status-active" style="background: rgba(34,197,94,0.2); color: #22c55e;">LIVE — v73</span>
+        <div class="section-title" style="color: #22c55e;">April 2026 — Trail System Rebuild</div>
+        <p style="color: var(--text-secondary);">Shipped April 4, 2026. Complete overhaul of trail speed, crew stat integration, Automation Drone passive building, and ARIA skill activation.</p>
+
+        <div class="summary-box" style="border-color: #22c55e;">
+            <strong>What Changed:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Base rate:</strong> 0.15 km/hr → <strong>0.75 km/hr</strong> (~5x increase)</li>
+                <li><strong>Captain Logistics stat</strong> is now the primary speed driver (was only XP before)</li>
+                <li><strong>ARIA Resonance</strong> scales 5x faster (Lv7 = 1.35x instead of old 1.07x)</li>
+                <li><strong>Session durations flipped:</strong> higher stats = longer sessions (15→30 min). Double reward.</li>
+                <li><strong>Automation Drone</strong> builds trails 24/7 passively (0.5→8.0 km/hr by level)</li>
+                <li><strong>ARIA stats activated:</strong> Resonance, Crystal Sensing, Lore Memory replace mystery ?/??? placeholders</li>
+                <li><strong>Single code path:</strong> All trail building uses one shared function. No more rate discrepancies.</li>
+                <li><strong>Full math shown on Crew/Trails tab</strong> — every multiplier visible</li>
+            </ul>
+        </div>
+
+        <h4 style="margin: 24px 0 8px; color: #22c55e;">New Stat Formulas</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 8px; color: var(--color-success);"><strong>Captain</strong></td>
+                <td style="padding: 8px;">1.0 + (Logistics / 30) + (Logistics XP / 2000)</td>
+                <td style="padding: 8px; color: var(--text-secondary);">LOG 66 + 660 XP = <strong>3.53x</strong></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 8px; color: var(--color-sepolia);"><strong>Scientist</strong></td>
+                <td style="padding: 8px;">(1 + Nav XP/1500) × (1 + Specialty + Geology/200)</td>
+                <td style="padding: 8px; color: var(--text-secondary);">Dr. Debra = <strong>1.74x</strong></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 8px; color: #a855f7;"><strong>ARIA</strong></td>
+                <td style="padding: 8px;">1.0 + (Resonance / 20) + (Lore Memory / 200)</td>
+                <td style="padding: 8px; color: var(--text-secondary);">Res Lv7 + Lore Lv1 = <strong>1.35x</strong></td>
+            </tr>
+        </table>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Equipment (Scanner, EVA Suit) and Consumables multiply on top. Total = crew_stat × scanner × suit × consumable.</p>
+
+        <h4 style="margin: 24px 0 8px; color: #22c55e;">Session Duration Tiers (Flipped!)</h4>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Higher multiplier = <strong>longer session</strong>. Investing in stats gives you faster rate AND more time. Double benefit.</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">1.00x (no bonuses)</td><td style="padding: 6px;"><strong>15 min</strong></td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">1.05-1.14x</td><td style="padding: 6px;"><strong>18 min</strong></td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">1.15-1.29x</td><td style="padding: 6px;"><strong>20 min</strong></td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">1.30-1.49x</td><td style="padding: 6px;"><strong>25 min</strong></td></tr>
+            <tr><td style="padding: 6px;">1.50x+</td><td style="padding: 6px;"><strong>30 min</strong></td></tr>
+        </table>
+
+        <h4 style="margin: 24px 0 8px; color: #22c55e;">Luke's Current Output (per day)</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 6px; color: var(--color-success);">Captain</td>
+                <td style="padding: 6px;">3.53x stat × 1.03x scanner × 1.15x suit = 4.18x</td>
+                <td style="padding: 6px;"><strong>1.57 km</strong> / 30 min</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 6px; color: var(--color-sepolia);">Scientist</td>
+                <td style="padding: 6px;">1.74x stat × 1.03x × 1.15x = 2.06x</td>
+                <td style="padding: 6px;"><strong>0.77 km</strong> / 30 min</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 6px; color: #a855f7;">ARIA</td>
+                <td style="padding: 6px;">1.35x stat × 1.03x × 1.15x = 1.60x</td>
+                <td style="padding: 6px;"><strong>0.60 km</strong> / 30 min</td>
+            </tr>
+            <tr style="background: rgba(34,197,94,0.1);">
+                <td style="padding: 8px;" colspan="2"><strong>Daily Total (3 sessions)</strong></td>
+                <td style="padding: 8px;"><strong style="color: #22c55e;">2.94 km/day</strong></td>
+            </tr>
+        </table>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Canas (29 km): ~10 days. A 100 km trail: ~34 days. A 134 km trail: ~46 days.</p>
+
+        <h4 style="margin: 24px 0 8px; color: #22c55e;">Automation Drone — Passive Trail Building</h4>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Runs every 30 min via cron, even when offline. Builds on the trail closest to completion. This is the endgame scaler.</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Lv1 Maintenance Drone</td><td style="padding: 6px;">0.5 km/hr</td><td style="padding: 6px; color: var(--text-muted);">12 km/day</td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Lv3 Dust Guard</td><td style="padding: 6px;">1.0 km/hr</td><td style="padding: 6px; color: var(--text-muted);">24 km/day</td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Lv5 Mining Drone II</td><td style="padding: 6px;">2.0 km/hr</td><td style="padding: 6px; color: var(--text-muted);">48 km/day</td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Lv8 Regolith Processor</td><td style="padding: 6px;">5.0 km/hr</td><td style="padding: 6px; color: var(--text-muted);">120 km/day</td></tr>
+            <tr><td style="padding: 6px;">Lv10 Mars Mining Matrix</td><td style="padding: 6px;">8.0 km/hr</td><td style="padding: 6px; color: var(--text-muted);">192 km/day</td></tr>
+        </table>
+
+        <h4 style="margin: 24px 0 8px; color: #22c55e;">ARIA Skills — No More Mystery</h4>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Origin/Memory/Purpose "?/???" placeholders replaced with real functional stats. All three grow from ARIA trail missions (+5 XP each per completion).</p>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 6px; color: #a855f7;"><strong>Resonance</strong></td>
+                <td style="padding: 6px;">Trail speed multiplier</td>
+                <td style="padding: 6px;">1.05x (Lv1) → 6.0x (Lv100)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-default);">
+                <td style="padding: 6px; color: #c084fc;"><strong>Crystal Sensing</strong></td>
+                <td style="padding: 6px;">Trail discovery chance</td>
+                <td style="padding: 6px;">1% (Lv1) → 6% (Lv100)</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; color: #7c3aed;"><strong>Lore Memory</strong></td>
+                <td style="padding: 6px;">Trail efficiency bonus</td>
+                <td style="padding: 6px;">+0.5% (Lv1) → +50% (Lv100)</td>
+            </tr>
+        </table>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Age stat remains mysterious — "A very long time."</p>
+
+        <h4 style="margin: 24px 0 8px; color: #22c55e;">Progression Curve</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Fresh captain (0 stats)</td><td style="padding: 6px;">0.56 km/day</td><td style="padding: 6px;">100km in ~6 months</td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Luke (current stats)</td><td style="padding: 6px;">2.94 km/day</td><td style="padding: 6px;">100km in ~34 days</td></tr>
+            <tr style="border-bottom: 1px solid var(--border-default);"><td style="padding: 6px;">Maxed crew (no drone)</td><td style="padding: 6px;">5.81 km/day</td><td style="padding: 6px;">100km in ~17 days</td></tr>
+            <tr><td style="padding: 6px;">Maxed crew + Drone Lv10</td><td style="padding: 6px;">198 km/day</td><td style="padding: 6px;">100km in ~12 hours</td></tr>
+        </table>
+
+        <h4 style="margin: 24px 0 8px; color: var(--text-secondary);">Brainstorm Items Resolved</h4>
+        <ul style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;">
+            <li><strong>Section 3</strong> "15, 30, 45, 60 min sessions" → Implemented 15-30 min range based on stats</li>
+            <li><strong>Section 1</strong> "1% chance of finding items on trail" → Crystal Sensing stat scales discovery chance</li>
+            <li><strong>Section 5</strong> "Buildings/techs affecting crew ability" → Multiplier chain ready for infrastructure/tech hooks</li>
+            <li><strong>Section 9</strong> "Show math like the above" → Full formula breakdown on Trails tab</li>
+            <li><strong>Section 10</strong> "Trail Maintenance is NOT fun" → Confirmed: no decay, trails permanent</li>
+            <li><strong>Section 10</strong> "Trail building equipment idea" → Scanner + EVA Suit stack multiplicatively</li>
+            <li><strong>Bug #1113</strong> "108 years per trail" → Fixed: 34 days at current stats, drone scales endgame</li>
+            <li><strong>Bug #1229</strong> "Trail speed progression" → This IS the progression: 1x→6x from stat investment</li>
+            <li><strong>Bug #1214</strong> "No trail maintenance" → Respected, never built</li>
+        </ul>
+
+        <h4 style="margin: 24px 0 8px; color: var(--text-secondary);">Still To Build (Future Updates)</h4>
+        <ul style="font-size: 13px; color: var(--text-muted); line-height: 1.8;">
+            <li>Scanner equipment purchasable in Depot (config exists, item needed)</li>
+            <li>Infrastructure bonuses (Solar Array, Comms Tower, Battery Bank)</li>
+            <li>Tech tree bonuses (Regolith Compaction, Terrain Adaptation)</li>
+            <li>Robot Crew Member (#1147) — 4th trail builder from legendary discoveries</li>
+            <li>ARIA Bond trail sharing (#1087) — bonded captains contribute to each other's networks</li>
+            <li>Completionist milestones with rewards (Connected Colony, Regional Explorer, Mars Cartographer, Trail Master)</li>
+        </ul>
+    </div>
+
     <!-- Back Link -->
     <div style="text-align: center; margin-top: 20px;">
         <a href="/crew" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">← Back to Crew Page</a>
