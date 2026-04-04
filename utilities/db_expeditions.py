@@ -452,6 +452,7 @@ def get_recent_discoveries(user_id: int, limit: int = 5) -> List[Dict]:
                 JOIN pilgrim.discovery_items di ON ed.discovery_item_id = di.id
                 JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
                 WHERE e.user_id = %s AND ed.unlocked_at IS NOT NULL AND ed.claimed_by_user = false
+                    AND e.status = 'complete'
                 ORDER BY ed.unlocked_at DESC LIMIT %s
             """, (user_id, limit))
             return _fetchall(cur)

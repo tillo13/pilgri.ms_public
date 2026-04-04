@@ -104,7 +104,7 @@ def _get_mars_environment_factors(latitude: float) -> dict:
         'latitude': round(lat_factor, 3),
         'dust_condition': env['dust']['condition'],
         'temp_celsius': env['temperature']['current'],
-        'combined': round(dust_factor * temp_factor, 3),
+        'combined': round(min(1.0, dust_factor * temp_factor), 3),
     }
 
 

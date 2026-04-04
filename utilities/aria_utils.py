@@ -771,6 +771,8 @@ def _build_friend_prompt(captain_name: str, snapshot: Optional[Dict], user_conte
             crew_lines.append(f"Captain building trail to {crew['captain']['destination']}")
         if crew.get('scientist'):
             crew_lines.append(f"Scientist building trail to {crew['scientist']['destination']}")
+        if crew.get('aria'):
+            crew_lines.append(f"ARIA building trail to {crew['aria']['destination']}")
         crew_str = '; '.join(crew_lines) if crew_lines else 'at base'
 
         # Building queue (depot construction)
