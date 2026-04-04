@@ -2480,7 +2480,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2493,7 +2493,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -2558,7 +2558,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
@@ -2567,8 +2567,17 @@
   "templates/brainstorm/aria_meetings.html": {
     "description": "Page: ARIA Meetings & Outcomes — Brainstorm"
   },
+  "templates/brainstorm/captain_stats.html": {
+    "description": "Page: Captain & Scientist Stats Brainstorm — Pilgrims"
+  },
+  "templates/brainstorm/depot_recalibration.html": {
+    "description": "Page: Depot Recalibration Brainstorm — Pilgrims"
+  },
   "templates/brainstorm/icon_redesign.html": {
     "description": "Page: Colony Redesign — Brainstorm"
+  },
+  "templates/brainstorm/robot_crew.html": {
+    "description": "Page: Robot Crew Member Brainstorm — Pilgrims"
   },
   "templates/brainstorm/signal.html": {
     "description": "Page: Signal System — Endgame Design — Pilgrims"

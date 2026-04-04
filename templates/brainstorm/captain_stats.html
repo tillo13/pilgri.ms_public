@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+{% block title %}Captain & Scientist Stats Brainstorm — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>window.BRAINSTORM_PAGE_KEY = 'captain-stats';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-draft">Brainstorm</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Captain & Scientist Stats</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Stat Progression, What Stats Actually Do, and How They Grow</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">April 2026 — Bug #21 (Captain Stats, P1) + Bug #1108 (Scientist Stats, P1)</p>
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">Luke flagged these as related — unified brainstorm for both systems</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 1: CURRENT STATE — WHAT EXISTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title" style="color: var(--color-danger);">Current State — What Exists Today</div>
+
+        <h4 style="color: var(--text-primary);">Captain Stats (5 stats, range 1-75)</h4>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Range</th>
+                        <th>Current Effect</th>
+                        <th>Problem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Leadership</td>
+                        <td>1-75</td>
+                        <td>Displayed on crew page</td>
+                        <td>No documented gameplay effect</td>
+                    </tr>
+                    <tr>
+                        <td>Strategy</td>
+                        <td>1-75</td>
+                        <td>Affects discovery rarity</td>
+                        <td>Effect exists but isn't communicated</td>
+                    </tr>
+                    <tr>
+                        <td>Exploration</td>
+                        <td>1-75</td>
+                        <td>Affects discovery rarity</td>
+                        <td>Effect exists but isn't communicated</td>
+                    </tr>
+                    <tr>
+                        <td>Logistics</td>
+                        <td>1-75</td>
+                        <td>Displayed on crew page</td>
+                        <td>No documented gameplay effect</td>
+                    </tr>
+                    <tr>
+                        <td>Charisma</td>
+                        <td>1-75</td>
+                        <td>Displayed on crew page</td>
+                        <td>No documented gameplay effect</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Scientist Stats (4 stats per scientist, 14 scientists)</h4>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Range Across Scientists</th>
+                        <th>Current Effect</th>
+                        <th>Problem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Navigation</td>
+                        <td>8-38</td>
+                        <td>Displayed on crew page</td>
+                        <td>Unclear gameplay impact</td>
+                    </tr>
+                    <tr>
+                        <td>Analysis</td>
+                        <td>12-42</td>
+                        <td>Displayed on crew page</td>
+                        <td>Unclear gameplay impact</td>
+                    </tr>
+                    <tr>
+                        <td>Geology</td>
+                        <td>8-45</td>
+                        <td>Affects discovery rarity</td>
+                        <td>Effect exists but formula unknown to players</td>
+                    </tr>
+                    <tr>
+                        <td>Engineering</td>
+                        <td>6-48</td>
+                        <td><strong>Nothing</strong></td>
+                        <td><strong>Completely unused</strong> — this is the biggest gap</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-box">
+            <strong>The core problem:</strong> Most stats are just numbers on a screen. Players see them, wonder what they do, and get no answer. PilgrimBot could only provide "speculative information" about Engineering. Stats should be the backbone of every game system — expeditions, building, Signal detection, trail speed, robot construction — but right now they're mostly decorative.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 2: CAPTAIN STAT PROGRESSION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Captain Stat Progression — How Stats Grow</div>
+
+        <p>From Bug #21: "Captain stats should increase based on gameplay activities — like baseball stats but as percentages."</p>
+
+        <div class="summary-box">
+            <strong>Core concept:</strong> Stats grow by DOING things. Send more expeditions, your Exploration goes up. Build more trails, your Logistics increases. It's not XP — it's activity-driven progression.
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Grows From</th>
+                        <th>Example Progression</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Leadership</td>
+                        <td>Colony management decisions, crew assignments, time on Mars</td>
+                        <td>+0.1 per Sol survived, +0.5 per crew mission completed</td>
+                    </tr>
+                    <tr>
+                        <td>Strategy</td>
+                        <td>Successful expeditions, discoveries found, tech researched</td>
+                        <td>+0.2 per expedition, +1.0 per legendary found</td>
+                    </tr>
+                    <tr>
+                        <td>Exploration</td>
+                        <td>Distance traveled, new landmarks visited, signals detected</td>
+                        <td>+0.01 per km traveled, +2.0 per new landmark</td>
+                    </tr>
+                    <tr>
+                        <td>Logistics</td>
+                        <td>Trails built, Depot upgrades completed, resources managed</td>
+                        <td>+0.5 per trail segment, +1.0 per Depot upgrade</td>
+                    </tr>
+                    <tr>
+                        <td>Charisma</td>
+                        <td>ARIA bond level, PilgrimBot conversations, Signal interactions</td>
+                        <td>+0.1 per ARIA chat, +2.0 per ARIA bond milestone</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Key design questions:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Is progression linear or logarithmic? (Diminishing returns as stats get higher?)</li>
+                <li>Max cap stays at 75? Or does progression unlock higher caps (75 → 90 → 100)?</li>
+                <li>Should progression be visible? "Your Exploration increased to 34!" vs silent background growth?</li>
+                <li>Can stats decrease? Inactivity penalty? Or only go up?</li>
+                <li>Retroactive: should existing captains get credit for past activities?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 3: WHAT EACH CAPTAIN STAT DOES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">What Each Captain Stat Does — Gameplay Effects</div>
+
+        <p>Every stat should have <strong>clear, documented, meaningful effects</strong> on gameplay. The player should be able to see their stats and understand exactly what they impact.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Primary Effect</th>
+                        <th>Secondary Effects</th>
+                        <th>Where Visible</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Leadership</strong></td>
+                        <td>Crew efficiency — all crew members perform better</td>
+                        <td>Colony income bonus, ARIA Autopilot effectiveness</td>
+                        <td>Colony page income calc, Crew page bonuses</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Strategy</strong></td>
+                        <td>Discovery rarity boost (already exists)</td>
+                        <td>Expedition success rate, expedition planning speed</td>
+                        <td>Expedition preview, Discovery page</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Exploration</strong></td>
+                        <td>Signal detection range bonus</td>
+                        <td>Discovery rate boost, map reveal range, expedition range</td>
+                        <td>Signal page, Expedition map</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Logistics</strong></td>
+                        <td>Build speed bonus (Depot, trails, robot)</td>
+                        <td>Resource efficiency, cargo capacity</td>
+                        <td>Depot timer, Trail timer, Colony page</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Charisma</strong></td>
+                        <td>ARIA bond strength, ARIA hint quality</td>
+                        <td>Signal hint clarity, ARIA whisper frequency, trading rates</td>
+                        <td>ARIA chat, Signal page hints</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-box">
+            <strong>Cross-reference: Signal Phase 2 spec</strong> confirmed that Exploration should affect Signal detection range, and Charisma could affect ARIA hint quality. See <a href="/brainstorm/signal-phase-2" style="color: var(--color-sepolia);">/brainstorm/signal-phase-2</a> Section 1.
+        </div>
+
+        <div class="question-box">
+            <strong>Formula transparency:</strong> Should the exact formulas be visible to players (tooltip showing "+12% from Exploration 42") or hidden (players just see the result)? Luke tends to prefer seeing the math.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 4: SCIENTIST STAT EFFECTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Scientist Stats — What Each One Should Do</div>
+
+        <p>Scientists have different stat distributions. Your choice of scientist should matter throughout the game — not just at character select.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Proposed Primary Effect</th>
+                        <th>Proposed Secondary Effects</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Navigation</strong></td>
+                        <td>Expedition speed bonus</td>
+                        <td>Robot efficiency once built, trail pathfinding optimization</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Analysis</strong></td>
+                        <td>Research speed bonus (Lab)</td>
+                        <td>Less material waste on robot build, better SV extraction from discoveries</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Geology</strong></td>
+                        <td>Discovery rarity boost (already exists)</td>
+                        <td>Signal detection boost, better component quality for robot, resource yields</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Engineering</strong></td>
+                        <td><strong>Robot build speed</strong> (finally a purpose!)</td>
+                        <td>Depot build speed bonus, infrastructure durability, equipment efficiency</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Scientist Stat Extremes — Who's Best At What?</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Notable Scientist Specializations</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Highest Engineering</span><span class="mockup-value">Dr. Tom (48) — fastest robot builder</span></div>
+                <div class="mockup-row"><span class="mockup-label">Highest Geology</span><span class="mockup-value">Dr. Mra (45) — best discovery/signal finder</span></div>
+                <div class="mockup-row"><span class="mockup-label">Highest Analysis</span><span class="mockup-value">Dr. Lilla (42) — fastest researcher</span></div>
+                <div class="mockup-row"><span class="mockup-label">Highest Navigation</span><span class="mockup-value">Dr. Andy (38) — fastest expeditions</span></div>
+                <div class="mockup-row"><span class="mockup-label">Lowest Engineering</span><span class="mockup-value">Dr. Anna (6) — robot takes 2+ months</span></div>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <strong>Do scientist stats grow?</strong> Bug #21 merged with #22 (Scientist stats progression). Should scientists level up over time like captains, or are they fixed at selection? If they grow:
+            <ul style="margin: 8px 0 0 0;">
+                <li>What activities grow scientist stats? Research completed? Discoveries analyzed?</li>
+                <li>Same progression curve as captain, or different?</li>
+                <li>If scientists grow, the initial stat spread matters less — is that okay?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 5: STAT DISPLAY & COMMUNICATION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Stat Display & Communication to Players</div>
+
+        <p>Stats are useless if players don't understand them. Every stat effect needs to be <strong>visible, documented, and intuitive</strong>.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Proposed Stat Display (Crew Page)</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Stat bar</span><span class="mockup-value">Visual bar + number (e.g., "Exploration: 42/75")</span></div>
+                <div class="mockup-row"><span class="mockup-label">Effect tooltip</span><span class="mockup-value">"Signal detection +18%, Discovery rate +12%"</span></div>
+                <div class="mockup-row"><span class="mockup-label">Growth indicator</span><span class="mockup-value">Small arrow showing recent growth direction</span></div>
+                <div class="mockup-row"><span class="mockup-label">Activity connection</span><span class="mockup-value">"Grows from: expeditions, landmarks visited"</span></div>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <strong>Where else should stats appear?</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Colony page — stat bonuses in income calculations?</li>
+                <li>Expedition preview — "Your Exploration 42 gives +18% Signal detection on this route"?</li>
+                <li>Depot — "Your Logistics 35 speeds up build by 12%"?</li>
+                <li>ARIA — should ARIA reference your stats? "Captain, your Leadership is growing..."</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 6: EVA SUIT STAT BONUSES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--text-muted);">
+        <div class="section-title">EVA Suit Stat Bonuses — Existing but Broken</div>
+
+        <p>Bug #502 (Done) identified that EVA Suit upgrades have stat bonuses defined but <strong>never applied</strong>. The function <code>get_effective_commander_stats()</code> exists in shop_utils.py but is never called.</p>
+
+        <div class="summary-box">
+            <strong>This is low-hanging fruit.</strong> EVA Suit stat bonuses are already defined in config. We just need to actually call the function. But we should wait for this brainstorm to confirm WHAT each stat does before activating bonuses to stats that currently do nothing.
+        </div>
+
+        <div class="question-box">
+            <strong>Sequence question:</strong> Do we activate EVA Suit bonuses now (with existing undefined stats) or wait until stats have real gameplay effects? Activating now would give "+5 Leadership" when Leadership does nothing — feels hollow.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 7: CROSS-SYSTEM IMPACT MAP -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Cross-System Impact Map</div>
+
+        <p>Stats touch every system. This maps which stats affect which game systems.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Game System</th>
+                        <th>Captain Stats</th>
+                        <th>Scientist Stats</th>
+                        <th>Brainstorm Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Expeditions</td>
+                        <td>Strategy, Exploration</td>
+                        <td>Navigation, Geology</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td>Signal Detection</td>
+                        <td>Exploration, Charisma</td>
+                        <td>Geology</td>
+                        <td><a href="/brainstorm/signal-phase-2" style="color: var(--color-sepolia);">Signal Phase 2</a></td>
+                    </tr>
+                    <tr>
+                        <td>Depot / Building</td>
+                        <td>Logistics</td>
+                        <td>Engineering</td>
+                        <td><a href="/brainstorm/depot-recalibration" style="color: var(--color-sepolia);">Depot Recalibration</a></td>
+                    </tr>
+                    <tr>
+                        <td>Robot Construction</td>
+                        <td>—</td>
+                        <td>Engineering, Analysis, Geology, Navigation</td>
+                        <td><a href="/brainstorm/robot-crew" style="color: var(--color-sepolia);">Robot Crew</a></td>
+                    </tr>
+                    <tr>
+                        <td>Trail Building</td>
+                        <td>Logistics</td>
+                        <td>Navigation</td>
+                        <td><a href="/brainstorm/trail-network" style="color: var(--color-sepolia);">Trail Network</a></td>
+                    </tr>
+                    <tr>
+                        <td>Research / Lab</td>
+                        <td>Strategy</td>
+                        <td>Analysis</td>
+                        <td><a href="/brainstorm/tech-tree" style="color: var(--color-sepolia);">Tech Tree</a></td>
+                    </tr>
+                    <tr>
+                        <td>ARIA / Bond</td>
+                        <td>Charisma</td>
+                        <td>—</td>
+                        <td><a href="/brainstorm/aria-meetings" style="color: var(--color-sepolia);">ARIA Meetings</a></td>
+                    </tr>
+                    <tr>
+                        <td>Colony Income</td>
+                        <td>Leadership</td>
+                        <td>—</td>
+                        <td><a href="/brainstorm/sv-economy" style="color: var(--color-sepolia);">SV Economy</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-box">
+            <strong>Stats are the connective tissue of the game.</strong> Getting this right unlocks all the other brainstorm pages — Signal detection, Depot recalibration, Robot construction, and trail building all depend on stats having real meaning.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 8: IMPLEMENTATION PRIORITY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Implementation Priority</div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item</th>
+                        <th>Why This Order</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Define what each stat does</strong> — confirm effects table above</td>
+                        <td>Everything else depends on this</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>Captain stat progression formulas</strong> — what activities grow which stats</td>
+                        <td>Players need to see stats moving</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><strong>Display & communication</strong> — tooltips, growth indicators, effect breakdowns</td>
+                        <td>Players need to understand what stats do</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><strong>Activate EVA Suit bonuses</strong> — call the existing function</td>
+                        <td>Low-hanging fruit, only after effects defined</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><strong>Scientist stat effects</strong> — implement the gameplay effects</td>
+                        <td>Makes scientist choice matter</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><strong>Scientist stat progression</strong> (if confirmed)</td>
+                        <td>Only if Luke wants scientists to level up</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><strong>Retroactive credit</strong> — existing captains get stat bumps for past activities</td>
+                        <td>Rewards existing players</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>Related bugs:</strong> #21 (Captain Stats), #1108 (Scientist Stats), #502 (EVA Suit bonuses)</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PILGRIMBOT BRAINSTORM LINK -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), var(--bg-secondary)); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#x1F9E0;</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">Brainstorm with PilgrimBot</h3>
+        <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 13px;">
+            Full PilgrimBot — streaming, markdown, code context, bug creation, endgame registry
+        </p>
+        <a href="/pilgrimbot?brainstorm=captain-stats" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; background: var(--color-sepolia); color: white;">
+            Open PilgrimBot — Captain & Scientist Stats
+        </a>
+    </div>
+
+</div>
+{% endblock %}

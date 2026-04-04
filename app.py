@@ -729,6 +729,27 @@ def signal_phase_2_brainstorm():
     return render_template('brainstorm/signal_phase_2.html', active_tab=None, user=user)
 
 
+@app.route('/brainstorm/robot-crew')
+def robot_crew_brainstorm():
+    """Robot Crew Member brainstorm — 4th crew member built from legendary discoveries."""
+    user = auth.get_current_user() if auth.is_authenticated() else None
+    return render_template('brainstorm/robot_crew.html', active_tab=None, user=user)
+
+
+@app.route('/brainstorm/captain-stats')
+def captain_stats_brainstorm():
+    """Captain & Scientist Stats brainstorm — stat progression, effects, and growth."""
+    user = auth.get_current_user() if auth.is_authenticated() else None
+    return render_template('brainstorm/captain_stats.html', active_tab=None, user=user)
+
+
+@app.route('/brainstorm/depot-recalibration')
+def depot_recalibration_brainstorm():
+    """Depot Recalibration brainstorm — building purposes, costs, build speed."""
+    user = auth.get_current_user() if auth.is_authenticated() else None
+    return render_template('brainstorm/depot_recalibration.html', active_tab=None, user=user)
+
+
 @app.route('/api/brainstorm/signal-chat', methods=['POST'])
 @handle_api_error
 def api_signal_brainstorm_chat():
