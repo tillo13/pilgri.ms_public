@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% if session.get('_real_uid') %}[MIMIC] {% endif %}{% block title %}Pilgrims{% endblock %}</title>
+
+    <!-- SEO meta tags -->
+    <meta name="description" content="{% block meta_description %}Pilgrims is a Mars colony strategy game that respects your time. Build your base, send expeditions, research tech, and grow your colony — all at your own pace. No streaks, no penalties, no guilt.{% endblock %}">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://pilgri.ms{{ request.path }}">
+
+    <!-- Open Graph tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Pilgrims">
+    <meta property="og:title" content="{% block og_title %}Pilgrims — Mars Colony Strategy Game{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}A Mars colony strategy game that respects your time. Build, explore, and research at your own pace — no streaks, no penalties. Your colony runs even when you are away.{% endblock %}">
+    <meta property="og:url" content="https://pilgri.ms{{ request.path }}">
+    <meta property="og:image" content="https://pilgri.ms/static/images/icon-512.png">
+
     <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
     <link rel="stylesheet" href="/static/css/epic-reveal.css?v={{ static_v }}">
     {% block extra_css %}{% endblock %}
