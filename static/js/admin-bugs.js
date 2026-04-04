@@ -248,20 +248,19 @@
 
         var isActive = !bug.completed_at;
 
-        // Screenshots
+        // Screenshots (with delete buttons)
         var screenshots = '';
-        if (bug.screenshot_url) {
-            screenshots += '<a href="' + escapeHtml(bug.screenshot_url) + '" target="_blank">' +
-                '<img src="' + escapeHtml(bug.screenshot_url) + '" class="bt-screenshot-img" loading="lazy"></a>';
-        }
-        if (bug.screenshot_2_url) {
-            screenshots += '<a href="' + escapeHtml(bug.screenshot_2_url) + '" target="_blank">' +
-                '<img src="' + escapeHtml(bug.screenshot_2_url) + '" class="bt-screenshot-img" loading="lazy"></a>';
-        }
-        if (bug.screenshot_3_url) {
-            screenshots += '<a href="' + escapeHtml(bug.screenshot_3_url) + '" target="_blank">' +
-                '<img src="' + escapeHtml(bug.screenshot_3_url) + '" class="bt-screenshot-img" loading="lazy"></a>';
-        }
+        var screenshotCount = 0;
+        [['screenshot_url', bug.screenshot_url], ['screenshot_2_url', bug.screenshot_2_url], ['screenshot_3_url', bug.screenshot_3_url]].forEach(function(pair) {
+            if (pair[1]) {
+                screenshotCount++;
+                screenshots += '<div style="display:inline-block;position:relative;margin:4px;">' +
+                    '<a href="' + escapeHtml(pair[1]) + '" target="_blank">' +
+                    '<img src="' + escapeHtml(pair[1]) + '" class="bt-screenshot-img" loading="lazy"></a>' +
+                    '<button onclick="BT.deleteScreenshot(' + bug.id + ',\'' + pair[0] + '\')" ' +
+                    'style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#ff6b6b;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;padding:0;" title="Remove screenshot">✕</button></div>';
+            }
+        });
 
         // Actions bar
         var actions = '';
@@ -281,7 +280,9 @@
             if (bug.qa_approved) {
                 actions += '<button class="bt-btn bt-btn-sm bt-btn-success" onclick="BT.completeBug(' + bug.id + ')">Complete</button>';
             }
-            actions += '<button class="bt-btn bt-btn-sm" onclick="BT.uploadScreenshot(' + bug.id + ')">Upload Screenshot</button>';
+            if (screenshotCount < 3) {
+                actions += '<button class="bt-btn bt-btn-sm" onclick="BT.uploadScreenshot(' + bug.id + ')">Upload Screenshot (' + screenshotCount + '/3)</button>';
+            }
         } else {
             actions += '<button class="bt-btn bt-btn-sm bt-btn-danger" onclick="BT.reopenBug(' + bug.id + ')">Reopen</button>';
         }
@@ -630,7 +631,17 @@
             });
     }
 
-    // === Screenshot Upload ===
+    // === Screenshot Upload & Delete ===
+
+    function deleteScreenshot(bugId, field) {
+        if (!confirm('Remove this screenshot?')) return;
+        fetch('/api/admin/bugs/' + bugId + '/screenshot/' + field, {method: 'DELETE'})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) { showToast('Screenshot removed', 'success'); refreshData(); }
+                else showToast(data.error || 'Failed', 'error');
+            });
+    }
 
     function uploadScreenshot(bugId) {
         var input = document.createElement('input');
@@ -649,8 +660,15 @@
         fetch('/api/admin/bugs/' + bugId + '/screenshot', {method: 'POST', body: fd})
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data.success) refreshData();
-                else alert(data.error || 'Upload failed');
+                if (data.success) {
+                    showToast('Screenshot uploaded', 'success');
+                    refreshData();
+                } else {
+                    showToast(data.error || 'Upload failed', 'error');
+                }
+            })
+            .catch(function(e) {
+                showToast('Upload failed: ' + e.message, 'error');
             });
     }
 
@@ -834,6 +852,7 @@
         reopenBug: reopenBug,
         promoteIdea: promoteIdea,
         uploadScreenshot: uploadScreenshot,
+        deleteScreenshot: deleteScreenshot,
         startEdit: startEdit,
         saveEdit: saveEdit,
         startNameEdit: startNameEdit,

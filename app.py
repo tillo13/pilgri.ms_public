@@ -2831,6 +2831,20 @@ def api_admin_bugs_screenshot(bug_id):
     return jsonify({'success': bool(url), 'url': url})
 
 
+@app.route('/api/admin/bugs/<int:bug_id>/screenshot/<field>', methods=['DELETE'])
+@handle_api_error
+def api_admin_bugs_delete_screenshot(bug_id, field):
+    """Remove a screenshot from a bug."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    if field not in ('screenshot_url', 'screenshot_2_url', 'screenshot_3_url'):
+        return jsonify({'success': False, 'error': 'Invalid field'})
+    from utilities.db_bugs import update_bug
+    update_bug(bug_id, 'system', **{field: ''})
+    return jsonify({'success': True})
+
+
 @app.route('/api/admin/bugs/<int:bug_id>/comments', methods=['POST'])
 @handle_api_error
 def api_admin_bugs_comment(bug_id):
