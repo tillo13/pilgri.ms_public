@@ -123,9 +123,16 @@ def _format_depot_activity(purchase_type: str, details: dict) -> tuple:
         rarity = details.get('rarity', 'common').title()
         quantity = details.get('quantity_analyzed', 1)
         shards = details.get('shards_extracted', 0)
-        title = f"Sharded: {item_name}"
+        sv_bonus = details.get('sv_bonus', 0)  # Bug #1135
+        if details.get('bulk_extraction'):
+            by_rarity = details.get('by_rarity', {}) or {}
+            title = "Sharded: Bulk Extraction"
+            rarity = f"{by_rarity.get('common', 0)}c+{by_rarity.get('uncommon', 0)}u"
+        else:
+            title = f"Sharded: {item_name}"
         category = 'sharding'
-        detail_text = f"{rarity} · {quantity}x → {shards:.0f} shards"
+        sv_str = f" + {sv_bonus} SV" if sv_bonus else ""
+        detail_text = f"{rarity} · {quantity}x → {shards:.0f} shards{sv_str}"
     elif purchase_type == 'infrastructure_income':
         hours = details.get('hours_accumulated', 0)
         structures = details.get('structures', [])

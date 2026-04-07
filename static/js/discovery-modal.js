@@ -21,6 +21,7 @@ window.showDiscoveryDetails = function(id) {
         if (typeof bioDiscoveryValueMult !== 'undefined' && i.item_type === 'biological' && bioDiscoveryValueMult > 1.0) shardPayoutAll = Math.floor(shardPayoutAll * bioDiscoveryValueMult);
         const shardPayoutOne = qty > 1 ? Math.floor(shardPayoutAll / qty) : shardPayoutAll;
         const svBonusAll = Math.floor(shardPayoutAll * 0.50);
+        const svBonusOne = Math.floor(shardPayoutOne * 0.50);
         const svLabel = svBonusAll > 0 ? ` + ${svBonusAll} SV` : '';
 
         // Cryptic legendary messages (Zelda-style hints - obscured references to something in the colony)
@@ -80,8 +81,8 @@ window.showDiscoveryDetails = function(id) {
             action = {
                 label: qty > 1 ? `⚠️ Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `⚠️ Extract (${shardPayoutAll} Shards${svLabel})`,
                 className: 'btn-warning',
-                onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'rare', true),
-                secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'rare', false) } : null
+                onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'rare', true, svBonusAll),
+                secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'rare', false, svBonusOne) } : null
             };
         } else if (rarity === 'uncommon') {
             // Uncommon: 0.75x payout with flavor text + SV warning
@@ -100,8 +101,8 @@ window.showDiscoveryDetails = function(id) {
             action = {
                 label: qty > 1 ? `🔬 Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `🔬 Extract (${shardPayoutAll} Shards${svLabel})`,
                 className: 'btn-success',
-                onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'uncommon', true),
-                secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'uncommon', false) } : null
+                onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'uncommon', true, svBonusAll),
+                secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'uncommon', false, svBonusOne) } : null
             };
         } else {
             // Common: 0.5x payout with flavor text + SV warning
@@ -120,8 +121,8 @@ window.showDiscoveryDetails = function(id) {
             action = {
                 label: qty > 1 ? `🔬 Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `🔬 Extract (${shardPayoutAll} Shards${svLabel})`,
                 className: 'btn-success',
-                onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'common', true),
-                secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'common', false) } : null
+                onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'common', true, svBonusAll),
+                secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'common', false, svBonusOne) } : null
             };
         }
 
@@ -135,7 +136,7 @@ window.showDiscoveryDetails = function(id) {
                 { label: 'Scientific Value', value: i.base_scientific_value || '-' },
                 { label: 'Weight', value: `${(i.weight_kg || 0).toFixed(1)} kg` },
                 { label: 'Shard Yield', value: rarity === 'legendary' ? '—' : (qty > 1 ? `${shardPayoutOne} each / ${shardPayoutAll} total` : `${shardPayoutAll}`) },
-                { label: 'SV Bonus', value: rarity === 'legendary' ? '—' : `+${svBonusAll} SV (15%)` }
+                { label: 'SV Bonus', value: rarity === 'legendary' ? '—' : `+${svBonusAll} SV (50%)` }
             ],
             effects: effects,
             action: action
@@ -144,7 +145,9 @@ window.showDiscoveryDetails = function(id) {
 };
 
 // Confirm extraction with SV trade-off warning using in-game modal
-function confirmExtraction(discoveryItemId, quantity, shardPayout, itemName, rarity, extractAll) {
+// Bug #1131: svBonus must be passed in so the confirm button shows "Extract (X Shards + Y SV)"
+function confirmExtraction(discoveryItemId, quantity, shardPayout, itemName, rarity, extractAll, svBonus) {
+    if (svBonus === undefined || svBonus === null) svBonus = Math.floor(shardPayout * 0.50);
     const rarityQuotes = {
         rare: [
             `This... this is monumentally significant. Extracting ${itemName} with a heavy heart.`,
@@ -196,13 +199,13 @@ function confirmExtraction(discoveryItemId, quantity, shardPayout, itemName, rar
         stats: [
             { label: 'Discoveries', value: extractAll ? quantity : 1 },
             { label: 'Shards Received', value: shardPayout.toLocaleString() },
-            { label: 'SV Bonus', value: `+${Math.floor(shardPayout * 0.50)} SV` },
+            { label: 'SV Bonus', value: `+${svBonus} SV` },
         ],
         effects: `<div class="sv-tradeoff-note" style="padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
             <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
         </div>`,
         action: {
-            label: `Extract (${shardPayout.toLocaleString()} Shards)`,
+            label: svBonus > 0 ? `Extract (${shardPayout.toLocaleString()} Shards + ${svBonus} SV)` : `Extract (${shardPayout.toLocaleString()} Shards)`,
             className: 'btn-warning',
             onClick: () => analyzeDiscovery(discoveryItemId, quantity, shardPayout, extractAll)
         }

@@ -745,6 +745,25 @@ def test_analyze_endpoint():
     return True
 
 
+# Bug #1135 — SV bonus must show in Colony Activity feed for discovery extractions
+@test("discovery_analysis activity detail includes SV bonus", tier=1, features=['discovery'])
+def test_discovery_activity_includes_sv():
+    from utilities.db_shop import _format_depot_activity
+    title, cat, detail = _format_depot_activity('discovery_analysis', {
+        'item_name': 'Machined Hematite', 'rarity': 'uncommon',
+        'quantity_analyzed': 1, 'shards_extracted': 191, 'sv_bonus': 95,
+    })
+    assert cat == 'sharding', f"category should be 'sharding', got {cat}"
+    assert '+ 95 SV' in detail, f"SV bonus missing from activity detail: {detail!r}"
+    # Zero SV → no SV suffix
+    _, _, detail0 = _format_depot_activity('discovery_analysis', {
+        'item_name': 'X', 'rarity': 'common', 'quantity_analyzed': 1,
+        'shards_extracted': 10, 'sv_bonus': 0,
+    })
+    assert 'SV' not in detail0, f"Should not show SV when bonus=0: {detail0!r}"
+    return True
+
+
 # =============================================================================
 # TIER 2: UTILITY FUNCTION INTEGRATION TESTS
 # =============================================================================

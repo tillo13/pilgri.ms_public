@@ -614,7 +614,8 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
             'item_name': item_name,
             'rarity': rarity,
             'quantity_analyzed': total_quantity,
-            'shards_extracted': total_value
+            'shards_extracted': total_value,
+            'sv_bonus': sv_bonus,  # Bug #1135: surface SV bonus in Colony Activity feed
         }
     )
 
@@ -817,7 +818,8 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
             'items_processed': len(discoveries),
             'quantity_analyzed': total_quantity,
             'shards_extracted': total_value,
-            'by_rarity': items_by_rarity
+            'by_rarity': items_by_rarity,
+            'sv_bonus': sv_bonus,  # Bug #1135: surface SV bonus in Colony Activity feed
         }
     )
 

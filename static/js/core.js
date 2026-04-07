@@ -645,9 +645,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Format number with commas and 3 decimals
     function formatCurrency(n) {
-        const parts = n.toFixed(3).split('.');
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return parts.join('.');
+        // Bug #1122: no decimals on Shard/SV ribbon — integer + thousand separators only
+        return Math.floor(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
     // Science (SV) ticking animation
