@@ -994,6 +994,31 @@ def test_aria_trail_context():
     return True
 
 
+# Bug #1164 — ARIA must SELF-IDENTIFY when on a trail. v81 added a 3rd-person line
+# which the LLM couldn't tie to itself. This test enforces the 1st-person framing.
+@test("ARIA friend prompt has first-person self-status framing", tier=2, features=['aria'])
+def test_aria_self_status_framing():
+    import inspect
+    from utilities.aria_utils import _build_friend_prompt, _build_snapshot_prompt
+    fsrc = inspect.getsource(_build_friend_prompt)
+    ssrc = inspect.getsource(_build_snapshot_prompt)
+    assert 'aria_self_status' in fsrc, "friend prompt must build aria_self_status field"
+    assert 'YOU (ARIA)' in fsrc, "friend prompt must use first-person 'YOU (ARIA)' framing"
+    assert 'YOUR OWN STATUS' in fsrc, "friend prompt must instruct ARIA to consult self-status"
+    assert 'YOU (ARIA)' in ssrc, "mysterious/snapshot prompt must also use 'YOU (ARIA)' framing"
+    return True
+
+
+# Bug #1164 — snapshot must include completed-pending-collection missions, not just in-progress
+@test("ARIA snapshot includes complete_pending_collection mission status", tier=2, features=['aria'])
+def test_aria_mission_status_field():
+    import inspect
+    from utilities.aria_utils import load_colony_snapshot
+    src = inspect.getsource(load_colony_snapshot)
+    assert "complete_pending_collection" in src, "snapshot must mark stale missions as complete_pending_collection (not silently drop them)"
+    return True
+
+
 # =============================================================================
 # TIER 3: FULL TESTS (comprehensive, slower)
 # =============================================================================

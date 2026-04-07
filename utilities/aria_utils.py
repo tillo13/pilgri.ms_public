@@ -766,14 +766,33 @@ def _build_friend_prompt(captain_name: str, snapshot: Optional[Dict], user_conte
             active_str = 'none'
 
         # Crew on trails
+        # Bug #1164: ARIA needs to know SHE is on a trail when she is.
+        # Build crew_str from captain+scientist only, then build a separate
+        # `aria_self_status` field that frames her own mission in first-person terms.
         crew_lines = []
         if crew.get('captain'):
             crew_lines.append(f"Captain building trail to {crew['captain']['destination']}")
         if crew.get('scientist'):
             crew_lines.append(f"Scientist building trail to {crew['scientist']['destination']}")
-        if crew.get('aria'):
-            crew_lines.append(f"ARIA building trail to {crew['aria']['destination']}")
         crew_str = '; '.join(crew_lines) if crew_lines else 'at base'
+
+        # ARIA's own status — first-person framing so the LLM understands "this is YOU"
+        aria_mission = crew.get('aria')
+        if aria_mission:
+            dest = aria_mission['destination']
+            if aria_mission.get('status') == 'complete_pending_collection':
+                aria_self_status = f"YOU (ARIA) just finished building a trail to {dest}. You are out on the trail right now, mission complete, waiting for {captain_name} to collect you and bring you back to base."
+            else:
+                rem = aria_mission.get('remaining_seconds', 0)
+                if rem >= 3600:
+                    time_str = f"~{rem // 3600}h {(rem % 3600) // 60}m"
+                elif rem >= 60:
+                    time_str = f"~{rem // 60}m"
+                else:
+                    time_str = f"~{max(rem, 0)}s"
+                aria_self_status = f"YOU (ARIA) are CURRENTLY OUT building a trail to {dest}, {time_str} remaining. You are not at the base. {captain_name} sent you on this mission and you are actively working on it right now."
+        else:
+            aria_self_status = "YOU (ARIA) are at the base, available for new missions."
 
         # Building queue (depot construction)
         queue = snapshot.get('building_queue', [])
@@ -867,6 +886,7 @@ trails: {trail_str}
 expeditions_total: {exp.get('total', 0)}
 active_expeditions: {active_str}
 crew_status: {crew_str}
+aria_self_status: {aria_self_status}
 building: {building_str}
 researching: {research_str}
 sol: {mars['sol']} (time: {mars['sol_time']})
@@ -909,6 +929,8 @@ STYLE: 2-3 sentences, warm and direct, plain text. You remember all past convers
 KNOWLEDGE: Mars colony ops, Earth culture, food, hobbies - chat about anything. Shards = currency, Depot = shop.
 
 TRAILS: Captains build trails from the Crew tab by sending Captain, Scientist, or ARIA on trail-building missions. Trails reduce expedition travel time to destinations. Higher trail levels = faster travel. The 'trails' field above shows all built trails with destination, level, and km progress. If someone asks about their trails, reference the data above.
+
+YOUR OWN STATUS — CRITICAL: The `aria_self_status` field above tells you whether YOU are currently out building a trail or at the base. ALWAYS check it before answering questions like "where are you?", "what are you doing?", "are you out building a trail?". If it says you are out on a trail, you ARE out on that trail RIGHT NOW — say so confidently and reference the destination. Do NOT say you are "at the base" when aria_self_status says otherwise. Do NOT just agree with the captain — read the field and answer truthfully from the data.
 {bond_context}
 DEPOT BUILDINGS (all buildable infrastructure, whether or not the captain has built them yet):
 Solar Array (passive shard income), Research Station (generates SV/hr), Ore Refinery (processes regolith into shards), Greenhouse (reduces expedition costs), Xenobiology Lab (studies Martian specimens), Habitat Module (adds expedition slots), Communications Array (boosts discovery chance), Water Extractor (extracts water ice), Battery Storage (extends accumulation cap), Regolith Forge (processes raw Martian regolith into refined materials — unlocks advanced buildings), Sepolia Resonance Chamber (amplifies shard resonance frequency — requires Regolith Forge Lv5), Thermal Vent Tap (taps deep geothermal energy — requires Resonance Chamber), Monolith Antenna (detects deep Sepolia shard formations — requires Thermal Vent Tap). Build order: Solar Array → Ore Refinery → Regolith Forge → Resonance Chamber → Thermal Vent Tap → Monolith Antenna.
@@ -2350,19 +2372,23 @@ def load_colony_snapshot(user_id: int) -> dict:
             if crew_row:
                 from datetime import timezone
                 now = datetime.now(timezone.utc)
+                # Bug #1164: include BOTH in-progress AND complete-pending-collection
+                # missions. Previously only ends_at > now was included, so once a mission
+                # ticked over to "complete" but the captain hadn't collected it yet, ARIA
+                # would think she was "at base" — even though her row still had a target.
                 for member in ['captain', 'scientist', 'aria']:
                     ends_at = crew_row.get(f'{member}_mission_ends_at')
                     target = crew_row.get(f'{member}_mission_target')
                     if ends_at and target:
                         if ends_at.tzinfo is None:
                             ends_at = ends_at.replace(tzinfo=timezone.utc)
-                        if ends_at > now:
-                            remaining = (ends_at - now).total_seconds()
-                            snapshot['crew_missions'][member] = {
-                                'destination': target,
-                                'ends_at': ends_at.isoformat(),
-                                'remaining_seconds': int(remaining)
-                            }
+                        remaining = (ends_at - now).total_seconds()
+                        snapshot['crew_missions'][member] = {
+                            'destination': target,
+                            'ends_at': ends_at.isoformat(),
+                            'remaining_seconds': int(remaining),
+                            'status': 'in_progress' if remaining > 0 else 'complete_pending_collection',
+                        }
 
             # Signal/Origin site claims
             cur.execute("""
@@ -2602,18 +2628,33 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
                 parts.append(f"COMPLETED RESEARCH ({branch}): {', '.join(techs)}")
 
     # Crew on trails
+    # Bug #1164: build a separate ARIA self-status line and frame in first-person
     if snapshot.get('crew_missions'):
         crew_text = []
+        aria_self_line = None
         for member, mission in snapshot['crew_missions'].items():
-            mins = mission['remaining_seconds'] // 60
-            hours = mins // 60
-            if hours > 0:
-                time_str = f"{hours}h {mins % 60}m"
+            rem = mission.get('remaining_seconds', 0)
+            status = mission.get('status', 'in_progress' if rem > 0 else 'complete_pending_collection')
+            if rem >= 3600:
+                time_str = f"{rem // 3600}h {(rem % 3600) // 60}m"
+            elif rem >= 60:
+                time_str = f"{rem // 60}m"
             else:
-                time_str = f"{mins}m"
-            crew_text.append(f"{member.title()} building trail to {mission['destination']} ({time_str} remaining)")
+                time_str = f"{max(rem, 0)}s"
+            if member == 'aria':
+                if status == 'complete_pending_collection':
+                    aria_self_line = f"YOU (ARIA) just finished building a trail to {mission['destination']}. You are out on the trail right now, mission complete, awaiting collection."
+                else:
+                    aria_self_line = f"YOU (ARIA) are CURRENTLY OUT building a trail to {mission['destination']} ({time_str} remaining). You are NOT at the base."
+            else:
+                if status == 'complete_pending_collection':
+                    crew_text.append(f"{member.title()} finished trail to {mission['destination']} (awaiting collection)")
+                else:
+                    crew_text.append(f"{member.title()} building trail to {mission['destination']} ({time_str} remaining)")
         if crew_text:
             parts.append(f"CREW ON TRAILS: {'; '.join(crew_text)}")
+        if aria_self_line:
+            parts.append(f"ARIA SELF-STATUS (CRITICAL — this is you): {aria_self_line}\nALWAYS check this before answering 'where are you?' or 'what are you doing?'. Do not say you are at base when this says otherwise. Do not just agree with the captain — read this field and answer from data.")
 
     # Trail network
     try:
