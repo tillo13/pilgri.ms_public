@@ -471,6 +471,9 @@ const ItemDetailModal = {
             if (action.secondaryAction) {
                 footer += `<button class="btn btn-secondary mm-btn-sm" id="mmActionBtn2">${action.secondaryAction.label}</button>`;
             }
+            if (action.tertiaryAction) {
+                footer += `<button class="btn btn-secondary mm-btn-sm" id="mmActionBtn3">${action.tertiaryAction.label}</button>`;
+            }
         }
 
         MarsModal.show({
@@ -487,6 +490,10 @@ const ItemDetailModal = {
         if (action && action.secondaryAction) {
             const btn2 = document.getElementById('mmActionBtn2');
             if (btn2) btn2.onclick = action.secondaryAction.onClick;
+        }
+        if (action && action.tertiaryAction) {
+            const btn3 = document.getElementById('mmActionBtn3');
+            if (btn3) btn3.onclick = action.tertiaryAction.onClick;
         }
     },
     hide() { MarsModal.hide(); }

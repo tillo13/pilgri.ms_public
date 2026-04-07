@@ -1561,11 +1561,20 @@ def api_analyze_discovery():
     data = request.get_json()
     discovery_item_id = data.get('discovery_item_id')
     extract_all = data.get('extract_all', True)
+    quantity_to_extract = data.get('quantity_to_extract')  # Bug #1125: optional N for "Shard Some"
 
     if not discovery_item_id:
         return jsonify({'success': False, 'error': 'Missing discovery_item_id'})
 
-    result = analyze_discovery(g.user_id, discovery_item_id, session, extract_all=extract_all)
+    if quantity_to_extract is not None:
+        try:
+            quantity_to_extract = int(quantity_to_extract)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'quantity_to_extract must be an integer'})
+        if quantity_to_extract < 1:
+            return jsonify({'success': False, 'error': 'quantity_to_extract must be at least 1'})
+
+    result = analyze_discovery(g.user_id, discovery_item_id, session, extract_all=extract_all, quantity_to_extract=quantity_to_extract)
     return jsonify(result)
 
 @app.route('/api/discovery/shard_all', methods=['POST'])

@@ -426,7 +426,7 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
 # ============================================================================
 EXTRACTION_SV_BONUS_RATE = 0.50  # 50% of shard payout awarded as bonus SV (was 15%, bumped per Luke's sign-off)
 
-def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extract_all: bool = True) -> Dict[str, Any]:
+def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extract_all: bool = True, quantity_to_extract: Optional[int] = None) -> Dict[str, Any]:
     """
     Analyze a discovery to extract embedded Sepolia shards.
     Your Colony Scientist breaks down the specimen, extracting ancient Martian crystals.
@@ -470,17 +470,36 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
             rarity = all_discoveries[0]['rarity']
             item_type = all_discoveries[0]['item_type']
 
-            # If extract_all=False, only process the first (oldest) discovery row
-            if extract_all:
+            # Bug #1125: support extracting an arbitrary quantity ("Shard Some" — pick a number).
+            # extract_all=True → all available
+            # quantity_to_extract=N (with extract_all=False) → exactly N items, walking the stacks oldest-first
+            # extract_all=False, quantity_to_extract=None → 1 (legacy "Extract 1×" behavior)
+            total_available = sum(d['quantity'] for d in all_discoveries)
+            if extract_all or (quantity_to_extract is not None and quantity_to_extract >= total_available):
                 discoveries = all_discoveries
             else:
-                # Take just the first row (which may have quantity > 1)
-                first = all_discoveries[0]
-                if first['quantity'] > 1:
-                    # Only extract 1 from this stack - we'll need to decrement quantity instead of marking analyzed
-                    discoveries = [{'id': first['id'], 'enhanced_value': first['enhanced_value'], 'quantity': 1, 'partial': True, 'original_qty': first['quantity']}]
-                else:
-                    discoveries = [first]
+                want = quantity_to_extract if (quantity_to_extract and quantity_to_extract > 0) else 1
+                want = min(want, total_available)
+                discoveries = []
+                remaining = want
+                for row in all_discoveries:
+                    if remaining <= 0:
+                        break
+                    take = min(row['quantity'], remaining)
+                    if take == row['quantity']:
+                        # Whole row consumed — full extraction
+                        discoveries.append(row)
+                    else:
+                        # Partial row — decrement stack by `take`
+                        discoveries.append({
+                            'id': row['id'],
+                            'enhanced_value': row['enhanced_value'],
+                            'quantity': take,
+                            'partial': True,
+                            'partial_amount': take,
+                            'original_qty': row['quantity'],
+                        })
+                    remaining -= take
 
             # Calculate totals for selected discoveries
             base_value = sum(d['enhanced_value'] * d['quantity'] for d in discoveries)
@@ -540,12 +559,13 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
         with db_cursor(commit=True) as cur:
             for d in discoveries:
                 if d.get('partial'):
-                    # Partial extraction: decrement quantity by 1
+                    # Partial extraction: decrement quantity by the chosen amount (Bug #1125)
+                    decrement = d.get('partial_amount', 1)
                     cur.execute("""
                         UPDATE pilgrim.expedition_discoveries
-                        SET quantity = quantity - 1
+                        SET quantity = quantity - %s
                         WHERE id = %s
-                    """, (d['id'],))
+                    """, (decrement, d['id']))
                 else:
                     # Full extraction: mark as analyzed
                     cur.execute("""

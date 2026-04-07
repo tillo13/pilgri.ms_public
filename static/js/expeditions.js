@@ -126,6 +126,7 @@ function setVehicleRange(btn, vehicleType) {
             m.setStyle({ fillColor: disc ? visitedColor : unexploredColor, color: disc ? visitedBorder : unexploredBorder, fillOpacity: 0.8, opacity: 1 });
             m.setRadius(8);
         });
+        window.__currentRangeKm = null;
         return;
     }
 
@@ -143,6 +144,12 @@ function setVehicleRange(btn, vehicleType) {
         dashArray: '8, 6',
         interactive: false
     }).addTo(map);
+    // Bug #1283: explicit label on the range circle so Luke can verify visually that
+    // a marker labeled "403km" is correctly OUT of a 300km vehicle range. Without
+    // this, the dashed circle is just a hint — players can't tell what km it represents.
+    rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
+    // Store current selected range so marker popups can compute in/out status
+    window.__currentRangeKm = rangeKm;
 
     // Dim out-of-range landmarks, brighten in-range ones
     expeditionMarkers.forEach((m, i) => {
@@ -175,13 +182,19 @@ function buildMarkerPopup(landmarkIndex) {
     const canAfford = !cost || balance >= cost;
     const canLaunch = canAfford && slotsAvailable;
     const costDisplay = cost !== undefined ? `<br><b>Cost:</b> <span style="color: ${canAfford ? 'var(--color-mars)' : 'var(--color-error)'}">${cost.toFixed(0)} shards</span>` : '<br><b>Cost:</b> <span style="color: var(--text-muted)">calculating...</span>';
+    // Bug #1283: when a vehicle range is selected, show explicit in/out-of-range status in the popup
+    let rangeStatus = '';
+    if (window.__currentRangeKm) {
+        const inRange = l.distance_km <= window.__currentRangeKm;
+        rangeStatus = `<br><b>Range:</b> <span style="color: ${inRange ? 'var(--color-success)' : 'var(--color-error)'}">${inRange ? 'In range' : 'Out of range'} (${l.distance_km} km / ${window.__currentRangeKm} km vehicle range)</span>`;
+    }
     const est = l._estimatedReturn;
     const returnDisplay = est ? `<br><b>Est. Return:</b> <span style="color: var(--color-success)">${Math.round(est.low)} - ${Math.round(est.high)} shards</span>` : '';
 
     let popup = `<div class="map-popup">
         <div class="map-popup-title">${l.name}</div>
         <div class="map-popup-status ${disc ? 'visited' : 'unexplored'}">${disc ? '✅ VISITED' : '🔍 UNEXPLORED'}</div>
-        <div class="map-popup-details"><b>Type:</b> ${l.type}<br><b>Distance:</b> ${l.distance_km} km${costDisplay}${returnDisplay}</div>`;
+        <div class="map-popup-details"><b>Type:</b> ${l.type}<br><b>Distance:</b> ${l.distance_km} km${rangeStatus}${costDisplay}${returnDisplay}</div>`;
     if (disc && l.last_visit) {
         popup += `<div class="map-popup-history">
             <div class="map-popup-history-label">LAST EXPEDITION</div>

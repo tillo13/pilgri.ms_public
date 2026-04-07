@@ -324,7 +324,12 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="tech-meta">
                 <span class="tech-cost">{{ "{:,}".format(tech.cost_sv | int) }} SV</span>
+                {# Bug #1285: when tech is in progress, show LIVE remaining (matches active bar at top) instead of full duration. Card carries data-remaining so the JS countdown can keep it in sync. #}
+                {% if tech.status == 'researching' %}
+                <span class="tech-time tech-time-active" data-remaining="{{ tech.remaining_seconds | int }}">{% set rd = (tech.remaining_seconds | int) // 86400 %}{% set rh = ((tech.remaining_seconds | int) % 86400) // 3600 %}{% set rm = ((tech.remaining_seconds | int) % 3600) // 60 %}{% if rd >= 1 %}{{ rd }}d {{ rh }}h {{ rm }}m{% elif rh >= 1 %}{{ rh }}h {{ rm }}m{% else %}{{ rm }}m{% endif %} remaining</span>
+                {% else %}
                 <span class="tech-time">{% set rd = tech.research_time_seconds // 86400 %}{% set rh = (tech.research_time_seconds % 86400) // 3600 %}{% set rm = (tech.research_time_seconds % 3600) // 60 %}{% if rd >= 1 %}{{ rd }}d {{ rh }}h {{ rm }}m{% elif rh >= 1 %}{{ rh }}h {{ rm }}m{% else %}{{ rm }}m{% endif %} research</span>
+                {% endif %}
             </div>
             {% if tech.status == 'researching' %}
             <div class="tech-progress-bar"><div class="tech-progress-fill" style="width: {{ tech.progress_pct }}%;"></div></div>
@@ -545,6 +550,8 @@ function formatTime(seconds) {
 }
 
 // Countdown timer for active research
+// Bug #1285: also keeps the in-progress tech card's "X remaining" in sync with the
+// top bar so they never drift apart while the page is open.
 function updateTimer() {
     const bar = document.getElementById('activeResearchBar');
     if (!bar) return;
@@ -563,6 +570,11 @@ function updateTimer() {
     else if (h > 0) timeStr = `${h}h ${m}m`;
     else timeStr = `${m}m`;
     document.getElementById('activeTimer').textContent = timeStr;
+    // Sync any in-progress tech card(s) — they all reflect the same active research
+    document.querySelectorAll('.tech-time-active').forEach(el => {
+        el.dataset.remaining = remaining;
+        el.textContent = `${timeStr} remaining`;
+    });
 }
 updateTimer();
 setInterval(updateTimer, 1000);

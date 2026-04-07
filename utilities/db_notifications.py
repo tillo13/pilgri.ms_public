@@ -24,7 +24,7 @@ def get_users_with_completed_expeditions() -> List[Dict]:
                        e.id as expedition_id, e.destination_name, e.completed_at
                 FROM pilgrim.users u
                 JOIN pilgrim.expeditions e ON e.user_id = u.id
-                WHERE e.status = 'completed'
+                WHERE e.status = 'complete'
                   AND e.notified_at IS NULL
                   AND u.email IS NOT NULL
                   AND u.email_verified = true
@@ -46,7 +46,7 @@ def get_inactive_users(days_inactive: int = 3) -> List[Dict]:
                 SELECT u.id, u.email, u.given_name, u.name, u.last_login,
                        EXTRACT(DAY FROM NOW() - u.last_login) as days_away,
                        (SELECT COUNT(*) FROM pilgrim.expeditions e
-                        WHERE e.user_id = u.id AND e.status = 'completed') as pending_expeditions,
+                        WHERE e.user_id = u.id AND e.status = 'complete') as pending_expeditions,
                        (SELECT COUNT(*) FROM pilgrim.expedition_discoveries ed
                         JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
                         WHERE e.user_id = u.id AND ed.claimed_by_user = false) as unclaimed_discoveries
