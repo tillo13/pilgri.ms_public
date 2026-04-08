@@ -1574,9 +1574,7 @@
   },
   "utilities/gmail_utils.py": {
     "exports": [
-      "get_secret_version — Get secret from Google Cloud Secret Manager (cached).",
-      "get_gmail_credentials — Get Gmail credentials from Google Cloud Secret Manager.",
-      "send_email — Send an email using Gmail SMTP.",
+      "send_email — Send an email via Gmail API as kumoridotai@gmail.com.",
       "send_simple_email — Send email to a single recipient.",
       "send_expedition_complete_email — Notify user their expedition has returned.",
       "send_daily_digest_email — Daily summary of colony status.",
@@ -2494,7 +2492,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

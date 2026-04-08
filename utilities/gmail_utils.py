@@ -1,43 +1,58 @@
-import smtplib
+import base64
+import json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from google.cloud import secretmanager
 from os import path
 import logging
 from typing import List, Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Google Cloud Secret Manager config
+# Sends as kumoridotai@gmail.com via Gmail API + OAuth (refresh token in
+# `KUMORI_GMAIL_OAUTH_REFRESH_TOKEN` secret on project kumori-404602). Swapped
+# from SMTP app-password — Gmail was bouncing those as 550 5.7.1 spam.
 PROJECT_ID = 'kumori-404602'
-GMAIL_USERNAME_SECRET_ID = 'KUMORI_GMAIL_USERNAME'
-GMAIL_APP_PASSWORD_SECRET_ID = 'KUMORI_GMAIL_APP_PASSWORD'
+OAUTH_SECRET_ID = 'KUMORI_GMAIL_OAUTH_REFRESH_TOKEN'
+SENDER_EMAIL = 'kumoridotai@gmail.com'
 
-_secrets_cache = {}
+_cached_service = None
+_cached_creds = None
 _sm_client = None
 
-def get_secret_version(project_id: str, secret_id: str, version_id: str = "latest") -> str:
-    """Get secret from Google Cloud Secret Manager (cached)."""
-    cache_key = f"{project_id}:{secret_id}:{version_id}"
-    if cache_key in _secrets_cache:
-        return _secrets_cache[cache_key]
-    global _sm_client
-    if _sm_client is None:
-        _sm_client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-    response = _sm_client.access_secret_version(request={"name": name})
-    val = response.payload.data.decode('UTF-8')
-    _secrets_cache[cache_key] = val
-    return val
 
-def get_gmail_credentials() -> Dict[str, str]:
-    """Get Gmail credentials from Google Cloud Secret Manager."""
-    return {
-        'user': get_secret_version(PROJECT_ID, GMAIL_USERNAME_SECRET_ID),
-        'password': get_secret_version(PROJECT_ID, GMAIL_APP_PASSWORD_SECRET_ID),
-    }
+def _get_gmail_service():
+    """Build (and cache) a Gmail API client authed as kumoridotai@gmail.com."""
+    global _cached_service, _cached_creds, _sm_client
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+
+    if _cached_creds is None:
+        from google.cloud import secretmanager
+        if _sm_client is None:
+            _sm_client = secretmanager.SecretManagerServiceClient()
+        name = f"projects/{PROJECT_ID}/secrets/{OAUTH_SECRET_ID}/versions/latest"
+        payload = json.loads(
+            _sm_client.access_secret_version(request={"name": name}).payload.data.decode("UTF-8")
+        )
+        _cached_creds = Credentials(
+            token=None,
+            refresh_token=payload["refresh_token"],
+            client_id=payload["client_id"],
+            client_secret=payload["client_secret"],
+            token_uri=payload["token_uri"],
+            scopes=payload.get("scopes"),
+        )
+
+    if not _cached_creds.valid:
+        _cached_creds.refresh(Request())
+        _cached_service = None
+
+    if _cached_service is None:
+        _cached_service = build("gmail", "v1", credentials=_cached_creds, cache_discovery=False)
+    return _cached_service
 
 
 def send_email(
@@ -50,29 +65,10 @@ def send_email(
     is_html: bool = False,
     from_name: str = "Pilgrims"
 ) -> bool:
-    """
-    Send an email using Gmail SMTP.
-
-    Args:
-        subject: Email subject line
-        body: Email body content
-        to_emails: List of recipient email addresses
-        cc_emails: List of CC email addresses (optional)
-        bcc_emails: List of BCC email addresses (optional)
-        attachment_paths: List of file paths to attach (optional)
-        is_html: Whether the body is HTML format (default: False)
-        from_name: Display name for sender (default: "Pilgrims")
-
-    Returns:
-        bool: True if email sent successfully, False otherwise
-    """
+    """Send an email via Gmail API as kumoridotai@gmail.com."""
     try:
-        gmail_credentials = get_gmail_credentials()
-        gmail_user = gmail_credentials['user']
-        gmail_password = gmail_credentials['password']
-
         message = MIMEMultipart()
-        message['From'] = f'{from_name} <{gmail_user}>'
+        message['From'] = f'{from_name} <{SENDER_EMAIL}>'
         message['To'] = ', '.join(to_emails)
         message['Subject'] = subject
 
@@ -98,15 +94,9 @@ def send_email(
                 part.add_header('Content-Disposition', 'attachment', filename=path.basename(attachment_path))
                 message.attach(part)
 
-        all_recipients = to_emails.copy()
-        if cc_emails:
-            all_recipients.extend(cc_emails)
-        if bcc_emails:
-            all_recipients.extend(bcc_emails)
-
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(gmail_user, gmail_password)
-            server.send_message(message, to_addrs=all_recipients)
+        svc = _get_gmail_service()
+        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+        svc.users().messages().send(userId='me', body={'raw': raw}).execute()
 
         logger.info(f'Email sent successfully to {to_emails}')
         return True

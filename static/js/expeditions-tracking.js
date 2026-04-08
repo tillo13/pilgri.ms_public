@@ -24,12 +24,13 @@ function initializeActiveExpeditionTracking() {
         // Store expedition data for popups (including return time)
         activeExpeditionData.set(id, { name: destName, arrives, returnArrives, departed, destLat, destLon, distance, status, vehicleType });
 
-        // If already marked as complete from server, just show arrived state and load discoveries
+        // If already marked as complete from server, vehicle is BACK AT BASE.
+        // Bug #1281: previously drew rover at destLat/destLon which made completed
+        // expeditions look identical to one-way arrivals. Rover now sits at base
+        // (round-trip done) while the destination dot remains as a visited marker.
         if (status === 'complete') {
-            // Already complete - just show destination marker and load discoveries
             if (!isNaN(destLat) && !isNaN(destLon)) {
-                addRoverMarker(id, destLat, destLon, 1.0);
-                addRouteLine(id, destLat, destLon);
+                addRoverMarker(id, baseCoords.latitude, baseCoords.longitude, 1.0);
                 addDestinationMarker(id, destLat, destLon, true);  // arrived = true
             }
             startDiscoveryUpdates(id, w);
@@ -47,10 +48,10 @@ function initializeActiveExpeditionTracking() {
             }
             updatePhaseLabel(w, 'Returned');
             checkExpeditionCompletion(w);
-            // Show rover at destination
+            // Bug #1281: rover is BACK AT BASE when returnArrives has passed,
+            // not parked at the destination. Place marker at base coords.
             if (!isNaN(destLat) && !isNaN(destLon)) {
-                addRoverMarker(id, destLat, destLon, 1.0);
-                addRouteLine(id, destLat, destLon);
+                addRoverMarker(id, baseCoords.latitude, baseCoords.longitude, 1.0);
                 addDestinationMarker(id, destLat, destLon, true);  // arrived = true
             }
         } else if (now >= arrives) {
