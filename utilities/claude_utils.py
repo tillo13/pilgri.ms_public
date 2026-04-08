@@ -76,6 +76,7 @@ MODEL_PRICING = {
 CACHE_WRITE_MULTIPLIER = 1.25
 CACHE_READ_MULTIPLIER = 0.1
 WEB_SEARCH_COST = 0.01
+WEB_SEARCH_TOOL_VERSION = "web_search_20260209"  # update here when Anthropic releases newer version
 
 APP_NAME = 'galactica'
 
@@ -680,27 +681,21 @@ class ClaudeClient:
     # NEW METHOD: Clear Web Search Tool Configuration
     def configure_web_search_tools(self, params):
         """Configure web search tools with detailed informative logging (no more red X warnings)."""
-        
-        # Models confirmed to support web search (tested and verified)
-        # Note: Using partial string matching to handle version variations
-        supported_models = [
-            'claude-opus-4-1',      # ✅ Opus 4.1 - verified
-            'claude-opus-4-2025',   # ✅ Opus 4 - verified (but slow)
-            'claude-sonnet-4',      # ✅ Sonnet 4 - verified
-            'claude-3-7-sonnet',    # ✅ Sonnet 3.7 - verified
-            'claude-3-5-sonnet',    # ✅ Sonnet 3.5 - verified
-            'claude-3-5-haiku',     # ✅ Haiku 3.5 - verified
+
+        # Models that do NOT support web search — exclude list is smaller than include list
+        # All claude-3+, claude-4+ models support it. Only very old models don't.
+        unsupported_prefixes = [
+            'claude-2',
+            'claude-instant',
         ]
-        
-        # Check if current model supports web search
-        model_supported = any(model_prefix in self.model for model_prefix in supported_models)
-        
+
+        model_supported = not any(prefix in self.model for prefix in unsupported_prefixes)
+
         if model_supported:
             params["tools"] = [{
-                "type": "web_search_20250305", 
-                "name": "web_search"
+                "type": WEB_SEARCH_TOOL_VERSION,
             }]
-            logger.debug(f"Added web_search_20250305 tool to request parameters")
+            logger.debug(f"Added {WEB_SEARCH_TOOL_VERSION} tool to request parameters")
             return True
         else:
             logger.debug(f"Model {self.model} will use training knowledge (web search not available)")

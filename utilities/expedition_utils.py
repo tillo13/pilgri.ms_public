@@ -1212,46 +1212,44 @@ def launch_expedition(
     )
 
     base_expedition_cost_eth = expedition_pricing['base_expedition_cost'] / 10000000
-    
-    miner = MarsAsteroidMiner()
-    if not miner.connect():
-        return {'success': False, 'error': 'Network unavailable'}
-    
-    total_pricing = miner.calculate_total_transaction_cost(
+
+    # Bug #1290: preview uses calculate_cached_transaction_cost (DEFAULT_FEE_MULTIPLIER=1.0,
+    # no blockchain call), but launch previously used miner.calculate_total_transaction_cost
+    # (live Sepolia gas lookup). When Sepolia gas ticked up between preview and launch,
+    # the fee_multiplier rose above 1.0 and total cost jumped ~47 shards — enough to push
+    # players who could barely afford the preview cost into "Insufficient funds".
+    # Fix: use the same cached pricing at launch so preview == launch cost, always.
+    from utilities.depot_utils import calculate_cached_transaction_cost
+    current_balance_eth = float(wallet.get('current_balance_eth', 0) or 0)
+    total_pricing = calculate_cached_transaction_cost(
         base_expedition_cost_eth,
-        from_address=wallet['wallet_address'],
+        user_balance_eth=current_balance_eth,
         message_length=250
     )
-    
-    if not total_pricing['success']:
-        return {'success': False, 'error': 'Pricing calculation failed'}
-    
+    total_pricing['success'] = True  # cached version always succeeds
+
     is_first_mission = expeditions_completed == 0
     user_balance_eth = total_pricing['current_balance_eth']
-    
+
     if is_first_mission and user_balance_eth > 0:
         max_first_mission_cost_eth = user_balance_eth * 0.5
-        
+
         if total_pricing['total_cost_eth'] > max_first_mission_cost_eth:
-            # Ensure we have enough for gas at minimum
             remaining_for_base = max_first_mission_cost_eth - total_pricing['gas_cost_eth']
-            
+
             if remaining_for_base > 0:
-                # Recalculate with proper atmospheric fee accounting
                 max_base_cost_eth = remaining_for_base / (1 + (total_pricing['conditions']['fee_multiplier'] - 1.0))
-                
-                total_pricing = miner.calculate_total_transaction_cost(
+                total_pricing = calculate_cached_transaction_cost(
                     max_base_cost_eth,
-                    from_address=wallet['wallet_address'],
+                    user_balance_eth=current_balance_eth,
                     message_length=250
                 )
-                
+                total_pricing['success'] = True
                 base_expedition_cost_eth = max_base_cost_eth
-                
                 logger.info(f"🎁 First mission cap applied: {total_pricing['total_cost_display']} (was {expedition_pricing['base_expedition_cost']})")
             else:
                 logger.warning(f"⚠️ User balance too low for first mission cap ({user_balance_eth} ETH)")
-    
+
     if not total_pricing['can_afford']:
         return {
             'success': False,
@@ -1341,6 +1339,10 @@ def launch_expedition(
         import threading
         def do_blockchain_tx():
             try:
+                miner = MarsAsteroidMiner()
+                if not miner.connect():
+                    logger.error(f"❌ Blockchain connect failed for expedition {expedition_id}")
+                    return
                 tx_result = miner.return_to_hub_with_reconciliation(
                     from_address=wallet['wallet_address'],
                     from_private_key=wallet['wallet_private_key'],
