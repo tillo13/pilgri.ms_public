@@ -132,7 +132,10 @@ function setVehicleRange(btn, vehicleType) {
 
     const rangeKm = parseInt(btn.dataset.range) || 0;
 
-    // Draw range circle — Leaflet assumes Earth radius, so scale for Mars (3396 vs 6371 km)
+    // Draw range circle — Leaflet assumes Earth radius (6371km) for its circle rendering.
+    // Our Mars haversine distances use Mars radius (3396km). To convert: a D_km Mars
+    // distance subtends angle D/3396 rad; Leaflet needs that same angle as Earth meters
+    // = (D/3396) * 6371000 = D * (6371/3396) * 1000. Mathematically verified correct.
     const marsCorrection = 6371 / 3396;
     rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
         radius: rangeKm * 1000 * marsCorrection,

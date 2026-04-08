@@ -943,6 +943,7 @@ def test_brainstorm_pages():
 
 
 @test("Harvest claim is atomic (no split transactions)", tier=2, features=['infrastructure'])
+@requires_web3
 def test_harvest_atomic():
     """Verify claim_accumulated_income uses single db_cursor for balance+timer."""
     import inspect
@@ -956,6 +957,7 @@ def test_harvest_atomic():
 
 
 @test("Screenshot delete endpoint exists", tier=2, features=['bugs'])
+@requires_import('flask', 'replicate', 'web3')
 def test_screenshot_delete_route():
     """Verify DELETE /api/admin/bugs/<id>/screenshot/<field> route exists."""
     from app import app
@@ -965,6 +967,7 @@ def test_screenshot_delete_route():
 
 
 @test("Environmental impact capped at 100%", tier=2, features=['infrastructure'])
+@requires_web3
 def test_env_impact_cap():
     """Verify environmental combined factor can't exceed 1.0."""
     from utilities.infrastructure_utils import _get_mars_environment_factors

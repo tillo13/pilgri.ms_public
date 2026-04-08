@@ -80,22 +80,25 @@ def get_mars_landmarks_within_radius(center_lat: float, center_lon: float, radiu
         radius_deg = radius_km / 59
 
         with db_cursor() as cur:
-            # Use subquery to filter by computed distance
+            # Flat formula as bounding-box pre-filter (fast), then re-filter by true haversine below
             cur.execute("""
-                SELECT * FROM (
-                    SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link,
-                           SQRT(POW((latitude - %s) * 59, 2) + POW((longitude - %s) * 59 * COS(RADIANS(%s)), 2)) as distance_km
-                    FROM pilgrim.mars_mappings
-                    WHERE latitude BETWEEN %s - %s AND %s + %s
-                      AND longitude BETWEEN %s - %s AND %s + %s
-                ) AS sub
-                WHERE distance_km <= %s
-                ORDER BY distance_km
-            """, (center_lat, center_lon, center_lat,
-                  center_lat, radius_deg, center_lat, radius_deg,
-                  center_lon, radius_deg, center_lon, radius_deg,
-                  radius_km))
-            return _fetchall(cur)
+                SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link
+                FROM pilgrim.mars_mappings
+                WHERE latitude BETWEEN %s - %s AND %s + %s
+                  AND longitude BETWEEN %s - %s AND %s + %s
+            """, (center_lat, radius_deg, center_lat, radius_deg,
+                  center_lon, radius_deg, center_lon, radius_deg))
+            rows = _fetchall(cur)
+
+        # Recalculate distance_km using true Mars haversine — same metric as the range circle
+        results = []
+        for row in rows:
+            dist = calculate_mars_distance(center_lat, center_lon, row['latitude'], row['longitude'])
+            if dist <= radius_km:
+                row['distance_km'] = round(dist, 2)
+                results.append(row)
+        results.sort(key=lambda r: r['distance_km'])
+        return results
     except Exception as e:
         logger.warning(f"Could not get landmarks within radius: {e}")
         return []
