@@ -948,9 +948,25 @@ def get_visited_sites_for_trails(user_id: int, frontier_limit: int = 5) -> list:
             """, (user_id,))
             active_trails = [dict(r) for r in (cur.fetchall() or [])]
 
-        # If we have 4+ active trails, return them
+            # Bug #1291: also fetch COMPLETED trails so the map can show built infrastructure.
+            # Previously these were filtered out and Luke's completed Canas trail vanished
+            # from the map the moment a chain trail (Canas->Tignish) appeared.
+            cur.execute("""
+                SELECT ts.from_landmark, ts.destination_name, ts.km_built, ts.captain_km,
+                       ts.scientist_km, ts.aria_km, ts.trip_count, ts.trail_level,
+                       ts.total_distance_km, m.type, m.latitude, m.longitude
+                FROM pilgrim.trail_segments ts
+                JOIN pilgrim.mars_mappings m ON m.name = ts.destination_name
+                WHERE ts.user_id = %s
+                  AND ts.total_distance_km IS NOT NULL
+                  AND ts.km_built >= ts.total_distance_km
+                ORDER BY ts.total_distance_km ASC
+            """, (user_id,))
+            completed_trails = [dict(r) for r in (cur.fetchall() or [])]
+
+        # If we have 4+ active trails, return them + all completed
         if len(active_trails) >= 4:
-            return _format_trail_sites(active_trails[:4], base_lat, base_lon)
+            return _format_trail_sites(active_trails[:4] + completed_trails, base_lat, base_lon)
 
         # Fill remaining slots with closest unstarted landmarks
         active_dests = {t['destination_name'] for t in active_trails}
@@ -993,7 +1009,7 @@ def get_visited_sites_for_trails(user_id: int, frontier_limit: int = 5) -> list:
                 'type': c['type'], 'latitude': c['latitude'], 'longitude': c['longitude'],
             })
 
-        return _format_trail_sites(active_trails[:4], base_lat, base_lon)
+        return _format_trail_sites(active_trails[:4] + completed_trails, base_lat, base_lon)
     except Exception as e:
         logger.error(f"Failed to get visited sites for trails: {e}")
         return []
@@ -1002,11 +1018,34 @@ def get_visited_sites_for_trails(user_id: int, frontier_limit: int = 5) -> list:
 def _format_trail_sites(trails: list, base_lat: float, base_lon: float) -> list:
     """Format trail segment rows into the site dict format expected by the API."""
     from utilities.mars_math import haversine_distance
+
+    # Bug #1291: chain trails (from_landmark != 'HOME') previously had from_latitude/from_longitude
+    # hardcoded to base coords, so the map drew them as base->dest instead of origin->dest.
+    # Look up real coords for any non-HOME from_landmarks in one batch query.
+    non_home_froms = sorted({t['from_landmark'] for t in trails
+                             if t.get('from_landmark') and t['from_landmark'] != 'HOME'})
+    from_coords_lookup = {}
+    if non_home_froms:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT name, latitude, longitude FROM pilgrim.mars_mappings
+                WHERE name = ANY(%s)
+            """, (non_home_froms,))
+            for r in (cur.fetchall() or []):
+                from_coords_lookup[r['name']] = (float(r['latitude']), float(r['longitude']))
+
     results = []
     for t in trails:
         s_lat = float(t['latitude'])
         s_lon = float(t['longitude'])
         home_dist = haversine_distance(base_lat, base_lon, s_lat, s_lon)
+        from_lm = t.get('from_landmark') or 'HOME'
+        if from_lm != 'HOME' and from_lm in from_coords_lookup:
+            from_lat, from_lon = from_coords_lookup[from_lm]
+        else:
+            from_lat, from_lon = base_lat, base_lon
+        total_dist = float(t.get('total_distance_km') or home_dist)
+        km_built = float(t.get('km_built') or 0)
         results.append({
             'name': t['destination_name'],
             'type': t.get('type', 'Crater, craters'),
@@ -1015,18 +1054,21 @@ def _format_trail_sites(trails: list, base_lat: float, base_lon: float) -> list:
             'visit_count': 0,
             'last_visited': None,
             'distance_km': round(home_dist, 2),
-            'from_landmark': t.get('from_landmark', 'HOME'),
-            'from_latitude': base_lat,
-            'from_longitude': base_lon,
-            'segment_distance_km': round(float(t.get('total_distance_km') or home_dist), 2),
-            'km_built': float(t.get('km_built') or 0),
+            'from_landmark': from_lm,
+            'from_latitude': from_lat,
+            'from_longitude': from_lon,
+            'segment_distance_km': round(total_dist, 2),
+            'km_built': km_built,
+            'is_complete': total_dist > 0 and km_built >= total_dist,
             'captain_km': float(t.get('captain_km') or 0),
             'scientist_km': float(t.get('scientist_km') or 0),
             'aria_km': float(t.get('aria_km') or 0),
             'trip_count': t.get('trip_count', 0),
             'trail_level': t.get('trail_level', 'none'),
         })
-    results.sort(key=lambda s: s['segment_distance_km'])
+    # Sort: incomplete first (by distance), then completed (by distance).
+    # Keeps the picker showing buildable trails at the top.
+    results.sort(key=lambda s: (s['is_complete'], s['segment_distance_km']))
     return results
 
 

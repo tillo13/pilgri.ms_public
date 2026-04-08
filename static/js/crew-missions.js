@@ -300,12 +300,15 @@ function startCrewMission(member) {
 
 function renderTrailList() {
     const container = document.getElementById('mission-trail-list');
-    if (nearbyTrails.length === 0) {
+    // Bug #1291: completed trails are now included in nearbyTrails for map rendering,
+    // but the picker should only show buildable trails.
+    const buildable = nearbyTrails.filter(t => !t.is_complete);
+    if (buildable.length === 0) {
         container.innerHTML = '<div class="text-xs opacity-60">No discovered landmarks yet. Explore on expeditions first!</div>';
         return;
     }
 
-    container.innerHTML = nearbyTrails.map(t => {
+    container.innerHTML = buildable.map(t => {
         const kmBuilt = t.km_built || 0;
         const totalKm = t.distance_km || 1;
         const percent = Math.min(100, (kmBuilt / totalKm) * 100).toFixed(1);

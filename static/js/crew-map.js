@@ -189,9 +189,11 @@ function updateTopTrails() {
     const list = document.getElementById('top-trails-list');
     if (!section || !list) return;
 
-    // Filter trails that have been started (km_built > 0) and sort by progress
+    // Filter trails that have been started (km_built > 0) but not yet complete.
+    // Bug #1291: completed trails are now in nearbyTrails for map rendering, but
+    // "Top Trails" is for trails to continue working on — exclude finished ones.
     const inProgress = nearbyTrails
-        .filter(t => (t.km_built || 0) > 0)
+        .filter(t => (t.km_built || 0) > 0 && !t.is_complete)
         .map(t => ({
             ...t,
             totalKm: t.segment_distance_km || t.distance_km || 1,

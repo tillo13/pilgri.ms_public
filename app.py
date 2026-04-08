@@ -1778,6 +1778,7 @@ def api_crew_mission_nearby():
             'trail_level': t.get('trail_level', 'none'),
             'latitude': float(t['latitude']) if t.get('latitude') else None,
             'longitude': float(t['longitude']) if t.get('longitude') else None,
+            'is_complete': bool(t.get('is_complete', False)),
         })
 
     return jsonify({'success': True, 'trails': formatted, 'base_coords': base_coords})
