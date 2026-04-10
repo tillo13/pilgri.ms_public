@@ -982,7 +982,10 @@ def get_dashboard_page_data(user_id, auth):
     try:
         from utilities.infrastructure_utils import calculate_accumulated_income
         income_calc = calculate_accumulated_income(user_id)
-        hourly_rate = income_calc.get('rate_breakdown', {}).get('theoretical_max_rate', 0)
+        # Use effective_rate (day/night/env/dust accounted for), NOT theoretical_max_rate
+        # which is the ceiling assuming perpetual daylight — would tick the top bar faster
+        # than the player actually earns. Bug fix: Effective Rate P1.
+        hourly_rate = income_calc.get('rate_breakdown', {}).get('effective_rate', 0)
         live_rates['shard_rate'] = hourly_rate / 3600  # per second
     except Exception:
         pass
@@ -1451,8 +1454,13 @@ def get_colony_page_data(user_id, auth):
         from utilities.infrastructure_utils import calculate_accumulated_income
         income_calc = calculate_accumulated_income(user_id)
         income_data = {
-            'effective_rate': income_calc.get('rate_breakdown', {}).get('actual_avg_rate', 0),
+            # effective_rate is the TRUE rate (day/night + dust + temp + bonuses),
+            # NOT theoretical_max_rate (the ceiling). Bug fix: Effective Rate P1.
+            'effective_rate': income_calc.get('rate_breakdown', {}).get('effective_rate', 0),
             'base_rate': income_calc.get('rate_breakdown', {}).get('base_hourly_rate', 0),
+            'effective_base_rate': income_calc.get('rate_breakdown', {}).get('effective_base_rate', 0),
+            'day_night_efficiency': income_calc.get('rate_breakdown', {}).get('day_night_efficiency', 100),
+            'mars_env_multiplier': income_calc.get('rate_breakdown', {}).get('mars_env_multiplier', 100),
             'passive_income_mult': income_calc.get('bonuses_applied', {}).get('passive_income_mult', 1.0),
             'passive_income_source': income_calc.get('bonuses_applied', {}).get('passive_income_source'),
             'all_generation_mult': income_calc.get('bonuses_applied', {}).get('all_generation_mult', 1.0),

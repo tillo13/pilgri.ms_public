@@ -746,6 +746,22 @@ def calculate_accumulated_income(user_id):
     # Theoretical max rate (if 100% daytime, with all bonuses including scientist)
     theoretical_max_rate = round(((base_hourly_rate * passive_income_mult * all_generation_mult) + passive_income_base) * scientist_shard_mult, 1)
 
+    # True effective rate - what the player is ACTUALLY earning per hour.
+    # Single source of truth for both the colony header and the top-bar live ticker.
+    # When accumulation data exists, actual_avg_rate is the most accurate (already
+    # has day/night + dust + temp + bonuses baked in). When fresh (avg_hours=0),
+    # synthesize from effective_base_rate x bonuses so we never show +0/hr to a
+    # player with active generators. This is the value that should be labelled
+    # "Effective Rate" in the UI - NOT theoretical_max_rate, which is the ceiling
+    # assuming perpetual daylight with no dust or environmental losses.
+    if actual_avg_rate > 0:
+        effective_rate = actual_avg_rate
+    else:
+        effective_rate = round(
+            ((effective_base_rate * passive_income_mult * all_generation_mult) + passive_income_base) * scientist_shard_mult,
+            1
+        )
+
     # ========================================================================
     # BUILD GENERATORS BREAKDOWN FOR UI
     # List each generating structure with its contribution
@@ -842,8 +858,9 @@ def calculate_accumulated_income(user_id):
             'base_hourly_rate': round(base_hourly_rate, 1),  # Raw infrastructure rate
             'day_night_efficiency': round(day_night_efficiency * 100, 0),  # Pure day/night cycle %
             'effective_base_rate': effective_base_rate,  # After day/night + environment
-            'theoretical_max_rate': theoretical_max_rate,  # Max possible with all bonuses
+            'theoretical_max_rate': theoretical_max_rate,  # Max possible with all bonuses (CEILING — not what player earns)
             'actual_avg_rate': actual_avg_rate,  # What you're actually getting this period
+            'effective_rate': effective_rate,  # TRUE hourly rate for UI labels — accounts for day/night/dust/env, falls back to synthesized rate for fresh users
             'mars_env_multiplier': round(mars_env_multiplier * 100, 0),  # Combined env % (dust × temp)
             'mars_env_factors': mars_env_factors,  # Individual: dust, temperature, latitude, condition
         },

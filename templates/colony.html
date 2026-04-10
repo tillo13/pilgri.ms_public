@@ -186,11 +186,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <!-- Base Overview Summary -->
     {% set base_rate = income_data.base_rate|default(0) %}
-    {% set effective_rate = income_data.theoretical_max_rate|default(base_rate) %}
+    {# effective_rate = TRUE hourly rate (day/night + dust + env + bonuses baked in).
+       NOT theoretical_max_rate — that's the ceiling assuming perpetual daylight. #}
+    {% set effective_rate = income_data.effective_rate|default(base_rate) %}
+    {% set theoretical_max = income_data.theoretical_max_rate|default(effective_rate) %}
     {% set passive_mult = income_data.passive_income_mult|default(1.0) %}
     {% set all_gen_mult = income_data.all_generation_mult|default(1.0) %}
     {% set passive_base = income_data.passive_income_base|default(0) %}
     {% set scientist_mult = income_data.scientist_shard_mult|default(1.0) %}
+    {% set day_night_pct = income_data.day_night_efficiency|default(100) %}
+    {% set mars_env_pct = income_data.mars_env_multiplier|default(100) %}
     {% set total_building = (building_infrastructure|default([])|length) + (building_equipment|default([])|length) %}
 
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-default);">
@@ -200,10 +205,17 @@ document.addEventListener('DOMContentLoaded', function() {
             {% if passive_mult > 1.0 or passive_base > 0 or scientist_mult > 1.0 %}
             <div style="font-size: 9px; color: var(--color-success); margin-top: 2px;">
                 {{ "%.0f"|format(base_rate) }} base
-                {% if passive_mult > 1.0 %} {{ "%.2f"|format(passive_mult) }}x{% endif %}
+                {% if passive_mult > 1.0 %} &times;{{ "%.2f"|format(passive_mult) }}{% endif %}
                 {% if passive_base > 0 %} +{{ passive_base }}/hr{% endif %}
-                {% if scientist_mult > 1.0 %} {{ "%.2f"|format(scientist_mult) }}x sci{% endif %}
+                {% if scientist_mult > 1.0 %} &times;{{ "%.2f"|format(scientist_mult) }} sci{% endif %}
             </div>
+            {% if day_night_pct < 100 or mars_env_pct < 100 %}
+            <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;" title="Max rate {{ '%.0f'|format(theoretical_max) }}/hr assumes perpetual daylight with no dust. Mars cuts it down.">
+                {% if day_night_pct < 100 %}{{ "%.0f"|format(day_night_pct) }}% day{% endif %}
+                {% if day_night_pct < 100 and mars_env_pct < 100 %} &middot; {% endif %}
+                {% if mars_env_pct < 100 %}{{ "%.0f"|format(mars_env_pct) }}% env{% endif %}
+            </div>
+            {% endif %}
             {% endif %}
         </div>
         <div style="text-align: center;">

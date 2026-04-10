@@ -686,6 +686,187 @@ def get_user_tech_status(user_id: int) -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Lab Summary Box (bug #1286)
+# ---------------------------------------------------------------------------
+# Canonical mapping from raw effect key → display metadata. Mirrors the if/elif
+# chain previously inlined in research.html so we only own one list of labels.
+# Icon keys resolve to UI_ICONS at template render time (we pass just the key).
+_EFFECT_DISPLAY = {
+    'expedition_speed_mult':    {'icon': 'speed_fast',         'label': 'speed',            'fmt': 'mult'},
+    'discovery_chance_bonus':   {'icon': 'magnifier_discovery','label': 'discovery',        'fmt': 'pct_bonus'},
+    'rare_chance_bonus':        {'icon': 'rare_sparkle',       'label': 'rare',             'fmt': 'pct_bonus'},
+    'legendary_chance_bonus':   {'icon': 'value_diamond',      'label': 'legendary',        'fmt': 'pct_bonus'},
+    'dust_storm_resistance':    {'icon': 'tornado_dust',       'label': 'Dust immune',      'fmt': 'immune'},
+    'fuel_cost_mult':           {'icon': 'fuel_pump',          'label': 'fuel cost',        'fmt': 'mult'},
+    'cargo_capacity_mult':      {'icon': 'cargo_capacity',     'label': 'cargo',            'fmt': 'mult'},
+    'passive_income_mult':      {'icon': 'income_coins',       'label': 'income',           'fmt': 'mult'},
+    'night_generation_mult':    {'icon': 'night_moon',         'label': 'night gen',        'fmt': 'mult'},
+    'all_generation_mult':      {'icon': 'lightning_power',    'label': 'all generation',   'fmt': 'mult'},
+    'discovery_value_mult':     {'icon': 'value_diamond',      'label': 'discovery value',  'fmt': 'mult'},
+    'extraction_bonus':         {'icon': 'pickaxe_mining',     'label': 'extraction yield', 'fmt': 'pct_bonus'},
+    'rare_value_mult':          {'icon': 'rare_sparkle',       'label': 'rare value',       'fmt': 'mult'},
+    'legendary_value_mult':     {'icon': 'value_diamond',      'label': 'legendary value',  'fmt': 'mult'},
+}
+
+
+def _format_effects_for_display(effects: Dict[str, Any]) -> list:
+    """
+    Turn a stacked effects dict (e.g. {'passive_income_mult': 1.56, ...}) into a
+    list of {icon, label, value_display} rows for the summary box template. Keys
+    not in _EFFECT_DISPLAY are skipped — if a tech adds a new effect it needs a
+    row here AND in research.html's per-tech chain (same source of truth).
+    """
+    rows = []
+    for key, value in effects.items():
+        meta = _EFFECT_DISPLAY.get(key)
+        if not meta:
+            continue
+
+        fmt = meta['fmt']
+        if fmt == 'mult':
+            # A stacked mult of 1.0 means "no effect" — don't clutter the box.
+            if abs(float(value) - 1.0) < 0.001:
+                continue
+            value_display = f"{float(value):.2f}x {meta['label']}"
+        elif fmt == 'pct_bonus':
+            if float(value) == 0:
+                continue
+            pct = float(value) * 100
+            sign = '+' if pct >= 0 else ''
+            value_display = f"{sign}{pct:.0f}% {meta['label']}"
+        elif fmt == 'immune':
+            # dust_storm_resistance is a float, >=1.0 means full immunity.
+            if float(value) < 1.0:
+                continue
+            value_display = meta['label']
+        else:
+            continue
+
+        rows.append({
+            'key': key,
+            'icon': meta['icon'],
+            'value_display': value_display,
+        })
+    return rows
+
+
+def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
+    """
+    Lab Summary Box data (bug #1286). One DB query → all completed techs across
+    every branch, grouped and stacked so the top of /research can show exactly
+    what the captain has researched AND the resulting cumulative bonuses.
+
+    If `branch_levels` is provided (e.g. from an already-fetched tech_status),
+    the per-branch-level lookup is skipped — saves one DB round-trip on the
+    /research page where get_user_tech_status has already computed it.
+
+    Returns:
+        {
+            'total_completed': int,
+            'branches': [  # only branches with at least one completion
+                {
+                    'branch_key', 'name', 'icon', 'icon_url',
+                    'branch_level', 'completed_count',
+                    'techs': [{'tech_key', 'name', 'description', 'image_url'}...],
+                    'bonuses': [{'icon', 'value_display'}...],  # stacked in-branch
+                },
+                ...
+            ],
+            'global_bonuses': [{'icon','value_display'}...],  # stacked across ALL branches
+        }
+    """
+    from config_tech import scale_effects, get_tech_name_at_level
+
+    # Single query — no per-branch loop, avoids N+1.
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT branch, tech_key, COALESCE(branch_level, 1) AS branch_level
+            FROM pilgrim.player_techs
+            WHERE user_id = %s AND status = 'completed'
+            ORDER BY branch, branch_level, tech_key
+        """, (user_id,))
+        rows = cur.fetchall()
+
+    if not rows:
+        return {
+            'total_completed': 0,
+            'branches': [],
+            'global_bonuses': [],
+        }
+
+    # Group rows by branch key in memory.
+    by_branch: Dict[str, list] = {}
+    for row in rows:
+        by_branch.setdefault(row['branch'], []).append(row)
+
+    def _merge(dst: dict, add: dict):
+        """Same merge rules as _get_branch_effects so behavior stays identical."""
+        for k, v in add.items():
+            if k not in dst:
+                dst[k] = v
+            elif k.endswith('_mult'):
+                dst[k] = dst[k] * v
+            elif isinstance(v, (int, float)):
+                dst[k] = dst[k] + v
+            elif isinstance(v, bool):
+                dst[k] = dst[k] or v
+
+    if branch_levels is None:
+        branch_levels = _get_user_branch_levels(user_id)
+    global_effects: Dict[str, Any] = {}
+    branches_out = []
+
+    # Preserve TECH_CATALOG ordering for consistent UI.
+    for branch_key, branch_data in TECH_CATALOG.items():
+        branch_rows = by_branch.get(branch_key)
+        if not branch_rows:
+            continue
+
+        techs_config = branch_data.get('techs', {})
+        branch_effects: Dict[str, Any] = {}
+        tech_cards = []
+
+        for r in branch_rows:
+            tech_key = r['tech_key']
+            completed_level = r['branch_level']
+            tech_data = techs_config.get(tech_key)
+            if not tech_data:
+                continue
+
+            # Scale + merge into this branch AND into the global total.
+            scaled = scale_effects(tech_data.get('effects', {}), completed_level)
+            _merge(branch_effects, scaled)
+            _merge(global_effects, scaled)
+
+            # NB: intentionally no image_url here — the summary box renders tech
+            # names as text pills, so _get_tech_image() (per-tech DB call) would
+            # add ~N extra queries for zero visual payoff. Speed-first.
+            tech_cards.append({
+                'tech_key': tech_key,
+                'name': get_tech_name_at_level(tech_data['name'], completed_level),
+                'description': tech_data.get('description', ''),
+                'completed_level': completed_level,
+            })
+
+        branches_out.append({
+            'branch_key': branch_key,
+            'name': branch_data['name'],
+            'icon': branch_data.get('icon', ''),
+            'icon_url': branch_data.get('icon_url', ''),
+            'branch_level': branch_levels.get(branch_key, 1),
+            'completed_count': len(tech_cards),
+            'techs': tech_cards,
+            'bonuses': _format_effects_for_display(branch_effects),
+        })
+
+    return {
+        'total_completed': len(rows),
+        'branches': branches_out,
+        'global_bonuses': _format_effects_for_display(global_effects),
+    }
+
+
 def get_research_page_data(user_id: int) -> Dict[str, Any]:
     """Single call for /research template rendering."""
     from config import COLONY_SCIENTISTS
@@ -713,4 +894,11 @@ def get_research_page_data(user_id: int) -> Dict[str, Any]:
         'branches': tech_status['branches'],
         'active_research': tech_status.get('active_research'),
         'just_completed': tech_status.get('just_completed'),
+        # Bug #1286 — Lab Summary Box: all completed techs + stacked bonuses.
+        # Pass branch_levels derived from tech_status to avoid a duplicate DB
+        # round-trip into _get_user_branch_levels.
+        'tech_summary': get_tech_summary(
+            user_id,
+            branch_levels={k: v['branch_level'] for k, v in tech_status['branches'].items()},
+        ),
     }

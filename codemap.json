@@ -953,6 +953,19 @@
       "test_get_effects"
     ]
   },
+  "docs/2026apr10plan.md": {
+    "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
+    "exports": [
+      "The Crossover Insight",
+      "Why Effective Rate goes first",
+      "What is NOT in scope today (deferred)",
+      "Locked-in design decisions",
+      "Sequence — 7 chunks",
+      "Bug tracker actions at end of day",
+      "Risks and watch-outs",
+      "Done criteria"
+    ]
+  },
   "docs/PILGRIMS.md": {
     "description": "Pilgrims - Story Bible & Design Vision",
     "exports": [
@@ -1874,6 +1887,7 @@
       "cancel_research — Cancel active research. Refunds SV by deleting the player_techs row.",
       "get_tech_effects — Calculate cumulative effects from all completed tech research.",
       "get_user_tech_status — Full tech tree state for a user. Auto-completes expired research first.",
+      "get_tech_summary — Lab Summary Box data (bug #1286). One DB query → all completed techs across",
       "get_research_page_data — Single call for /research template rendering."
     ],
     "keywords": "tech research, start research, complete research, SV balance, tech effects"
@@ -2492,7 +2506,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
