@@ -378,6 +378,7 @@ UI_ICONS = {
     'video_film': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_video_film_1767996496.png',
     'gift_box': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_gift_box_1767996505.png',
     'wrench_repair': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_wrench_repair_1767996514.png',
+    'robot_avatar': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_robot_avatar_1775872113.png',
     'shopping_cart': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_shopping_cart_1767996524.png',
     'shop_storefront': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_shop_storefront_1767996535.png',
     'microscope_lab': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/icon_microscope_lab_1767996545.png',

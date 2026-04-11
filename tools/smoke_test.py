@@ -355,7 +355,7 @@ def test_tech_structure():
 @test("UI_ICONS defined", tier=1, features=['config'])
 def test_ui_icons():
     from config import UI_ICONS
-    required = ['shard_gem', 'success_check', 'error_x']
+    required = ['shard_gem', 'success_check', 'error_x', 'robot_avatar']
     for icon in required:
         if icon not in UI_ICONS:
             return f"Missing icon: {icon}"

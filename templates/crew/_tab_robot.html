@@ -12,15 +12,28 @@
     <img src="{{ icons.tab_map }}" alt="" class="card-bg-img">
     <div class="card-bg-overlay"></div>
     <div class="relative z-2">
-        <img src="{{ icons.wrench_repair }}" alt="" style="width: 64px; height: 64px; opacity: 0.5; margin: 0 auto 12px;">
+        <img src="{{ icons.robot_avatar }}" alt="" style="width: 96px; height: 96px; border-radius: 12px; border: 2px solid var(--color-sepolia); margin: 0 auto 12px; box-shadow: 0 0 24px rgba(6, 182, 212, 0.3);">
         <h2 class="text-xl font-bold mb-8">Robot Construction Locked</h2>
-        <div class="text-sm" style="color: var(--text-secondary); max-width: 480px; margin: 0 auto 16px;">
+        <div class="text-sm" style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 16px;">
             Your fourth crew member is built from Martian salvage you've personally recovered on expeditions.
-            To begin, construct the <strong>Robotics Lab</strong> in your Colony — requires <strong>Research Station Lv3</strong> and <strong>Regolith Forge Lv3</strong>.
+            To begin, construct the
+            <a href="/depot?upgrade=robotics_lab" style="color: var(--color-sepolia); text-decoration: underline; font-weight: 600;">Robotics Lab</a>
+            in your Colony — requires
+            <a href="/depot?upgrade=research_station" style="color: var(--color-sepolia); text-decoration: underline; font-weight: 600;">Research Station Lv3</a>
+            and
+            <a href="/depot?upgrade=regolith_forge" style="color: var(--color-sepolia); text-decoration: underline; font-weight: 600;">Regolith Forge Lv3</a>.
         </div>
-        <a href="/colony" class="inline-flex items-center gap-8" style="background: var(--color-sepolia); color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none;">
-            <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm"> Go to Colony
-        </a>
+        <div class="flex gap-8 justify-center" style="flex-wrap: wrap;">
+            <a href="/depot?upgrade=robotics_lab" class="inline-flex items-center gap-8" style="background: var(--color-sepolia); color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none;">
+                <img src="{{ icons.robot_avatar }}" alt="" class="inline-icon-sm"> Build Robotics Lab
+            </a>
+            <a href="/depot?upgrade=research_station" class="inline-flex items-center gap-8" style="background: var(--bg-tertiary); color: var(--text-primary); padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--border-color);">
+                <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Research Station
+            </a>
+            <a href="/depot?upgrade=regolith_forge" class="inline-flex items-center gap-8" style="background: var(--bg-tertiary); color: var(--text-primary); padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--border-color);">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Regolith Forge
+            </a>
+        </div>
     </div>
 </div>
 
