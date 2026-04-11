@@ -1320,15 +1320,22 @@ def test_admin_bugs_page_data():
 def test_tech_summary_shape():
     """
     Regression test for bug #1286 (Lab Summary Box). Asserts:
-      1. get_tech_summary returns the expected dict shape
-      2. For a captain with completed techs, branches + global_bonuses are populated
-      3. Global passive_income_mult equals the product of per-branch mults (stacking
-         is multiplicative, not additive — wrong merge would show wrong shards/hr)
-      4. Each bonus row has the 3 keys the template reads (icon, value_display, key)
-    Runs as one DB call; empty-user case returns zero branches.
+      1. get_tech_summary returns the expected dict shape (incl. polish-stack
+         fields total_available, branches_started, branches_total, per-branch
+         total_techs/started/next_tech, per-tech effects_display).
+      2. ALL catalog branches are returned (started or not) so the box can show
+         the full ladder. Unstarted branches have empty techs[]/bonuses[] but
+         still expose total_techs and next_tech.
+      3. For a captain with completed techs, started branches + global_bonuses
+         are populated.
+      4. Global passive_income_mult equals product of per-branch mults
+         (multiplicative stacking — additive would be a regression).
+      5. Each bonus row has the 3 keys the template reads.
+      6. Empty-user case still returns the full branch ladder (zero completions).
     """
     from utilities.tech_utils import get_tech_summary
     from utilities.postgres_utils import db_cursor
+    from config_tech import TECH_CATALOG
 
     # Find a captain with at least 2 completed techs (stacking is only
     # meaningful with multiple techs in the same branch).
@@ -1349,26 +1356,61 @@ def test_tech_summary_shape():
 
     uid = row['user_id']
     summary = get_tech_summary(uid)
+    catalog_branch_count = len(TECH_CATALOG)
+    catalog_total_techs = sum(len(b.get('techs', {})) for b in TECH_CATALOG.values())
 
-    # 1. Shape
-    for key in ('total_completed', 'branches', 'global_bonuses'):
+    # 1. Top-level shape — incl. new polish-stack keys.
+    for key in ('total_completed', 'total_available', 'branches_started',
+                'branches_total', 'branches', 'global_bonuses'):
         assert key in summary, f"missing key {key} in get_tech_summary output"
     assert isinstance(summary['branches'], list), "branches should be a list"
     assert isinstance(summary['global_bonuses'], list), "global_bonuses should be a list"
+    assert summary['total_available'] == catalog_total_techs, (
+        f"total_available {summary['total_available']} != catalog total {catalog_total_techs}"
+    )
+    assert summary['branches_total'] == catalog_branch_count, (
+        f"branches_total {summary['branches_total']} != catalog count {catalog_branch_count}"
+    )
 
-    # 2. Populated
+    # 2. Polish: ALL branches returned (started + unstarted).
+    assert len(summary['branches']) == catalog_branch_count, (
+        f"summary should return all {catalog_branch_count} branches, got {len(summary['branches'])}"
+    )
+    started_count = sum(1 for b in summary['branches'] if b['started'])
+    assert started_count == summary['branches_started'], (
+        f"branches_started {summary['branches_started']} doesn't match started flags {started_count}"
+    )
+
+    # 3. Populated — at least one started branch + matching counts.
     assert summary['total_completed'] >= 2, (
         f"expected >=2 completed techs for uid={uid}, got {summary['total_completed']}"
     )
-    assert len(summary['branches']) >= 1, "at least one branch should have completions"
+    assert started_count >= 1, "at least one branch should be started"
 
-    # 3. Each branch entry has the fields the template iterates over
+    # 3b. Each branch entry has the fields the template iterates over,
+    # incl. polish-stack additions (total_techs, started, next_tech, description).
     for br in summary['branches']:
-        for key in ('branch_key', 'name', 'branch_level', 'completed_count', 'techs', 'bonuses'):
-            assert key in br, f"branch missing key {key}"
+        for key in ('branch_key', 'name', 'description', 'branch_level',
+                    'completed_count', 'total_techs', 'started', 'techs',
+                    'bonuses', 'next_tech'):
+            assert key in br, f"branch {br.get('branch_key','?')} missing key {key}"
         assert br['completed_count'] == len(br['techs']), (
             f"branch {br['branch_key']}: completed_count {br['completed_count']} != len(techs) {len(br['techs'])}"
         )
+        assert br['total_techs'] == len(TECH_CATALOG[br['branch_key']]['techs']), (
+            f"branch {br['branch_key']}: total_techs {br['total_techs']} != catalog count"
+        )
+        # Per-tech effects_display for clickable pills
+        for tech in br['techs']:
+            assert 'effects_display' in tech, f"tech {tech.get('tech_key','?')} missing effects_display"
+            assert isinstance(tech['effects_display'], list), "effects_display must be a list"
+        # next_tech should exist for any branch that isn't fully completed
+        if br['completed_count'] < br['total_techs']:
+            assert br['next_tech'] is not None, (
+                f"branch {br['branch_key']}: has uncompleted techs but next_tech is None"
+            )
+            for k in ('tech_key', 'name', 'description'):
+                assert k in br['next_tech'], f"next_tech missing {k}"
 
     # 4. Bonus rows must have the keys the template reads
     all_bonuses = list(summary['global_bonuses'])
@@ -1407,7 +1449,8 @@ def test_tech_summary_shape():
                 f"but global shows {global_income_mult:.3f}"
             )
 
-    # 6. Empty-user case — pick a uid with 0 completed techs (user 1 is usually admin/system)
+    # 6. Empty-user case — should still return the full branch ladder (so a
+    # brand-new captain sees all 4 branches as a roadmap), with zero completions.
     with db_cursor() as cur:
         cur.execute("""
             SELECT u.id FROM pilgrim.users u
@@ -1419,8 +1462,16 @@ def test_tech_summary_shape():
     if empty_row:
         empty = get_tech_summary(empty_row['id'])
         assert empty['total_completed'] == 0, "empty user should have 0 completions"
-        assert empty['branches'] == [], "empty user should have no branches"
+        assert empty['branches_started'] == 0, "empty user should have 0 started branches"
+        assert len(empty['branches']) == catalog_branch_count, (
+            f"empty user should still see all {catalog_branch_count} branches as roadmap"
+        )
         assert empty['global_bonuses'] == [], "empty user should have no global bonuses"
+        # Every branch should be unstarted, with a next_tech pointing at tier 1
+        for br in empty['branches']:
+            assert br['started'] is False, f"empty user branch {br['branch_key']} flagged started"
+            assert br['completed_count'] == 0, f"empty user branch {br['branch_key']} has completed_count > 0"
+            assert br['next_tech'] is not None, f"empty user branch {br['branch_key']} has no next_tech"
 
     # 7. Speed check — per memory rule "ALWAYS count DB calls". Fresh query
     # path should be 2 calls (completed techs + branch levels); when invoked
@@ -1442,6 +1493,195 @@ def test_tech_summary_shape():
         assert count[0] <= 1, f"get_tech_summary w/ branch_levels used {count[0]} DB calls (max 1)"
     finally:
         tu.db_cursor = original
+
+
+# =============================================================================
+# ROBOT (Step 4d — Crew Robot tab)
+# =============================================================================
+
+@test("robot tables ensured + page data shape", tier=1, features=['crew', 'robot', 'db'])
+def test_robot_tables_and_page_shape():
+    """
+    Asserts the robot crew member's backend wiring lights up cleanly:
+      1. ensure_robot_tables() is idempotent (safe to call twice).
+      2. pilgrim.robot + pilgrim.robot_stage_log exist with the columns the
+         page renderer reads.
+      3. get_robot_page_data() returns the correct shape for a no-robot user
+         (the empty path the /crew Robot tab renders for ~99% of captains today).
+      4. ROBOT_STAGES has exactly 5 entries with the keys the template iterates.
+      5. DEFAULT_DIAL sums to 100 and uses mod-5 increments.
+    """
+    from utilities.db_robot import (
+        ensure_robot_tables, get_robot_page_data, ROBOT_STAGES,
+        DEFAULT_DIAL, DIAL_KEYS, STAGE_DURATION_SECONDS,
+    )
+    from utilities.postgres_utils import db_cursor
+
+    # 1. Idempotent table ensure
+    ensure_robot_tables()
+    ensure_robot_tables()  # second call should noop, not error
+
+    # 2. Schema check on the columns the page reads
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema='pilgrim' AND table_name='robot'
+        """)
+        cols = {r['column_name'] for r in cur.fetchall() or []}
+        for needed in ('user_id', 'name', 'build_status', 'visual_stage',
+                       'current_image_url', 'stage_images', 'stage_sources',
+                       'dial', 'started_at', 'stage_started_at',
+                       'stage_ready_at', 'completed_at', 'cinematic_played'):
+            assert needed in cols, f"pilgrim.robot missing column {needed}"
+
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema='pilgrim' AND table_name='robot_stage_log'
+        """)
+        log_cols = {r['column_name'] for r in cur.fetchall() or []}
+        for needed in ('user_id', 'stage_idx', 'stage_key', 'stage_label',
+                       'source_manifest', 'data_hex', 'tx_hash', 'image_url'):
+            assert needed in log_cols, f"pilgrim.robot_stage_log missing column {needed}"
+
+    # 3. Empty-user page shape — pick a user_id that does NOT have a robot row
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT u.id FROM pilgrim.users u
+            LEFT JOIN pilgrim.robot r ON r.user_id = u.id
+            WHERE r.user_id IS NULL
+            ORDER BY u.id LIMIT 1
+        """)
+        row = cur.fetchone()
+    if not row:
+        SKIPPED.append("robot page shape (no captain without a robot row)")
+    else:
+        data = get_robot_page_data(row['id'])
+        assert data is not None, "get_robot_page_data returned None"
+        assert data.get('has_robot') is False, "fresh user should have has_robot=False"
+        for key in ('lab_unlocked', 'lab_level', 'stages_meta', 'stage_duration_seconds'):
+            assert key in data, f"empty robot page data missing key {key}"
+        assert isinstance(data['stages_meta'], list)
+        assert len(data['stages_meta']) == 5
+
+    # 4. ROBOT_STAGES sanity
+    assert len(ROBOT_STAGES) == 5
+    for s in ROBOT_STAGES:
+        for k in ('idx', 'key', 'label', 'part'):
+            assert k in s, f"ROBOT_STAGES entry missing {k}"
+    indices = [s['idx'] for s in ROBOT_STAGES]
+    assert indices == [1, 2, 3, 4, 5], f"ROBOT_STAGES indices wrong: {indices}"
+
+    # 5. Default dial
+    assert sum(DEFAULT_DIAL.values()) == 100, "DEFAULT_DIAL must sum to 100"
+    for k in DIAL_KEYS:
+        assert k in DEFAULT_DIAL, f"DEFAULT_DIAL missing {k}"
+        assert DEFAULT_DIAL[k] % 5 == 0, f"DEFAULT_DIAL[{k}] must be mod-5"
+
+    # 6. Stage duration is sane (Step 4d ships 60s stub; real-clock days come in 4c)
+    assert STAGE_DURATION_SECONDS > 0
+
+
+@test("robot dial validation rejects bad input", tier=1, features=['crew', 'robot'])
+def test_robot_dial_validation():
+    """set_robot_dial must reject non-mod-5, negatives, and sums != 100."""
+    from utilities.db_robot import set_robot_dial
+    bad_inputs = [
+        {'mining': 33, 'exploration': 33, 'science': 17, 'combat': 17},   # not mod-5
+        {'mining': 25, 'exploration': 25, 'science': 25, 'combat': 30},   # sums to 105
+        {'mining': -5, 'exploration': 35, 'science': 35, 'combat': 35},   # negative
+        {'mining': 25, 'exploration': 25, 'science': 25},                  # missing key
+    ]
+    for bad in bad_inputs:
+        try:
+            set_robot_dial(99999999, bad)  # nonexistent uid; validation runs first
+            return f"set_robot_dial accepted invalid input: {bad}"
+        except ValueError:
+            pass  # expected
+    return True
+
+
+@test("aria snapshot + pilgrimbot data include robot (Step 4e)", tier=1, features=['crew', 'robot', 'aria'])
+@requires_import('anthropic')
+def test_robot_in_aria_and_pilgrimbot():
+    """
+    Step 4e: ARIA must know about the robot and PilgrimBot must answer
+    questions about it.
+      1. load_colony_snapshot returns a 'robot' dict with the expected keys.
+      2. The prompt_context string mentions ROBOT CREW MEMBER for any captain
+         (locked or unlocked path).
+      3. PILGRIMBOT_DATA_TOOL enum includes 'robot'.
+      4. query_player_data('robot', uid) returns text mentioning Robotics Lab.
+    """
+    from utilities.aria_utils import load_colony_snapshot
+    from utilities.pilgrimbot_data import (
+        PLAYER_DATA_TOOL, PLAYER_DATA_MAP, query_player_data
+    )
+    from utilities.postgres_utils import db_cursor
+
+    # Pick any user with completed account hydration
+    with db_cursor() as cur:
+        cur.execute("SELECT id FROM pilgrim.users ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+    if not row:
+        SKIPPED.append("aria robot snapshot (no users)")
+        return True
+    uid = row['id']
+
+    # 1 + 2: ARIA snapshot
+    snap = load_colony_snapshot(uid)
+    assert 'robot' in snap, "snapshot missing 'robot' key"
+    robot = snap['robot']
+    for key in ('lab_unlocked', 'lab_level', 'has_robot', 'is_complete',
+                'visual_stage', 'stages_complete', 'cinematic_played'):
+        assert key in robot, f"snapshot.robot missing key {key}"
+
+    pc = snap.get('prompt_context') or ''
+    assert 'ROBOT CREW MEMBER' in pc, (
+        "prompt_context should mention ROBOT CREW MEMBER (locked or unlocked path)"
+    )
+
+    # 3: PilgrimBot tool registry
+    enum = PLAYER_DATA_TOOL['input_schema']['properties']['category']['enum']
+    assert 'robot' in enum, "PLAYER_DATA_TOOL enum missing 'robot' category"
+    assert 'robot' in PLAYER_DATA_MAP, "PLAYER_DATA_MAP missing robot entry"
+
+    # 4: Query function
+    out = query_player_data('robot', uid)
+    assert isinstance(out, str), "query_player_data robot returned non-string"
+    assert 'Robotics Lab' in out, f"query_player_data robot output missing 'Robotics Lab': {out[:200]}"
+    return True
+
+
+@test("crew page renders robot tab for authenticated user", tier=2, features=['crew', 'robot', 'api'])
+def test_crew_robot_tab_renders():
+    """
+    Spins up a Flask test client as Andy (uid 45), hits /crew, and asserts the
+    Robot tab markup is in the response (button + tab partial id). Catches:
+      - missing {% include "crew/_tab_robot.html" %}
+      - app.py forgetting to pass robot_data
+      - template syntax errors in _tab_robot.html
+    """
+    import os
+    os.environ.setdefault('FLASK_TESTING', '1')
+    from app import app
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess['user'] = {
+            'id': 45,
+            'email': 'andy.tillo@gmail.com',
+            'name': 'Andy Tillo',
+            'picture': '',
+        }
+        sess['user_id'] = 45
+    resp = client.get('/crew')
+    if resp.status_code != 200:
+        return f"GET /crew → {resp.status_code}"
+    body = resp.get_data(as_text=True)
+    assert 'data-tab="robot"' in body, "Robot tab button missing from /crew"
+    assert 'id="tab-robot"' in body, "Robot tab content container missing from /crew"
+    assert 'tab-desc-robot' in body, "Robot tab description missing from /crew"
+    assert 'robotPageData' in body, "robotPageData JSON island missing from /crew"
+    return True
 
 
 # =============================================================================

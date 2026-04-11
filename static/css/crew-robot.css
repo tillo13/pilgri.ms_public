@@ -1,0 +1,205 @@
+/* ============================================================================
+   CREW ROBOT TAB — styles for templates/crew/_tab_robot.html
+
+   The robot is the captain's fourth crew member. The visual language is shared
+   with the rest of /crew (sepolia accents, dashboard cards, high contrast)
+   but the build manifest grid + role dial are unique to this tab.
+   ========================================================================== */
+
+/* ---------- Stage grid ---------- */
+.robot-stage-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 8px;
+}
+@media (max-width: 720px) {
+    .robot-stage-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.robot-stage-card {
+    position: relative;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 12px 10px 14px;
+    text-align: center;
+    transition: transform 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.robot-stage-card:hover { transform: translateY(-2px); }
+
+.robot-stage-card.complete {
+    border-color: var(--color-sepolia);
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.18) inset;
+}
+.robot-stage-card.building {
+    border-color: var(--color-sepolia);
+    border-style: dashed;
+    animation: robotBuildingFlash 1.4s ease-in-out infinite;
+}
+.robot-stage-card.pending,
+.robot-stage-card.mystery {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+@keyframes robotBuildingFlash {
+    0%, 100% { box-shadow: 0 0 0 rgba(168, 85, 247, 0.0); }
+    50%      { box-shadow: 0 0 22px rgba(168, 85, 247, 0.45); }
+}
+
+.robot-stage-num {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-sepolia);
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 999px;
+    padding: 2px 7px;
+    letter-spacing: 0.05em;
+}
+
+.robot-stage-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+.robot-stage-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+.robot-stage-img.mystery-img {
+    filter: grayscale(0.6) brightness(0.6);
+    opacity: 0.5;
+}
+
+.robot-stage-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    border: 2px solid var(--color-sepolia);
+    animation: robotPulse 1.6s ease-out infinite;
+    pointer-events: none;
+}
+@keyframes robotPulse {
+    0%   { transform: scale(0.9); opacity: 0.7; }
+    100% { transform: scale(1.1); opacity: 0.0; }
+}
+
+.robot-stage-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    line-height: 1.2;
+}
+.robot-stage-source {
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.85;
+    line-height: 1.35;
+}
+.robot-stage-source strong {
+    color: var(--text-primary);
+}
+.robot-stage-source em {
+    font-style: italic;
+    color: var(--color-sepolia);
+}
+
+.robot-stage-rarity {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+}
+.robot-stage-rarity.rarity-common    { color: #b8c7ce; background: rgba(184,199,206,0.14); }
+.robot-stage-rarity.rarity-uncommon  { color: #65d18b; background: rgba(101,209,139,0.14); }
+.robot-stage-rarity.rarity-rare      { color: #5fb7ff; background: rgba(95,183,255,0.16); }
+.robot-stage-rarity.rarity-legendary { color: #ffb454; background: rgba(255,180,84,0.18); }
+
+.robot-stage-tx {
+    margin-top: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9px;
+    word-break: break-all;
+}
+
+/* ---------- Countdown card ---------- */
+.robot-countdown-card {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 10px 18px;
+    margin-bottom: 12px;
+}
+
+/* ---------- Role dial ---------- */
+#robot-dial {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.robot-dial-row {
+    display: grid;
+    grid-template-columns: 1fr auto 60px auto;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+.robot-dial-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.robot-dial-btn {
+    background: var(--color-sepolia);
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+.robot-dial-btn:hover { transform: scale(1.08); }
+.robot-dial-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+.robot-dial-value {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-sepolia);
+}

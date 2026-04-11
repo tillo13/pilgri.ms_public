@@ -611,6 +611,9 @@ def crew():
         # Captain services pricing (Shard Infusion, Modify Appearance, Video Briefing)
         from utilities.depot_utils import get_pricing_info
         data['pricing'] = get_pricing_info(session.get('user_id'))
+        # Robot tab data — auto-advances any ready stages on every render
+        from utilities.db_robot import get_robot_page_data
+        data['robot_data'] = get_robot_page_data(session.get('user_id'))
         return render_template('crew.html', active_tab='crew', user=auth.get_current_user(), **data)
     else:
         # Anonymous user - show commander selection (onboarding step 2)
@@ -618,6 +621,87 @@ def crew():
         if 'redirect' in data:
             return redirect(url_for(data['redirect']))
         return render_template('crew.html', active_tab='crew', user=None, **data)
+
+
+# ============================================================================
+# ROBOT CREW MEMBER API — Step 4d ships with stub stage advance.
+# Step 4c will replace _stub_advance_one_stage() with real Sepolia + Kontext;
+# the route surface stays identical so the frontend never changes.
+# ============================================================================
+
+@app.route('/api/robot/status')
+@login_required
+@handle_api_error
+def api_robot_status():
+    """Return latest robot state — auto-ticks ready stages first."""
+    from utilities.db_robot import get_robot_page_data
+    return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
+
+
+@app.route('/api/robot/build', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_build():
+    """Start a new robot build. Picks 5 source manifests from the captain's
+    real expedition history, requires robotics_lab Lv1+."""
+    from utilities.db_robot import (
+        pick_stage_sources, start_robot_build, get_robot_page_data,
+        PLACEHOLDER_STAGE_IMAGE
+    )
+    from utilities.upgrades_utils import get_all_infrastructure_levels
+
+    levels = get_all_infrastructure_levels(g.user_id) or {}
+    if int(levels.get('robotics_lab', 0)) < 1:
+        return jsonify({
+            'success': False,
+            'error': 'Robotics Lab required. Build the Robotics Lab in your Colony first.'
+        }), 400
+
+    sources = pick_stage_sources(g.user_id)
+    if not sources or len(sources) < 5:
+        return jsonify({
+            'success': False,
+            'error': 'Insufficient expedition history to source robot parts.'
+        }), 400
+
+    start_robot_build(g.user_id, sources, initial_image_url=PLACEHOLDER_STAGE_IMAGE)
+    return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
+
+
+@app.route('/api/robot/name', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_name():
+    """Set or rename the captain's robot. Names trimmed to 64 chars."""
+    from utilities.db_robot import set_robot_name, get_robot_page_data
+    name = (request.get_json() or {}).get('name', '')
+    if not set_robot_name(g.user_id, name):
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
+
+
+@app.route('/api/robot/dial', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_dial():
+    """Set the robot's role dial. 4 values, mod-5 each, must sum to 100."""
+    from utilities.db_robot import set_robot_dial, get_robot_page_data
+    dial = (request.get_json() or {}).get('dial', {})
+    try:
+        set_robot_dial(g.user_id, dial)
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
+
+
+@app.route('/api/robot/cinematic_played', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_cinematic_played():
+    """Mark the build-complete cinematic as shown so it doesn't replay."""
+    from utilities.db_robot import mark_cinematic_played
+    mark_cinematic_played(g.user_id)
+    return jsonify({'success': True})
 
 @app.route('/depot')
 def depot():

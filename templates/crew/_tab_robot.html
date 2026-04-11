@@ -1,0 +1,212 @@
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB: ROBOT — 4th crew member, forged from real expedition history    -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-robot" class="crew-tab-content" style="display: none;">
+
+{% set rd = robot_data %}
+
+{% if not rd or not rd.lab_unlocked %}
+
+<!-- ═════════ STATE 1: LOCKED — needs Robotics Lab Lv1+ ═════════ -->
+<div class="dashboard-card relative overflow-hidden p-20 text-center">
+    <img src="{{ icons.tab_map }}" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2">
+        <img src="{{ icons.wrench_repair }}" alt="" style="width: 64px; height: 64px; opacity: 0.5; margin: 0 auto 12px;">
+        <h2 class="text-xl font-bold mb-8">Robot Construction Locked</h2>
+        <div class="text-sm" style="color: var(--text-secondary); max-width: 480px; margin: 0 auto 16px;">
+            Your fourth crew member is built from Martian salvage you've personally recovered on expeditions.
+            To begin, construct the <strong>Robotics Lab</strong> in your Colony — requires <strong>Research Station Lv3</strong> and <strong>Regolith Forge Lv3</strong>.
+        </div>
+        <a href="/colony" class="inline-flex items-center gap-8" style="background: var(--color-sepolia); color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none;">
+            <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm"> Go to Colony
+        </a>
+    </div>
+</div>
+
+{% elif not rd.has_robot %}
+
+<!-- ═════════ STATE 2: PRE-BUILD — lab unlocked, robot not started ═════════ -->
+<div class="dashboard-card relative overflow-hidden p-20">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">Robotics Lab — Lv{{ rd.lab_level }}</div>
+        <h2 class="text-2xl font-bold mb-12">Forge Your Robot</h2>
+        <div class="text-sm mb-16" style="color: var(--text-secondary); max-width: 540px; margin: 0 auto;">
+            Your robot is built from <strong>five real items</strong> you recovered on past expeditions —
+            a hull from one site, a power core from another. Each component will be encoded into the
+            permanent record. The result is unique to you.
+        </div>
+
+        <!-- 5 mystery stage previews -->
+        <div class="robot-stage-grid mb-16">
+            {% for stage in rd.stages_meta %}
+            <div class="robot-stage-card mystery">
+                <div class="robot-stage-num">{{ stage.idx }}</div>
+                <div class="robot-stage-img-wrap">
+                    <img src="{{ icons.rare_sparkle }}" alt="" class="robot-stage-img mystery-img">
+                </div>
+                <div class="robot-stage-label">{{ stage.label }}</div>
+                <div class="robot-stage-source">??? from ???</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button id="robot-build-btn" class="btn-primary" style="background: var(--color-sepolia); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer;">
+            <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Begin Construction
+        </button>
+        <div class="text-xs mt-8" style="color: var(--text-secondary); opacity: 0.6;">
+            Each stage takes ~1 minute in this build (Step 4d stub) — real-clock days coming in next pass.
+        </div>
+    </div>
+</div>
+
+{% else %}
+
+<!-- ═════════ STATE 3+4: ACTIVE BUILD or COMPLETE ═════════ -->
+{% set robot = rd.robot %}
+
+<!-- Hero card: current robot image + name + status -->
+<div class="dashboard-card relative overflow-hidden p-20 mb-16">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">
+            {% if rd.is_complete %}Robot Online{% else %}Forge Active — Stage {{ robot.visual_stage }}/5{% endif %}
+        </div>
+        <div class="flex justify-center mb-12">
+            <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
+                 alt="Robot" id="robot-hero-img"
+                 onclick="showImageModal(this.src)"
+                 class="rounded-lg cursor-pointer"
+                 style="max-width: 260px; max-height: 260px; border: 3px solid var(--color-sepolia);"
+                 loading="lazy">
+        </div>
+
+        <!-- Name input (always editable) -->
+        <div class="flex justify-center items-center gap-8 mb-12">
+            <input type="text" id="robot-name-input"
+                   value="{{ robot.name or '' }}"
+                   placeholder="Name your robot..."
+                   maxlength="64"
+                   style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 220px;">
+            <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer;">Save</button>
+        </div>
+
+        <!-- Stage countdown (active builds only) -->
+        {% if not rd.is_complete and rd.seconds_until_next_stage is not none %}
+        <div class="robot-countdown-card">
+            <div class="text-xs uppercase tracking-wide" style="color: var(--text-secondary); opacity: 0.7;">Next stage assembling</div>
+            <div id="robot-countdown" class="text-xl font-bold" style="color: var(--color-sepolia);"
+                 data-seconds="{{ rd.seconds_until_next_stage }}">
+                {{ rd.seconds_until_next_stage }}s
+            </div>
+        </div>
+        {% endif %}
+
+        {% if rd.is_complete %}
+        <div class="text-sm" style="color: var(--color-success);">
+            <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm">
+            Construction complete — your robot is ready to deploy.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stage cards: 5 components -->
+<div class="dashboard-card p-20 mb-16">
+    <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm"> Build Manifest
+    </div>
+    <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
+        Each component was forged from a real item you recovered on an expedition.
+    </div>
+    <div class="robot-stage-grid">
+        {% for stage in rd.stages %}
+        <div class="robot-stage-card {{ stage.status }}">
+            <div class="robot-stage-num">{{ stage.idx }}</div>
+            <div class="robot-stage-img-wrap">
+                <img src="{{ stage.image_url }}" alt="{{ stage.label }}" class="robot-stage-img" loading="lazy">
+                {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
+            </div>
+            <div class="robot-stage-label">{{ stage.label }}</div>
+            {% if stage.source %}
+            <div class="robot-stage-source" title="{{ stage.source.lat }}, {{ stage.source.lon }}">
+                Forged from <strong>{{ stage.source.item_name }}</strong><br>
+                recovered at <em>{{ stage.source.landmark_name }}</em>
+            </div>
+            {% if stage.source.rarity %}
+            <div class="robot-stage-rarity rarity-{{ stage.source.rarity }}">{{ stage.source.rarity }}</div>
+            {% endif %}
+            {% endif %}
+            {% if stage.tx_hash %}
+            <div class="robot-stage-tx text-xs" style="color: var(--text-secondary); opacity: 0.5;">
+                tx: {{ stage.tx_hash[:14] }}...
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Role Dial — 4 categories, must sum to 100, mod-5 increments -->
+<div class="dashboard-card p-20">
+    <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Role Dial
+    </div>
+    <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
+        Adjust how your robot allocates effort. Values must total 100%. Adjusting one rebalances the others.
+    </div>
+    <div id="robot-dial" data-dial='{{ robot.dial | tojson }}'>
+        <div class="robot-dial-row" data-key="mining">
+            <div class="robot-dial-label">
+                <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm"> Mining
+            </div>
+            <button class="robot-dial-btn" data-action="dec">−</button>
+            <div class="robot-dial-value">{{ robot.dial.mining }}%</div>
+            <button class="robot-dial-btn" data-action="inc">+</button>
+        </div>
+        <div class="robot-dial-row" data-key="exploration">
+            <div class="robot-dial-label">
+                <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration
+            </div>
+            <button class="robot-dial-btn" data-action="dec">−</button>
+            <div class="robot-dial-value">{{ robot.dial.exploration }}%</div>
+            <button class="robot-dial-btn" data-action="inc">+</button>
+        </div>
+        <div class="robot-dial-row" data-key="science">
+            <div class="robot-dial-label">
+                <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Science
+            </div>
+            <button class="robot-dial-btn" data-action="dec">−</button>
+            <div class="robot-dial-value">{{ robot.dial.science }}%</div>
+            <button class="robot-dial-btn" data-action="inc">+</button>
+        </div>
+        <div class="robot-dial-row" data-key="combat">
+            <div class="robot-dial-label">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Combat
+            </div>
+            <button class="robot-dial-btn" data-action="dec">−</button>
+            <div class="robot-dial-value">{{ robot.dial.combat }}%</div>
+            <button class="robot-dial-btn" data-action="inc">+</button>
+        </div>
+    </div>
+    <div id="robot-dial-status" class="text-xs mt-8" style="color: var(--text-secondary); text-align: center;">Total: 100%</div>
+</div>
+
+{% endif %}
+
+</div>{# end #tab-robot #}
+
+<!-- PAGE_DATA bridge for crew-robot.js -->
+<script type="application/json" id="robotPageData">
+{
+    "lab_unlocked": {{ (robot_data and robot_data.lab_unlocked) | tojson }},
+    "has_robot": {{ (robot_data and robot_data.has_robot) | tojson }},
+    "is_complete": {{ (robot_data and robot_data.is_complete) | tojson }},
+    "show_cinematic": {{ (robot_data and robot_data.show_cinematic) | tojson }},
+    "stage_duration_seconds": {{ (robot_data.stage_duration_seconds if robot_data else 60) | tojson }},
+    "seconds_until_next_stage": {{ (robot_data.seconds_until_next_stage if robot_data else None) | tojson }}
+}
+</script>

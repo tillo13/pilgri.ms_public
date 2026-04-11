@@ -2045,6 +2045,18 @@ def load_colony_snapshot(user_id: int) -> dict:
             'last_chat': None,
             'recent_topics': []
         },
+        'robot': {  # Fourth crew member, forged from real expedition history
+            'lab_unlocked': False,
+            'lab_level': 0,
+            'has_robot': False,
+            'is_complete': False,
+            'name': None,
+            'visual_stage': 0,
+            'seconds_until_next_stage': None,
+            'stages_complete': 0,
+            'dial': None,
+            'cinematic_played': False,
+        },
         'tier': {},
         'spatial_hints': {},
         'playstyle': {},
@@ -2480,6 +2492,30 @@ def load_colony_snapshot(user_id: int) -> dict:
                 'recent_topics': recent_topics
             }
 
+        # Robot crew member (Step 4d) — outside the main cursor block to keep
+        # the speed budget tight; db_robot uses its own cursor.
+        try:
+            from utilities.db_robot import get_robot_page_data
+            robot_data = get_robot_page_data(user_id) or {}
+            snapshot['robot'] = {
+                'lab_unlocked': bool(robot_data.get('lab_unlocked')),
+                'lab_level': int(robot_data.get('lab_level', 0)),
+                'has_robot': bool(robot_data.get('has_robot')),
+                'is_complete': bool(robot_data.get('is_complete')),
+                'name': (robot_data.get('robot') or {}).get('name'),
+                'visual_stage': int((robot_data.get('robot') or {}).get('visual_stage', 0)),
+                'seconds_until_next_stage': robot_data.get('seconds_until_next_stage'),
+                'stages_complete': sum(
+                    1 for s in (robot_data.get('stages') or []) if s.get('status') == 'complete'
+                ),
+                'dial': (robot_data.get('robot') or {}).get('dial'),
+                'cinematic_played': bool(
+                    (robot_data.get('robot') or {}).get('cinematic_played')
+                ),
+            }
+        except Exception as e:
+            logger.error(f"snapshot: robot load failed for user {user_id}: {e}")
+
         # Build the comprehensive prompt context
         snapshot['prompt_context'] = _build_snapshot_prompt(snapshot)
 
@@ -2626,6 +2662,48 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
         for branch, techs in research['completed'].items():
             if techs:
                 parts.append(f"COMPLETED RESEARCH ({branch}): {', '.join(techs)}")
+
+    # Robot crew member (Step 4d) — fourth crew slot, forged from real items
+    robot = snapshot.get('robot') or {}
+    if robot.get('lab_unlocked'):
+        if not robot.get('has_robot'):
+            parts.append(
+                f"ROBOT CREW MEMBER: Robotics Lab Lv{robot.get('lab_level', 0)} unlocked, "
+                f"but the captain has NOT started building their robot yet. They can begin "
+                f"construction from /crew → Robot tab — it forges 5 stages from real items "
+                f"they recovered on past expeditions."
+            )
+        elif robot.get('is_complete'):
+            name = robot.get('name') or 'their robot'
+            parts.append(
+                f"ROBOT CREW MEMBER: '{name}' is COMPLETE — all 5 stages forged. "
+                f"Lab Lv{robot.get('lab_level', 0)}. Role dial: {robot.get('dial')}."
+            )
+        else:
+            stage = robot.get('visual_stage', 0)
+            done = robot.get('stages_complete', 0)
+            secs = robot.get('seconds_until_next_stage')
+            name = robot.get('name') or 'the robot'
+            timing = ''
+            if secs is not None and secs > 0:
+                if secs >= 3600:
+                    timing = f", next stage ready in {secs // 3600}h {(secs % 3600) // 60}m"
+                elif secs >= 60:
+                    timing = f", next stage ready in {secs // 60}m"
+                else:
+                    timing = f", next stage ready in {secs}s"
+            parts.append(
+                f"ROBOT CREW MEMBER: Building '{name}' — stage {stage}/5 visible "
+                f"({done} stages forged){timing}. Lab Lv{robot.get('lab_level', 0)}."
+            )
+    elif robot.get('lab_level', 0) == 0:
+        # Lab not built — only mention if asked, but include a one-liner so ARIA
+        # knows this is a thing the captain CAN unlock.
+        parts.append(
+            "ROBOT CREW MEMBER: Robotics Lab not yet built. The captain can unlock a "
+            "fourth crew member by constructing the Robotics Lab in their Colony "
+            "(requires Research Station Lv3 + Regolith Forge Lv3)."
+        )
 
     # Crew on trails
     # Bug #1164: build a separate ARIA self-status line and frame in first-person

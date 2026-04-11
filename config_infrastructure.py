@@ -875,6 +875,74 @@ INFRASTRUCTURE_CATALOG = {
             },
         }
     },
+
+    # =========================================================================
+    # ROBOTICS — workshop that turns recovered Martian salvage into a robot
+    # See utilities/db_robot.py + plan decision #14 (Sepolia ARG breadcrumbs).
+    # Each level shortens robot stage assembly time via robot_build_speed_mult.
+    # =========================================================================
+    'robotics_lab': {
+        'name': 'Robotics Lab',
+        'description': 'Workshop where recovered Martian salvage is forged into an autonomous robot',
+        'icon': '\U0001f916',  # 🤖
+        'category': 'research',
+        'max_level': 10,
+        'default_level': 0,
+        'requirements': ['research_station', 'regolith_forge'],
+        'unlock_requirements': {'research_station': 3, 'regolith_forge': 3},
+        'levels': {
+            1: {
+                'name': 'Salvage Workbench', 'cost': 150000, 'build_time_days': 7,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.00,
+                'image_url': '',
+            },
+            2: {
+                'name': 'Assembly Bay', 'cost': 168000, 'build_time_days': 8,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.10,
+                'image_url': '',
+            },
+            3: {
+                'name': 'Calibration Pit', 'cost': 188160, 'build_time_days': 9,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.20,
+                'image_url': '',
+            },
+            4: {
+                'name': 'Manipulator Forge', 'cost': 210739, 'build_time_days': 10,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.30,
+                'image_url': '',
+            },
+            5: {
+                'name': 'Servo Atelier', 'cost': 236028, 'build_time_days': 11,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.40,
+                'image_url': '',
+            },
+            6: {
+                'name': 'Crystal-Servo Lab', 'cost': 264352, 'build_time_days': 12,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.50,
+                'image_url': '',
+            },
+            7: {
+                'name': 'Resonant Assembly', 'cost': 296074, 'build_time_days': 13,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.65,
+                'image_url': '',
+            },
+            8: {
+                'name': 'Cognition Chamber', 'cost': 331603, 'build_time_days': 13,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.80,
+                'image_url': '',
+            },
+            9: {
+                'name': 'Autonomy Reactor', 'cost': 371396, 'build_time_days': 14,
+                'robot_unlocked': True, 'robot_build_speed_mult': 1.90,
+                'image_url': '',
+            },
+            10: {
+                'name': 'Sentient Forge', 'cost': 415963, 'build_time_days': 14,
+                'robot_unlocked': True, 'robot_build_speed_mult': 2.00,
+                'image_url': '',
+            },
+        }
+    },
 }
 
 

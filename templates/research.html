@@ -138,22 +138,36 @@ document.addEventListener('DOMContentLoaded', function() {
 .research-info .info-body a:hover { text-decoration: underline; }
 
 /* Lab Summary Box (bug #1286) — top-of-Lab overview of all researched tech + stacked bonuses */
-.tech-summary { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 16px; border: 1px solid rgba(168, 85, 247, 0.2); }
-.tech-summary-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-.tech-summary-title { font-size: 14px; font-weight: 700; color: var(--color-sepolia); display: flex; align-items: center; gap: 8px; }
-.tech-summary-count { font-size: 11px; color: var(--text-muted); }
-.tech-summary-global { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; background: rgba(168, 85, 247, 0.08); border-radius: var(--radius-md); margin-bottom: 14px; }
-.tech-summary-global .summary-chip { font-size: 12px; color: #fff; font-weight: 600; background: rgba(168, 85, 247, 0.35); padding: 4px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; }
-.tech-summary-branch { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 10px; }
-.tech-summary-branch:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
-.tech-summary-branch-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
-.tech-summary-branch-head img.branch-logo { width: 24px; height: 24px; border-radius: var(--radius-sm); object-fit: cover; }
-.tech-summary-branch-head .branch-lvl { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-left: auto; }
-.tech-summary-branch-bonuses { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
-.tech-summary-branch-bonuses .summary-chip { font-size: 11px; color: var(--color-sepolia); background: rgba(168, 85, 247, 0.12); padding: 3px 8px; border-radius: 4px; }
-.tech-summary-tech-list { display: flex; flex-wrap: wrap; gap: 4px; font-size: 11px; color: var(--text-muted); }
-.tech-summary-tech-list .tech-pill { padding: 2px 7px; background: rgba(255,255,255,0.04); border-radius: 3px; }
-.tech-summary-empty { text-align: center; padding: 12px; color: var(--text-muted); font-size: 12px; font-style: italic; }
+.tech-summary { background: var(--bg-card); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; border: 1px solid rgba(168, 85, 247, 0.25); }
+.tech-summary-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.tech-summary-title { font-size: 15px; font-weight: 700; color: var(--color-sepolia); display: flex; align-items: center; gap: 8px; }
+.tech-summary-count { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 10px; }
+.tech-summary-count strong { color: #fff; font-weight: 700; }
+.tech-summary-global { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; background: rgba(168, 85, 247, 0.10); border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid rgba(168, 85, 247, 0.15); }
+.tech-summary-global-label { width: 100%; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-sepolia); font-weight: 700; margin-bottom: 2px; }
+.tech-summary-global .summary-chip { font-size: 13px; color: #fff; font-weight: 700; background: rgba(168, 85, 247, 0.40); padding: 6px 12px; border-radius: 5px; display: inline-flex; align-items: center; gap: 5px; }
+.tech-summary-branches { display: flex; flex-direction: column; gap: 12px; }
+.tech-summary-branch { border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); padding: 12px 14px; background: rgba(255,255,255,0.02); }
+.tech-summary-branch.unstarted { opacity: 0.55; border-style: dashed; }
+.tech-summary-branch-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
+.tech-summary-branch-head img.branch-logo { width: 36px; height: 36px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.tech-summary-branch-head .branch-name-block { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.tech-summary-branch-head .branch-name-text { color: #fff; }
+.tech-summary-branch-head .branch-tagline { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-top: 2px; }
+.tech-summary-branch-head .branch-lvl { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-left: auto; flex-shrink: 0; text-align: right; }
+.tech-summary-branch-head .branch-lvl strong { color: var(--color-sepolia); font-size: 12px; }
+.tech-summary-branch-bonuses { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.tech-summary-branch-bonuses .summary-chip { font-size: 12px; color: #fff; background: rgba(168, 85, 247, 0.22); padding: 4px 10px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.tech-summary-tech-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.tech-summary-tech-list .tech-pill { padding: 5px 10px; background: rgba(255,255,255,0.06); border-radius: 4px; font-size: 12px; color: #fff; cursor: pointer; transition: background 0.15s, transform 0.1s; border: 1px solid rgba(255,255,255,0.04); display: inline-flex; align-items: center; gap: 5px; }
+.tech-summary-tech-list .tech-pill:hover { background: rgba(168, 85, 247, 0.20); border-color: rgba(168, 85, 247, 0.35); transform: translateY(-1px); }
+.tech-summary-tech-list .tech-pill .pill-effect { font-size: 11px; color: var(--color-sepolia); font-weight: 700; }
+.tech-summary-tech-list .tech-pill .pill-stack { font-size: 10px; color: #fff; background: rgba(168, 85, 247, 0.45); padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-weight: 700; }
+.tech-summary-next { font-size: 11px; color: var(--text-muted); margin-top: 6px; padding: 6px 10px; background: rgba(255,255,255,0.03); border-left: 2px solid var(--color-sepolia); border-radius: 3px; }
+.tech-summary-next strong { color: #fff; }
+.tech-summary-empty-cta { font-size: 11px; color: var(--text-muted); font-style: italic; padding: 6px 0; }
+.tech-summary-zero { text-align: center; padding: 14px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
+.tech-summary-zero strong { color: var(--color-sepolia); }
 
 @media (max-width: 600px) {
     .research-header { flex-direction: column; align-items: flex-start; }
@@ -201,35 +215,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {# -------------------------------------------------------------------- #}
 {# Lab Summary Box — bug #1286                                           #}
-{# All researched tech + the resulting stacked bonuses, grouped by       #}
-{# branch with a global stacked total on top. Only renders when the      #}
-{# captain has at least one completed tech.                              #}
+{# Cross-branch overview: all completed tech + stacked bonuses + the     #}
+{# whole catalog laid out so captains see what they're missing. Renders  #}
+{# for every captain (started or not) so the box doubles as a roadmap.   #}
 {# -------------------------------------------------------------------- #}
-{% if tech_summary and tech_summary.total_completed > 0 %}
+{% if tech_summary %}
 <div class="tech-summary">
     <div class="tech-summary-head">
         <div class="tech-summary-title">
             <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon"> Research Summary
         </div>
-        <div class="tech-summary-count">{{ tech_summary.total_completed }} tech{{ 's' if tech_summary.total_completed != 1 else '' }} researched across {{ tech_summary.branches|length }} branch{{ 'es' if tech_summary.branches|length != 1 else '' }}</div>
+        <div class="tech-summary-count">
+            <span><strong>{{ tech_summary.total_completed }}/{{ tech_summary.total_available }}</strong> techs researched</span>
+            <span><strong>{{ tech_summary.branches_started }}/{{ tech_summary.branches_total }}</strong> branches started</span>
+        </div>
     </div>
 
     {% if tech_summary.global_bonuses %}
     <div class="tech-summary-global">
+        <div class="tech-summary-global-label">Cumulative Bonuses (stacked across all branches)</div>
         {% for bonus in tech_summary.global_bonuses %}
         <span class="summary-chip">
             <img src="{{ icons[bonus.icon] }}" alt="" class="inline-icon-sm"> {{ bonus.value_display }}
         </span>
         {% endfor %}
     </div>
+    {% elif tech_summary.total_completed == 0 %}
+    <div class="tech-summary-zero">
+        No research yet — pick a branch below and spend <strong>SV</strong> on a tech to start earning permanent colony bonuses.
+    </div>
     {% endif %}
 
+    <div class="tech-summary-branches">
     {% for branch in tech_summary.branches %}
-    <div class="tech-summary-branch">
+    <div class="tech-summary-branch {% if not branch.started %}unstarted{% endif %}">
         <div class="tech-summary-branch-head">
             {% if branch.icon_url %}<img src="{{ branch.icon_url }}" alt="" class="branch-logo">{% else %}<span>{{ branch.icon }}</span>{% endif %}
-            <span>{{ branch.name }}</span>
-            <span class="branch-lvl">Lv{{ branch.branch_level }} · {{ branch.completed_count }} tech{{ 's' if branch.completed_count != 1 else '' }}</span>
+            <div class="branch-name-block">
+                <span class="branch-name-text">{{ branch.name }}</span>
+                <span class="branch-tagline">{{ branch.description }}</span>
+            </div>
+            <span class="branch-lvl">
+                {% if branch.started %}<strong>Lv{{ branch.branch_level }}</strong><br>{% endif %}
+                {{ branch.completed_count }}/{{ branch.total_techs }} techs
+            </span>
         </div>
         {% if branch.bonuses %}
         <div class="tech-summary-branch-bonuses">
@@ -238,13 +267,29 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endfor %}
         </div>
         {% endif %}
+        {% if branch.techs %}
         <div class="tech-summary-tech-list">
             {% for tech in branch.techs %}
-            <span class="tech-pill">{{ tech.name }}</span>
+            <span class="tech-pill" onclick="switchBranch('{{ branch.branch_key }}')" title="{{ tech.description }}{% if tech.level_count > 1 %} (compounded across {{ tech.level_count }} branch levels){% endif %}">
+                {{ tech.name }}{% if tech.level_count > 1 %}<span class="pill-stack">×{{ tech.level_count }}</span>{% endif %}
+                {% if tech.effects_display %}
+                {% for eff in tech.effects_display %}<span class="pill-effect">· {{ eff.value_display }}</span>{% endfor %}
+                {% endif %}
+            </span>
             {% endfor %}
         </div>
+        {% else %}
+        <div class="tech-summary-empty-cta">No tech researched in this branch yet.</div>
+        {% endif %}
+        {% if branch.next_tech %}
+        <div class="tech-summary-next">
+            <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">
+            Next up: <strong>{{ branch.next_tech.name }}</strong> — {{ branch.next_tech.description }}
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
+    </div>
 </div>
 {% endif %}
 
@@ -647,5 +692,63 @@ updateTimer();
 setInterval(updateTimer, 1000);
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTechModal(); });
+
+// ─── Step 6: branch level-up cinematic ─────────────────────────────────────
+// Bug #1286 celebration moment, deferred from the polish stack to here so the
+// generalized EpicReveal framework powers it (same one used for ARIA bonds +
+// Signal final). Forward-only: tracks each branch's last-seen level in
+// localStorage; if the current page render shows a higher branch_level, fire
+// the cinematic exactly once per level-up.
+(function () {
+    if (!window.EpicReveal || !techData || !techData.branches) return;
+    const STORAGE_KEY = 'pilgrims_branch_lvl_seen_v1';
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) {}
+
+    let triggered = null;
+    for (const [branchKey, branchData] of Object.entries(techData.branches)) {
+        const cur = parseInt(branchData.branch_level, 10) || 1;
+        const prev = parseInt(seen[branchKey], 10) || 0;
+        if (cur > prev) {
+            // First time we've ever seen this branch (prev=0) is NOT a celebration —
+            // it's the initial baseline. Only fire when cur > prev > 0.
+            if (prev > 0 && !triggered) {
+                triggered = { key: branchKey, branch: branchData, from: prev, to: cur };
+            }
+            seen[branchKey] = cur;
+        }
+    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(seen)); } catch (e) {}
+
+    if (triggered) {
+        const b = triggered.branch;
+        EpicReveal.show({
+            title: 'BRANCH ASCENDED',
+            lines: [
+                { text: '*tech archive expands*', cls: 'static-crackle', sound: 'crackle' },
+                { text: `${b.name} branch has reached a new tier.`, sound: 'glitch' },
+                { text: 'New higher-tier techs are now within reach.', cls: 'emphasis' },
+            ],
+            info: {
+                label: `${b.name.toUpperCase()} BRANCH`,
+                name1: `Lv${triggered.from}`,
+                name2: `Lv${triggered.to}`,
+                detail: b.description || '',
+            },
+            revelation: {
+                label: 'TIER UNLOCKED',
+                text: 'Higher-tier techs in this branch are now available to research. Their effects will compound across every tech you have already completed in this branch.',
+            },
+            actions: [
+                {
+                    label: `View ${b.name} Branch`,
+                    cls: 'primary',
+                    href: '#branch-' + triggered.key,
+                },
+                { label: 'Continue', cls: 'secondary' },
+            ],
+        });
+    }
+})();
 </script>
 {% endblock %}

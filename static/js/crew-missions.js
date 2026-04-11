@@ -441,7 +441,7 @@ setInterval(loadCrewMissions, 30000);
 window.tabCallbacks = window.tabCallbacks || {};
 // Update tab description when switching tabs
 function updateTabDescription(tab) {
-    ['trails', 'captain', 'scientist', 'aria', 'services'].forEach(t => {
+    ['trails', 'captain', 'scientist', 'aria', 'robot', 'services'].forEach(t => {
         const el = document.getElementById(`tab-desc-${t}`);
         if (el) el.style.display = t === tab ? 'inline' : 'none';
     });
@@ -464,6 +464,14 @@ window.tabCallbacks.crew = {
     },
     aria: function() {
         updateTabDescription('aria');
+    },
+    robot: function() {
+        updateTabDescription('robot');
+        // Robot tab self-initializes via crew-robot.js DOMContentLoaded;
+        // calling refresh on each entry keeps the countdown live.
+        if (typeof window.refreshRobotTab === 'function') {
+            window.refreshRobotTab();
+        }
     },
     services: function() {
         updateTabDescription('services');

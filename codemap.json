@@ -1411,6 +1411,22 @@
       "get_commander_quote_count — Get total number of captain quotes for a user."
     ]
   },
+  "utilities/db_robot.py": {
+    "description": "Robot construction database operations.",
+    "exports": [
+      "ensure_robot_tables — Create robot tables if they don't exist. Idempotent + cached.",
+      "get_robot — Return the captain's robot row, or None if they haven't started one.",
+      "get_stage_log — Return all logged stages for a captain in order.",
+      "pick_stage_sources — Choose 5 source manifests from the captain's real expedition history.",
+      "start_robot_build — Initialize a robot build with the 5 pre-picked source manifests.",
+      "log_stage — Append a completed stage to the log AND advance the robot row.",
+      "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
+      "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
+      "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
+      "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —",
+      "get_robot_page_data — Bundle everything the Robot tab needs in one call. Speed-conscious:"
+    ]
+  },
   "utilities/db_shop.py": {
     "description": "Shop, transactions, infrastructure, upgrades, and action token database operations.",
     "exports": [
@@ -1962,6 +1978,9 @@
   "static/css/core.css": {
     "description": "Shared styles — layout, 5-tab nav, modals, toast, buttons, Mars theme, colorblind-safe palette, status bar"
   },
+  "static/css/crew-robot.css": {
+    "description": "Styles for crew-robot"
+  },
   "static/css/crew.css": {
     "description": "Crew page styles — captain card, stats display, trail missions, SV ticker"
   },
@@ -2183,6 +2202,26 @@
       "checkMissionNotifications",
       "showMissionCompleteNotification",
       "showMissionReadyToast"
+    ]
+  },
+  "static/js/crew-robot.js": {
+    "description": "CREW-ROBOT.JS — Crew tab → Robot",
+    "exports": [
+      "BRIDGE",
+      "fmtSeconds",
+      "postJSONSafe",
+      "reloadSoon",
+      "startCountdown",
+      "tick",
+      "wireBuildButton",
+      "wireNameSave",
+      "name",
+      "readDialState",
+      "renderDial",
+      "adjustDial",
+      "scheduleDialSave",
+      "saveDial",
+      "wireDial"
     ]
   },
   "static/js/crew.js": {
@@ -2493,7 +2532,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2506,7 +2545,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -2571,7 +2610,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
@@ -2609,6 +2648,11 @@
   },
   "templates/brainstorm/trail_network.html": {
     "description": "Page: Trail Network Brainstorm - Pilgrims"
+  },
+  "templates/crew/_tab_robot.html": {
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
   },
   "templates/crew/_tab_scientist.html": {
     "notes": [

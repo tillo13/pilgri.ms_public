@@ -20,7 +20,7 @@ PLAYER_DATA_TOOL = {
                 "type": "string",
                 "enum": ["balance", "shard_generation", "sv_sources", "upgrades", "infrastructure", "building_queue",
                          "expeditions", "research", "crew_missions", "discoveries",
-                         "signal_claims", "overview", "leaderboard"],
+                         "signal_claims", "overview", "leaderboard", "robot"],
                 "description": "Which data category to fetch"
             },
             "user_id": {
@@ -45,6 +45,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   crew_missions     — Captain/Scientist/ARIA trail missions with time remaining
   discoveries       — Unclaimed/total discoveries, storage capacity
   signal_claims     — Origin site claims, ARIA bonds
+  robot             — Fourth crew member (Step 4d): Robotics Lab level, build status, current visual stage, time until next stage, role dial split, source manifest of items used to forge each stage
   leaderboard       — Top players by shards, expeditions, and research (no user_id needed)
 """
 
@@ -402,6 +403,47 @@ def query_player_data(category, user_id):
                 lines.append(f"ARIA bonds ({len(bonds)}):")
                 for b in bonds:
                     lines.append(f"  {b['landmark_name']}: {b['status']}")
+            return "\n".join(lines)
+
+        elif category == 'robot':
+            from utilities.db_robot import get_robot_page_data
+            data = get_robot_page_data(user_id) or {}
+            lines = ["=== ROBOT CREW MEMBER (Step 4d) ==="]
+            lines.append(f"Robotics Lab: Lv{data.get('lab_level', 0)} ({'unlocked' if data.get('lab_unlocked') else 'LOCKED — needs Research Station Lv3 + Regolith Forge Lv3'})")
+            if not data.get('has_robot'):
+                lines.append("Build status: NOT STARTED")
+                if data.get('lab_unlocked'):
+                    lines.append("Captain can begin construction from /crew → Robot tab.")
+                return "\n".join(lines)
+            robot = data.get('robot') or {}
+            lines.append(f"Name: {robot.get('name') or '(unnamed)'}")
+            lines.append(f"Build status: {robot.get('build_status', '?')}")
+            lines.append(f"Visual stage: {robot.get('visual_stage', 0)}/5")
+            lines.append(f"Stages forged: {sum(1 for s in (data.get('stages') or []) if s.get('status') == 'complete')}/5")
+            secs = data.get('seconds_until_next_stage')
+            if secs is not None and not data.get('is_complete'):
+                if secs >= 3600:
+                    lines.append(f"Next stage ready in: {secs // 3600}h {(secs % 3600) // 60}m")
+                elif secs >= 60:
+                    lines.append(f"Next stage ready in: {secs // 60}m {secs % 60}s")
+                else:
+                    lines.append(f"Next stage ready in: {secs}s")
+            dial = robot.get('dial') or {}
+            if dial:
+                lines.append(f"Role dial: mining {dial.get('mining', 0)}% · exploration {dial.get('exploration', 0)}% · science {dial.get('science', 0)}% · combat {dial.get('combat', 0)}%")
+            if data.get('is_complete'):
+                lines.append("CONSTRUCTION COMPLETE — robot is ready to deploy.")
+                lines.append(f"Cinematic played: {'yes' if robot.get('cinematic_played') else 'NO (build-complete celebration pending)'}")
+            # Per-stage source manifest (the real items the robot was forged from)
+            stages = data.get('stages') or []
+            if stages:
+                lines.append("Build manifest (real items recovered on expeditions):")
+                for s in stages:
+                    src = s.get('source') or {}
+                    status = s.get('status', '?')
+                    item = src.get('item_name') or '?'
+                    landmark = src.get('landmark_name') or '?'
+                    lines.append(f"  Stage {s.get('idx')}: {s.get('label')} [{status}] — {item} from {landmark}")
             return "\n".join(lines)
 
         elif category == 'leaderboard':

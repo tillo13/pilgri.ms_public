@@ -764,11 +764,20 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
     Returns:
         {
             'total_completed': int,
-            'branches': [  # only branches with at least one completion
+            'total_available': int,           # total techs in catalog (across all branches)
+            'branches_started': int,          # branches with >=1 completion
+            'branches_total': int,            # branches in catalog (currently 4)
+            'branches': [  # ALL branches in catalog order (started + unstarted)
                 {
                     'branch_key', 'name', 'icon', 'icon_url',
-                    'branch_level', 'completed_count',
-                    'techs': [{'tech_key', 'name', 'description', 'image_url'}...],
+                    'branch_level', 'completed_count', 'total_techs',
+                    'started': bool,
+                    'description': str,       # branch tagline (for unstarted hint)
+                    'next_tech': {'name': str, 'description': str} | None,  # next available
+                    'techs': [{
+                        'tech_key', 'name', 'description', 'completed_level',
+                        'effects_display': [{'icon','value_display'}...],   # per-tech effects
+                    }...],
                     'bonuses': [{'icon', 'value_display'}...],  # stacked in-branch
                 },
                 ...
@@ -788,14 +797,7 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
         """, (user_id,))
         rows = cur.fetchall()
 
-    if not rows:
-        return {
-            'total_completed': 0,
-            'branches': [],
-            'global_bonuses': [],
-        }
-
-    # Group rows by branch key in memory.
+    # Group rows by branch key in memory (may be empty for new captains).
     by_branch: Dict[str, list] = {}
     for row in rows:
         by_branch.setdefault(row['branch'], []).append(row)
@@ -816,52 +818,110 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
         branch_levels = _get_user_branch_levels(user_id)
     global_effects: Dict[str, Any] = {}
     branches_out = []
+    total_available = 0
 
-    # Preserve TECH_CATALOG ordering for consistent UI.
+    # Iterate ALL branches in TECH_CATALOG order — even unstarted ones get a
+    # row so the captain can see what they're missing (Luke's QA pattern: never
+    # hide the ladder, always show what's next to chase).
+    #
+    # NB on counting: pilgrim.player_techs has ONE row per (tech_key, branch_level)
+    # so when a branch level rises, every previously-completed tech gets a NEW
+    # row at the higher level. The canonical _get_branch_effects merges all of
+    # those rows (which is how the income calc compounds the bonus per branch
+    # level), so we MUST do the same here for the displayed bonuses to match
+    # what the rest of the game actually applies. But the COUNT of "researched
+    # techs" must be DISTINCT tech_keys — otherwise a Lv4 vehicles captain sees
+    # "18/5 techs" which is nonsense. So: merge all rows for the bonus stack,
+    # but dedupe by tech_key for the pill list and the count.
+    total_distinct_completed = 0
     for branch_key, branch_data in TECH_CATALOG.items():
-        branch_rows = by_branch.get(branch_key)
-        if not branch_rows:
-            continue
-
         techs_config = branch_data.get('techs', {})
-        branch_effects: Dict[str, Any] = {}
-        tech_cards = []
+        branch_total_techs = len(techs_config)
+        total_available += branch_total_techs
 
+        branch_rows = by_branch.get(branch_key, [])
+        completed_keys = {r['tech_key'] for r in branch_rows}
+        branch_effects: Dict[str, Any] = {}
+
+        # Group rows by tech_key so we can both (a) merge per-tech effects across
+        # every level for an honest per-pill display, and (b) emit one pill per
+        # distinct tech.
+        rows_by_tech: Dict[str, list] = {}
         for r in branch_rows:
-            tech_key = r['tech_key']
-            completed_level = r['branch_level']
+            rows_by_tech.setdefault(r['tech_key'], []).append(r)
+
+        tech_cards = []
+        for tech_key, tech_rows in rows_by_tech.items():
             tech_data = techs_config.get(tech_key)
             if not tech_data:
                 continue
 
-            # Scale + merge into this branch AND into the global total.
-            scaled = scale_effects(tech_data.get('effects', {}), completed_level)
-            _merge(branch_effects, scaled)
-            _merge(global_effects, scaled)
+            # Merge effects from EVERY row for this tech (matches _get_branch_effects
+            # so per-pill totals roll up cleanly into branch + global stacks).
+            per_tech_effects: Dict[str, Any] = {}
+            highest_level = 1
+            for r in tech_rows:
+                lvl = r['branch_level']
+                highest_level = max(highest_level, lvl)
+                scaled = scale_effects(tech_data.get('effects', {}), lvl)
+                _merge(per_tech_effects, scaled)
+                _merge(branch_effects, scaled)
+                _merge(global_effects, scaled)
 
-            # NB: intentionally no image_url here — the summary box renders tech
-            # names as text pills, so _get_tech_image() (per-tech DB call) would
-            # add ~N extra queries for zero visual payoff. Speed-first.
             tech_cards.append({
                 'tech_key': tech_key,
-                'name': get_tech_name_at_level(tech_data['name'], completed_level),
+                # Show the tech at its highest reached level (e.g. "Material Science IV").
+                'name': get_tech_name_at_level(tech_data['name'], highest_level),
                 'description': tech_data.get('description', ''),
-                'completed_level': completed_level,
+                'highest_level': highest_level,
+                'level_count': len(tech_rows),
+                # Per-tech effect chips compounded across every branch_level the tech
+                # was completed at — so tapping a pill shows the same numbers that
+                # contributed to the branch total above.
+                'effects_display': _format_effects_for_display(per_tech_effects),
             })
+
+        # Stable display order: by tier from the catalog, then by tech_key.
+        tier_order = {tk: td.get('tier', 99) for tk, td in techs_config.items()}
+        tech_cards.sort(key=lambda c: (tier_order.get(c['tech_key'], 99), c['tech_key']))
+
+        # "Next up" hint — first uncompleted tech in catalog order. Even for
+        # unstarted branches we surface tier 1 as the obvious entry point.
+        next_tech = None
+        for tk, td in techs_config.items():
+            if tk not in completed_keys:
+                next_tech = {
+                    'tech_key': tk,
+                    'name': td['name'],
+                    'description': td.get('description', ''),
+                    'tier': td.get('tier', 1),
+                }
+                break
 
         branches_out.append({
             'branch_key': branch_key,
             'name': branch_data['name'],
             'icon': branch_data.get('icon', ''),
             'icon_url': branch_data.get('icon_url', ''),
+            'description': branch_data.get('description', ''),
             'branch_level': branch_levels.get(branch_key, 1),
+            # Distinct techs, not row count — see counting note above.
             'completed_count': len(tech_cards),
+            'total_techs': branch_total_techs,
+            'started': len(tech_cards) > 0,
+            'next_tech': next_tech,
             'techs': tech_cards,
             'bonuses': _format_effects_for_display(branch_effects),
         })
+        total_distinct_completed += len(tech_cards)
+
+    branches_started = sum(1 for b in branches_out if b['started'])
 
     return {
-        'total_completed': len(rows),
+        'total_completed': total_distinct_completed,
+        'total_available': total_available,
+        'branches_started': branches_started,
+        'branches_total': len(branches_out),
         'branches': branches_out,
         'global_bonuses': _format_effects_for_display(global_effects),
     }
