@@ -894,7 +894,7 @@ INFRASTRUCTURE_CATALOG = {
             1: {
                 'name': 'Salvage Workbench', 'cost': 150000, 'build_time_days': 7,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.00,
-                'image_url': '',
+                'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/robotics_lab_1775872908.png',
             },
             2: {
                 'name': 'Assembly Bay', 'cost': 168000, 'build_time_days': 8,
