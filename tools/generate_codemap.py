@@ -124,7 +124,9 @@ SKIP_DIRS = {"venv_galactica", "archive", "antiquated_code", ".git", "__pycache_
              "node_modules", ".claude", "testing"}
 
 # Skip deprecated/blocked files (matches deploy.py blocklist)
-SKIP_FILES = {"gcloud_deploy.py", "git_push.sh"}
+# andy_check.py: deploy-time dev smoke test, NOT gameplay — must never appear
+# in codemap.json so PilgrimBot / ARIA don't surface it to captains.
+SKIP_FILES = {"gcloud_deploy.py", "git_push.sh", "andy_check.py"}
 
 
 def extract_python_summary(filepath):

@@ -126,17 +126,6 @@
       "The Signal / Shard Network (ARG)"
     ]
   },
-  "tools/andy_check.py": {
-    "description": "Andy Check — auto-manage Andy's colony on deploy.",
-    "exports": [
-      "check_crew_trails — Send idle crew members on trail missions.",
-      "check_expeditions — Launch expeditions for idle vehicles.",
-      "check_depot_upgrades — Buy the cheapest affordable upgrade if any available.",
-      "check_lab_research — Start cheapest available research if nothing active.",
-      "check_infrastructure_income — Claim accumulated infrastructure income.",
-      "main"
-    ]
-  },
   "tools/aria_snapshots.py": {
     "description": "ARIA Snapshots - Generate Instagram-style photos of life at the colony",
     "exports": [
@@ -2538,7 +2527,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2616,7 +2605,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
