@@ -451,31 +451,47 @@ def tick_robot_build(user_id: int) -> Dict[str, Any]:
     """
     Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —
     safe to call on every page load. Returns the latest robot row (or None
-    if no build exists). Each advance fires _stub_advance_one_stage which
-    will be replaced wholesale in Step 4c.
+    if no build exists).
+
+    Step 4c: advancement goes through robot_visuals.start_background_advance()
+    which runs Flux Kontext + GCS upload in a daemon thread. Since Kontext
+    takes ~30s and the next stage depends on the current stage's image being
+    persisted, we spawn AT MOST ONE thread per tick and return. The next
+    page visit re-enters this function and either sees the advancement
+    completed (log_stage() bumped visual_stage) or finds the lock still
+    held and no-ops.
+
+    Fallback chain for resilience: if robot_visuals isn't importable OR the
+    thread worker hits an unrecoverable failure, it delegates to the
+    synchronous stub so the build never deadlocks on a Flux/network outage.
     """
     robot = get_robot(user_id)
     if not robot or robot.get('build_status') != 'in_progress':
         return robot
+    if not (robot.get('stage_ready_at') and robot['stage_ready_at'] <= datetime.utcnow()):
+        return robot
+    if robot['visual_stage'] >= 5:
+        return robot
 
-    now = datetime.utcnow()
     sources = robot.get('stage_sources') or []
-    safety_loops = 0
-    while (robot and robot.get('build_status') == 'in_progress'
-           and robot.get('stage_ready_at')
-           and robot['stage_ready_at'] <= now
-           and robot['visual_stage'] < 5
-           and safety_loops < 5):
-        safety_loops += 1
-        next_stage_idx = robot['visual_stage'] + 1
-        if next_stage_idx > len(sources):
-            logger.error(f"robot tick: user {user_id} missing source for stage {next_stage_idx}")
-            break
-        source = sources[next_stage_idx - 1]
-        result = _stub_advance_one_stage(user_id, next_stage_idx, source)
-        robot = result.get('robot')
+    next_stage_idx = robot['visual_stage'] + 1
+    if next_stage_idx > len(sources):
+        logger.error(f"robot tick: user {user_id} missing source for stage {next_stage_idx}")
+        return robot
+    source = sources[next_stage_idx - 1]
 
-    return robot
+    try:
+        from utilities.robot_visuals import start_background_advance
+        start_background_advance(user_id, next_stage_idx, source)
+        # Either the worker is running now and will update on completion, or
+        # a prior worker is still running — both cases return the current
+        # (unchanged) robot row so the UI stays on the old stage until
+        # persistence catches up.
+        return robot
+    except Exception as e:
+        logger.warning(f"robot tick: real pipeline unavailable, stub fallback: {e}")
+        result = _stub_advance_one_stage(user_id, next_stage_idx, source)
+        return result.get('robot') or robot
 
 
 # ============================================================================

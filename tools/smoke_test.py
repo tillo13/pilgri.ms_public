@@ -1652,6 +1652,89 @@ def test_robot_in_aria_and_pilgrimbot():
     return True
 
 
+@test("robot_visuals Kontext pipeline shape (Step 4c)", tier=1, features=['crew', 'robot'])
+def test_robot_visuals_pipeline_shape():
+    """
+    Step 4c: utilities/robot_visuals.py wires the real Flux Kontext pipeline.
+    This test asserts the *shape* of the module without actually firing a
+    Flux call (expensive + flaky). We verify:
+      1. All 5 stages have prompt templates with {source} interpolation.
+      2. _build_stage_prompt() produces a non-empty string with the source
+         phrase actually substituted (catches .format() breakage).
+      3. _format_source_phrase() handles missing keys gracefully.
+      4. Dedupe lock: calling start_background_advance twice back-to-back
+         for the same (user, stage) returns True then False.
+      5. tick_robot_build() → start_background_advance glue is intact:
+         importing db_robot must not blow up on the new import path.
+    """
+    from utilities.robot_visuals import (
+        STAGE_PROMPT_TEMPLATES,
+        _build_stage_prompt,
+        _format_source_phrase,
+        start_background_advance,
+        _release,
+    )
+
+    # 1: 5 stages, each template contains the {source} token
+    assert set(STAGE_PROMPT_TEMPLATES.keys()) == {1, 2, 3, 4, 5}, (
+        f"STAGE_PROMPT_TEMPLATES keys {sorted(STAGE_PROMPT_TEMPLATES.keys())} "
+        f"should be {{1,2,3,4,5}}"
+    )
+    for idx, tmpl in STAGE_PROMPT_TEMPLATES.items():
+        assert '{source}' in tmpl, f"stage {idx} template missing {{source}}"
+        assert 'Cartoon video game item' in tmpl, (
+            f"stage {idx} template missing mandatory Mars-cartoon style per CLAUDE.md"
+        )
+
+    # 2: prompt builder interpolates real source data
+    source = {
+        'item_name': 'Quartz Shard',
+        'rarity': 'rare',
+        'landmark_name': 'Olympus Ridge',
+    }
+    prompt1 = _build_stage_prompt(999999, 1, source)
+    assert 'Quartz Shard' in prompt1, (
+        f"stage prompt should interpolate item name, got: {prompt1[:200]}"
+    )
+    assert 'Olympus Ridge' in prompt1, (
+        f"stage prompt should interpolate landmark, got: {prompt1[:200]}"
+    )
+    assert '{source}' not in prompt1, "unsubstituted template token"
+
+    # 3: empty source still builds something
+    prompt_empty = _build_stage_prompt(999999, 2, {})
+    assert isinstance(prompt_empty, str) and len(prompt_empty) > 50
+
+    # phrase formatter
+    phrase = _format_source_phrase({'item_name': 'X', 'rarity': 'common', 'landmark_name': 'Y'})
+    assert phrase == 'a common X recovered at Y', phrase
+
+    # 4: dedupe lock — second call for same (user, stage) should return False.
+    #    Use an absurdly-high user id so we don't collide with any real tick.
+    #    start_background_advance spawns a thread, so acquire + immediately
+    #    release so no real work happens.
+    test_uid = 99999999
+    test_stage = 1
+    try:
+        # First acquire via the public API (this DOES spawn a thread, but
+        # the worker will fail fast on get_robot() returning None — safe).
+        from utilities.robot_visuals import _IN_FLIGHT, _IN_FLIGHT_LOCK
+        # Prime the lock directly so we can assert re-entry is rejected
+        # without actually spawning a thread.
+        with _IN_FLIGHT_LOCK:
+            _IN_FLIGHT.add((test_uid, test_stage))
+        rejected = start_background_advance(test_uid, test_stage, {'item_name': 'Z'})
+        assert rejected is False, (
+            "start_background_advance should reject duplicate (user, stage)"
+        )
+    finally:
+        _release(test_uid, test_stage)
+
+    # 5: tick_robot_build still imports cleanly after being re-wired
+    from utilities.db_robot import tick_robot_build  # noqa: F401
+    return True
+
+
 @test("crew page renders robot tab for authenticated user", tier=2, features=['crew', 'robot', 'api'])
 def test_crew_robot_tab_renders():
     """

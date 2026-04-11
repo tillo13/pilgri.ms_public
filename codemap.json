@@ -1818,6 +1818,12 @@
     ],
     "description": "Low-level Replicate API wrapper — model predictions, polling, image download"
   },
+  "utilities/robot_visuals.py": {
+    "description": "Robot visual pipeline — Kontext-chained per-captain renders.",
+    "exports": [
+      "start_background_advance — Spawn a daemon thread to advance one stage. Returns True if the thread"
+    ]
+  },
   "utilities/sepolia_utils.py": {
     "description": "Sepolia Integration - Refactored for DRY principles",
     "exports": [
