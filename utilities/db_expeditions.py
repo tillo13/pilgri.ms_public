@@ -672,7 +672,7 @@ def get_discovery_item_details(user_id: int, discovery_item_id: int) -> Optional
             return {
                 'item': item, 'finds': finds,
                 'total_quantity': sum(f['quantity'] for f in finds),
-                'total_value': sum(f['enhanced_value'] for f in finds),
+                'total_value': sum(f['enhanced_value'] * f['quantity'] for f in finds),
                 'total_weight': float(item['weight_kg']) * sum(f['quantity'] for f in finds),
                 'first_found': finds[-1]['claimed_at'] if finds else None,
                 'last_found': finds[0]['claimed_at'] if finds else None

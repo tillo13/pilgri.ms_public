@@ -72,7 +72,8 @@ function showDiscoveryDetails(discoveryItemId) {
             label: qty > 1 ? `Extract All ${qty}× (${extractValueAll.toLocaleString()} Shards${svLabelAll})` : `Extract (${extractValueAll.toLocaleString()} Shards${svLabelAll})`,
             className: 'btn-warning',
             onClick: () => confirmColonyExtraction(discovery, extractValueAll, true),
-            secondaryAction: qty > 1 ? { label: `Extract 1× (${extractValueOne.toLocaleString()} Shards${svLabelOne})`, onClick: () => confirmColonyExtraction(discovery, extractValueOne, false) } : null
+            secondaryAction: qty > 1 ? { label: `Extract 1× (${extractValueOne.toLocaleString()} Shards${svLabelOne})`, onClick: () => confirmColonyExtraction(discovery, extractValueOne, false) } : null,
+            tertiaryAction: qty > 1 ? { label: `Shard Some…`, onClick: () => promptColonyCustomExtract(discovery, qty, extractValueOne) } : null
         };
     }
     ItemDetailModal.show({
@@ -84,9 +85,9 @@ function showDiscoveryDetails(discoveryItemId) {
 }
 
 // Confirmation step before extraction
-function confirmColonyExtraction(discovery, shardPayout, extractAll = true) {
+function confirmColonyExtraction(discovery, shardPayout, extractAll = true, quantityToExtract = null) {
     const qty = discovery.quantity || 1;
-    const extractQty = extractAll ? qty : 1;
+    const extractQty = quantityToExtract || (extractAll ? qty : 1);
     const quotes = [
         'Another Martian mystery catalogued! The shards are yours.',
         'Mars never gets old! Processing extraction now.',
@@ -112,19 +113,38 @@ function confirmColonyExtraction(discovery, shardPayout, extractAll = true) {
         action: {
             label: `Extract (${shardPayout.toLocaleString()} Shards)`,
             className: 'btn-warning',
-            onClick: () => extractColonyDiscovery(discovery.discovery_item_id, shardPayout, extractAll)
+            onClick: () => extractColonyDiscovery(discovery.discovery_item_id, shardPayout, extractAll, quantityToExtract)
         }
     });
 }
 
+// Bug #1125: "Shard Some" — pick a custom quantity to extract from colony discoveries
+function promptColonyCustomExtract(discovery, maxQty, perItemShards) {
+    if (maxQty < 2) return;
+    const raw = window.prompt(
+        `How many "${discovery.item_name}" do you want to extract?\n\nYou have ${maxQty} available. Each yields ${perItemShards.toLocaleString()} shards.\n\nEnter a number between 1 and ${maxQty}:`,
+        String(Math.min(maxQty, 5))
+    );
+    if (raw == null) return;
+    const n = parseInt(raw, 10);
+    if (isNaN(n) || n < 1 || n > maxQty) {
+        showToast(`Please enter a number between 1 and ${maxQty}`, 'error');
+        return;
+    }
+    const totalShards = perItemShards * n;
+    confirmColonyExtraction(discovery, totalShards, false, n);
+}
+
 // Extract discovery for shards (extractAll: true = all stacked, false = just one)
-async function extractColonyDiscovery(discoveryItemId, expectedValue, extractAll = true) {
+async function extractColonyDiscovery(discoveryItemId, expectedValue, extractAll = true, quantityToExtract = null) {
     const btn = document.getElementById('mmActionBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Extracting...'; }
     try {
+        const body = { discovery_item_id: discoveryItemId, extract_all: extractAll };
+        if (quantityToExtract != null) body.quantity_to_extract = quantityToExtract;
         const response = await fetch('/api/discovery/analyze', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ discovery_item_id: discoveryItemId, extract_all: extractAll })
+            body: JSON.stringify(body)
         });
         const data = await response.json();
         if (data.success) {

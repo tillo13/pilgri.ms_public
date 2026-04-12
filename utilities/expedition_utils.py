@@ -1742,7 +1742,8 @@ def get_expedition_discovery_progress(expedition_id: int, user_id: int) -> dict:
         logger.info(f"✅ Completed expedition {expedition_id}: unlocked all discoveries at {current_distance} km")
     else:
         elapsed = (datetime.now() - expedition['departed_at']).total_seconds()  # Use local time to match stored timestamps
-        total_time = (expedition['arrives_at'] - expedition['departed_at']).total_seconds()
+        return_arrives_at = expedition.get('return_arrives_at') or expedition['arrives_at']
+        total_time = (return_arrives_at - expedition['departed_at']).total_seconds()
         progress = min(1.0, elapsed / total_time)
         current_distance = float(expedition['distance_km']) * progress
         unlock_discoveries_by_distance(expedition_id, current_distance)
