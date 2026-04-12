@@ -1941,7 +1941,7 @@
       "get_user_upgrade_level — Get user's current USABLE level for an upgradeable item.",
       "get_all_upgrade_build_statuses — Bulk-fetch build statuses for ALL items in a category in ONE query.",
       "get_upgrade_build_status — Get the build status for an upgrade.",
-      "count_concurrent_upgrades — Count how many upgrades are currently in progress (pending_level set, ready_at in future).",
+      "count_concurrent_upgrades — Count how many builds are in progress (equipment upgrades + infrastructure construction).",
       "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
       "get_active_builds — Get list of active builds with name, category, target level, and seconds remaining.",
       "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
@@ -2549,7 +2549,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

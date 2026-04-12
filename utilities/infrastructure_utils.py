@@ -1073,6 +1073,8 @@ def get_infrastructure_page_data(user_id: int) -> dict:
         current_level = max(1, all_levels.get(building['structure_type'], 1))
         level_data = catalog_def.get('levels', {}).get(current_level, {})
 
+        enriched['name'] = catalog_def.get('name', building['structure_type'].replace('_', ' ').title())
+        enriched['icon'] = catalog_def.get('icon', '')
         enriched['image_url'] = level_data.get('image_url', '')
         enriched['description'] = catalog_def.get('description', '')
         enriched['effect'] = catalog_def.get('effect')
@@ -1112,6 +1114,11 @@ def get_infrastructure_page_data(user_id: int) -> dict:
         if building['status'] == 'active':
             existing.append(enriched)
         elif building['status'] == 'building':
+            if building.get('ready_at'):
+                remaining = (building['ready_at'] - datetime.now()).total_seconds()
+                enriched['seconds_remaining'] = max(0, int(remaining))
+            else:
+                enriched['seconds_remaining'] = 0
             building_infrastructure.append(enriched)
 
     # Include both active AND building for type checking (don't allow duplicate builds)

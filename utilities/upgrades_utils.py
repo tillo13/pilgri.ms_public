@@ -376,16 +376,25 @@ BASE_CONCURRENT_UPGRADE_CAP = 3  # Default max concurrent upgrades
 
 
 def count_concurrent_upgrades(user_id: int) -> int:
-    """Count how many upgrades are currently in progress (pending_level set, ready_at in future)."""
+    """Count how many builds are in progress (equipment upgrades + infrastructure construction)."""
     from datetime import datetime, timezone
     ensure_upgrades_table()
     with db_cursor() as cur:
+        # Equipment upgrades (player_upgrades with pending_level)
         cur.execute("""
             SELECT COUNT(*) as cnt FROM pilgrim.player_upgrades
             WHERE user_id = %s AND pending_level IS NOT NULL AND ready_at > NOW()
         """, (user_id,))
         row = cur.fetchone()
-        return row['cnt'] if row else 0
+        equipment_count = row['cnt'] if row else 0
+        # Infrastructure builds (colony_infrastructure with status='building')
+        cur.execute("""
+            SELECT COUNT(*) as cnt FROM pilgrim.colony_infrastructure
+            WHERE user_id = %s AND status = 'building' AND ready_at > NOW()
+        """, (user_id,))
+        row = cur.fetchone()
+        infra_count = row['cnt'] if row else 0
+        return equipment_count + infra_count
 
 
 def get_user_upgrade_cap(user_id: int) -> int:
