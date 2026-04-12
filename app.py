@@ -104,6 +104,12 @@ auth = SimpleGoogleAuth(app)
 
 # Request timing middleware - logs page load times to console
 @app.before_request
+def force_canonical_host():
+    host = request.headers.get('Host', '')
+    if host.startswith('www.'):
+        return redirect(f'https://pilgri.ms{request.full_path}', code=301)
+
+@app.before_request
 def start_timer():
     """Start timing the request."""
     g.start_time = time.time()
