@@ -111,7 +111,7 @@ function confirmColonyExtraction(discovery, shardPayout, extractAll = true, quan
             <strong style="color:#ffb450;">Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
         </div>`,
         action: {
-            label: `Extract (${shardPayout.toLocaleString()} Shards)`,
+            label: `Extract (${shardPayout.toLocaleString()} Shards + ${Math.floor(shardPayout * 0.50)} SV)`,
             className: 'btn-warning',
             onClick: () => extractColonyDiscovery(discovery.discovery_item_id, shardPayout, extractAll, quantityToExtract)
         }
