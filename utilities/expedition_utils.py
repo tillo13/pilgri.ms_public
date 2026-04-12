@@ -1197,8 +1197,9 @@ def launch_expedition(
     from utilities.upgrades_utils import get_user_upgrade_effects
     upgrade_effects = get_user_upgrade_effects(user_id)
 
-    # Override speed with vehicle-specific speed (not max across all vehicles)
-    upgrade_effects['expedition_speed_mult'] = vehicle_data['speed_mult']
+    # Combine vehicle speed with tech research bonus (not replace it)
+    tech_speed_bonus = upgrade_effects.get('expedition_speed_mult', 1.0)
+    upgrade_effects['expedition_speed_mult'] = vehicle_data['speed_mult'] * tech_speed_bonus
 
     expedition_pricing = calculate_expedition_cost(
         distance_km=distance_km,
@@ -1262,8 +1263,10 @@ def launch_expedition(
 
     # --- Optimistic: create expedition + discoveries immediately ---
     try:
-        # Use vehicle-specific cargo capacity + scientist engineering bonus
+        # Use vehicle-specific cargo capacity + tech bonus + scientist engineering bonus
         cargo_capacity = vehicle_data.get('cargo', 5)
+        cargo_tech_mult = upgrade_effects.get('cargo_capacity_mult', 1.0)
+        cargo_capacity = int(cargo_capacity * cargo_tech_mult)
         engineering_stat = sci_stats.get('engineering', 0)
         cargo_capacity += engineering_stat // 10  # +1 per 10 engineering (max +5 at 50)
 
@@ -1585,12 +1588,24 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
 
     discovery = calculate_expedition_discovery(expedition)
 
+    # LOCAL DB FIRST: credit shards immediately, blockchain in background
+    # (Same pattern as claim_accumulated_income — shards can never be lost)
     wallet = get_user_primary_sepolia_wallet(user_id)
     if wallet:
-        miner = MarsAsteroidMiner()
-        if miner.connect():
-            try:
-                # Use FAST method - broadcast immediately, don't wait for confirmation
+        # 1. Credit balance atomically in DB — this is the source of truth
+        from utilities.postgres_utils import db_cursor
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.sepolia_assets
+                SET current_balance_eth = current_balance_eth + %s,
+                    last_balance_check = NOW()
+                WHERE wallet_address = %s
+            """, (discovery['sepolia_earned'], wallet['wallet_address']))
+
+        # 2. Blockchain tx in background — best effort, doesn't block reward
+        try:
+            miner = MarsAsteroidMiner()
+            if miner.connect():
                 reward_result = miner.send_sepolia_reward_fast(
                     wallet['wallet_address'],
                     discovery['sepolia_earned'],
@@ -1614,13 +1629,8 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
                             'breakdown': discovery['breakdown']
                         }
                     )
-                    # Persist new balance to DB so it survives session expiry (same fix as #1144)
-                    update_sepolia_wallet_balance(
-                        wallet['wallet_address'],
-                        wallet.get('current_balance_eth', 0) + discovery['sepolia_earned']
-                    )
-            except Exception as e:
-                logger.error(f"Failed to send expedition reward: {e}")
+        except Exception as e:
+            logger.error(f"Failed to send expedition reward: {e}")
     
     update_expedition_complete(
         expedition_id,

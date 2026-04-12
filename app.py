@@ -1680,7 +1680,12 @@ def api_shard_all_discoveries():
 def api_expeditions_status(expedition_id):
     """Check expedition status and complete if arrived"""
     result = complete_expedition_if_ready(expedition_id, g.user_id)
-    
+
+    # Invalidate cached balance so ribbon shows updated shards after reward
+    if result.get('complete'):
+        from utilities.session_helpers import invalidate_balance_cache
+        invalidate_balance_cache(session)
+
     return jsonify(result)
 
 
@@ -2030,7 +2035,14 @@ def api_reassign_scientist():
     if current and current.get('key') == new_key:
         return jsonify({'success': False, 'error': 'Already your scientist'})
 
-    # Auto-record any pending SV before swapping (don't lose accumulated research)
+    # Auto-claim pending shards + SV before swapping (don't lose accumulated income)
+    shards_claimed = 0
+    try:
+        from utilities.infrastructure_utils import claim_accumulated_income
+        claim_result = claim_accumulated_income(g.user_id, session)
+        shards_claimed = claim_result.get('accumulated', 0) if claim_result.get('success') else 0
+    except Exception:
+        shards_claimed = 0
     try:
         from utilities.infrastructure_utils import record_science_value
         sv_result = record_science_value(g.user_id)
@@ -2057,6 +2069,8 @@ def api_reassign_scientist():
         session.modified = True
         if sv_recorded > 0:
             result['sv_auto_recorded'] = sv_recorded
+        if shards_claimed > 0:
+            result['shards_auto_claimed'] = shards_claimed
     return jsonify(result)
 
 
