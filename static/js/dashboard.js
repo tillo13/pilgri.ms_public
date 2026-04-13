@@ -75,12 +75,14 @@ function initLastBuggyExpedition() {
 
 function autoShowReturnedExpedition() {
     // Auto-pop haul modal for the first returned expedition on page load
-    const firstReturned = document.querySelector('.fleet-review-btn');
-    if (firstReturned) {
-        const expId = parseInt(firstReturned.dataset.expeditionId) || 0;
-        if (expId > 0) {
-            // Small delay so page finishes rendering first
+    // Skip expeditions already dismissed this session
+    const dismissed = JSON.parse(sessionStorage.getItem('dismissedHauls') || '[]');
+    const btns = document.querySelectorAll('.fleet-review-btn');
+    for (const btn of btns) {
+        const expId = parseInt(btn.dataset.expeditionId) || 0;
+        if (expId > 0 && !dismissed.includes(expId)) {
             setTimeout(() => showExpeditionHaulModal(expId, true), 500);
+            break;
         }
     }
 }
@@ -142,6 +144,9 @@ function renderHaulModal(data, showClaimButton) {
         subtitle: `From ${exp.destination} &middot; ${exp.distance_km.toLocaleString()} km`,
         body, footer, width: 'sm'
     });
+    // Mark as dismissed so auto-popup won't re-show this expedition
+    const dismissed = JSON.parse(sessionStorage.getItem('dismissedHauls') || '[]');
+    if (!dismissed.includes(exp.id)) { dismissed.push(exp.id); sessionStorage.setItem('dismissedHauls', JSON.stringify(dismissed)); }
     if (showClaimButton && data.unclaimed_count > 0) {
         const btn = document.getElementById('mmActionBtn');
         if (btn) btn.onclick = () => claimFleetDiscoveries(exp.id);

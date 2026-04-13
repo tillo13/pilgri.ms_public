@@ -514,11 +514,47 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
     # Lab unlock check first — cheap, gates everything else
     lab_unlocked = False
     lab_level = 0
+    prereqs = []
     try:
         from utilities.upgrades_utils import get_all_infrastructure_levels
+        from utilities.postgres_utils import db_cursor as _db_cursor
         levels = get_all_infrastructure_levels(user_id) or {}
         lab_level = int(levels.get('robotics_lab', 0))
         lab_unlocked = lab_level >= 1
+
+        # Build prerequisite status cards for template
+        prereq_defs = [
+            {'key': 'research_station', 'name': 'Research Station', 'required_level': 3, 'icon_key': 'microscope_lab'},
+            {'key': 'regolith_forge', 'name': 'Regolith Forge', 'required_level': 3, 'icon_key': 'wrench_repair'},
+            {'key': 'robotics_lab', 'name': 'Robotics Lab', 'required_level': 1, 'icon_key': 'robot_avatar'},
+        ]
+        # Get building timers for any structures under construction
+        building_timers = {}
+        with _db_cursor() as cur:
+            cur.execute("""
+                SELECT structure_type, status, ready_at
+                FROM pilgrim.colony_infrastructure
+                WHERE user_id = %s AND structure_type IN ('robotics_lab', 'research_station', 'regolith_forge')
+            """, (user_id,))
+            for row in cur.fetchall():
+                building_timers[row['structure_type']] = {
+                    'status': row['status'],
+                    'ready_at': row['ready_at'].isoformat() if row.get('ready_at') else None,
+                }
+
+        from datetime import datetime
+        for pd in prereq_defs:
+            current_lvl = int(levels.get(pd['key'], 0))
+            bld = building_timers.get(pd['key'], {})
+            is_building = bld.get('status') == 'building'
+            ready_at = bld.get('ready_at')
+            prereqs.append({
+                'key': pd['key'], 'name': pd['name'], 'icon_key': pd['icon_key'],
+                'required_level': pd['required_level'], 'current_level': current_lvl,
+                'met': current_lvl >= pd['required_level'],
+                'building': is_building, 'ready_at': ready_at,
+                'not_started': current_lvl == 0 and not is_building,
+            })
     except Exception as e:
         logger.error(f"robot page data: lab level lookup failed: {e}")
 
@@ -535,6 +571,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
             'show_cinematic': False,
             'lab_unlocked': lab_unlocked,
             'lab_level': lab_level,
+            'prereqs': prereqs,
             'robot': None,
             'stages': [],
             'stages_meta': ROBOT_STAGES,
@@ -577,6 +614,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         'has_robot': True,
         'lab_unlocked': lab_unlocked,
         'lab_level': lab_level,
+        'prereqs': prereqs,
         'robot': robot,
         'stages': stages_view,
         'stages_meta': ROBOT_STAGES,
