@@ -213,6 +213,20 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 </div>
 
+<!-- Active Research Bar — always at top for visibility -->
+{% if active_research %}
+<div class="active-bar" id="activeResearchBar" data-remaining="{{ active_research.remaining_seconds }}" data-duration="{{ active_research.duration_seconds }}">
+    <div class="active-bar-fill" id="activeBarFill" style="width: {{ active_research.progress_pct }}%;"></div>
+    <div class="active-bar-content">
+        <div class="active-bar-name">Researching: {{ active_research.tech_name }}</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="active-bar-timer" id="activeTimer">--</div>
+            <button onclick="cancelResearch()" class="btn-cancel-research">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {# -------------------------------------------------------------------- #}
 {# Lab Summary Box — bug #1286                                           #}
 {# Cross-branch overview: all completed tech + stacked bonuses + the     #}
@@ -334,19 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </details>
 </div>
 
-<!-- Active Research Bar -->
-{% if active_research %}
-<div class="active-bar" id="activeResearchBar" data-remaining="{{ active_research.remaining_seconds }}" data-duration="{{ active_research.duration_seconds }}">
-    <div class="active-bar-fill" id="activeBarFill" style="width: {{ active_research.progress_pct }}%;"></div>
-    <div class="active-bar-content">
-        <div class="active-bar-name">Researching: {{ active_research.tech_name }}</div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <div class="active-bar-timer" id="activeTimer">--</div>
-            <button onclick="cancelResearch()" class="btn-cancel-research">Cancel</button>
-        </div>
-    </div>
-</div>
-{% endif %}
+<!-- Active research bar moved above summary (rendered after header) -->
 
 <!-- Branch Tabs -->
 <div class="branch-tabs" id="branchTabs">
