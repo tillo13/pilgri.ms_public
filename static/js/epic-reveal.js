@@ -325,14 +325,18 @@ window.EpicReveal = (function() {
             html += '<div style="font-size: 16px; font-weight: 700; color: #06b6d4; margin: 4px 0; letter-spacing: 1px;">' + opts.title + '</div>';
         }
 
-        // Info section
+        // Info section — supports custom HTML via opts.info.html
         if (opts.info) {
             html += '<div class="er-info">';
-            if (opts.info.label) html += '<div class="er-info-label">' + opts.info.label + '</div>';
-            if (opts.info.name1 && opts.info.name2) {
-                html += '<div class="er-info-names"><span class="name">' + opts.info.name1 + '</span><span class="plus">+</span><span class="name">' + opts.info.name2 + '</span></div>';
+            if (opts.info.html) {
+                html += opts.info.html;
+            } else {
+                if (opts.info.label) html += '<div class="er-info-label">' + opts.info.label + '</div>';
+                if (opts.info.name1 && opts.info.name2) {
+                    html += '<div class="er-info-names"><span class="name">' + opts.info.name1 + '</span><span class="plus">+</span><span class="name">' + opts.info.name2 + '</span></div>';
+                }
+                if (opts.info.detail) html += '<div class="er-info-detail">' + opts.info.detail + '</div>';
             }
-            if (opts.info.detail) html += '<div class="er-info-detail">' + opts.info.detail + '</div>';
             html += '</div>';
         }
 

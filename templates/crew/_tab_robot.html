@@ -222,6 +222,17 @@
     </div>
 </div>
 
+<!-- What does the Golem do? -->
+<div class="dashboard-card p-20 mb-16">
+    <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Your Golem's Purpose
+    </div>
+    <div class="text-sm" style="color: var(--text-secondary); line-height: 1.7;">
+        Your golem works autonomously while you're away — a tireless fourth crew member that generates passive bonuses every colony tick.
+        Use the <strong style="color: var(--text-primary);">Role Dial</strong> below to direct where it focuses its effort. The higher the allocation, the stronger that bonus.
+    </div>
+</div>
+
 <!-- Role Dial — 4 categories, must sum to 100, mod-5 increments -->
 <div class="dashboard-card p-20">
     <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
@@ -231,37 +242,41 @@
         Adjust how your golem allocates effort. Values must total 100%. Adjusting one rebalances the others.
     </div>
     <div id="robot-dial" data-dial='{{ robot.dial | tojson }}'>
-        <div class="robot-dial-row" data-key="mining">
+        <div class="robot-dial-row" data-key="mining" style="flex-wrap: wrap;">
             <div class="robot-dial-label">
                 <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> Mining
             </div>
             <button class="robot-dial-btn" data-action="dec">−</button>
             <div class="robot-dial-value">{{ robot.dial.mining }}%</div>
             <button class="robot-dial-btn" data-action="inc">+</button>
+            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Boosts shard yield from expeditions and passive shard generation.</div>
         </div>
-        <div class="robot-dial-row" data-key="exploration">
+        <div class="robot-dial-row" data-key="exploration" style="flex-wrap: wrap;">
             <div class="robot-dial-label">
                 <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration
             </div>
             <button class="robot-dial-btn" data-action="dec">−</button>
             <div class="robot-dial-value">{{ robot.dial.exploration }}%</div>
             <button class="robot-dial-btn" data-action="inc">+</button>
+            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Increases expedition speed and discovery chance at landmarks.</div>
         </div>
-        <div class="robot-dial-row" data-key="science">
+        <div class="robot-dial-row" data-key="science" style="flex-wrap: wrap;">
             <div class="robot-dial-label">
                 <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Science
             </div>
             <button class="robot-dial-btn" data-action="dec">−</button>
             <div class="robot-dial-value">{{ robot.dial.science }}%</div>
             <button class="robot-dial-btn" data-action="inc">+</button>
+            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Accelerates research progress and boosts Scientific Value (SV) earned.</div>
         </div>
-        <div class="robot-dial-row" data-key="combat">
+        <div class="robot-dial-row" data-key="combat" style="flex-wrap: wrap;">
             <div class="robot-dial-label">
                 <img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Combat
             </div>
             <button class="robot-dial-btn" data-action="dec">−</button>
             <div class="robot-dial-value">{{ robot.dial.combat }}%</div>
             <button class="robot-dial-btn" data-action="inc">+</button>
+            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Improves defense rating and encounter success on dangerous terrain.</div>
         </div>
     </div>
     <div id="robot-dial-status" class="text-xs mt-8" style="color: var(--text-secondary); text-align: center;">Total: 100%</div>
@@ -279,7 +294,8 @@
     "is_complete": {{ (robot_data and robot_data.is_complete) | tojson }},
     "show_cinematic": {{ (robot_data and robot_data.show_cinematic) | tojson }},
     "stage_duration_seconds": {{ (robot_data.stage_duration_seconds if robot_data else 60) | tojson }},
-    "seconds_until_next_stage": {{ (robot_data.seconds_until_next_stage if robot_data else None) | tojson }}
+    "seconds_until_next_stage": {{ (robot_data.seconds_until_next_stage if robot_data else None) | tojson }},
+    "robot_name": {{ (robot.name if robot else "") | tojson }}
 }
 </script>
 <script defer>

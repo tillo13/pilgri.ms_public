@@ -293,7 +293,30 @@
         if (typeof window.EpicReveal === 'undefined') return;
         const heroImg = document.getElementById('robot-hero-img');
         const robotImage = heroImg ? heroImg.src : '';
-        const golemName = (document.getElementById('robot-name-input') || {}).value || 'Your Golem';
+        const existingName = (BRIDGE && BRIDGE.robot_name) || '';
+
+        // If unnamed, show naming UI inside the cinematic
+        var infoBlock;
+        if (!existingName && markPlayed) {
+            infoBlock = {
+                html: '<div class="er-info-label">NAME YOUR GOLEM</div>'
+                    + '<div id="er-name-pills" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0;">'
+                    + '<span style="color:rgba(255,255,255,0.3);font-size:12px;">Loading suggestions...</span></div>'
+                    + '<div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">'
+                    + '<input id="er-name-input" type="text" placeholder="Or type your own..." '
+                    + 'style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;'
+                    + 'padding:8px 12px;border-radius:8px;font-size:14px;width:160px;outline:none;" />'
+                    + '<button id="er-name-save" style="background:rgba(168,85,247,0.3);border:1px solid rgba(168,85,247,0.5);'
+                    + 'color:#c084fc;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Name</button>'
+                    + '</div>'
+                    + '<div id="er-name-detail" style="display:none;"></div>',
+            };
+        } else {
+            infoBlock = {
+                label: 'CONSTRUCTION COMPLETE',
+                detail: (existingName || 'Your Golem') + ' — forged from 5 real expedition fragments',
+            };
+        }
 
         EpicReveal.show({
             title: 'GOLEM AWAKENED',
@@ -305,10 +328,7 @@
             ],
             revealSound: 'playGolemAwaken',
             image: robotImage,
-            info: {
-                label: 'CONSTRUCTION COMPLETE',
-                detail: golemName + ' — forged from 5 real expedition fragments',
-            },
+            info: infoBlock,
             revelation: {
                 label: 'NEW CREW MEMBER',
                 text: 'Your fourth crew member has awakened. Tune their role dial to direct their effort.',
@@ -319,9 +339,71 @@
             onClose: function () {
                 if (markPlayed) {
                     fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
+                    reloadSoon();
                 }
             },
         });
+
+        // Wire up naming UI inside the cinematic if present
+        if (!existingName && markPlayed) wireEpicNaming();
+    }
+
+    function wireEpicNaming() {
+        // Load suggestions into the cinematic pills
+        fetch('/api/robot/suggest_names', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var container = document.getElementById('er-name-pills');
+            if (!container || !data.success || !data.names) return;
+            container.innerHTML = '';
+            var input = document.getElementById('er-name-input');
+            data.names.forEach(function(name) {
+                var pill = document.createElement('button');
+                pill.textContent = name;
+                pill.style.cssText = 'background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.4);color:#c084fc;'
+                    + 'padding:5px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;';
+                pill.addEventListener('click', function() {
+                    if (input) input.value = name;
+                    container.querySelectorAll('button').forEach(function(b) {
+                        b.style.borderColor = 'rgba(168,85,247,0.4)';
+                        b.style.background = 'rgba(168,85,247,0.15)';
+                    });
+                    pill.style.borderColor = '#a855f7';
+                    pill.style.background = 'rgba(168,85,247,0.3)';
+                });
+                container.appendChild(pill);
+            });
+        })
+        .catch(function() {});
+
+        // Wire save button
+        var saveBtn = document.getElementById('er-name-save');
+        var input = document.getElementById('er-name-input');
+        if (!saveBtn || !input) return;
+
+        var doSave = function() {
+            var name = (input.value || '').trim();
+            if (!name) return;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            postJSONSafe('/api/robot/name', { name: name }).then(function() {
+                // Replace naming UI with the saved name
+                var info = document.querySelector('.er-info');
+                if (info) {
+                    info.innerHTML = '<div class="er-info-label">CONSTRUCTION COMPLETE</div>'
+                        + '<div class="er-info-detail">' + name + ' — forged from 5 real expedition fragments</div>';
+                }
+            }).catch(function() {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Name';
+            });
+        };
+        saveBtn.addEventListener('click', doSave);
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') doSave(); });
     }
 
     function maybeFireRobotCinematic() {
