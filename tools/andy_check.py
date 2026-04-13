@@ -36,6 +36,7 @@ Close loops:
   4. Shop builds — activates any shop items whose build timer elapsed
   5. Robot build — ticks stage advance, sets name/dial if unset
   6. Crew trails — completes finished missions
+  7. Infrastructure builds — activates buildings whose build timer elapsed
 
 Claim accumulated:
   7. Infrastructure income — claims passive Sepolia + SV from generators
@@ -479,6 +480,34 @@ def check_echo_sites():
         log.info(f"  ❌ claim_echo_site ERR: {e}")
 
 
+def check_infrastructure_builds():
+    """Activate any infrastructure whose build timer has elapsed."""
+    from utilities.postgres_utils import db_cursor
+    from utilities.infrastructure_utils import check_construction_status
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT id, structure_type, ready_at
+            FROM pilgrim.colony_infrastructure
+            WHERE user_id = %s AND status = 'building' AND ready_at IS NOT NULL AND ready_at <= NOW()
+        """, (ANDY_USER_ID,))
+        ready = cur.fetchall()
+
+    if not ready:
+        log.info("  — no builds ready to activate")
+        return
+
+    for bld in ready:
+        try:
+            result = check_construction_status(bld['id'])
+            if result.get('complete'):
+                log.info(f"  ✓ activated {bld['structure_type']}")
+            else:
+                log.info(f"  ⚠ {bld['structure_type']}: {result.get('error', 'not ready')}")
+        except Exception as e:
+            log.info(f"  ❌ activate {bld['structure_type']} ERR: {e}")
+
+
 def check_new_infrastructure():
     """Start construction on cheapest unbuilt structure type (exercises colony build flow)."""
     try:
@@ -568,6 +597,7 @@ def main():
         ("Shard Extraction", check_shard_extraction),
         ("Shop Builds", check_shop_builds),
         ("Robot Build", check_robot),
+        ("Infrastructure Builds", check_infrastructure_builds),
         # --- CLAIM ACCUMULATED ---
         ("Infrastructure Income", check_infrastructure_income),
         ("Echo Sites", check_echo_sites),
