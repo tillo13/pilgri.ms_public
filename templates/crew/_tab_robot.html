@@ -124,13 +124,20 @@
         <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">
             {% if rd.is_complete %}Golem Online{% else %}Forge Active — Stage {{ robot.visual_stage }}/5{% endif %}
         </div>
-        <div class="flex justify-center mb-12">
+        <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
             <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
                  alt="Golem" id="robot-hero-img"
                  onclick="showImageModal(this.src)"
                  class="rounded-lg cursor-pointer"
-                 style="max-width: 260px; max-height: 260px; border: 3px solid var(--color-sepolia);"
+                 style="max-width: 220px; max-height: 220px; border: 3px solid var(--color-sepolia);"
                  loading="lazy">
+            {% if robot.video_url %}
+            <div style="text-align: center;">
+                <video src="{{ robot.video_url }}" style="max-width: 220px; max-height: 220px; border-radius: 12px; border: 2px solid rgba(168,85,247,0.3); cursor: pointer;"
+                       playsinline muted autoplay loop onclick="showGolemVideoModal('{{ robot.video_url }}')"></video>
+                <div class="text-xs mt-4" style="color: var(--text-muted);">Click to expand</div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Name section -->
@@ -148,7 +155,7 @@
                        placeholder="Or type your own..."
                        maxlength="64"
                        style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 200px;">
-                <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 10px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer;">Name</button>
+                <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 10px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer;">Submit</button>
             </div>
         </div>
         {% else %}
@@ -222,18 +229,12 @@
     </div>
 </div>
 
-<!-- Awakening Video — generate or replay -->
-{% if rd.is_complete %}
+<!-- Awakening Video — generate button (only if no video yet) -->
+{% if rd.is_complete and not robot.video_url %}
 <div class="dashboard-card p-20 mb-16">
     <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">
         <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> Awakening Video
     </div>
-    {% if robot.video_url %}
-    <div class="text-sm mb-8" style="color: var(--text-secondary);">Your golem's first moments of awareness, captured forever.</div>
-    <video id="golem-video" src="{{ robot.video_url }}" style="width: 100%; max-width: 320px; border-radius: 12px; border: 2px solid rgba(168,85,247,0.3); cursor: pointer; display: block; margin: 0 auto;"
-           playsinline muted autoplay loop onclick="showGolemVideoModal('{{ robot.video_url }}')"></video>
-    <div class="text-xs mt-8" style="color: var(--text-muted); text-align: center;">Click to expand</div>
-    {% else %}
     <div class="text-sm mb-12" style="color: var(--text-secondary);">
         Generate an animated awakening video starring your golem. Takes about 60 seconds to create.
     </div>
@@ -244,7 +245,6 @@
         </button>
         <div id="golem-video-status" class="text-xs mt-8" style="color: var(--text-muted); display: none;"></div>
     </div>
-    {% endif %}
 </div>
 {% endif %}
 

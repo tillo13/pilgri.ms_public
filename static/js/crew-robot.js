@@ -122,35 +122,39 @@
     }
 
     // ----- NAME SUGGESTIONS ---------------------------------------------------
+    function renderNamePills(container, names) {
+        const input = document.getElementById('robot-name-input');
+        container.innerHTML = '';
+        names.forEach(name => {
+            const pill = document.createElement('button');
+            pill.textContent = name;
+            pill.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;';
+            pill.addEventListener('mouseenter', () => { pill.style.borderColor = 'var(--color-sepolia)'; pill.style.background = 'rgba(168,85,247,0.15)'; });
+            pill.addEventListener('mouseleave', () => { pill.style.borderColor = 'var(--border-default)'; pill.style.background = 'var(--bg-secondary)'; });
+            pill.addEventListener('click', () => {
+                if (input) input.value = name;
+                container.querySelectorAll('button').forEach(b => { b.style.borderColor = 'var(--border-default)'; b.style.background = 'var(--bg-secondary)'; });
+                pill.style.borderColor = 'var(--color-sepolia)';
+                pill.style.background = 'rgba(168,85,247,0.2)';
+            });
+            container.appendChild(pill);
+        });
+    }
+
     function loadNameSuggestions() {
         const container = document.getElementById('golem-name-suggestions');
         if (!container) return;
-        const input = document.getElementById('robot-name-input');
 
-        fetch('/api/robot/suggest_names', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: '{}',
-        })
+        // Read pre-generated suggestions from BRIDGE first
+        var names = (BRIDGE && BRIDGE.name_suggestions) || [];
+        if (names.length) {
+            renderNamePills(container, names);
+            return;
+        }
+        // Fallback: fetch from API
+        fetch('/api/robot/suggest_names', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
         .then(r => r.json())
-        .then(data => {
-            if (!data.success || !data.names) return;
-            container.innerHTML = '';
-            data.names.forEach(name => {
-                const pill = document.createElement('button');
-                pill.textContent = name;
-                pill.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;';
-                pill.addEventListener('mouseenter', () => { pill.style.borderColor = 'var(--color-sepolia)'; pill.style.background = 'rgba(168,85,247,0.15)'; });
-                pill.addEventListener('mouseleave', () => { pill.style.borderColor = 'var(--border-default)'; pill.style.background = 'var(--bg-secondary)'; });
-                pill.addEventListener('click', () => {
-                    if (input) input.value = name;
-                    container.querySelectorAll('button').forEach(b => { b.style.borderColor = 'var(--border-default)'; b.style.background = 'var(--bg-secondary)'; });
-                    pill.style.borderColor = 'var(--color-sepolia)';
-                    pill.style.background = 'rgba(168,85,247,0.2)';
-                });
-                container.appendChild(pill);
-            });
-        })
+        .then(data => { if (data.success && data.names) renderNamePills(container, data.names); })
         .catch(() => { container.innerHTML = '<div class="text-xs" style="color:var(--text-muted)">Could not load suggestions</div>'; });
     }
 
@@ -266,6 +270,9 @@
         if (!dialState) return;
         try {
             await postJSONSafe('/api/robot/dial', { dial: dialState });
+            if (typeof showToast === 'function') {
+                showToast('Role dial saved.', 'success', 'Golem');
+            }
             const status = document.getElementById('robot-dial-status');
             if (status) {
                 status.textContent = 'Saved · Total: 100%';
@@ -318,7 +325,7 @@
                     + 'style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#fff;'
                     + 'padding:8px 12px;border-radius:8px;font-size:14px;width:160px;outline:none;" />'
                     + '<button id="er-name-save" style="background:rgba(168,85,247,0.3);border:1px solid rgba(168,85,247,0.5);'
-                    + 'color:#c084fc;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Name</button>'
+                    + 'color:#c084fc;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Submit</button>'
                     + '</div>'
                     + '<div id="er-name-detail" style="display:none;"></div>',
             };
@@ -350,7 +357,7 @@
             onClose: function () {
                 if (markPlayed) {
                     fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
-                    reloadSoon();
+                    setTimeout(function() { window.location.href = '/crew?tab=robot'; }, 250);
                 }
             },
         });
