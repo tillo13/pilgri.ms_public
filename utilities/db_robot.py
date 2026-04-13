@@ -532,11 +532,17 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         lab_unlocked = lab_level >= 1
 
         # Build prerequisite status cards for template
+        # Pull real building images from infrastructure catalog
+        from config_infrastructure import INFRASTRUCTURE_CATALOG
         prereq_defs = [
-            {'key': 'research_station', 'name': 'Research Station', 'required_level': 3, 'icon_key': 'microscope_lab'},
-            {'key': 'regolith_forge', 'name': 'Regolith Forge', 'required_level': 3, 'icon_key': 'wrench_repair'},
-            {'key': 'robotics_lab', 'name': 'Robotics Lab', 'required_level': 1, 'icon_key': 'wrench_repair'},
+            {'key': 'research_station', 'name': 'Research Station', 'required_level': 3},
+            {'key': 'regolith_forge', 'name': 'Regolith Forge', 'required_level': 3},
+            {'key': 'robotics_lab', 'name': 'Robotics Lab', 'required_level': 1},
         ]
+        for pd in prereq_defs:
+            cat = INFRASTRUCTURE_CATALOG.get(pd['key'], {})
+            lv1 = cat.get('levels', {}).get(1, {})
+            pd['image_url'] = lv1.get('image_url', '')
         # Get building timers for any structures under construction
         building_timers = {}
         with _db_cursor() as cur:
@@ -558,7 +564,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
             is_building = bld.get('status') == 'building'
             ready_at = bld.get('ready_at')
             prereqs.append({
-                'key': pd['key'], 'name': pd['name'], 'icon_key': pd['icon_key'],
+                'key': pd['key'], 'name': pd['name'], 'image_url': pd.get('image_url', ''),
                 'required_level': pd['required_level'], 'current_level': current_lvl,
                 'met': current_lvl >= pd['required_level'],
                 'building': is_building, 'ready_at': ready_at,
