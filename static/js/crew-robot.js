@@ -253,13 +253,8 @@
     // the celebration hasn't been played yet), fire EpicReveal — the same
     // generalized cinematic framework used for ARIA bonds + Signal final.
     // After it plays we POST cinematic_played so it never replays.
-    function maybeFireRobotCinematic() {
-        if (!BRIDGE || !BRIDGE.show_cinematic) return;
-        if (typeof window.EpicReveal === 'undefined') {
-            // EpicReveal failed to load — degrade gracefully, just mark played.
-            fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
-            return;
-        }
+    function fireGolemCinematic(markPlayed) {
+        if (typeof window.EpicReveal === 'undefined') return;
         const heroImg = document.getElementById('robot-hero-img');
         const robotImage = heroImg ? heroImg.src : '';
         const golemName = (document.getElementById('robot-name-input') || {}).value || 'Your Golem';
@@ -286,9 +281,26 @@
                 { label: 'Continue', cls: 'secondary' },
             ],
             onClose: function () {
-                fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
+                if (markPlayed) {
+                    fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
+                }
             },
         });
+    }
+
+    function maybeFireRobotCinematic() {
+        if (!BRIDGE || !BRIDGE.show_cinematic) return;
+        if (typeof window.EpicReveal === 'undefined') {
+            fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
+            return;
+        }
+        fireGolemCinematic(true);
+    }
+
+    function wireReplayButton() {
+        const btn = document.getElementById('robot-replay-cinematic');
+        if (!btn) return;
+        btn.addEventListener('click', () => fireGolemCinematic(false));
     }
 
     // ----- INIT -------------------------------------------------------------
@@ -297,6 +309,7 @@
         wireNameSave();
         wireDial();
         startCountdown();
+        wireReplayButton();
         maybeFireRobotCinematic();
     });
 })();
