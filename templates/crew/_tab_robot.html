@@ -24,7 +24,7 @@
         <!-- Prerequisite Cards -->
         <div style="display: flex; flex-direction: column; gap: 12px; max-width: 480px; margin: 0 auto 20px; text-align: left;">
             {% for p in rd.prereqs %}
-            <a href="/depot?upgrade={{ p.key }}" style="text-decoration: none; display: block;">
+            <a href="/depot?upgrade=infrastructure:{{ p.key }}" style="text-decoration: none; display: block;">
                 <div style="background: var(--bg-secondary); border-radius: 10px; padding: 16px 18px; border: 2px solid {% if p.met %}rgba(34,197,94,0.4){% elif p.building %}rgba(168,85,247,0.4){% else %}rgba(255,255,255,0.08){% endif %}; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.borderColor='var(--color-sepolia)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='{% if p.met %}rgba(34,197,94,0.4){% elif p.building %}rgba(168,85,247,0.4){% else %}rgba(255,255,255,0.08){% endif %}';this.style.transform='none'">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <img src="{{ p.image_url }}" alt="" style="width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; {% if not p.met and not p.building %}opacity: 0.4;{% endif %}">
