@@ -132,11 +132,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </button>
     <button class="crew-tab" data-tab="robot" onclick="switchCrewTab('robot')" title="Your fourth crew member, forged from real expedition history">
         {% if robot_data and robot_data.has_robot and robot_data.robot.current_image_url %}
-        <img src="{{ robot_data.robot.current_image_url }}" alt="Golem" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
+        <img src="{{ robot_data.robot.current_image_url }}" alt="Norag" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
         {% else %}
         <img src="{{ icons.robot_avatar }}" alt="" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
         {% endif %}
-        <span class="crew-tab-label">Golem</span>
+        <span class="crew-tab-label">Norag</span>
     </button>
     <button class="crew-tab" data-tab="services" onclick="switchCrewTab('services')" title="Captain Services - Modify your captain">
         <img src="{{ icons.wrench_repair }}" alt="" class="crew-tab-icon" style="border-radius: 6px;">
