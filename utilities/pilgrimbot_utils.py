@@ -476,13 +476,27 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     Deduplicates file reads and forces a final answer when rounds run out."""
     loop_model = model_override or MODEL
     files_already_read = {}  # path -> content (cache to prevent re-reads)
+
+    # Prompt caching: the same ~10K-30K system prompt + tools block get re-sent on
+    # every tool-loop round. Wrap both with ephemeral cache_control so rounds 2-4
+    # pay ~10% input cost on the cached prefix instead of full price.
+    cached_system = [{
+        "type": "text",
+        "text": system,
+        "cache_control": {"type": "ephemeral"},
+    }] if isinstance(system, str) else system
+    cached_tools = tools
+    if tools:
+        cached_tools = [dict(t) for t in tools]
+        cached_tools[-1]["cache_control"] = {"type": "ephemeral"}
+
     for round_num in range(max_rounds):
         _round_msgs = ["Analyzing...", "Reading context...", "Processing...", "Almost there..."]
         yield ("status", {"message": _round_msgs[min(round_num, len(_round_msgs) - 1)]})
         _start = _time.time()
         resp = client_raw.messages.create(
             model=loop_model, max_tokens=3000, temperature=0.7,
-            system=system, messages=messages, tools=tools
+            system=cached_system, messages=messages, tools=cached_tools
         )
         _ms = int((_time.time() - _start) * 1000)
         feature = f'pilgrimbot_chat_round{round_num}'
@@ -563,7 +577,7 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     _start = _time.time()
     resp = client_raw.messages.create(
         model=MODEL, max_tokens=3000, temperature=0.7,
-        system=system, messages=messages
+        system=cached_system, messages=messages
     )
     _ms = int((_time.time() - _start) * 1000)
     log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_chat_final',
