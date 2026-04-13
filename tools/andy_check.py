@@ -38,7 +38,7 @@ Close loops:
   6. Crew trails — completes finished missions
 
 Claim accumulated:
-  7. Infrastructure income — claims passive Sepolia from generators
+  7. Infrastructure income — claims passive Sepolia + SV from generators
   8. Echo sites — claims any unclaimed Signal echo site
 
 Kick off new activity:
@@ -538,6 +538,18 @@ def check_infrastructure_income():
         log.info(f"  ⚡ Claimed {total:.1f} shards from infrastructure")
     else:
         log.info(f"  ⚠️  Claim failed: {result.get('error', '?')}")
+
+    # Also harvest accumulated SV from research station / xenobiology lab
+    sv_amount = calc.get('sv_accumulated', 0)
+    if sv_amount >= 1:
+        from utilities.infrastructure_utils import record_science_value
+        sv_result = record_science_value(ANDY_USER_ID)
+        if sv_result.get('success'):
+            log.info(f"  🔬 Harvested {sv_result['sv_recorded']:.1f} SV (available: {sv_result['sv_available']:.1f})")
+        else:
+            log.info(f"  ⚠️  SV harvest failed: {sv_result.get('error', '?')}")
+    else:
+        log.info(f"  ✓ SV accumulated: {sv_amount:.1f} (below threshold)")
 
 
 def main():

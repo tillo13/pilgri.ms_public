@@ -417,6 +417,29 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
         left_behind_value = sum(d['enhanced_value'] for d in left_behind)
         logger.info(f"Cargo limit: Vehicle capacity {cargo_capacity}, found {cargo_capacity + len(left_behind)} items, left behind {len(left_behind)} items worth {left_behind_value} shards")
 
+    # Minimum discovery guarantee: every expedition finds at least 1 item
+    if len(discoveries) == 0 and geographically_valid_items:
+        fallback_items = [i for i in geographically_valid_items if i['rarity'] == 'common' and i['min_distance_km'] <= distance_km]
+        if not fallback_items:
+            fallback_items = [i for i in geographically_valid_items if i['min_distance_km'] <= distance_km]
+        if fallback_items:
+            item = random.choice(fallback_items)
+            enhanced = calculate_enhanced_item_value(
+                item['base_scientific_value'], exploration, item['exploration_enhancement_value'],
+                analysis_stat=analysis, distance_km=distance_km)
+            discoveries.append({
+                'expedition_id': expedition_id,
+                'discovery_item_id': item['id'],
+                'found_at_km': distance_km * 0.5,
+                'found_at_coordinates': {'lat': (start_lat + end_lat) / 2, 'lon': (start_lon + end_lon) / 2},
+                'nearby_feature': nearby_features[0]['name'] if nearby_features else 'Unknown',
+                'base_value': enhanced['base_value'],
+                'enhanced_value': enhanced['enhanced_value'],
+                'quantity': 1,
+                'weight_kg': item.get('weight_kg', 1.0)
+            })
+            logger.info(f"Minimum guarantee: added 1 fallback discovery for expedition {expedition_id}")
+
     logger.info(f"Generated {len(discoveries)} discoveries for expedition {expedition_id} (Mission #{user_expedition_count}, {distance_km}km, cargo: {cargo_capacity})")
     return discoveries
 

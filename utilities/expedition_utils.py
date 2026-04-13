@@ -1200,9 +1200,13 @@ def launch_expedition(
     from utilities.upgrades_utils import get_user_upgrade_effects
     upgrade_effects = get_user_upgrade_effects(user_id)
 
-    # Combine vehicle speed with tech research bonus (not replace it)
-    tech_speed_bonus = upgrade_effects.get('expedition_speed_mult', 1.0)
-    upgrade_effects['expedition_speed_mult'] = vehicle_data['speed_mult'] * tech_speed_bonus
+    # Override with vehicle-specific speed × tech-only bonus
+    # upgrade_effects['expedition_speed_mult'] is max(all vehicles) × tech — wrong for this vehicle.
+    # We need THIS vehicle's speed × tech-only multiplier.
+    from utilities.tech_utils import get_tech_effects
+    tech_effects = get_tech_effects(user_id)
+    tech_speed_mult = tech_effects.get('expedition_speed_mult', 1.0)
+    upgrade_effects['expedition_speed_mult'] = vehicle_data['speed_mult'] * tech_speed_mult
 
     expedition_pricing = calculate_expedition_cost(
         distance_km=distance_km,
