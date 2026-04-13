@@ -88,6 +88,17 @@
         startCountdown();
     };
 
+    // ----- VIDEO MODAL -------------------------------------------------------
+    window.showGolemVideoModal = function (url) {
+        if (typeof MarsModal === 'undefined') return;
+        MarsModal.show({
+            title: 'Golem Awakening',
+            size: 'lg',
+            theme: 'aria',
+            body: '<video src="' + url + '" style="width:100%;border-radius:12px;" playsinline autoplay loop controls></video>',
+        });
+    };
+
     // ----- BUILD button -----------------------------------------------------
     function wireBuildButton() {
         const btn = document.getElementById('robot-build-btn');
