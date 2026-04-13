@@ -1427,6 +1427,7 @@
       "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
+      "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
       "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —",
       "get_robot_page_data — Bundle everything the Robot tab needs in one call. Speed-conscious:"
     ]
@@ -2543,7 +2544,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

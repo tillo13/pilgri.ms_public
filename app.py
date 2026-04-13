@@ -671,6 +671,23 @@ def api_robot_build():
         }), 400
 
     start_robot_build(g.user_id, sources, initial_image_url=PLACEHOLDER_STAGE_IMAGE)
+
+    # Pre-generate name suggestions in background so they're ready for the cinematic
+    import threading
+    uid = g.user_id
+    cmd_name = session.get('_cmd', {}).get('name') if session.get('_cmd') else None
+    sci_name = session.get('scientist_name')
+    def _gen_names():
+        try:
+            from utilities.claude_utils import suggest_golem_names
+            from utilities.db_robot import save_name_suggestions
+            names = suggest_golem_names(uid, cmd_name, sci_name, sources)
+            if names:
+                save_name_suggestions(uid, names)
+        except Exception as e:
+            logger.warning(f"Background golem name gen failed: {e}")
+    threading.Thread(target=_gen_names, daemon=True).start()
+
     return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
 
 

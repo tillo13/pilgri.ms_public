@@ -413,6 +413,19 @@ def mark_cinematic_played(user_id: int) -> None:
         logger.error(f"mark_cinematic_played failed for user {user_id}: {e}")
 
 
+def save_name_suggestions(user_id: int, names: list) -> None:
+    """Store pre-generated golem name suggestions in the robot row."""
+    try:
+        import json
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.robot SET name_suggestions = %s, updated_at = NOW()
+                WHERE user_id = %s
+            """, (json.dumps(names), user_id))
+    except Exception as e:
+        logger.error(f"save_name_suggestions failed for user {user_id}: {e}")
+
+
 # ============================================================================
 # STUB STAGE ADVANCE — Step 4d ships a working visible loop with placeholder
 # images + fake tx hashes. Step 4c will swap _stub_advance_one_stage() for the

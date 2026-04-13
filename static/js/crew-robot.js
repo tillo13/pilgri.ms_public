@@ -349,19 +349,14 @@
     }
 
     function wireEpicNaming() {
-        // Load suggestions into the cinematic pills
-        fetch('/api/robot/suggest_names', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: '{}',
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var container = document.getElementById('er-name-pills');
-            if (!container || !data.success || !data.names) return;
+        // Read pre-generated suggestions from BRIDGE (generated at build time)
+        var names = (BRIDGE && BRIDGE.name_suggestions) || [];
+        var container = document.getElementById('er-name-pills');
+        var input = document.getElementById('er-name-input');
+
+        if (container && names.length) {
             container.innerHTML = '';
-            var input = document.getElementById('er-name-input');
-            data.names.forEach(function(name) {
+            names.forEach(function(name) {
                 var pill = document.createElement('button');
                 pill.textContent = name;
                 pill.style.cssText = 'background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.4);color:#c084fc;'
@@ -377,8 +372,31 @@
                 });
                 container.appendChild(pill);
             });
-        })
-        .catch(function() {});
+        } else if (container) {
+            // Fallback: fetch live if no pre-generated suggestions
+            fetch('/api/robot/suggest_names', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.names) return;
+                container.innerHTML = '';
+                data.names.forEach(function(name) {
+                    var pill = document.createElement('button');
+                    pill.textContent = name;
+                    pill.style.cssText = 'background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.4);color:#c084fc;'
+                        + 'padding:5px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;';
+                    pill.addEventListener('click', function() {
+                        if (input) input.value = name;
+                        container.querySelectorAll('button').forEach(function(b) {
+                            b.style.borderColor = 'rgba(168,85,247,0.4)';
+                            b.style.background = 'rgba(168,85,247,0.15)';
+                        });
+                        pill.style.borderColor = '#a855f7';
+                        pill.style.background = 'rgba(168,85,247,0.3)';
+                    });
+                    container.appendChild(pill);
+                });
+            }).catch(function() {});
+        }
 
         // Wire save button
         var saveBtn = document.getElementById('er-name-save');
