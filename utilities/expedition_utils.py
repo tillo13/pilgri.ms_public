@@ -987,6 +987,9 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
             'round_trip_days': round(round_trip_days, 1),
             'discovery_bonus': v.get('discovery_bonus', 0),
             'rare_bonus': v.get('rare_bonus', 0),
+            # Terrain per vehicle (drones fly, ignore terrain)
+            'terrain_speed_mult': round(v_terrain_mult, 2),
+            'terrain_name': 'Aerial (no terrain impact)' if v['vehicle_type'] == 'drone' else terrain_name,
             # Segment compounding data
             'segments': segment_result.get('segments', []),
             'effective_trail_mult': segment_result.get('effective_trail_mult', trail_speed_mult),

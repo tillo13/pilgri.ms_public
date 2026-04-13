@@ -140,6 +140,8 @@ function renderSpeedStack(vehicle, baseBreakdown) {
     // Use vehicle-specific values when available, fall back to base breakdown
     const vehicleMult = vehicle ? vehicle.speed_mult : baseBreakdown.vehicle_mult;
     const effectiveSpeed = vehicle ? vehicle.effective_speed_kmh : baseBreakdown.effective_speed_kmh;
+    const terrainMult = vehicle && vehicle.terrain_speed_mult != null ? vehicle.terrain_speed_mult : baseBreakdown.terrain_speed_mult;
+    const terrainName = vehicle && vehicle.terrain_name ? vehicle.terrain_name : baseBreakdown.terrain_name;
     const sb = baseBreakdown;
     const segments = sb.segments || [];
     const hasCompounding = sb.has_segment_compounding && segments.length > 1;
@@ -153,7 +155,7 @@ function renderSpeedStack(vehicle, baseBreakdown) {
             <span>Scientist Nav ×</span><span style="text-align:right; ${sb.scientist_nav_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.scientist_nav_mult}x</span>
             <span>Trail${sb.trail_level && sb.trail_level !== 'none' ? ' (' + sb.trail_level + ')' : ''}${hasCompounding ? ' <span style="font-size:9px; color:var(--color-sepolia);">⚡</span>' : ''}</span>
             <span style="text-align:right; ${sb.trail_speed_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.trail_speed_mult}x${sb.trail_trip_count > 0 ? ' <span style="font-size:10px;opacity:0.6;">(' + sb.trail_trip_count + ' trips)</span>' : ''}</span>
-            <span>Terrain (${sb.terrain_name.split(':')[0]})</span><span style="text-align:right; ${sb.terrain_speed_mult < 1 ? 'color:var(--color-mars)' : ''}">${sb.terrain_speed_mult}x</span>
+            <span>Terrain (${terrainName.split(':')[0]})</span><span style="text-align:right; ${terrainMult < 1 ? 'color:var(--color-mars)' : ''}">${terrainMult}x</span>
             <span style="font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:4px;">Effective Speed</span>
             <span style="font-weight:600; text-align:right; border-top:1px solid rgba(255,255,255,0.1); padding-top:4px;">${effectiveSpeed} km/h</span>
         </div>`;
