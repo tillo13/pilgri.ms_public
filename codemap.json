@@ -359,6 +359,13 @@
       "list_origin_sites — List all Origin Sites"
     ]
   },
+  "tools/generate_robot_stages.py": {
+    "description": "Generate 5 robot stage component images via Flux text-to-image.",
+    "exports": [
+      "upload_to_gcs — Download image from URL and upload to GCS.",
+      "main"
+    ]
+  },
   "tools/generate_scientist_portraits.py": {
     "description": "Generate scientist versions of default leader portraits for Pilgrims.",
     "exports": [
@@ -2536,7 +2543,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2614,7 +2621,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

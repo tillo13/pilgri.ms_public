@@ -42,6 +42,15 @@ PLACEHOLDER_STAGE_IMAGE = (
     "ui/robot_placeholder_stage.png"
 )
 
+# Per-stage placeholder images (Mars-rock style, generated via Flux)
+STAGE_PLACEHOLDER_IMAGES = {
+    'frame':   'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_frame.png',
+    'plating': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_plating.png',
+    'core':    'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_core.png',
+    'optics':  'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_optics.png',
+    'finish':  'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_finish.png',
+}
+
 # Default dial split (must sum to 100). Captains can rebalance in 5% increments.
 DEFAULT_DIAL = {
     'mining': 25,
@@ -600,7 +609,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
                 'building' if idx == robot['visual_stage'] + 1 else 'pending'
             ),
             'source': source,
-            'image_url': (log_entry or {}).get('image_url') or PLACEHOLDER_STAGE_IMAGE,
+            'image_url': (log_entry or {}).get('image_url') or STAGE_PLACEHOLDER_IMAGES.get(s_meta['key'], PLACEHOLDER_STAGE_IMAGE),
             'tx_hash': (log_entry or {}).get('tx_hash'),
         })
 
