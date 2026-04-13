@@ -242,8 +242,14 @@ class ClaudeClient:
         if enable_beta_features:
             logger.debug("Web search capabilities available (no beta headers required)")
     
-    def _log_tokens(self, method: str, response: Any, duration_ms: int = None):
-        """Log token usage, ACCURATE cost estimation, and API usage tracking."""
+    def _log_tokens(self, method: str, response: Any, duration_ms: int = None,
+                    feature: str = None, user_id: str = None):
+        """Log token usage, ACCURATE cost estimation, and API usage tracking.
+
+        `feature` overrides the method name for kumori_api_usage tagging.
+        `user_id` should be the auth user when available, or a sentinel like
+        'system:galactica_cron' for background jobs — so every row is attributed.
+        """
         if hasattr(response, 'usage'):
             input_tokens = response.usage.input_tokens
             output_tokens = response.usage.output_tokens
@@ -264,9 +270,10 @@ class ClaudeClient:
             log_api_usage(
                 model=self.model,
                 usage=response.usage,
-                feature=method,
+                feature=feature or method,
                 streaming=False,
                 duration_ms=duration_ms,
+                user_id=user_id,
             )
     
     def _get_media_type(self, file_path: str) -> str:
@@ -281,35 +288,40 @@ class ClaudeClient:
         }
         return media_types.get(extension, 'application/octet-stream')
     
-    def generate_text(self, 
-                     prompt: str, 
-                     max_tokens: int = 1024, 
-                     temperature: float = 1.0) -> str:
+    def generate_text(self,
+                     prompt: str,
+                     max_tokens: int = 1024,
+                     temperature: float = 1.0,
+                     user_id: str = None,
+                     feature: str = None) -> str:
         """
         Generate text response from Claude.
-        
+
         Args:
             prompt: The text prompt to send to Claude
             max_tokens: Maximum number of tokens to generate
             temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
-            
+            user_id: The auth user id, or a "system:..." sentinel for cron/background jobs
+            feature: Override the logged feature name (defaults to "generate_text")
+
         Returns:
             Generated text response
         """
         try:
             start_time = time.time()
-            
+
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 messages=[{"role": "user", "content": prompt}]
             )
-            
+
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
 
-            self._log_tokens("generate_text", message, duration_ms=int(elapsed_time * 1000))
+            self._log_tokens("generate_text", message, duration_ms=int(elapsed_time * 1000),
+                             feature=feature, user_id=user_id)
             logger.info(f"Text generation completed in {elapsed_time:.2f}s")
             
             return response_text
@@ -357,10 +369,12 @@ class ClaudeClient:
             logger.error(f"Error processing image file: {str(e)}")
             raise
 
-    def process_image_url(self, 
-                         image_url: str, 
+    def process_image_url(self,
+                         image_url: str,
                          prompt: str,
                          max_tokens: int = 1024,
+                         user_id: str = None,
+                         feature: str = None,
                          temperature: float = 1.0) -> str:
         """
         Process an image from a URL with Claude and generate a text response.
@@ -401,7 +415,8 @@ class ClaudeClient:
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
             
-            self._log_tokens("process_image_url", message, duration_ms=int(elapsed_time * 1000))
+            self._log_tokens("process_image_url", message, duration_ms=int(elapsed_time * 1000),
+                             feature=feature, user_id=user_id)
             logger.info(f"Image URL processing completed in {elapsed_time:.2f}s")
             
             return response_text
@@ -410,12 +425,14 @@ class ClaudeClient:
             logger.error(f"Error processing image URL: {str(e)}")
             raise
 
-    def process_image_base64(self, 
-                            image_data: str, 
+    def process_image_base64(self,
+                            image_data: str,
                             media_type: str,
                             prompt: str,
                             max_tokens: int = 1024,
-                            temperature: float = 1.0) -> str:
+                            temperature: float = 1.0,
+                            user_id: str = None,
+                            feature: str = None) -> str:
         """
         Process a base64-encoded image with Claude.
         
@@ -457,7 +474,8 @@ class ClaudeClient:
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
             
-            self._log_tokens("process_image_base64", message, duration_ms=int(elapsed_time * 1000))
+            self._log_tokens("process_image_base64", message, duration_ms=int(elapsed_time * 1000),
+                             feature=feature, user_id=user_id)
             logger.info(f"Base64 image processing completed in {elapsed_time:.2f}s")
             
             return response_text
@@ -466,11 +484,13 @@ class ClaudeClient:
             logger.error(f"Error processing base64 image: {str(e)}")
             raise
     
-    def chat(self, 
-            messages: List[Dict[str, Any]], 
+    def chat(self,
+            messages: List[Dict[str, Any]],
             max_tokens: int = 1024,
             temperature: float = 1.0,
-            system: str = None) -> str:
+            system: str = None,
+            user_id: str = None,
+            feature: str = None) -> str:
         """
         Conduct a multi-turn chat conversation with Claude.
         
@@ -508,7 +528,8 @@ class ClaudeClient:
             elapsed_time = time.time() - start_time
             response_text = message.content[0].text
             
-            self._log_tokens("chat", message, duration_ms=int(elapsed_time * 1000))
+            self._log_tokens("chat", message, duration_ms=int(elapsed_time * 1000),
+                             feature=feature, user_id=user_id)
             logger.info(f"Chat completed in {elapsed_time:.2f}s | Messages: {len(messages)}")
             
             return response_text
@@ -522,7 +543,9 @@ class ClaudeClient:
                    max_tokens: int = 1024,
                    temperature: float = 1.0,
                    system: str = None,
-                   enable_web_search: bool = False) -> Iterator[Dict[str, Any]]:
+                   enable_web_search: bool = False,
+                   user_id: str = None,
+                   feature: str = None) -> Iterator[Dict[str, Any]]:
         """
         Stream a chat conversation with Claude - OPTIMIZED with clear web search logging.
         
@@ -660,9 +683,10 @@ class ClaudeClient:
                         log_api_usage(
                             model=self.model,
                             usage={'input_tokens': total_input_tokens, 'output_tokens': total_output_tokens},
-                            feature='stream_chat',
+                            feature=feature or 'stream_chat',
                             streaming=True,
                             duration_ms=int(elapsed_time * 1000),
+                            user_id=user_id,
                         )
 
                         yield {
@@ -844,7 +868,11 @@ Provide a 2-3 sentence summary that captures:
 Keep it concise and welcoming for new participants."""
 
         client = create_client(api_key)
-        summary = client.generate_text(summary_prompt, max_tokens=200, temperature=0.7)
+        summary = client.generate_text(
+            summary_prompt, max_tokens=200, temperature=0.7,
+            user_id="system:galactica_conversation_summary",
+            feature="conversation_summary",
+        )
         
         return summary
         
@@ -873,7 +901,11 @@ def _generate_character_quote(prompt: str, fallback_key: str, fallbacks: dict,
     try:
         api_key = _get_anthropic_api_key(api_key)
         client = create_client(api_key, model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001"))
-        quote = client.generate_text(prompt, max_tokens=max_tokens, temperature=0.9)
+        quote = client.generate_text(
+            prompt, max_tokens=max_tokens, temperature=0.9,
+            user_id="system:galactica_character_quote",
+            feature="character_quote",
+        )
         quote = quote.strip().strip('"').strip("'")
         if len(quote) > truncate_at:
             quote = quote[:truncate_at - 3] + "..."
@@ -1035,7 +1067,11 @@ Be welcoming to all participants, acknowledge when new people join the conversat
         messages.append({'role': 'user', 'content': f"[{participant_id}]: {new_message}"})
         
         client = create_client(api_key)
-        response = client.chat(messages, system=system_prompt, max_tokens=1024, temperature=1.0)
+        response = client.chat(
+            messages, system=system_prompt, max_tokens=1024, temperature=1.0,
+            user_id=f"participant:{participant_id}" if participant_id else "system:galactica_shared_chat",
+            feature="shared_chat_response",
+        )
         
         return response
         
@@ -1045,7 +1081,7 @@ Be welcoming to all participants, acknowledge when new people join the conversat
 
 
 def generate_aria_snapshot_narrative(caption: str, snapshot_type: str = None,
-                                     commander_name: str = None) -> str:
+                                     commander_name: str = None, user_id: int = None) -> str:
     """
     Generate an ARIA-voice narrative for a photo journal snapshot.
     Like an Instagram caption but in ARIA's ancient, wise, slightly mysterious voice.
@@ -1110,6 +1146,7 @@ Write a brief narrative in ARIA's voice describing this moment, like an Instagra
             usage=response.usage,
             feature='aria_snapshot_narrative',
             duration_ms=int(_elapsed * 1000),
+            user_id=str(user_id) if user_id else "system:galactica_snapshot_narrative",
         )
 
         if response.content and len(response.content) > 0:
@@ -1475,6 +1512,7 @@ Return ONLY valid JSON."""
             usage=response.usage,
             feature='aria_snapshot_prompt',
             duration_ms=int(_elapsed * 1000),
+            user_id=str(user_context.get('user_id')) if user_context and user_context.get('user_id') else "system:galactica_snapshot_prompt",
         )
 
         if response.content and len(response.content) > 0:
@@ -1587,7 +1625,7 @@ Return ONLY valid JSON."""
         raise
 
 
-def brainstorm_chat(message, context, history):
+def brainstorm_chat(message, context, history, user_id=None):
     """Generic brainstorm chat with Claude. Used by tech tree and trail brainstorm pages."""
     api_key = _get_anthropic_api_key()
 
@@ -1639,6 +1677,7 @@ When brainstorming surfaces a concrete bug, feature request, or action item:
         usage=response.usage,
         feature='brainstorm_chat',
         duration_ms=int(_elapsed * 1000),
+        user_id=str(user_id) if user_id else "system:galactica_brainstorm",
     )
 
     return response.content[0].text
@@ -1703,7 +1742,11 @@ Output ONLY the 5 names, one per line, nothing else. No numbering, no explanatio
     try:
         api_key = _get_anthropic_api_key(api_key)
         client = create_client(api_key, model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001"))
-        result = client.generate_text(prompt, max_tokens=100, temperature=1.0)
+        result = client.generate_text(
+            prompt, max_tokens=100, temperature=1.0,
+            user_id=str(user_id) if user_id else "system:galactica_golem_names",
+            feature="golem_names",
+        )
         names = [n.strip().strip('"').strip("'") for n in result.strip().split('\n') if n.strip()]
         return names[:5] if len(names) >= 5 else names + _GOLEM_FALLBACK_NAMES[len(names):5]
     except Exception as e:

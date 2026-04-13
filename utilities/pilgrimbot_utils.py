@@ -587,7 +587,7 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
     yield ("result", text)
 
 
-def _plan_context(message, history, bug_mode):
+def _plan_context(message, history, bug_mode, user_id=None):
     """Phase 2: Ask Haiku what context is needed to answer this question.
     Returns a dict of context tags like {'math': ['shard_generation'], 'endgame': True, 'code': ['db_expeditions.py'], 'player_data': ['balance', 'shard_generation']}."""
     # Build a lightweight prompt for the planner
@@ -621,7 +621,10 @@ Be MINIMAL. Most simple questions need NO context at all. A greeting needs nothi
             messages=[{"role": "user", "content": planner_prompt}]
         )
         _ms = int((_time.time() - _start) * 1000)
-        log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_plan_context', duration_ms=_ms)
+        log_api_usage(
+            model=MODEL, usage=resp.usage, feature='pilgrimbot_plan_context',
+            duration_ms=_ms, user_id=str(user_id) if user_id else "system:galactica_pilgrimbot",
+        )
         text = _strip_markdown_json(resp.content[0].text)
         plan = json.loads(text)
         if not isinstance(plan, dict):
@@ -908,7 +911,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
         # === PHASE 2: Context planning + surgical deep dive (only if needed) ===
         plan_start = _time.time()
-        plan, plan_ms = _plan_context(message, history, bug_mode)
+        plan, plan_ms = _plan_context(message, history, bug_mode, user_id=user_id)
 
         # If the planner says nothing extra is needed, we're done
         if not plan:

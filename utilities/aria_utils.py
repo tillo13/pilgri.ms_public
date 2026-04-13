@@ -1154,7 +1154,9 @@ def get_aria_response(
             messages=messages,
             system=system_prompt,
             max_tokens=500,  # Enough room for complete responses
-            temperature=0.8  # Some personality variation
+            temperature=0.8,  # Some personality variation
+            user_id=str(user_id) if user_id else "system:galactica_aria",
+            feature="aria_response",
         )
 
         return response
@@ -1239,7 +1241,9 @@ def stream_aria_response(
             messages=messages,
             system=system_prompt,
             max_tokens=500,  # Enough room for complete responses
-            temperature=0.8
+            temperature=0.8,
+            user_id=str(user_id) if user_id else "system:galactica_aria",
+            feature="aria_stream",
         ):
             if event.get('type') == 'delta' and event.get('text'):
                 yield f"data: {json.dumps({'type': 'delta', 'text': event['text']})}\n\n"

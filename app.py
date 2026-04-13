@@ -931,7 +931,7 @@ def api_signal_brainstorm_chat():
     data = request.get_json() or {}
     if not data.get('message'):
         return jsonify({'success': False, 'error': 'No message provided'})
-    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []))})
+    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []), user_id=session.get('user_id'))})
 
 
 @app.route('/brainstorm/tech-tree')
@@ -956,7 +956,7 @@ def api_tech_tree_brainstorm_chat():
     data = request.get_json() or {}
     if not data.get('message'):
         return jsonify({'success': False, 'error': 'No message provided'})
-    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []))})
+    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []), user_id=session.get('user_id'))})
 
 
 @app.route('/brainstorm/trail-network')
@@ -973,7 +973,7 @@ def api_trail_network_brainstorm_chat():
     data = request.get_json() or {}
     if not data.get('message'):
         return jsonify({'success': False, 'error': 'No message provided'})
-    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []))})
+    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []), user_id=session.get('user_id'))})
 
 
 @app.route('/brainstorm/icon-redesign')
@@ -990,7 +990,7 @@ def api_icon_redesign_brainstorm_chat():
     data = request.get_json() or {}
     if not data.get('message'):
         return jsonify({'success': False, 'error': 'No message provided'})
-    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []))})
+    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []), user_id=session.get('user_id'))})
 
 
 @app.route('/brainstorm/aria-meetings')
@@ -1008,7 +1008,7 @@ def api_aria_meetings_brainstorm_chat():
     data = request.get_json() or {}
     if not data.get('message'):
         return jsonify({'success': False, 'error': 'No message provided'})
-    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []))})
+    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []), user_id=session.get('user_id'))})
 
 
 @app.route('/brainstorm/sv-economy')
@@ -1024,7 +1024,7 @@ def api_sv_economy_brainstorm_chat():
     data = request.get_json()
     if not data or not data.get('message'):
         return jsonify({'success': False, 'error': 'No message provided'})
-    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []))})
+    return jsonify({'success': True, 'response': brainstorm_chat(data['message'], data.get('context', ''), data.get('history', []), user_id=session.get('user_id'))})
 
 
 @app.route('/api/brainstorm/comments/<page_key>', methods=['GET'])
@@ -1485,7 +1485,8 @@ def api_aria_snapshot_narrative():
         narrative = generate_aria_snapshot_narrative(
             caption=caption,
             snapshot_type=snapshot_type,
-            commander_name=commander_name
+            commander_name=commander_name,
+            user_id=user_id,
         )
         return jsonify({
             'success': True,

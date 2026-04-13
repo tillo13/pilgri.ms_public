@@ -362,7 +362,13 @@ Example tone: "Captain, the dust levels near Olympus Mons have decreased by 12% 
 
 Generate ONE unique transmission now:"""
 
-        message = client.generate_text(prompt, max_tokens=150, temperature=0.9)
+        message = client.generate_text(
+            prompt,
+            max_tokens=150,
+            temperature=0.9,
+            user_id="system:galactica_admin",
+            feature="aria_transmission",
+        )
         return message.strip().strip('"')
     except Exception as e:
         logger.warning(f"Claude ARIA generation failed: {e}, using fallback")

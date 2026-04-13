@@ -177,7 +177,11 @@ Exclude bugs that just happen to share a common word but are about different iss
 Format: [{{"id": 123, "reason": "one sentence why it's related"}}]
 Return empty array [] if none are truly related."""}]
         )
-        log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_related_bugs', duration_ms=int((_time.time() - _s) * 1000))
+        log_api_usage(
+            model=MODEL, usage=resp.usage, feature='pilgrimbot_related_bugs',
+            duration_ms=int((_time.time() - _s) * 1000),
+            user_id="system:galactica_pilgrimbot_bugs",
+        )
         text = _strip_markdown_json(resp.content[0].text)
         ai_picks = json.loads(text)
         # Filter candidates to only AI-approved ones, preserving bug data
@@ -229,7 +233,11 @@ Return JSON with exactly these fields:
   "affected_areas": "Which game systems/pages are affected (e.g. shard generation, colony page, expeditions)"
 }}"""}]
     )
-    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug', duration_ms=int((_time.time() - _s) * 1000))
+    log_api_usage(
+        model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug',
+        duration_ms=int((_time.time() - _s) * 1000),
+        user_id=str(user_id) if user_id else "system:galactica_pilgrimbot_bugs",
+    )
     try:
         text = _strip_markdown_json(resp.content[0].text)
         parsed = json.loads(text)
@@ -294,7 +302,11 @@ Return JSON with exactly these fields:
   "evidence": "Key findings from this specific response"
 }}"""}]
     )
-    log_api_usage(model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug_from_response', duration_ms=int((_time.time() - _s) * 1000))
+    log_api_usage(
+        model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug_from_response',
+        duration_ms=int((_time.time() - _s) * 1000),
+        user_id=str(user_id) if user_id else "system:galactica_pilgrimbot_bugs",
+    )
     try:
         text = _strip_markdown_json(resp.content[0].text)
         parsed = json.loads(text)

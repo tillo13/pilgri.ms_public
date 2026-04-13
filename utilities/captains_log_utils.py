@@ -339,7 +339,9 @@ def chat_with_captain(user_id: int, message: str,
             messages=messages,
             system=system_prompt,
             max_tokens=300,
-            temperature=0.8
+            temperature=0.8,
+            user_id=str(user_id) if user_id else "system:galactica_captain",
+            feature="captain_chat",
         )
 
         return {
