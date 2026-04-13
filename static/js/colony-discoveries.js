@@ -13,7 +13,7 @@ function showDiscoveryDetails(discoveryItemId) {
     stats.push({ label: '\u2500\u2500\u2500 VALUE \u2500\u2500\u2500', value: '' });
     const baseValue = discovery.base_scientific_value || discovery.enhanced_value;
     stats.push({ label: 'Base Value', value: Math.round(baseValue).toLocaleString() + ' shards' });
-    stats.push({ label: 'Enhanced Value', value: Math.round(discovery.enhanced_value).toLocaleString() + ' shards' });
+    stats.push({ label: 'Shard Value', value: Math.round(discovery.enhanced_value).toLocaleString() + ' shards' });
     if (discovery.base_scientific_value) {
         const svTotal = discovery.base_scientific_value * (discovery.quantity || 1);
         stats.push({ label: 'Science Value', value: svTotal.toLocaleString() + ' SV' });
