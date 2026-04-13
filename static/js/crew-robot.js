@@ -298,11 +298,12 @@
         EpicReveal.show({
             title: 'GOLEM AWAKENED',
             lines: [
-                { text: '*stone shifts... crystals pulse*', cls: 'static-crackle', sound: 'crackle' },
-                { text: 'Five fragments. Five sites.', sound: 'glitch' },
-                { text: 'Five hands that recovered them — yours.', sound: 'glitch' },
-                { text: 'A new crew member stirs to life.', cls: 'emphasis' },
+                { text: '*stone shifts... crystals pulse*', cls: 'static-crackle', sound: 'stoneGrind' },
+                { text: 'Five fragments. Five sites.', sound: 'deepRumble' },
+                { text: 'Five hands that recovered them — yours.', sound: 'crystalChime' },
+                { text: 'A new crew member stirs to life.', cls: 'emphasis', sound: 'golemAwaken' },
             ],
+            revealSound: 'playGolemAwaken',
             image: robotImage,
             info: {
                 label: 'CONSTRUCTION COMPLETE',

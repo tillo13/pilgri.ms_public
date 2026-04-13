@@ -61,7 +61,7 @@ window.EpicReveal = (function() {
         try {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
             var master = ctx.createGain();
-            master.gain.value = 0.5;
+            master.gain.value = 0.8;
             master.connect(ctx.destination);
 
             audio = {
@@ -123,6 +123,54 @@ window.EpicReveal = (function() {
                     osc.connect(g); g.connect(master);
                     osc.start();
                     audio._drone = { osc: osc, gain: g };
+                },
+                // Golem sounds — earthy, stone, crystal
+                playStoneGrind: function() {
+                    // Low rumbling noise with bandpass = stone scraping
+                    var buf = ctx.createBuffer(1, ctx.sampleRate * 0.8, ctx.sampleRate);
+                    var d = buf.getChannelData(0);
+                    for (var i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
+                    var src = ctx.createBufferSource(); src.buffer = buf;
+                    var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 120; bp.Q.value = 2;
+                    var g = ctx.createGain();
+                    g.gain.setValueAtTime(0.2, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+                    src.connect(bp); bp.connect(g); g.connect(master); src.start();
+                },
+                playCrystalChime: function() {
+                    // High shimmering tones = Sepolia crystal resonance
+                    [1320, 1760, 2640].forEach(function(freq, i) {
+                        var osc = ctx.createOscillator(); var g = ctx.createGain();
+                        osc.type = 'sine'; osc.frequency.value = freq;
+                        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.05);
+                        g.gain.linearRampToValueAtTime(0.06, ctx.currentTime + i * 0.05 + 0.05);
+                        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+                        osc.connect(g); g.connect(master);
+                        osc.start(ctx.currentTime + i * 0.05); osc.stop(ctx.currentTime + 2);
+                    });
+                },
+                playDeepRumble: function() {
+                    // Sub-bass hit = heavy stone footstep
+                    var osc = ctx.createOscillator(); var g = ctx.createGain();
+                    osc.type = 'triangle'; osc.frequency.value = 40;
+                    osc.frequency.exponentialRampToValueAtTime(25, ctx.currentTime + 0.6);
+                    g.gain.setValueAtTime(0.25, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+                    osc.connect(g); g.connect(master); osc.start(); osc.stop(ctx.currentTime + 0.6);
+                },
+                playGolemAwaken: function() {
+                    // Rising chord: stone + crystal = golem comes alive
+                    [55, 82.5, 110, 165, 660, 1320].forEach(function(freq, i) {
+                        var osc = ctx.createOscillator(); var g = ctx.createGain();
+                        osc.type = freq > 500 ? 'sine' : 'triangle';
+                        osc.frequency.value = freq;
+                        var startAt = ctx.currentTime + i * 0.15;
+                        g.gain.setValueAtTime(0, startAt);
+                        g.gain.linearRampToValueAtTime(freq > 500 ? 0.05 : 0.08, startAt + 0.2);
+                        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 4);
+                        osc.connect(g); g.connect(master);
+                        osc.start(startAt); osc.stop(ctx.currentTime + 4);
+                    });
                 },
                 fadeOutAll: function(dur) {
                     master.gain.linearRampToValueAtTime(0, ctx.currentTime + (dur || 1));
@@ -192,14 +240,25 @@ window.EpicReveal = (function() {
             await delay(60);
             el.classList.add('visible');
 
-            // Play sounds
-            if (line.sound === 'crackle' && audio && audio.playStaticCrackle) {
-                audio.playStaticCrackle();
-            } else if (line.sound === 'glitch' && audio) {
-                if (audio.playGlitch) audio.playGlitch();
-                orb.classList.add('glitching');
-                await delay(400);
-                orb.classList.remove('glitching');
+            // Play sounds — maps line.sound to audio.playXxx()
+            if (line.sound && audio) {
+                var soundMap = {
+                    crackle: 'playStaticCrackle',
+                    glitch: 'playGlitch',
+                    stoneGrind: 'playStoneGrind',
+                    crystalChime: 'playCrystalChime',
+                    deepRumble: 'playDeepRumble',
+                    golemAwaken: 'playGolemAwaken',
+                };
+                var fn = soundMap[line.sound];
+                if (fn && audio[fn]) {
+                    audio[fn]();
+                    if (line.sound === 'glitch') {
+                        orb.classList.add('glitching');
+                        await delay(400);
+                        orb.classList.remove('glitching');
+                    }
+                }
             } else if (audio && audio.playLineReveal) {
                 audio.playLineReveal();
             }
@@ -210,7 +269,8 @@ window.EpicReveal = (function() {
         var img = overlay.querySelector('.er-image');
         if (img) {
             await delay(T.IMAGE);
-            if (audio && audio.playBondReveal) audio.playBondReveal();
+            var revealFn = opts.revealSound && audio && audio[opts.revealSound] ? opts.revealSound : 'playBondReveal';
+            if (audio && audio[revealFn]) audio[revealFn]();
             img.classList.add('visible');
         }
 
