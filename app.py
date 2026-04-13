@@ -709,6 +709,26 @@ def api_robot_cinematic_played():
     mark_cinematic_played(g.user_id)
     return jsonify({'success': True})
 
+@app.route('/api/robot/suggest_names', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_suggest_names():
+    """Generate 5 AI-suggested golem names based on colony context."""
+    from utilities.claude_utils import suggest_golem_names
+    from utilities.db_robot import get_robot_page_data
+    data = get_robot_page_data(g.user_id)
+    robot = data.get('robot') or {}
+    commander_name = session.get('_cmd', {}).get('name') if session.get('_cmd') else None
+    scientist_name = session.get('scientist_name')
+    names = suggest_golem_names(
+        user_id=g.user_id,
+        commander_name=commander_name,
+        scientist_name=scientist_name,
+        stage_sources=robot.get('stage_sources'),
+    )
+    return jsonify({'success': True, 'names': names})
+
+
 @app.route('/depot')
 def depot():
     """Depot page - works for both anonymous and authenticated users"""

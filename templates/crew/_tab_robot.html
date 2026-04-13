@@ -133,7 +133,26 @@
                  loading="lazy">
         </div>
 
-        <!-- Name input (always editable) -->
+        <!-- Name section -->
+        {% if not robot.name and rd.is_complete %}
+        <!-- First task: name your golem! -->
+        <div id="golem-naming-card" style="background: rgba(168,85,247,0.08); border: 2px solid rgba(168,85,247,0.3); border-radius: 12px; padding: 20px; max-width: 420px; margin: 0 auto 16px;">
+            <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">First Task: Name Your Golem</div>
+            <div class="text-xs mb-12" style="color: var(--text-secondary);">Every golem needs a name. Pick one that fits, or write your own.</div>
+            <div id="golem-name-suggestions" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px;">
+                <div class="text-xs" style="color: var(--text-muted);">Loading suggestions...</div>
+            </div>
+            <div class="flex justify-center items-center gap-8">
+                <input type="text" id="robot-name-input"
+                       value=""
+                       placeholder="Or type your own..."
+                       maxlength="64"
+                       style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 200px;">
+                <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 10px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer;">Name</button>
+            </div>
+        </div>
+        {% else %}
+        <!-- Already named — editable inline -->
         <div class="flex justify-center items-center gap-8 mb-12">
             <input type="text" id="robot-name-input"
                    value="{{ robot.name or '' }}"
@@ -142,6 +161,7 @@
                    style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 220px;">
             <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer;">Save</button>
         </div>
+        {% endif %}
 
         <!-- Stage countdown (active builds only) -->
         {% if not rd.is_complete and rd.seconds_until_next_stage is not none %}
@@ -179,7 +199,7 @@
         <div class="robot-stage-card {{ stage.status }}">
             <div class="robot-stage-num">{{ stage.idx }}</div>
             <div class="robot-stage-img-wrap">
-                <img src="{{ stage.image_url }}" alt="{{ stage.label }}" class="robot-stage-img" loading="lazy">
+                <img src="{{ stage.image_url }}" alt="{{ stage.label }}" class="robot-stage-img cursor-pointer" onclick="showImageModal(this.src)" loading="lazy">
                 {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
             </div>
             <div class="robot-stage-label">{{ stage.label }}</div>

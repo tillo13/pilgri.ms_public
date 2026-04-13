@@ -110,6 +110,39 @@
         });
     }
 
+    // ----- NAME SUGGESTIONS ---------------------------------------------------
+    function loadNameSuggestions() {
+        const container = document.getElementById('golem-name-suggestions');
+        if (!container) return;
+        const input = document.getElementById('robot-name-input');
+
+        fetch('/api/robot/suggest_names', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}',
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !data.names) return;
+            container.innerHTML = '';
+            data.names.forEach(name => {
+                const pill = document.createElement('button');
+                pill.textContent = name;
+                pill.style.cssText = 'background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;';
+                pill.addEventListener('mouseenter', () => { pill.style.borderColor = 'var(--color-sepolia)'; pill.style.background = 'rgba(168,85,247,0.15)'; });
+                pill.addEventListener('mouseleave', () => { pill.style.borderColor = 'var(--border-default)'; pill.style.background = 'var(--bg-secondary)'; });
+                pill.addEventListener('click', () => {
+                    if (input) input.value = name;
+                    container.querySelectorAll('button').forEach(b => { b.style.borderColor = 'var(--border-default)'; b.style.background = 'var(--bg-secondary)'; });
+                    pill.style.borderColor = 'var(--color-sepolia)';
+                    pill.style.background = 'rgba(168,85,247,0.2)';
+                });
+                container.appendChild(pill);
+            });
+        })
+        .catch(() => { container.innerHTML = '<div class="text-xs" style="color:var(--text-muted)">Could not load suggestions</div>'; });
+    }
+
     // ----- NAME save --------------------------------------------------------
     function wireNameSave() {
         const input = document.getElementById('robot-name-input');
@@ -128,14 +161,17 @@
             saveBtn.textContent = 'Saving…';
             try {
                 await postJSONSafe('/api/robot/name', { name });
-                saveBtn.textContent = 'Saved';
                 if (typeof showToast === 'function') {
                     showToast('Golem named "' + name + '".', 'success', 'Golem');
                 }
-                setTimeout(() => {
-                    saveBtn.disabled = false;
-                    saveBtn.textContent = 'Save';
-                }, 1500);
+                // If naming card is visible, collapse it and reload to show inline name
+                const namingCard = document.getElementById('golem-naming-card');
+                if (namingCard) {
+                    reloadSoon();
+                } else {
+                    saveBtn.textContent = 'Saved';
+                    setTimeout(() => { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }, 1500);
+                }
             } catch (e) {
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Save';
@@ -306,6 +342,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
         wireNameSave();
+        loadNameSuggestions();
         wireDial();
         startCountdown();
         wireReplayButton();

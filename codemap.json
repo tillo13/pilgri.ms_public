@@ -2225,14 +2225,14 @@
       "startCountdown",
       "tick",
       "wireBuildButton",
+      "loadNameSuggestions",
       "wireNameSave",
       "name",
       "readDialState",
       "renderDial",
       "adjustDial",
       "scheduleDialSave",
-      "saveDial",
-      "wireDial"
+      "saveDial"
     ]
   },
   "static/js/crew.js": {
