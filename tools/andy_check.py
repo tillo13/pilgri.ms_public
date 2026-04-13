@@ -115,7 +115,11 @@ def check_crew_trails():
 
 def check_expeditions():
     """Launch expeditions for idle vehicles."""
-    from utilities.expedition_utils import launch_expedition
+    try:
+        from utilities.expedition_utils import launch_expedition
+    except (ImportError, ModuleNotFoundError) as e:
+        log.info(f"  ⚠️  Skipped locally (needs {e.name} — works on GCP)")
+        return
     from utilities.upgrades_utils import get_user_owned_vehicles
     from utilities.postgres_utils import get_or_set_user_mars_home, get_user_active_expeditions
     from utilities.db_map import get_available_landmarks_by_discovery
