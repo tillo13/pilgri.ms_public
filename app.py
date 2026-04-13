@@ -1579,6 +1579,11 @@ def api_expedition_haul(expedition_id):
     except Exception as e:
         logger.warning(f"Could not fetch destination image: {e}")
 
+    # Ensure all discoveries are unlocked for completed expeditions
+    if expedition['status'] in ('complete', 'recalled'):
+        from utilities.db_expeditions import unlock_discoveries_by_distance
+        unlock_discoveries_by_distance(expedition_id, float(expedition['distance_km']))
+
     # Get all discoveries with full details
     discoveries = get_expedition_discoveries(expedition_id, unlocked_only=True)
 
