@@ -13,12 +13,25 @@
     <div class="card-bg-overlay"></div>
     <div class="relative z-2">
         <img src="{{ icons.robot_avatar }}" alt="" style="width: 96px; height: 96px; border-radius: 12px; border: 2px solid var(--color-sepolia); margin: 0 auto 12px; box-shadow: 0 0 24px rgba(6, 182, 212, 0.3);">
-        <h2 class="text-xl font-bold mb-8">Golem Construction</h2>
+        <h2 class="text-xl font-bold mb-8">Norag Construction</h2>
         <div class="text-sm" style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 20px;">
             Your scientist has been studying the strange bond between Martian rock and Sepolia crystal —
             how the shards pulse when pressed into stone, how certain formations seem to <em>remember</em>.
             With enough research and the right materials, they believe they can fuse five expedition
             discoveries into something unprecedented: a walking, thinking companion forged from Mars itself.
+        </div>
+
+        <!-- The Great Naming Debate -->
+        <div style="max-width: 480px; margin: 0 auto 20px; background: rgba(255,255,255,0.03); border-radius: 10px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.06);">
+            <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--text-muted); font-weight: 600; letter-spacing: 1px;">Colony Log — Naming Dispute</div>
+            <div style="font-size: 13px; line-height: 1.7; color: var(--text-secondary);">
+                <div style="margin-bottom: 6px;"><strong style="color: var(--text-primary);">{{ commander.commander_name or 'Captain' }}:</strong> It's clearly a golem. Look at it. It's made of rock.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--color-sepolia);">{{ scientist.name or 'Scientist' }}:</strong> It responds to commands and runs on crystal processors. That's a robot.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--text-primary);">{{ commander.commander_name or 'Captain' }}:</strong> It's literally carved from a boulder.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--color-sepolia);">{{ scientist.name or 'Scientist' }}:</strong> A boulder with autonomous locomotion and task scheduling.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--text-primary);">{{ commander.commander_name or 'Captain' }}:</strong> Fine. It's Not a Robot Or Golem. Happy?</div>
+                <div><strong style="color: var(--color-sepolia);">{{ scientist.name or 'Scientist' }}:</strong> ...NORAG. I can work with that.</div>
+            </div>
         </div>
 
         <!-- Prerequisite Cards -->
@@ -65,7 +78,7 @@
         {% set all_met = rd.prereqs|selectattr('met')|list|length == rd.prereqs|length %}
         {% if not all_met %}
         <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-            Complete all prerequisites to begin golem construction
+            Complete all prerequisites to begin Norag construction
         </div>
         {% endif %}
     </div>
@@ -79,13 +92,13 @@
     <div class="card-bg-overlay"></div>
     <div class="relative z-2 text-center">
         <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">Robotics Lab — Lv{{ rd.lab_level }}</div>
-        <h2 class="text-2xl font-bold mb-12">Forge Your Golem</h2>
+        <h2 class="text-2xl font-bold mb-12">Forge Your Norag</h2>
         <div class="text-sm mb-16" style="color: var(--text-secondary); max-width: 540px; margin: 0 auto;">
             The research is complete. Your scientist has cracked the bond — Sepolia crystal threaded through
             Martian stone can hold a pattern, carry weight, even <em>respond</em> to commands.
             Now it needs a body. <strong>Five real discoveries</strong> from your expeditions will be
-            fused into the frame, hull, core, optics, and finishing marks of your golem. Each component
-            is encoded permanently on-chain. No two golems are alike.
+            fused into the frame, hull, core, optics, and finishing marks of your Norag. Each component
+            is encoded permanently on-chain. No two Norags are alike.
         </div>
 
         <!-- 5 mystery stage previews -->
@@ -122,11 +135,11 @@
     <div class="card-bg-overlay"></div>
     <div class="relative z-2 text-center">
         <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">
-            {% if rd.is_complete %}Golem Online{% else %}Forge Active — Stage {{ robot.visual_stage }}/5{% endif %}
+            {% if rd.is_complete %}Norag Online{% else %}Forge Active — Stage {{ robot.visual_stage }}/5{% endif %}
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
             <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
-                 alt="Golem" id="robot-hero-img"
+                 alt="Norag" id="robot-hero-img"
                  onclick="showImageModal(this.src)"
                  class="rounded-lg cursor-pointer"
                  style="max-width: 220px; max-height: 220px; border: 3px solid var(--color-sepolia);"
@@ -142,10 +155,10 @@
 
         <!-- Name section -->
         {% if not robot.name and rd.is_complete %}
-        <!-- First task: name your golem! -->
+        <!-- First task: name your Norag! -->
         <div id="golem-naming-card" style="background: rgba(168,85,247,0.08); border: 2px solid rgba(168,85,247,0.3); border-radius: 12px; padding: 20px; max-width: 420px; margin: 0 auto 16px;">
-            <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">First Task: Name Your Golem</div>
-            <div class="text-xs mb-12" style="color: var(--text-secondary);">Every golem needs a name. Pick one that fits, or write your own.</div>
+            <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">First Task: Name Your Norag</div>
+            <div class="text-xs mb-12" style="color: var(--text-secondary);">Every Norag needs a name. Pick one that fits, or write your own.</div>
             <div id="golem-name-suggestions" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px;">
                 <div class="text-xs" style="color: var(--text-muted);">Loading suggestions...</div>
             </div>
@@ -163,7 +176,7 @@
         <div class="flex justify-center items-center gap-8 mb-12">
             <input type="text" id="robot-name-input"
                    value="{{ robot.name or '' }}"
-                   placeholder="Name your golem..."
+                   placeholder="Name your Norag..."
                    maxlength="64"
                    style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 220px;">
             <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer;">Save</button>
@@ -184,7 +197,7 @@
         {% if rd.is_complete %}
         <div class="text-sm mb-8" style="color: var(--color-success);">
             <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm">
-            Construction complete — your golem is ready to deploy.
+            Construction complete — your Norag is ready to deploy.
         </div>
         <button id="robot-replay-cinematic" style="font-size: 12px; color: var(--color-sepolia); padding: 6px 14px; background: rgba(168,85,247,0.1); border-radius: 6px; border: 1px solid rgba(168,85,247,0.2); cursor: pointer;">
             Replay Awakening
@@ -236,7 +249,7 @@
         <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> Awakening Video
     </div>
     <div class="text-sm mb-12" style="color: var(--text-secondary);">
-        Generate an animated awakening video starring your golem. Takes about 60 seconds to create.
+        Generate an animated awakening video starring your Norag. Takes about 60 seconds to create.
     </div>
     <div style="text-align: center;">
         <div class="text-sm mb-8" style="color: var(--color-sepolia); font-weight: 600;">90 shards</div>
@@ -248,13 +261,13 @@
 </div>
 {% endif %}
 
-<!-- What does the Golem do? -->
+<!-- What does the Norag do? -->
 <div class="dashboard-card p-20 mb-16">
     <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">
-        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Your Golem's Purpose
+        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Your Norag's Purpose
     </div>
     <div class="text-sm" style="color: var(--text-secondary); line-height: 1.7;">
-        Your golem works autonomously while you're away — a tireless fourth crew member that generates passive bonuses every colony tick.
+        Your Norag works autonomously while you're away — a tireless fourth crew member that generates passive bonuses every colony tick.
         Use the <strong style="color: var(--text-primary);">Role Dial</strong> below to direct where it focuses its effort. The higher the allocation, the stronger that bonus.
     </div>
 </div>
@@ -265,7 +278,7 @@
         <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Role Dial
     </div>
     <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
-        Adjust how your golem allocates effort. Values must total 100%. Adjusting one rebalances the others.
+        Adjust how your Norag allocates effort. Values must total 100%. Adjusting one rebalances the others.
     </div>
     <div id="robot-dial" data-dial='{{ robot.dial | tojson }}'>
         <div class="robot-dial-row" data-key="mining" style="flex-wrap: wrap;">

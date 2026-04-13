@@ -44,7 +44,7 @@
             return data;
         } catch (e) {
             if (typeof showToast === 'function') {
-                showToast(e.message || String(e), 'error', 'Golem');
+                showToast(e.message || String(e), 'error', 'Norag');
             } else {
                 alert('Golem: ' + (e.message || e));
             }
@@ -92,7 +92,7 @@
     window.showGolemVideoModal = function (url) {
         if (typeof MarsModal === 'undefined') return;
         MarsModal.show({
-            title: 'Golem Awakening',
+            title: 'Norag Awakening',
             size: 'lg',
             theme: 'aria',
             body: '<video src="' + url + '" style="width:100%;border-radius:12px;" playsinline autoplay loop controls></video>',
@@ -110,7 +110,7 @@
             try {
                 await postJSONSafe('/api/robot/build', {});
                 if (typeof showToast === 'function') {
-                    showToast('Construction started — first stage assembling now.', 'success', 'Golem');
+                    showToast('Construction started — first stage assembling now.', 'success', 'Norag');
                 }
                 reloadSoon();
             } catch (e) {
@@ -168,7 +168,7 @@
             const name = (input.value || '').trim();
             if (!name) {
                 if (typeof showToast === 'function') {
-                    showToast('Name cannot be blank.', 'error', 'Golem');
+                    showToast('Name cannot be blank.', 'error', 'Norag');
                 }
                 return;
             }
@@ -177,7 +177,7 @@
             try {
                 await postJSONSafe('/api/robot/name', { name });
                 if (typeof showToast === 'function') {
-                    showToast('Golem named "' + name + '".', 'success', 'Golem');
+                    showToast('Norag named "' + name + '".', 'success', 'Norag');
                 }
                 // If naming card is visible, collapse it and reload to show inline name
                 const namingCard = document.getElementById('golem-naming-card');
@@ -271,7 +271,7 @@
         try {
             await postJSONSafe('/api/robot/dial', { dial: dialState });
             if (typeof showToast === 'function') {
-                showToast('Role dial saved.', 'success', 'Golem');
+                showToast('Role dial saved.', 'success', 'Norag');
             }
             const status = document.getElementById('robot-dial-status');
             if (status) {
@@ -332,7 +332,7 @@
         } else {
             infoBlock = {
                 label: 'CONSTRUCTION COMPLETE',
-                detail: (existingName || 'Your Golem') + ' — forged from 5 real expedition fragments',
+                detail: (existingName || 'Your Norag') + ' — forged from 5 real expedition fragments',
             };
         }
 

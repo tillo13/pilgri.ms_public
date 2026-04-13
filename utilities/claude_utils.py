@@ -1648,7 +1648,8 @@ def suggest_golem_names(user_id: int, commander_name: str = None,
                         scientist_name: str = None, stage_sources: list = None,
                         api_key: str = None) -> list:
     """
-    Generate 5 lore-appropriate golem name suggestions using Haiku.
+    Generate 5 lore-appropriate Norag name suggestions using Haiku.
+    (Norag = Not a Robot Or Golem — the crew couldn't agree what to call it.)
     Mines ARIA chat history, captain/scientist context, and expedition
     discoveries for personality clues and any names the captain mentioned.
     """
@@ -1661,7 +1662,7 @@ def suggest_golem_names(user_id: int, commander_name: str = None,
         items = [s.get('item_name', '') for s in stage_sources if s]
         landmarks = [s.get('landmark_name', '') for s in stage_sources if s]
         if items:
-            context_parts.append(f"Golem forged from these discoveries: {', '.join(items)}")
+            context_parts.append(f"Norag forged from these discoveries: {', '.join(items)}")
         if landmarks:
             context_parts.append(f"Discoveries recovered at: {', '.join(landmarks)}")
 
@@ -1678,21 +1679,22 @@ def suggest_golem_names(user_id: int, commander_name: str = None,
     except Exception as e:
         logger.warning(f"Failed to load ARIA history for golem names: {e}")
 
-    context = ". ".join(context_parts) if context_parts else "A Mars colony golem"
+    context = ". ".join(context_parts) if context_parts else "A Mars colony Norag"
 
-    prompt = f"""You are naming a golem — a stone creature built from Martian rock and Sepolia crystal,
-forged from real expedition discoveries on Mars.
+    prompt = f"""You are naming a Norag — a stone creature built from Martian rock and Sepolia crystal,
+forged from real expedition discoveries on Mars. (Norag = "Not a Robot Or Golem" — the captain
+and scientist couldn't agree what to call it, so the name stuck.)
 
 Colony context: {context}
 
 {chat_snippet}
 
 Study the captain's chat history and colony context carefully. Look for:
-- Any names they mentioned wanting to call their golem or robot
+- Any names they mentioned wanting to call their Norag, golem, or robot
 - Personality clues, favorite places, references, jokes
-- The discovery items and landmarks the golem was forged from
+- The discovery items and landmarks the Norag was forged from
 
-Generate exactly 5 short golem names (1-2 words each) that feel PERSONAL to this specific captain.
+Generate exactly 5 short Norag names (1-2 words each) that feel PERSONAL to this specific captain.
 Names should feel ancient, geological, Martian — like a stone companion, not a weapon.
 If the captain mentioned a specific name in chat, include it as the first suggestion.
 
