@@ -132,11 +132,11 @@ document.addEventListener('DOMContentLoaded', function() {
     </button>
     <button class="crew-tab" data-tab="robot" onclick="switchCrewTab('robot')" title="Your fourth crew member, forged from real expedition history">
         {% if robot_data and robot_data.has_robot and robot_data.robot.current_image_url %}
-        <img src="{{ robot_data.robot.current_image_url }}" alt="Norag" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
+        <img src="{{ robot_data.robot.current_image_url }}" alt="Narog" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
         {% else %}
         <img src="{{ icons.robot_avatar }}" alt="" class="crew-tab-icon" style="border: 2px solid var(--color-sepolia);">
         {% endif %}
-        <span class="crew-tab-label">Norag</span>
+        <span class="crew-tab-label">Narog</span>
     </button>
     <button class="crew-tab" data-tab="services" onclick="switchCrewTab('services')" title="Captain Services - Modify your captain">
         <img src="{{ icons.wrench_repair }}" alt="" class="crew-tab-icon" style="border-radius: 6px;">
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <span id="tab-desc-captain" style="display: none;"><img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon-sm"> <strong>Captain:</strong> Your expedition leader. Stats affect discovery chances, costs, and efficiency. Boost stats via Shard Infusion on the Services tab.</span>
     <span id="tab-desc-scientist" style="display: none;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> <strong>Scientist:</strong> Extracts Sepolia shards from your discoveries. Higher skill = faster extraction and bonus yields.</span>
     <span id="tab-desc-aria" style="display: none;"><img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> <strong>ARIA:</strong> Found waiting on Mars when the first Pilgrims arrived. She doesn't remember why.</span>
-    <span id="tab-desc-robot" style="display: none;"><img src="{{ icons.robot_avatar }}" alt="" class="inline-icon-sm"> <strong>Norag:</strong> Not a Robot Or Golem — your scientist and captain couldn't agree, so they compromised. Your fourth crew member, fused from Martian rock and Sepolia crystal. Built from the land itself.</span>
+    <span id="tab-desc-robot" style="display: none;"><img src="{{ icons.robot_avatar }}" alt="" class="inline-icon-sm"> <strong>Narog:</strong> Not A Robot Or Golem — your scientist and captain couldn't agree, so they compromised. Your fourth crew member, fused from Martian rock and Sepolia crystal. Built from the land itself.</span>
     <span id="tab-desc-services" style="display: none;"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> <strong>Services:</strong> One-off services to modify your captain. Reroll stats, change appearance, or generate a mission briefing video.</span>
 </div>
 
