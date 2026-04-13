@@ -2467,6 +2467,15 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .overflow-hidden { overflow: hidden; }
 .overflow-auto { overflow: auto; }
 
+/* Global: hide scrollbars on all modals/overlays — content still scrolls */
+.mm-dialog, .mars-modal, .er-content, .aria-chat-messages,
+.pb-chat-list, .pb-chat-messages {
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.mm-dialog::-webkit-scrollbar, .mars-modal::-webkit-scrollbar,
+.er-content::-webkit-scrollbar, .aria-chat-messages::-webkit-scrollbar,
+.pb-chat-list::-webkit-scrollbar, .pb-chat-messages::-webkit-scrollbar { display: none; }
+
 /* Effects */
 .shadow { box-shadow: var(--shadow-sm); }
 .shadow-md { box-shadow: var(--shadow-md); }

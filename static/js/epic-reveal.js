@@ -51,13 +51,8 @@ window.EpicReveal = (function() {
     }
 
     function initAudio() {
-        // Reuse First Contact audio if available, otherwise create minimal version
-        if (window.FCaudio) {
-            audio = window.FCaudio;
-            if (audio.init) audio.init();
-            return;
-        }
-        // Minimal audio: create context + simple sounds
+        // Always create our own audio context — FCaudio may not have all sounds
+        // (e.g. golem sounds) and its context may be stale/suspended.
         try {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
             var master = ctx.createGain();
@@ -327,7 +322,7 @@ window.EpicReveal = (function() {
 
         // Title
         if (opts.title) {
-            html += '<div style="font-size: 18px; font-weight: 700; color: #06b6d4; margin: 8px 0; letter-spacing: 1px;">' + opts.title + '</div>';
+            html += '<div style="font-size: 16px; font-weight: 700; color: #06b6d4; margin: 4px 0; letter-spacing: 1px;">' + opts.title + '</div>';
         }
 
         // Info section
