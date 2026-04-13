@@ -277,8 +277,7 @@
                 text: 'Your fourth crew member has awakened. Tune their role dial to direct their effort.',
             },
             actions: [
-                { label: 'Tune Role Dial', href: '/crew?tab=robot', cls: 'primary' },
-                { label: 'Continue', cls: 'secondary' },
+                { label: 'Continue', cls: 'primary' },
             ],
             onClose: function () {
                 if (markPlayed) {
