@@ -44,9 +44,9 @@
             return data;
         } catch (e) {
             if (typeof showToast === 'function') {
-                showToast(e.message || String(e), 'error', 'Robot');
+                showToast(e.message || String(e), 'error', 'Golem');
             } else {
-                alert('Robot: ' + (e.message || e));
+                alert('Golem: ' + (e.message || e));
             }
             throw e;
         }
@@ -99,7 +99,7 @@
             try {
                 await postJSONSafe('/api/robot/build', {});
                 if (typeof showToast === 'function') {
-                    showToast('Construction started — first stage assembling now.', 'success', 'Robot');
+                    showToast('Construction started — first stage assembling now.', 'success', 'Golem');
                 }
                 reloadSoon();
             } catch (e) {
@@ -120,7 +120,7 @@
             const name = (input.value || '').trim();
             if (!name) {
                 if (typeof showToast === 'function') {
-                    showToast('Name cannot be blank.', 'error', 'Robot');
+                    showToast('Name cannot be blank.', 'error', 'Golem');
                 }
                 return;
             }
@@ -130,7 +130,7 @@
                 await postJSONSafe('/api/robot/name', { name });
                 saveBtn.textContent = 'Saved';
                 if (typeof showToast === 'function') {
-                    showToast('Robot named "' + name + '".', 'success', 'Robot');
+                    showToast('Golem named "' + name + '".', 'success', 'Golem');
                 }
                 setTimeout(() => {
                     saveBtn.disabled = false;
@@ -262,24 +262,24 @@
         }
         const heroImg = document.getElementById('robot-hero-img');
         const robotImage = heroImg ? heroImg.src : '';
-        const robotName = (document.getElementById('robot-name-input') || {}).value || 'Your Robot';
+        const golemName = (document.getElementById('robot-name-input') || {}).value || 'Your Golem';
 
         EpicReveal.show({
-            title: 'ROBOT ONLINE',
+            title: 'GOLEM AWAKENED',
             lines: [
-                { text: '*assembly servos disengage*', cls: 'static-crackle', sound: 'crackle' },
+                { text: '*stone shifts... crystals pulse*', cls: 'static-crackle', sound: 'crackle' },
                 { text: 'Five fragments. Five sites.', sound: 'glitch' },
                 { text: 'Five hands that recovered them — yours.', sound: 'glitch' },
-                { text: 'A new crew member stands ready.', cls: 'emphasis' },
+                { text: 'A new crew member stirs to life.', cls: 'emphasis' },
             ],
             image: robotImage,
             info: {
                 label: 'CONSTRUCTION COMPLETE',
-                detail: robotName + ' — forged from 5 real expedition fragments',
+                detail: golemName + ' — forged from 5 real expedition fragments',
             },
             revelation: {
                 label: 'NEW CREW MEMBER',
-                text: 'Your fourth crew member is online. Tune their role dial to direct their effort.',
+                text: 'Your fourth crew member has awakened. Tune their role dial to direct their effort.',
             },
             actions: [
                 { label: 'Tune Role Dial', href: '/crew?tab=robot', cls: 'primary' },

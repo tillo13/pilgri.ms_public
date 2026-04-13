@@ -535,7 +535,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         prereq_defs = [
             {'key': 'research_station', 'name': 'Research Station', 'required_level': 3, 'icon_key': 'microscope_lab'},
             {'key': 'regolith_forge', 'name': 'Regolith Forge', 'required_level': 3, 'icon_key': 'wrench_repair'},
-            {'key': 'robotics_lab', 'name': 'Robotics Lab', 'required_level': 1, 'icon_key': 'robot_avatar'},
+            {'key': 'robotics_lab', 'name': 'Robotics Lab', 'required_level': 1, 'icon_key': 'wrench_repair'},
         ]
         # Get building timers for any structures under construction
         building_timers = {}
