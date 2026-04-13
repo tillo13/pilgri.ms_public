@@ -439,6 +439,47 @@
         btn.addEventListener('click', () => fireGolemCinematic(false));
     }
 
+    // ----- VIDEO GENERATION ---------------------------------------------------
+    function wireVideoButton() {
+        var btn = document.getElementById('golem-gen-video-btn');
+        if (!btn) return;
+        btn.addEventListener('click', async function() {
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            var status = document.getElementById('golem-video-status');
+            if (status) { status.style.display = 'block'; status.textContent = 'Starting video generation (~60s)...'; }
+            try {
+                var data = await postJSONSafe('/api/robot/generate_video', {});
+                if (data.already_exists) {
+                    reloadSoon();
+                    return;
+                }
+                // Poll for completion
+                var poll = setInterval(async function() {
+                    try {
+                        var r = await fetch('/api/robot/video_status');
+                        var s = await r.json();
+                        if (s.url) {
+                            clearInterval(poll);
+                            if (status) status.textContent = 'Video ready!';
+                            reloadSoon();
+                        } else if (s.error) {
+                            clearInterval(poll);
+                            if (status) status.textContent = 'Generation failed. Try again later.';
+                            btn.disabled = false;
+                            btn.textContent = 'Generate Video';
+                        } else if (status) {
+                            status.textContent = 'Generating... this takes about 60 seconds.';
+                        }
+                    } catch (e) { /* keep polling */ }
+                }, 5000);
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = 'Generate Video';
+            }
+        });
+    }
+
     // ----- INIT -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
@@ -447,6 +488,7 @@
         wireDial();
         startCountdown();
         wireReplayButton();
+        wireVideoButton();
         maybeFireRobotCinematic();
     });
 })();

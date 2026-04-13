@@ -726,6 +726,53 @@ def api_robot_cinematic_played():
     mark_cinematic_played(g.user_id)
     return jsonify({'success': True})
 
+@app.route('/api/robot/generate_video', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_generate_video():
+    """Generate an awakening video for the golem using its current image."""
+    import threading
+    from utilities.db_robot import get_robot
+    robot = get_robot(g.user_id)
+    if not robot or robot.get('build_status') != 'complete':
+        return jsonify({'success': False, 'error': 'Golem must be fully built.'}), 400
+    if robot.get('video_url'):
+        return jsonify({'success': True, 'video_url': robot['video_url'], 'already_exists': True})
+
+    image_url = robot.get('current_image_url')
+    if not image_url:
+        return jsonify({'success': False, 'error': 'No golem image found.'}), 400
+
+    uid = g.user_id
+    status_key = f'golem_video_{uid}'
+    app.config[status_key] = {'generating': True, 'url': None}
+
+    def _gen():
+        try:
+            video_url = animate_character_video(image_url, flux, user_id=uid)
+            app.config[status_key].update({'url': video_url, 'generating': False})
+            from utilities.postgres_utils import db_cursor
+            with db_cursor(commit=True) as cur:
+                cur.execute("UPDATE pilgrim.robot SET video_url = %s, updated_at = NOW() WHERE user_id = %s",
+                            (video_url, uid))
+        except Exception as e:
+            logger.error(f"Golem video gen failed: {e}")
+            app.config[status_key].update({'url': None, 'generating': False, 'error': str(e)})
+
+    threading.Thread(target=_gen, daemon=True).start()
+    return jsonify({'success': True, 'status_key': status_key, 'generating': True})
+
+
+@app.route('/api/robot/video_status')
+@login_required
+@handle_api_error
+def api_robot_video_status():
+    """Poll golem video generation progress."""
+    status_key = f'golem_video_{g.user_id}'
+    status = app.config.get(status_key, {})
+    return jsonify({'success': True, **status})
+
+
 @app.route('/api/robot/suggest_names', methods=['POST'])
 @login_required
 @handle_api_error

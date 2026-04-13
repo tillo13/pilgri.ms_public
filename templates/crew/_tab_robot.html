@@ -222,6 +222,32 @@
     </div>
 </div>
 
+<!-- Awakening Video — generate or replay -->
+{% if rd.is_complete %}
+<div class="dashboard-card p-20 mb-16">
+    <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> Awakening Video
+    </div>
+    {% if robot.video_url %}
+    <div class="text-sm mb-8" style="color: var(--text-secondary);">Your golem's first moments of awareness, captured forever.</div>
+    <video id="golem-video" src="{{ robot.video_url }}" style="width: 100%; max-width: 320px; border-radius: 12px; border: 2px solid rgba(168,85,247,0.3); cursor: pointer; display: block; margin: 0 auto;"
+           playsinline muted autoplay loop onclick="this.requestFullscreen ? this.requestFullscreen() : null"></video>
+    <div class="text-xs mt-8" style="color: var(--text-muted); text-align: center;">Click video to fullscreen</div>
+    {% else %}
+    <div class="text-sm mb-12" style="color: var(--text-secondary);">
+        Generate an animated awakening video starring your golem. Takes about 60 seconds to create.
+    </div>
+    <div style="text-align: center;">
+        <div class="text-sm mb-8" style="color: var(--color-sepolia); font-weight: 600;">90 shards</div>
+        <button id="golem-gen-video-btn" class="btn-primary" style="padding: 10px 24px; font-size: 14px;">
+            Generate Video
+        </button>
+        <div id="golem-video-status" class="text-xs mt-8" style="color: var(--text-muted); display: none;"></div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
 <!-- What does the Golem do? -->
 <div class="dashboard-card p-20 mb-16">
     <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">
