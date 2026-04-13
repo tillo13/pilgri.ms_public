@@ -216,7 +216,7 @@ def check_lab_research():
         log.info(f"  ✓ Research active: {active.get('tech_key', '?')}")
         return
 
-    if not tech_status.get('has_station'):
+    if not tech_status.get('has_research_station'):
         log.info("  ⚠️  No research station built")
         return
 
