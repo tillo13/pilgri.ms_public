@@ -264,15 +264,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load solvers on page load
     loadSolvers();
 
-    // Refresh shard balance on Signal page load
-    fetch('/api/user/balance')
-        .then(r => r.json())
-        .then(data => {
-            if (data.success && data.balance !== undefined && typeof window.setBalance === 'function') {
-                window.setBalance(data.balance);
-            }
-        })
-        .catch(() => {});
+    // Refresh shard balance on Signal page load (auth'd users only — anon fetch redirects to OAuth)
+    const ariaEl = document.getElementById('aria-chat');
+    if (ariaEl && ariaEl.dataset.authenticated === 'true') {
+        fetch('/api/user/balance')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.balance !== undefined && typeof window.setBalance === 'function') {
+                    window.setBalance(data.balance);
+                }
+            })
+            .catch(() => {});
+    }
 
     async function loadSolvers() {
         try {
