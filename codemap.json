@@ -1050,10 +1050,12 @@
   "docs/continuation_cleanup.md": {
     "description": "Continuation Cleanup — app.py Routing-Only Refactor",
     "exports": [
+      "⚠️ Kumori-philosophy guardrails (MUST READ BEFORE R4)",
       "Goal",
       "Ground rules (keep these when resuming)",
       "What shipped (3 rounds so far)",
       "Pick up here — Round 4 targets",
+      "Stock of biggest holes (as of 2026-04-14 evening)",
       "Known follow-ups (deferred, not blocking the refactor)",
       "Refactor-session hygiene (do this every time)",
       "PilgrimBot data freshness (refreshed 2026-04-14)",
@@ -1611,24 +1613,7 @@
     "keywords": "depot, shop items, purchase, mining drone, power equipment, availability"
   },
   "utilities/signal_utils.py": {
-    "description": "Shard Network / Signal System Utilities",
-    "exports": [
-      "get_all_origin_sites — Get all Origin Sites with their status",
-      "get_origin_site_by_code — Get a specific Origin Site by its code",
-      "check_origin_site_proximity — Check if coordinates are near any unclaimed Origin Site",
-      "claim_origin_site — Claim an Origin Site as the First Founder.",
-      "get_visitor_tier — Get tier info for a visitor rank. Returns (tier_name, tier_color, item_rarity)",
-      "visit_origin_site — Record a pilgrimage visit to an already-claimed Origin Site.",
-      "get_user_origin_site_eligibility — Check which Origin Sites a user can claim based on their expedition proximity.",
-      "get_user_origin_site_discovery_count — Get count of Origin Sites user has discovered (has expedition within range).",
-      "get_claimable_origin_sites_for_user — Get only the Origin Sites a user can currently claim.",
-      "get_active_echo_sites — Get all active Echo Sites",
-      "get_recent_echo_claims — Get recent Echo Site claims for the /signal page",
-      "get_origin_site_visitors — Get visitors for a single Origin Site — prefer _bulk_get_origin_visitors() for multiple sites",
-      "get_expeditions_since_last_echo — Count expeditions since user's last echo site spawn",
-      "maybe_spawn_echo_site — Roll dice for Echo Site spawn with pity timer.",
-      "claim_echo_site — Claim an Echo Site. Returns claim rank and tier."
-    ],
+    "description": "Shim — real code moved to utilities.signal package.",
     "keywords": "signal decoder, origin sites, echo messages, ARG, shard network, puzzle"
   },
   "utilities/speedrun_expedition.py": {
@@ -2197,6 +2182,58 @@
   },
   "utilities/static/feeds.py": {
     "description": "Sitemap, robots.txt, and Atom feed XML — crawler-facing static content."
+  },
+  "utilities/signal/__init__.py": {
+    "description": "Signal package — split from utilities/signal_utils.py."
+  },
+  "utilities/signal/claims.py": {
+    "description": "Origin site claim/visit handlers + lost-signal + puzzle decoders.",
+    "exports": [
+      "claim_origin_site — Claim an Origin Site as the First Founder.",
+      "visit_origin_site — Record a pilgrimage visit to an already-claimed Origin Site.",
+      "get_user_origin_site_eligibility — Check which Origin Sites a user can claim based on their expedition proximity.",
+      "get_user_origin_site_discovery_count — Get count of Origin Sites user has discovered (has expedition within range).",
+      "get_claimable_origin_sites_for_user — Get only the Origin Sites a user can currently claim.",
+      "handle_origin_site_claim — Full origin site claim handler - validates, claims, fires background tasks.",
+      "handle_origin_site_visit — Full origin site visit handler - validates, records visit, fires background tasks.",
+      "decode_lost_signal_site — Attempt to decode a Lost Signal site with the correct 0x code.",
+      "get_user_signal_claims — Get current user's site claims.",
+      "decode_signal_puzzle — Attempt to decode a puzzle sequence - rewards legendary items.",
+      "get_puzzle_solvers — Get list of puzzle solvers for display.",
+      "decode_signal_tx — Decode a Sepolia transaction hash to extract hidden signal codes."
+    ]
+  },
+  "utilities/signal/config.py": {
+    "description": "Signal system constants and visitor-tier configuration.",
+    "exports": [
+      "get_visitor_tier — Get tier info for a visitor rank. Returns (tier_name, tier_color, item_rarity)"
+    ]
+  },
+  "utilities/signal/rewards.py": {
+    "description": "Legendary item + visitor reward image generation (Flux).",
+    "exports": [
+      "generate_legendary_item_for_origin — Generate the legendary item image for an Origin Site after it's claimed.",
+      "get_origin_site_legendary_item — Get the legendary item details for an Origin Site.",
+      "generate_visitor_reward_image — Generate a unique Flux image for a visitor's reward item."
+    ]
+  },
+  "utilities/signal/sites.py": {
+    "description": "Origin Sites + Echo Sites + signal page data.",
+    "exports": [
+      "get_all_origin_sites — Get all Origin Sites with their status",
+      "get_origin_site_by_code — Get a specific Origin Site by its code",
+      "check_origin_site_proximity — Check if coordinates are near any unclaimed Origin Site",
+      "get_active_echo_sites — Get all active Echo Sites",
+      "get_recent_echo_claims — Get recent Echo Site claims for the /signal page",
+      "get_origin_site_visitors — Get visitors for a single Origin Site — prefer _bulk_get_origin_visitors() for multiple sites",
+      "get_expeditions_since_last_echo — Count expeditions since user's last echo site spawn",
+      "maybe_spawn_echo_site — Roll dice for Echo Site spawn with pity timer.",
+      "claim_echo_site — Claim an Echo Site. Returns claim rank and tier.",
+      "get_signal_page_data — Get all data needed for the /signal page",
+      "generate_blockchain_message — Generate the blockchain message for a site claim",
+      "get_signal_page_render_data — Full kwargs for rendering signal.html. Includes bonds lookup when user_id is given.",
+      "get_closest_pilgrim_to_origin — Find the commander who got closest to any unclaimed Origin Site."
+    ]
   },
   "utilities/session/__init__.py": {
     "description": "utilities.session — per-request user hydration + template context helpers."
@@ -2802,7 +2839,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -2867,7 +2904,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
