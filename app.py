@@ -22,7 +22,7 @@ from utilities.postgres.core import db_cursor
 from utilities.postgres.assets import (
     set_primary_commander,
     delete_asset,
-    update_commander_name,
+    rename_captain_with_validation,
 )
 from utilities.postgres.expeditions import (
     get_recent_discoveries,
@@ -65,7 +65,7 @@ from utilities.depot_utils import (
     get_dashboard_page_data, get_profile_page_data, get_depot_page_data, get_claimed_discoveries_data,
     start_video_generation, get_formatted_discovery_items, build_recent_activity,
     start_deploy_video_generation, handle_leader_selection, get_mars_location_data,
-    handle_custom_commander_upload, check_content_filter,
+    handle_custom_commander_upload,
     get_colony_page_data, get_live_balance_and_wallet_info, invalidate_balance_cache,
 )
 from utilities.infrastructure_utils import (
@@ -74,7 +74,7 @@ from utilities.infrastructure_utils import (
     get_xenobiology_status, run_xenobiology_experiment, upgrade_xenobiology_stat,
 )
 from utilities.signal_utils import (
-    get_signal_page_data, get_closest_pilgrim_to_origin,
+    get_signal_page_data, get_closest_pilgrim_to_origin, get_signal_page_render_data,
     handle_origin_site_claim, handle_origin_site_visit,
     claim_echo_site, get_user_origin_site_eligibility,
     decode_lost_signal_site, get_origin_site_legendary_item,
@@ -87,14 +87,10 @@ from utilities.tech_utils import (
 from utilities.shop_utils import get_user_equipment_data
 from utilities.upgrades_utils import perform_upgrade, get_upgrade_catalog_for_user, get_vehicle_for_expedition
 from utilities.claude_utils import brainstorm_chat
-from utilities.aria.handlers import (
-    get_aria_album_data, _build_aria_user_context,
-    handle_aria_chat_streaming, handle_aria_chat_sync,
-)
+from utilities.aria.handlers import get_aria_album_data, handle_aria_chat_request
 from utilities.aria.animations import get_contextual_hint
 from utilities.aria.conversation import get_aria_conversation_history
 from utilities.aria.greetings import get_aria_greeting
-from utilities.aria.snapshot import load_colony_snapshot
 from utilities.captains_log_utils import chat_with_captain
 from utilities.admin_utils import (
     is_admin, get_admin_email, generate_aria_message,
@@ -148,34 +144,10 @@ def check_apikey_auth():
 
 @app.before_request
 def check_first_contact():
-    """Intercept page loads for pending ARIA bond first-contact cinematic.
-    Server-side check — browser cache doesn't matter, the HTML response changes."""
-    # Only for authenticated users on HTML page routes
-    if not auth.is_authenticated():
-        return
-    path = request.path
-    if path.startswith(('/static/', '/api/', '/admin/', '/aria-first-contact', '/auth')):
-        return
-    if request.method != 'GET':
-        return
-    # Session flag: skip check once ALL pending cinematics have been shown this session
-    # Stores set of bond IDs already shown
-    if session.get('_fc_shown_all'):
-        return
-    user_id = session.get('user_id')
-    if not user_id:
-        return
-    try:
-        from utilities.aria.bonds import get_pending_first_contact
-        bond = get_pending_first_contact(user_id)
-        if bond:
-            return redirect('/aria-first-contact')
-        else:
-            # No more pending cinematics — stop checking this session
-            session['_fc_shown_all'] = True
-            session.modified = True
-    except Exception as e:
-        logger.warning(f"First contact check failed: {e}")
+    """Intercept page loads for pending ARIA bond first-contact cinematic."""
+    from utilities.aria.first_contact import check_pending_first_contact
+    if check_pending_first_contact(request.path, request.method, auth.is_authenticated(), session):
+        return redirect('/aria-first-contact')
 
 @app.after_request
 def log_request_time(response):
@@ -702,33 +674,11 @@ def aria_album():
 @app.route('/signal')
 def signal():
     """The Shard Network - ARG/mystery page showing Origin Sites and Echo Sites"""
-    user = auth.get_current_user() if auth.is_authenticated() else None
-
-    # Get all signal page data
-    signal_data = get_signal_page_data()
-
-    # Reuse origin_sites from signal_data (avoid duplicate DB call)
-    closest_pilgrim = get_closest_pilgrim_to_origin(origin_sites=signal_data.get('origin_sites'))
-
-    # Check for ARIA bonds to show on Signal page
-    bond_fragment_hint = None
-    signal_bonds = []
-    if auth.is_authenticated():
-        try:
-            from utilities.aria.bonds import get_bonds_for_display
-            signal_bonds = get_bonds_for_display(session.get('user_id'))
-            if signal_bonds:
-                bond_fragment_hint = signal_bonds[0]['bond_tx_hash']
-        except Exception:
-            pass
-
+    user_id = session.get('user_id') if auth.is_authenticated() else None
     return render_template('signal.html',
                            active_tab='signal',
-                           user=user,
-                           closest_pilgrim=closest_pilgrim,
-                           bond_fragment_hint=bond_fragment_hint,
-                           signal_bonds=signal_bonds,
-                           **signal_data)
+                           user=auth.get_current_user() if auth.is_authenticated() else None,
+                           **get_signal_page_render_data(user_id))
 
 # ============================================================================
 # ONBOARDING & LEGACY REDIRECTS
@@ -808,31 +758,10 @@ def api_set_primary_commander(asset_id):
 @handle_api_error
 def api_rename_commander():
     """Rename the captain with profanity filtering"""
-    data = request.get_json()
-
-    if not data or 'name' not in data:
+    data = request.get_json() or {}
+    if 'name' not in data:
         return jsonify({'success': False, 'error': 'Name is required'})
-
-    new_name = data['name'].strip()
-
-    if len(new_name) < 2:
-        return jsonify({'success': False, 'error': 'Name must be at least 2 characters'})
-    if len(new_name) > 30:
-        return jsonify({'success': False, 'error': 'Name must be 30 characters or less'})
-
-    is_clean, error_msg = check_content_filter(new_name)
-    if not is_clean:
-        return jsonify({'success': False, 'error': 'Please choose an appropriate name'})
-
-    success = update_commander_name(g.user_id, new_name)
-
-    if success:
-        session.pop('_cmd', None)
-        session.modified = True
-        logger.info(f"✅ User {g.user_id} renamed captain to '{new_name}'")
-        return jsonify({'success': True, 'message': 'Captain renamed successfully', 'new_name': new_name})
-    else:
-        return jsonify({'success': False, 'error': 'Failed to rename captain'})
+    return jsonify(rename_captain_with_validation(g.user_id, data['name'], session))
 
 @app.route('/colony/command')
 @login_required
@@ -1094,39 +1023,22 @@ def api_aria_history():
 @app.route('/api/aria/chat', methods=['POST'])
 def api_aria_chat():
     """Chat with ARIA - supports streaming (SSE) when stream=true."""
-    data = request.get_json() or {}
-    message = data.get('message', '').strip()
-    if not message:
-        return jsonify({'success': False, 'error': 'No message provided'})
-
-    user_id = session.get('user_id')
-    is_authenticated = auth.is_authenticated()
-
-    # Load colony snapshot for authenticated users
-    aria_snapshot = None
-    if is_authenticated and user_id:
-        try:
-            aria_snapshot = load_colony_snapshot(user_id)
-        except Exception as e:
-            logger.warning(f"Failed to load ARIA snapshot: {e}")
-
-    user_context = _build_aria_user_context(user_id, is_authenticated,
-                                             data.get('page_context', {}), request.referrer)
-
-    if data.get('stream', False):
-        generator = handle_aria_chat_streaming(
-            message, data.get('history', []), user_context,
-            user_id, is_authenticated, aria_snapshot)
+    outcome = handle_aria_chat_request(
+        request.get_json() or {},
+        session.get('user_id'),
+        auth.is_authenticated(),
+        request.referrer,
+    )
+    if 'error' in outcome:
+        return jsonify({'success': False, 'error': outcome['error']})
+    if outcome['mode'] == 'stream':
         return Response(
-            stream_with_context(generator),
+            stream_with_context(outcome['generator']),
             mimetype='text/event-stream',
             headers={'Cache-Control': 'no-cache, no-store, must-revalidate',
                      'X-Accel-Buffering': 'no', 'Connection': 'keep-alive'}
         )
-
-    result = handle_aria_chat_sync(message, data.get('history', []), user_context,
-                                    user_id, is_authenticated, aria_snapshot)
-    return jsonify(result)
+    return jsonify(outcome['result'])
 
 
 @app.route('/api/aria/hint', methods=['GET'])
@@ -2268,32 +2180,13 @@ def pilgrimbot():
 @app.route('/api/pilgrimbot/chat', methods=['POST'])
 def api_pilgrimbot_chat():
     """Chat with PilgrimBot — streaming SSE response."""
+    from utilities.pilgrimbot_utils import handle_pilgrimbot_chat_request
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    if not session.get('_adm'):
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-
-    data = request.get_json() or {}
-    message = data.get('message', '').strip()
-    if not message:
-        return jsonify({'success': False, 'error': 'No message provided'})
-
-    chat_id = data.get('chat_id')
-    from utilities.pilgrimbot_utils import handle_chat_streaming, get_user_role
-    bug_mode = bool(data.get('bug_mode'))
-    # Cache user_role in session to avoid DB hit per message
-    user_role = session.get('_pb_role')
-    if not user_role:
-        user_role = get_user_role(real_user_id)
-        session['_pb_role'] = user_role
-
-    # PilgrimBot actions — detect and execute before streaming
-    from utilities.admin.pilgrimbot_actions import detect_and_execute_actions
-    action_context = detect_and_execute_actions(message, chat_id, real_user_id, auth)
-
-    image_url = data.get('image_url')
-    generator = handle_chat_streaming(message, chat_id, real_user_id, bug_mode=bug_mode, action_context=action_context, user_role=user_role, image_url=image_url)
+    outcome = handle_pilgrimbot_chat_request(request.get_json() or {}, real_user_id, session, auth)
+    if 'error' in outcome:
+        return jsonify({'success': False, 'error': outcome['error']}), outcome.get('status', 200)
     return Response(
-        stream_with_context(generator),
+        stream_with_context(outcome['generator']),
         mimetype='text/event-stream',
         headers={'Cache-Control': 'no-cache, no-store, must-revalidate',
                  'X-Accel-Buffering': 'no', 'Connection': 'keep-alive'}

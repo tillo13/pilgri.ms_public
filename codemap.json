@@ -1513,6 +1513,7 @@
       "generate_title — Generate a short title from the first user message.",
       "log_pilgrimbot_call — Log a PilgrimBot API call for performance tracking.",
       "read_local_file — Read a code file from the local codebase.",
+      "handle_pilgrimbot_chat_request — Validate + prep a PilgrimBot chat. Returns one of:",
       "handle_chat_streaming — Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."
     ],
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
@@ -1727,6 +1728,7 @@
       "get_user_commander — Get user's captain with name field (alias for ARIA context).",
       "set_primary_commander — Set a specific captain as primary",
       "update_commander_name — Update the captain name for a user (in both users table and replicate_assets).",
+      "rename_captain_with_validation — Validate + rename captain. Returns API-ready response dict.",
       "get_commander_stats — Get captain stats from most recent character_image WITH stats"
     ]
   },
@@ -2065,6 +2067,7 @@
   "utilities/aria/first_contact.py": {
     "description": "ARIA first-contact cinematic data — one-shot bond-reveal and replay.",
     "exports": [
+      "check_pending_first_contact — Before-request hook logic: returns True if caller should redirect to /aria-first-contact.",
       "build_first_contact_render_data — Prepare render data for the cinematic, completing the bond as a side effect.",
       "build_admin_preview_render_data — Admin preview of bond #3 — loads data without completing the bond.",
       "complete_bond_from_cinematic — Complete an ARIA bond after the First Contact cinematic.",
@@ -2082,6 +2085,7 @@
   "utilities/aria/handlers.py": {
     "description": "ARIA chat route handlers — streaming/sync wrappers called directly from app.py routes.",
     "exports": [
+      "handle_aria_chat_request — Validate input, load snapshot+context, return streaming generator or sync result.",
       "handle_aria_chat_streaming — Handle streaming ARIA chat. Returns a generator yielding SSE chunks.",
       "handle_aria_chat_sync — Handle non-streaming ARIA chat. Returns a response dict.",
       "get_aria_album_data — Fetch all ARIA photo journal snapshots for a user."
@@ -2760,7 +2764,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2838,7 +2842,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

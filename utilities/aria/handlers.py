@@ -64,6 +64,40 @@ def _build_aria_user_context(user_id, is_authenticated, page_context, referrer=N
     return context
 
 
+def handle_aria_chat_request(data: Dict, user_id: Optional[int], is_authenticated: bool, referrer: Optional[str]) -> Dict[str, Any]:
+    """Validate input, load snapshot+context, return streaming generator or sync result.
+
+    Returns one of:
+      {'error': str}                          — validation failed
+      {'mode': 'stream', 'generator': gen}    — caller wraps in SSE Response
+      {'mode': 'sync',   'result': dict}      — caller jsonifies
+    """
+    message = (data.get('message') or '').strip()
+    if not message:
+        return {'error': 'No message provided'}
+
+    aria_snapshot = None
+    if is_authenticated and user_id:
+        try:
+            from utilities.aria.snapshot import load_colony_snapshot
+            aria_snapshot = load_colony_snapshot(user_id)
+        except Exception as e:
+            logger.warning(f"Failed to load ARIA snapshot: {e}")
+
+    user_context = _build_aria_user_context(user_id, is_authenticated,
+                                             data.get('page_context', {}), referrer)
+    history = data.get('history', [])
+
+    if data.get('stream', False):
+        gen = handle_aria_chat_streaming(message, history, user_context,
+                                          user_id, is_authenticated, aria_snapshot)
+        return {'mode': 'stream', 'generator': gen}
+
+    result = handle_aria_chat_sync(message, history, user_context,
+                                    user_id, is_authenticated, aria_snapshot)
+    return {'mode': 'sync', 'result': result}
+
+
 def handle_aria_chat_streaming(message, history, user_context, user_id, is_authenticated, aria_snapshot):
     """Handle streaming ARIA chat. Returns a generator yielding SSE chunks."""
     import json as json_lib

@@ -786,6 +786,37 @@ def _sse(data_dict):
     return f"data: {json.dumps(data_dict)}\n\n" + _SSE_PAD
 
 
+def handle_pilgrimbot_chat_request(data, real_user_id, flask_session, auth):
+    """Validate + prep a PilgrimBot chat. Returns one of:
+      {'error': str, 'status': int}           — auth/validation failed
+      {'generator': gen}                      — caller wraps in SSE Response
+    """
+    if not flask_session.get('_adm'):
+        return {'error': 'Unauthorized', 'status': 403}
+
+    message = (data.get('message') or '').strip()
+    if not message:
+        return {'error': 'No message provided', 'status': 200}
+
+    chat_id = data.get('chat_id')
+    bug_mode = bool(data.get('bug_mode'))
+
+    user_role = flask_session.get('_pb_role')
+    if not user_role:
+        user_role = get_user_role(real_user_id)
+        flask_session['_pb_role'] = user_role
+
+    from utilities.admin.pilgrimbot_actions import detect_and_execute_actions
+    action_context = detect_and_execute_actions(message, chat_id, real_user_id, auth)
+
+    gen = handle_chat_streaming(
+        message, chat_id, real_user_id,
+        bug_mode=bug_mode, action_context=action_context,
+        user_role=user_role, image_url=data.get('image_url'),
+    )
+    return {'generator': gen}
+
+
 def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=False, action_context="", user_role="captain", image_url=None):
     """Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."""
     ensure_pilgrimbot_table()

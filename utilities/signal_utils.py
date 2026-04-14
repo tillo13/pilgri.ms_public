@@ -1013,6 +1013,30 @@ def generate_blockchain_message(site_type: str, site_code: str, commander_name: 
         return f"ECHO://{site_code}//{rank_label}//FINDER:{commander_name}//SOL:{sol}"
 
 
+def get_signal_page_render_data(user_id) -> Dict:
+    """Full kwargs for rendering signal.html. Includes bonds lookup when user_id is given."""
+    signal_data = get_signal_page_data()
+    closest_pilgrim = get_closest_pilgrim_to_origin(origin_sites=signal_data.get('origin_sites'))
+
+    bond_fragment_hint = None
+    signal_bonds = []
+    if user_id:
+        try:
+            from utilities.aria.bonds import get_bonds_for_display
+            signal_bonds = get_bonds_for_display(user_id)
+            if signal_bonds:
+                bond_fragment_hint = signal_bonds[0]['bond_tx_hash']
+        except Exception:
+            pass
+
+    return {
+        'closest_pilgrim': closest_pilgrim,
+        'bond_fragment_hint': bond_fragment_hint,
+        'signal_bonds': signal_bonds,
+        **signal_data,
+    }
+
+
 def get_closest_pilgrim_to_origin(origin_sites: List[Dict] = None) -> Optional[Dict]:
     """
     Find the commander who got closest to any unclaimed Origin Site.

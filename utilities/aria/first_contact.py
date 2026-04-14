@@ -8,6 +8,31 @@ from utilities.postgres.core import db_cursor
 logger = logging.getLogger(__name__)
 
 
+def check_pending_first_contact(path: str, method: str, is_authenticated: bool, flask_session) -> bool:
+    """Before-request hook logic: returns True if caller should redirect to /aria-first-contact.
+
+    Mutates session to cache "all shown" when no pending bond exists.
+    """
+    if not is_authenticated or method != 'GET':
+        return False
+    if path.startswith(('/static/', '/api/', '/admin/', '/aria-first-contact', '/auth')):
+        return False
+    if flask_session.get('_fc_shown_all'):
+        return False
+    user_id = flask_session.get('user_id')
+    if not user_id:
+        return False
+    try:
+        from utilities.aria.bonds import get_pending_first_contact
+        if get_pending_first_contact(user_id):
+            return True
+        flask_session['_fc_shown_all'] = True
+        flask_session.modified = True
+    except Exception as e:
+        logger.warning(f"First contact check failed: {e}")
+    return False
+
+
 def _build_render_payload(bond, bond_number, sol, replay=False):
     """Shared render-kwargs for the first-contact template."""
     from utilities.aria.bonds import _get_commander_name

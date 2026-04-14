@@ -297,6 +297,28 @@ def update_commander_name(user_id: int, new_name: str) -> bool:
         return False
 
 
+def rename_captain_with_validation(user_id: int, new_name: str, flask_session) -> dict:
+    """Validate + rename captain. Returns API-ready response dict."""
+    from utilities.captains_log_utils import check_content_filter
+    new_name = (new_name or '').strip()
+    if len(new_name) < 2:
+        return {'success': False, 'error': 'Name must be at least 2 characters'}
+    if len(new_name) > 30:
+        return {'success': False, 'error': 'Name must be 30 characters or less'}
+
+    is_clean, _ = check_content_filter(new_name)
+    if not is_clean:
+        return {'success': False, 'error': 'Please choose an appropriate name'}
+
+    if not update_commander_name(user_id, new_name):
+        return {'success': False, 'error': 'Failed to rename captain'}
+
+    flask_session.pop('_cmd', None)
+    flask_session.modified = True
+    logger.info(f"✅ User {user_id} renamed captain to '{new_name}'")
+    return {'success': True, 'message': 'Captain renamed successfully', 'new_name': new_name}
+
+
 def get_commander_stats(user_id: int) -> Optional[Dict]:
     """Get captain stats from most recent character_image WITH stats"""
     try:
