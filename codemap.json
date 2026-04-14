@@ -1260,24 +1260,7 @@
     ]
   },
   "utilities/aria_utils.py": {
-    "description": "A.R.I.A. - The Colony's Ancient AI Companion",
-    "exports": [
-      "get_aria_system_prompt — Generate ARIA's system prompt with optional user context.",
-      "get_aria_response — Get a response from ARIA for a user message.",
-      "stream_aria_response — Stream a response from ARIA for a user message (SSE format).",
-      "get_aria_greeting — Get ARIA's initial greeting when the chat opens.",
-      "get_random_spontaneous_message — Get a random spontaneous message from ARIA.",
-      "get_aria_widget_data — Get all data needed to render the ARIA chat widget.",
-      "save_aria_message — Save a single ARIA conversation message to the database.",
-      "get_aria_conversation_history — Retrieve recent ARIA conversation history for a user.",
-      "get_aria_memory_summary — Generate a brief summary of past conversations for ARIA's context.",
-      "clear_aria_conversation_history — Clear all ARIA conversation history for a user (the \"forget\" option).",
-      "clear_all_aria_conversations — Clear ALL ARIA conversation history for ALL users.",
-      "get_aria_relationship_tier — Calculate relationship tier based on account age, activity, and chat history.",
-      "get_spatial_hints — Calculate nearby interesting things for ARIA to hint about mysteriously.",
-      "check_for_aria_animation — Check if ARIA should show an animation based on conversation context.",
-      "record_aria_animation — Record that an animation was shown to track the once-per-day limit."
-    ],
+    "description": "utilities.aria_utils — thin re-export shim.",
     "keywords": "ARIA chat, colony snapshot, AI assistant, personality tier, relationship"
   },
   "utilities/captains_log_utils.py": {
@@ -2110,14 +2093,68 @@
   "utilities/aria/__init__.py": {
     "description": "utilities.aria — ARIA orb chat, greetings, bonds, and first-contact cinematic."
   },
+  "utilities/aria/animations.py": {
+    "description": "ARIA animation triggers and contextual hints — weekly animation choice + page-aware hint text.",
+    "exports": [
+      "check_for_aria_animation — Check if ARIA should show an animation based on conversation context.",
+      "record_aria_animation — Record that an animation was shown to track the once-per-day limit.",
+      "get_contextual_hint — Generate a contextual hint for the user based on their current game state."
+    ]
+  },
+  "utilities/aria/chat.py": {
+    "description": "ARIA chat — sync `get_aria_response` and streaming `stream_aria_response`.",
+    "exports": [
+      "get_aria_response — Get a response from ARIA for a user message.",
+      "stream_aria_response — Stream a response from ARIA for a user message (SSE format)."
+    ]
+  },
   "utilities/aria/config.py": {
     "description": "ARIA constants — name/image/animations, personality, backstory, game knowledge, forbidden topics."
+  },
+  "utilities/aria/conversation.py": {
+    "description": "ARIA conversation persistence — save/retrieve/summarize/clear chat history.",
+    "exports": [
+      "save_aria_message — Save a single ARIA conversation message to the database.",
+      "get_aria_conversation_history — Retrieve recent ARIA conversation history for a user.",
+      "get_aria_memory_summary — Generate a brief summary of past conversations for ARIA's context.",
+      "clear_aria_conversation_history — Clear all ARIA conversation history for a user (the \"forget\" option).",
+      "clear_all_aria_conversations — Clear ALL ARIA conversation history for ALL users."
+    ]
   },
   "utilities/aria/first_contact.py": {
     "description": "ARIA first-contact cinematic data — one-shot bond-reveal and replay.",
     "exports": [
       "build_first_contact_render_data — Prepare render data for the cinematic, completing the bond as a side effect.",
       "build_replay_render_data — Prepare render data for replay of an existing bond, or 'home' to redirect."
+    ]
+  },
+  "utilities/aria/greetings.py": {
+    "description": "ARIA greetings and widget data — context-sensitive first messages + spontaneous ambient lines.",
+    "exports": [
+      "get_aria_greeting — Get ARIA's initial greeting when the chat opens.",
+      "get_random_spontaneous_message — Get a random spontaneous message from ARIA.",
+      "get_aria_widget_data — Get all data needed to render the ARIA chat widget."
+    ]
+  },
+  "utilities/aria/handlers.py": {
+    "description": "ARIA chat route handlers — streaming/sync wrappers called directly from app.py routes.",
+    "exports": [
+      "handle_aria_chat_streaming — Handle streaming ARIA chat. Returns a generator yielding SSE chunks.",
+      "handle_aria_chat_sync — Handle non-streaming ARIA chat. Returns a response dict.",
+      "get_aria_album_data — Fetch all ARIA photo journal snapshots for a user."
+    ]
+  },
+  "utilities/aria/prompts.py": {
+    "description": "ARIA system-prompt builders — friendly-tier vs mysterious-tier prompt composition.",
+    "exports": [
+      "get_aria_system_prompt — Generate ARIA's system prompt with optional user context."
+    ]
+  },
+  "utilities/aria/relationship.py": {
+    "description": "ARIA relationship tiers + spatial hints — personalization based on captain tenure and map position.",
+    "exports": [
+      "get_aria_relationship_tier — Calculate relationship tier based on account age, activity, and chat history.",
+      "get_spatial_hints — Calculate nearby interesting things for ARIA to hint about mysteriously."
     ]
   },
   "utilities/aria/snapshot.py": {
@@ -2802,7 +2839,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

@@ -7,6 +7,8 @@ ARIA's knowledge of the captain's colony state for every chat message.
 import logging
 from typing import Dict, Any, Optional, List
 
+from utilities.aria.relationship import get_aria_relationship_tier, get_spatial_hints
+
 logger = logging.getLogger(__name__)
 
 def analyze_playstyle(user_id: int) -> dict:
@@ -189,10 +191,6 @@ def load_colony_snapshot(user_id: int) -> dict:
     }
 
     try:
-        # Lazy-imported from aria_utils to avoid circular dependency
-        # (aria_utils star-re-exports from this module).
-        from utilities.aria_utils import get_aria_relationship_tier, get_spatial_hints
-
         # Get relationship tier first (includes account age, expedition count)
         tier_info = get_aria_relationship_tier(user_id)
         snapshot['tier'] = tier_info
