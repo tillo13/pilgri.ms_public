@@ -906,3 +906,93 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
         'bio_bonus_count': bio_bonus_count,
         'sv_awarded': sv_bonus
     }
+
+
+# ============================================================================
+# EXPEDITION REWARD ROLL
+# Moved from expedition_utils.py — this is discovery math, not expedition lifecycle.
+# ============================================================================
+
+_DISCOVERY_LOCATION_MULTIPLIERS = {
+    'Crater': 1.3, 'Volcano': 1.1, 'Mons': 1.6, 'Planitia': 1.0,
+    'Vallis': 1.2, 'Canyon': 0.9, 'Chasma': 1.4, 'Patera': 1.2, 'default': 1.0
+}
+
+
+def calculate_expedition_discovery(expedition: dict) -> dict:
+    """Roll what the captain discovered at destination (reward + narrative)."""
+    base_reward = float(expedition['fuel_cost_eth']) * 2
+    distance_km = float(expedition['distance_km'])
+    exploration = expedition.get('commander_exploration', 50)
+    exploration_bonus = (exploration / 90.0) * 0.6
+    strategy = expedition.get('commander_strategy', 50)
+    strategy_factor = 0.5 + (strategy / 90.0) * 0.5
+    leadership = expedition.get('commander_leadership', 50)
+    leadership_bonus = (leadership / 90.0) * 0.2
+    charisma = expedition.get('commander_charisma', 50)
+    charisma_bonus = (charisma / 90.0) * 0.3
+
+    distance_bonus = min(distance_km / 400.0, 4.0)
+
+    dest_type = expedition.get('destination_type', '') or ''
+    location_mult = 1.0
+    for loc_type, mult in _DISCOVERY_LOCATION_MULTIPLIERS.items():
+        if loc_type.lower() in dest_type.lower():
+            location_mult = mult
+            break
+
+    variance = 0.5 * strategy_factor
+    luck = random.uniform(1.0 - variance, 1.0 + variance)
+
+    total_reward = (
+        base_reward *
+        (1 + exploration_bonus) *
+        (1 + leadership_bonus) *
+        (1 + charisma_bonus) *
+        distance_bonus *
+        location_mult *
+        luck
+    )
+
+    if exploration > 70 and luck > 1.2:
+        discovery_type = 'exceptional_find'
+        quality = "exceptional"
+        quality_desc = "Your commander's expertise led to an extraordinary discovery"
+    elif exploration < 40 or luck < 0.8:
+        discovery_type = 'modest_deposit'
+        quality = "modest"
+        quality_desc = "A standard deposit was located"
+    else:
+        discovery_type = 'solid_discovery'
+        quality = "valuable"
+        quality_desc = "Your team located a promising cache"
+
+    message = (
+        f"{quality_desc} at {expedition['destination_name']}. "
+        f"Distance bonus: {distance_bonus:.1f}×. "
+        f"Commander Exploration ({exploration}) yielded {exploration_bonus*100:.0f}% additional resources. "
+    )
+    if charisma > 40:
+        message += f"Charisma ({charisma}) improved extraction by {charisma_bonus*100:.0f}%. "
+    if strategy > 60:
+        message += "Strategic planning minimized hazards. "
+    if leadership > 60:
+        message += "Strong leadership maintained team morale. "
+    message += f"Total yield: {total_reward * 10000000:.1f} Sepolia from {expedition['destination_type']}."
+
+    return {
+        'sepolia_earned': total_reward,
+        'discovery_type': discovery_type,
+        'discovery_quality': quality,
+        'message': message,
+        'breakdown': {
+            'base_reward': base_reward,
+            'exploration_bonus': exploration_bonus,
+            'leadership_bonus': leadership_bonus,
+            'charisma_bonus': charisma_bonus,
+            'charisma_stat': charisma,
+            'distance_bonus': distance_bonus,
+            'location_mult': location_mult,
+            'luck_factor': luck,
+        }
+    }

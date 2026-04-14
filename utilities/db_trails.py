@@ -12,6 +12,91 @@ _trail_schema_ensured = False
 
 
 # ============================================================================
+# TRAIL LEVEL / SPEED PRIMITIVES
+# Moved from expedition_utils.py — these are trail-system fundamentals that
+# expedition code reads. Keeping them here avoids the old circular import.
+# ============================================================================
+
+TRAIL_LEVEL_THRESHOLDS = [
+    (1, 'marked'),       # 1 completed trip
+    (3, 'cached'),       # 3 completed trips
+    (7, 'established'),  # 7 completed trips
+    (15, 'highway'),     # 15 completed trips
+]
+
+TRAIL_SPEED_MULTIPLIERS = {
+    'none': 1.0,
+    'marked': 1.25,
+    'cached': 1.5,
+    'established': 2.0,
+    'highway': 3.0,
+}
+
+
+def get_trail_level_from_count(trip_count: int) -> str:
+    """Convert trip count to trail level name."""
+    level = 'none'
+    for threshold, name in TRAIL_LEVEL_THRESHOLDS:
+        if trip_count >= threshold:
+            level = name
+    return level
+
+
+def calculate_trail_speed_mult_km(km_built: float, total_distance_km: float) -> float:
+    """
+    Trail speed multiplier via km-based proportional progress.
+    Formula: 1.0 + (km_built / total_distance_km) * 0.5
+    (0% = 1.0x, 50% = 1.25x, 100% = 1.5x)
+    """
+    if not total_distance_km or total_distance_km <= 0:
+        return 1.0
+    ratio = min(1.0, (km_built or 0) / total_distance_km)
+    return 1.0 + ratio * 0.5
+
+
+def get_trail_speed_mult_for_destination(user_id: int, destination_name: str, distance_km: float = None) -> dict:
+    """
+    Trail speed multiplier for a destination, preferring km-based system when
+    total_distance_km is known; falls back to the legacy threshold system.
+    """
+    from utilities.postgres_utils import get_user_trail
+    trail_data = get_user_trail(user_id, destination_name)
+
+    km_built = trail_data.get('km_built') or 0
+    total_distance = trail_data.get('total_distance_km')
+    if not total_distance and distance_km:
+        total_distance = distance_km
+
+    if total_distance and total_distance > 0:
+        speed_mult = calculate_trail_speed_mult_km(km_built, total_distance)
+        percent = round((km_built / total_distance) * 100, 1)
+        return {
+            'speed_mult': round(speed_mult, 3),
+            'km_built': km_built,
+            'total_distance_km': total_distance,
+            'percent_complete': percent,
+            'using_km_system': True,
+            'trail_level': trail_data.get('trail_level', 'none'),
+            'captain_km': trail_data.get('captain_km', 0),
+            'scientist_km': trail_data.get('scientist_km', 0),
+            'aria_km': trail_data.get('aria_km', 0),
+        }
+
+    trail_level = trail_data.get('trail_level', 'none')
+    return {
+        'speed_mult': TRAIL_SPEED_MULTIPLIERS.get(trail_level, 1.0),
+        'km_built': 0,
+        'total_distance_km': distance_km or 0,
+        'percent_complete': 0,
+        'using_km_system': False,
+        'trail_level': trail_level,
+        'captain_km': 0,
+        'scientist_km': 0,
+        'aria_km': 0,
+    }
+
+
+# ============================================================================
 # TRAIL SEGMENTS: Track repeated trips to build speed bonuses
 # ============================================================================
 
@@ -92,7 +177,6 @@ def get_user_trail(user_id: int, destination_name: str, from_landmark: str = 'HO
 
 def increment_user_trail(user_id: int, destination_name: str, from_landmark: str = 'HOME') -> dict:
     """Increment trip count for a route segment and update trail level."""
-    from utilities.expedition_utils import get_trail_level_from_count
     try:
         ensure_trail_segments_table()
         with db_cursor(commit=True) as cur:
@@ -831,7 +915,6 @@ def consume_discovery_for_trail(user_id: int, discovery_id: int) -> dict:
 def use_aria_resonance(user_id: int, destination_name: str) -> dict:
     """Use ARIA's daily resonance ability to boost a trail by +2"""
     from datetime import datetime
-    from utilities.expedition_utils import get_trail_level_from_count
     try:
         ensure_crew_missions_schema()
         now = datetime.utcnow()

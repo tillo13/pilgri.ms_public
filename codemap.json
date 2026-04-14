@@ -1455,6 +1455,9 @@
   "utilities/db_trails.py": {
     "description": "Trail segments, crew missions, and ARIA skill database operations.",
     "exports": [
+      "get_trail_level_from_count — Convert trip count to trail level name.",
+      "calculate_trail_speed_mult_km — Trail speed multiplier via km-based proportional progress.",
+      "get_trail_speed_mult_for_destination — Trail speed multiplier for a destination, preferring km-based system when",
       "ensure_trail_segments_table — Create trail_segments table if it doesn't exist, with chain routing support.",
       "get_user_trail — Get trail data for a specific route segment, including km-based progress",
       "increment_user_trail — Increment trip count for a route segment and update trail level.",
@@ -1466,10 +1469,7 @@
       "add_aria_skill_xp — Add XP to an ARIA skill. Levels up automatically.",
       "ensure_crew_missions_schema — Add crew mission columns to users table and create missions log table",
       "get_crew_mission_status — Get current mission status for captain, scientist, and ARIA",
-      "start_crew_mission — Start a trail building mission for captain, scientist, or ARIA.",
-      "complete_crew_mission — Complete a trail building mission and award XP + km built",
-      "get_trail_consumable_discoveries — Get claimed discoveries that can be consumed for trail building bonuses.",
-      "consume_discovery_for_trail — Consume a discovery item for trail building bonus."
+      "start_crew_mission — Start a trail building mission for captain, scientist, or ARIA."
     ]
   },
   "utilities/db_users.py": {
@@ -1540,7 +1540,8 @@
       "calculate_enhanced_item_value — Calculate enhanced value with captain exploration + scientist analysis + distance bonuses",
       "generate_expedition_discoveries — Generate discoveries with GEOGRAPHIC FILTERING and CARGO LIMITS.",
       "analyze_discovery — Analyze a discovery to extract embedded Sepolia shards.",
-      "shard_all_discoveries — Bulk extract all common and uncommon discoveries (Shard It All)."
+      "shard_all_discoveries — Bulk extract all common and uncommon discoveries (Shard It All).",
+      "calculate_expedition_discovery — Roll what the captain discovered at destination (reward + narrative)."
     ],
     "keywords": "discovery analysis, extraction, rarity, progressive weights, shard payout"
   },
@@ -1560,24 +1561,7 @@
     ]
   },
   "utilities/expedition_utils.py": {
-    "description": "Expedition System - Mars Surface Exploration with GEOGRAPHIC FILTERING",
-    "exports": [
-      "get_trail_level_from_count — Convert trip count to trail level name",
-      "calculate_trail_speed_mult_km — Calculate trail speed multiplier using the new km-based proportional system.",
-      "get_trail_speed_mult_for_destination — Get trail speed multiplier for a destination, using km-based system if available.",
-      "calculate_segmented_travel_time — Calculate travel time using trail segment compounding.",
-      "calculate_speed_multiplier — Calculate total speed multiplier for expedition travel.",
-      "calculate_travel_time — Calculate travel time for an expedition given distance and speed.",
-      "estimate_travel_days — Quick estimate of travel days for a destination.",
-      "is_item_geographically_valid — Check if discovery item can spawn on this expedition path",
-      "calculate_expedition_cost — Calculate expedition cost and travel time.",
-      "generate_expedition_narrative — Generate narrative explanation of expedition",
-      "sort_landmarks_by_cost — Calculate cost for each landmark and sort cheapest-first",
-      "get_expedition_cost_preview — Calculate full expedition cost preview including gas and atmospheric fees.",
-      "get_expedition_preview — Comprehensive pre-launch preview for the expedition modal.",
-      "launch_expedition — Launch expedition - handles all business logic:",
-      "recall_expedition — Recall a vehicle mid-expedition. Vehicle turns around and heads back."
-    ],
+    "description": "Expedition System — thin re-export shim.",
     "keywords": "expedition speed, vehicle, travel time, trail, distance, cost, discoveries"
   },
   "utilities/flux_utils.py": {
@@ -1969,6 +1953,71 @@
       "extract_thumbnail — Extract a single frame from an MP4 as a JPEG thumbnail, optionally with a centered play button overlay.",
       "upload_video_to_gcs — Upload an MP4 video to GCS and return the public URL.",
       "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL."
+    ]
+  },
+  "utilities/expeditions/__init__.py": {
+    "description": "utilities.expeditions — expedition subsystem."
+  },
+  "utilities/expeditions/config.py": {
+    "description": "utilities.expeditions.config — data-only tuning values for the expedition subsystem."
+  },
+  "utilities/expeditions/cost.py": {
+    "description": "Expedition pricing engine: cost calculation, narrative, and landmark sorting.",
+    "exports": [
+      "calculate_expedition_cost — Expedition cost + travel time.",
+      "generate_expedition_narrative — Narrative explanation of an expedition's cost/speed breakdown.",
+      "sort_landmarks_by_cost — Enrich each landmark with its expedition pricing, sort cheapest-first."
+    ]
+  },
+  "utilities/expeditions/lifecycle.py": {
+    "description": "Expedition lifecycle: launch, recall, complete, claim, discovery progress.",
+    "exports": [
+      "launch_expedition — Launch expedition - handles all business logic:",
+      "recall_expedition — Recall a vehicle mid-expedition. Vehicle turns around and heads back.",
+      "complete_expedition_if_ready — Check if expedition is complete and process rewards if ready",
+      "get_expedition_discovery_progress — Get expedition discoveries with current progress unlocking",
+      "claim_all_discoveries — Claim all unlocked discoveries for user (optionally for specific expedition).",
+      "get_discovery_progress_formatted — Get expedition discovery progress with frontend formatting.",
+      "start_expedition_from_request — Start expedition from request data.",
+      "check_signal_events — Check for Shard Network events after expedition completion:"
+    ]
+  },
+  "utilities/expeditions/page_data.py": {
+    "description": "Expedition page data aggregator for the colony/expeditions page.",
+    "exports": [
+      "get_expeditions_page_data — Get all data needed for the colony/expeditions page."
+    ]
+  },
+  "utilities/expeditions/preview.py": {
+    "description": "Expedition pre-launch previews: cost modal, route modal, shard estimate.",
+    "exports": [
+      "get_expedition_cost_preview — Calculate full expedition cost preview including gas and atmospheric fees.",
+      "get_expedition_preview — Comprehensive pre-launch preview for the expedition modal.",
+      "estimate_expedition_return — Pre-launch estimate of shard return range (display units). Same formula as calculate_expedition_discovery minus luck.",
+      "get_expedition_cost_preview_formatted — Get expedition cost preview with UI formatting."
+    ]
+  },
+  "utilities/expeditions/terrain.py": {
+    "description": "Terrain physics + travel-time math for expeditions.",
+    "exports": [
+      "calculate_speed_multiplier — Total speed multiplier for expedition travel.",
+      "calculate_travel_time — Travel time for an expedition given distance and speed.",
+      "estimate_travel_days — Quick estimate of travel days. Used for rough display before full pricing.",
+      "get_terrain_info — Resolve a destination type string to its terrain modifier dict.",
+      "is_item_geographically_valid — Check if a discovery item can spawn on this expedition path."
+    ]
+  },
+  "utilities/expeditions/trails.py": {
+    "description": "Trail-building crew mission orchestration.",
+    "exports": [
+      "handle_trail_build_request — Handle a trail build request. Returns result dict for jsonify.",
+      "get_trail_consumables_data — Get available consumables and scanner bonus for trail building."
+    ]
+  },
+  "utilities/expeditions/travel.py": {
+    "description": "Multi-segment travel time for expeditions.",
+    "exports": [
+      "calculate_segmented_travel_time — Travel time using trail-segment compounding."
     ]
   },
   "static/css/admin-bugs.css": {
@@ -2553,7 +2602,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2566,7 +2615,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -2631,7 +2680,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
