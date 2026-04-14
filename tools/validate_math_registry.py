@@ -29,7 +29,7 @@ def validate():
 
     # Check expedition constants
     try:
-        from utilities.expedition_utils import BASE_SPEED_KM_PER_HOUR, BASE_COST_PER_KM, LIFE_SUPPORT_PER_DAY, EVA_HOURS_PER_DAY
+        from utilities.expeditions.config import BASE_SPEED_KM_PER_HOUR, BASE_COST_PER_KM, LIFE_SUPPORT_PER_DAY, EVA_HOURS_PER_DAY
         checks = {
             'BASE_SPEED_KM_PER_HOUR': (BASE_SPEED_KM_PER_HOUR, constants.get('BASE_SPEED_KM_PER_HOUR', {}).get('value')),
             'BASE_COST_PER_KM': (BASE_COST_PER_KM, constants.get('BASE_COST_PER_KM', {}).get('value')),
