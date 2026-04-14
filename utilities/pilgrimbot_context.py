@@ -12,6 +12,64 @@ from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
 
+
+BRAINSTORM_TITLES = {
+    'signal': 'Signal & Endgame — Origin Sites, Decoder Terminal, Lost Sites',
+    'tech-tree': 'Tech Tree — research branches, progression, unlocks',
+    'trail-network': 'Trail Network — crew trails, speed caches, path building',
+    'icon-redesign': 'Icon Redesign — UI icons, 10-level upgrade visuals',
+    'aria-meetings': 'ARIA Meetings — bond system, multiplicity, cross-colony',
+    'sv-economy': 'SV Economy — science value generation & spending',
+    'progression': 'Progression Tree — Lab + Depot + Infrastructure',
+}
+
+
+def build_prefill_context(brainstorm_page, bug_id):
+    """Build the chat prefill context for the /pilgrimbot page based on
+    ?brainstorm=<page> and ?bug=<id> query params.
+
+    Returns: (combined_context, display_name, bug_record_or_none, brainstorm_page).
+    """
+    brainstorm_context = ''
+    brainstorm_name = ''
+    if brainstorm_page:
+        brainstorm_name = BRAINSTORM_TITLES.get(brainstorm_page, brainstorm_page)
+        brainstorm_context = (
+            f"We're brainstorming: {brainstorm_name}\n"
+            f"Brainstorm page: /brainstorm/{brainstorm_page}\n\n"
+            f"Help brainstorm ideas, challenge proposals, suggest implementation, or explore narrative possibilities.\n"
+            f"When actionable bugs or features surface, offer to create them in the bug tracker.\n"
+            f"Reference the brainstorm page URL in any bugs you suggest.")
+
+    bug_context = ''
+    bug = None
+    if bug_id:
+        from utilities.postgres.bugs import get_bug_by_id, search_bugs
+        bug = get_bug_by_id(int(bug_id))
+        if bug:
+            words = bug['name'].split()[:3]
+            related = []
+            for w in words:
+                if len(w) > 3:
+                    related.extend(search_bugs(w))
+            seen = set()
+            for r in related:
+                if r['id'] != bug['id'] and r['id'] not in seen:
+                    seen.add(r['id'])
+                if len(seen) >= 5:
+                    break
+            bug_context = (f"Give me a quick summary of this bug — what it is, current status, and your initial take:\n\n"
+                f"Bug #{bug['id']}: {bug['name']}\n"
+                f"Status: {bug['status']} | Priority: {bug['priority']} | Type: {bug['type']}\n"
+                f"Description: {bug.get('description','')}\n"
+                f"QA Notes: {bug.get('qa_notes','')}\n\n"
+                f"Keep it brief — just the essentials. I'll ask follow-up questions if I need more.")
+
+    combined_context = brainstorm_context or bug_context
+    bug_name = bug['name'] if bug else ''
+    display_name = bug_name or brainstorm_name
+    return combined_context, display_name, bug, brainstorm_page
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

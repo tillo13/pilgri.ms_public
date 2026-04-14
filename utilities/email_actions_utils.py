@@ -326,6 +326,58 @@ def is_token_used(token_nonce: str) -> bool:
     return is_action_token_used(token_nonce)
 
 
+def handle_email_action_token(token: str, secret_key: str) -> Tuple[Dict, int]:
+    """Full email-action flow: validate token, guard replay, execute, mark used.
+    Returns (template_context, http_status) — caller just renders the template.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    from utilities.postgres.shop import ensure_action_tokens_table
+    ensure_action_tokens_table()
+
+    valid, payload, error = validate_action_token(token, secret_key)
+    if not valid:
+        logger.warning(f"❌ Invalid email action token: {error}")
+        return {
+            'success': False,
+            'message': f"Invalid or expired link: {error}",
+            'action': None,
+        }, 400
+
+    user_id = payload['user_id']
+    action = payload['action']
+    nonce = payload['nonce']
+
+    if is_token_used(nonce):
+        logger.warning(f"❌ Email action token already used: {nonce[:8]}...")
+        return {
+            'success': False,
+            'message': "This link has already been used.",
+            'action': action,
+        }, 400
+
+    logger.info(f"📧 Executing email action: {action} for user {user_id}")
+    result = execute_action(action, user_id)
+    mark_token_used(nonce, user_id, action)
+
+    if result.get('success'):
+        logger.info(f"✅ Email action success: {result.get('message')}")
+        return {
+            'success': True,
+            'message': result.get('message', 'Action completed!'),
+            'action': action,
+            'result': result,
+        }, 200
+
+    logger.error(f"❌ Email action failed: {result.get('error')}")
+    return {
+        'success': False,
+        'message': f"Action failed: {result.get('error', 'Unknown error')}",
+        'action': action,
+    }, 500
+
+
 # ============================================================================
 # EMAIL HELPERS - Generate action buttons for emails
 # ============================================================================

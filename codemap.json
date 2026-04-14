@@ -1312,6 +1312,7 @@
       "execute_action — Execute an action for a user.",
       "mark_token_used — Mark a token as used in the database.",
       "is_token_used — Check if a token has already been used.",
+      "handle_email_action_token — Full email-action flow: validate token, guard replay, execute, mark used.",
       "generate_email_action_buttons — Generate HTML/text action buttons for email based on what's pending."
     ]
   },
@@ -1483,6 +1484,7 @@
   "utilities/pilgrimbot_context.py": {
     "description": "PilgrimBot context loading — registries, file search, and dynamic context.",
     "exports": [
+      "build_prefill_context — Build the chat prefill context for the /pilgrimbot page based on",
       "load_codemap — Load codemap.json from the local project. Cached after first load.",
       "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
       "load_endgame_registry — Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system.",
@@ -1830,6 +1832,7 @@
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
       "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
+      "start_build_with_name_prefetch — Full robot-build kickoff: validate lab level, pick sources, start build,",
       "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —",
       "get_robot_page_data — Bundle everything the Robot tab needs in one call. Speed-conscious:"
     ]
@@ -1863,6 +1866,7 @@
       "get_passive_sv — Get user's accumulated passive Science Value.",
       "assign_scientist_to_user — Assign a scientist to a user. If no key provided, assign randomly.",
       "reassign_scientist — Reassign a user's scientist. Returns success/error dict.",
+      "reassign_scientist_flow — Full scientist-swap flow: validate, auto-claim pending shards + SV,",
       "get_user_scientist — Get the scientist assigned to a user",
       "upsert_user — Create or update user record from Google OAuth data",
       "get_user_by_id — Get basic user info by ID.",
@@ -1870,8 +1874,7 @@
       "update_user_activity — Update last_meaningful_activity_at for a user. Called on purchases, expeditions, claims, harvests, builds.",
       "get_user_email_info — Get user's email and name for notifications",
       "hydrate_user_session — SINGLE QUERY HYDRATION: Fetch ALL user data needed for session in ONE query.",
-      "ensure_research_columns — Ensure research_points and stat_bonuses columns exist in users table",
-      "get_user_research_data — Get user's research points and stat bonuses"
+      "ensure_research_columns — Ensure research_points and stat_bonuses columns exist in users table"
     ]
   },
   "utilities/postgres/wallets.py": {
@@ -1943,6 +1946,13 @@
       "calculate_expedition_cost — Expedition cost + travel time.",
       "generate_expedition_narrative — Narrative explanation of an expedition's cost/speed breakdown.",
       "sort_landmarks_by_cost — Enrich each landmark with its expedition pricing, sort cheapest-first."
+    ]
+  },
+  "utilities/expeditions/formatters.py": {
+    "description": "Expedition JSON formatters — Decimal/date → plain types for API responses.",
+    "exports": [
+      "get_expedition_history_payload — Full payload for /api/expeditions/history — fetch + format.",
+      "get_expedition_items_payload — Full payload for /api/expeditions/<id>/items — fetch + format."
     ]
   },
   "utilities/expeditions/haul_data.py": {

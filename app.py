@@ -30,11 +30,12 @@ from utilities.postgres.expeditions import (
     get_discovery_item_details,
     claim_expedition_discovery,
     get_total_unclaimed_discoveries_count,
-    get_user_expedition_history,
-    get_expedition_by_id,
-    get_expedition_discovery_items,
 )
-from utilities.postgres.shop import get_unified_activity, ensure_action_tokens_table
+from utilities.expeditions.formatters import (
+    get_expedition_history_payload,
+    get_expedition_items_payload,
+)
+from utilities.postgres.shop import get_unified_activity
 from utilities.postgres.notifications import get_commander_quotes, get_commander_quote_count, get_user_fomo_data
 from utilities.postgres.users import get_user_scientist, hydrate_user_session, get_user_by_id
 from utilities.postgres.trails import (
@@ -97,7 +98,6 @@ from utilities.aria.conversation import get_aria_conversation_history
 from utilities.aria.greetings import get_aria_greeting
 from utilities.aria.snapshot import load_colony_snapshot
 from utilities.captains_log_utils import chat_with_captain
-from utilities.email_actions_utils import validate_action_token, execute_action, is_token_used, mark_token_used
 from utilities.admin_utils import (
     is_admin, get_admin_email, generate_aria_message,
     get_admin_dashboard_data, handle_mimic_action, get_mimic_page_data,
@@ -340,49 +340,12 @@ def api_robot_status():
 @login_required
 @handle_api_error
 def api_robot_build():
-    """Start a new robot build. Picks 5 source manifests from the captain's
-    real expedition history, requires robotics_lab Lv1+."""
-    from utilities.postgres.robot import (
-        pick_stage_sources,
-        start_robot_build,
-        get_robot_page_data,
-        PLACEHOLDER_STAGE_IMAGE,
-    )
-    from utilities.upgrades_utils import get_all_infrastructure_levels
-
-    levels = get_all_infrastructure_levels(g.user_id) or {}
-    if int(levels.get('robotics_lab', 0)) < 1:
-        return jsonify({
-            'success': False,
-            'error': 'Robotics Lab required. Build the Robotics Lab in your Colony first.'
-        }), 400
-
-    sources = pick_stage_sources(g.user_id)
-    if not sources or len(sources) < 5:
-        return jsonify({
-            'success': False,
-            'error': 'Insufficient expedition history to source robot parts.'
-        }), 400
-
-    start_robot_build(g.user_id, sources, initial_image_url=PLACEHOLDER_STAGE_IMAGE)
-
-    # Pre-generate name suggestions in background so they're ready for the cinematic
-    import threading
-    uid = g.user_id
+    """Start a new robot build."""
+    from utilities.postgres.robot import start_build_with_name_prefetch
     cmd_name = session.get('_cmd', {}).get('name') if session.get('_cmd') else None
     sci_name = session.get('scientist_name')
-    def _gen_names():
-        try:
-            from utilities.claude_utils import suggest_golem_names
-            from utilities.postgres.robot import save_name_suggestions
-            names = suggest_golem_names(uid, cmd_name, sci_name, sources)
-            if names:
-                save_name_suggestions(uid, names)
-        except Exception as e:
-            logger.warning(f"Background golem name gen failed: {e}")
-    threading.Thread(target=_gen_names, daemon=True).start()
-
-    return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
+    payload, status = start_build_with_name_prefetch(g.user_id, cmd_name, sci_name)
+    return jsonify(payload), status
 
 
 @app.route('/api/robot/name', methods=['POST'])
@@ -1033,61 +996,10 @@ def logout():
 
 @app.route('/action/<token>')
 def email_action(token):
-    """
-    Handle one-click actions from email links.
-    No login required - token contains user_id and is cryptographically signed.
-    """
-    ensure_action_tokens_table()
-
-    # Validate the token
-    valid, payload, error = validate_action_token(token, app.secret_key)
-    if not valid:
-        logger.warning(f"❌ Invalid email action token: {error}")
-        return render_template('action_result.html',
-            success=False,
-            message=f"Invalid or expired link: {error}",
-            action=None
-        ), 400
-
-    user_id = payload['user_id']
-    action = payload['action']
-    nonce = payload['nonce']
-
-    # NOTE: No login required - the signed token IS the authentication.
-    # Token contains user_id, is signed with secret key, expires, and is one-time use.
-    # Anyone with the link can execute the action for that user (as intended for email).
-
-    # Check if token was already used
-    if is_token_used(nonce):
-        logger.warning(f"❌ Email action token already used: {nonce[:8]}...")
-        return render_template('action_result.html',
-            success=False,
-            message="This link has already been used.",
-            action=action
-        ), 400
-
-    # Execute the action
-    logger.info(f"📧 Executing email action: {action} for user {user_id}")
-    result = execute_action(action, user_id)
-
-    # Mark token as used
-    mark_token_used(nonce, user_id, action)
-
-    if result.get('success'):
-        logger.info(f"✅ Email action success: {result.get('message')}")
-        return render_template('action_result.html',
-            success=True,
-            message=result.get('message', 'Action completed!'),
-            action=action,
-            result=result
-        )
-    else:
-        logger.error(f"❌ Email action failed: {result.get('error')}")
-        return render_template('action_result.html',
-            success=False,
-            message=f"Action failed: {result.get('error', 'Unknown error')}",
-            action=action
-        ), 500
+    """One-click actions from email links. Token is signed — no login required."""
+    from utilities.email_actions_utils import handle_email_action_token
+    ctx, status = handle_email_action_token(token, app.secret_key)
+    return render_template('action_result.html', **ctx), status
 
 # ============================================================================
 # CAPTAIN'S LOG & ARIA API
@@ -1428,89 +1340,15 @@ def api_expedition_history():
     """Get expedition history for user (completed expeditions with discovery data)"""
     limit = request.args.get('limit', 50, type=int)
     offset = request.args.get('offset', 0, type=int)
-
-    result = get_user_expedition_history(g.user_id, limit=min(limit, 100), offset=offset)
-
-    # Format for frontend - convert Decimals to floats for proper JSON serialization
-    formatted = []
-    multi_visits = result.get('multi_visits', {})
-
-    for exp in result['expeditions']:
-        duration_hours = float(exp['duration_seconds'] or 0) / 3600
-        formatted.append({
-            'id': exp['id'],
-            'destination': exp['destination_name'],
-            'type': exp['destination_type'],
-            'distance_km': float(exp['distance_km'] or 0),
-            'lat': float(exp['destination_lat'] or 0),
-            'lon': float(exp['destination_lon'] or 0),
-            'departed_at': (exp['departed_at'].isoformat() + 'Z') if exp['departed_at'] else None,
-            'completed_at': (exp['completed_at'].isoformat() + 'Z') if exp['completed_at'] else None,
-            'duration_hours': round(duration_hours, 1),
-            'cost': round(float(exp['sepolia_cost'] or 0) * 10000000, 1),
-            'discovery_count': exp['discovery_count'] or 0,
-            'claimed_count': exp['claimed_count'] or 0,
-            'total_extracted': round(float(exp['total_extracted'] or 0), 1),
-            'link': exp['destination_link'],
-            # Rarity breakdown
-            'common': exp.get('common_count', 0) or 0,
-            'uncommon': exp.get('uncommon_count', 0) or 0,
-            'rare': exp.get('rare_count', 0) or 0,
-            'legendary': exp.get('legendary_count', 0) or 0,
-            # Scientific value
-            'scientific_value': int(exp.get('total_scientific_value', 0) or 0),
-            # Visit count for this location (if > 1)
-            'visit_count': multi_visits.get(exp['destination_name'], 1)
-        })
-
-    return jsonify({
-        'success': True,
-        'expeditions': formatted,
-        'total_count': result['total_count'],
-        'limit': result['limit'],
-        'offset': result['offset'],
-        'multi_visits': multi_visits
-    })
+    return jsonify(get_expedition_history_payload(g.user_id, limit=limit, offset=offset))
 
 
 @app.route('/api/expeditions/<int:expedition_id>/items', methods=['GET'])
 @login_required
 def api_expedition_items(expedition_id):
     """Get all discovery items for a specific expedition (for history modal)"""
-    expedition = get_expedition_by_id(expedition_id)
-    if not expedition or expedition['user_id'] != g.user_id:
-        return jsonify({'success': False, 'error': 'Expedition not found'}), 404
-
-    discoveries = get_expedition_discovery_items(expedition_id)
-
-    # Format for frontend - convert Decimals to floats
-    formatted = []
-    for d in discoveries:
-        quantity = d['quantity'] or 1
-        scientific_value = int(d.get('base_scientific_value') or 0) * quantity
-        formatted.append({
-            'id': d['id'],
-            'item_name': d['item_name'],
-            'rarity': d['rarity'],
-            'description': d['description'],
-            'item_type': d['item_type'],
-            'image_url': d['image_url'],
-            'found_at_km': float(d['found_at_km'] or 0),
-            'nearby_feature': d['nearby_feature'],
-            'base_value': float(d['base_value'] or 0),
-            'enhanced_value': float(d['enhanced_value'] or 0),
-            'quantity': quantity,
-            'claimed': d['claimed_by_user'] or False,
-            'analyzed': d['analyzed'] or False,
-            'scientific_value': scientific_value
-        })
-
-    return jsonify({
-        'success': True,
-        'expedition_id': expedition_id,
-        'destination': expedition['destination_name'],
-        'discoveries': formatted
-    })
+    payload, status = get_expedition_items_payload(g.user_id, expedition_id)
+    return jsonify(payload), status
 
 
 # ============================================================================
@@ -1737,56 +1575,10 @@ def api_record_sv():
 @login_required
 @handle_api_error
 def api_reassign_scientist():
-    """Reassign colony scientist. Free for QA testing — cost/cooldown to be added later."""
-    from utilities.postgres.users import reassign_scientist, get_user_scientist
-    from config import COLONY_SCIENTISTS
-
+    """Reassign colony scientist."""
+    from utilities.postgres.users import reassign_scientist_flow
     data = request.get_json() or {}
-    new_key = data.get('scientist_key', '').strip()
-    if not new_key or new_key not in COLONY_SCIENTISTS:
-        return jsonify({'success': False, 'error': 'Invalid scientist'})
-
-    current = get_user_scientist(g.user_id)
-    if current and current.get('key') == new_key:
-        return jsonify({'success': False, 'error': 'Already your scientist'})
-
-    # Auto-claim pending shards + SV before swapping (don't lose accumulated income)
-    shards_claimed = 0
-    try:
-        from utilities.infrastructure_utils import claim_accumulated_income
-        claim_result = claim_accumulated_income(g.user_id, session)
-        shards_claimed = claim_result.get('accumulated', 0) if claim_result.get('success') else 0
-    except Exception:
-        shards_claimed = 0
-    try:
-        from utilities.infrastructure_utils import record_science_value
-        sv_result = record_science_value(g.user_id)
-        sv_recorded = sv_result.get('sv_recorded', 0) if sv_result.get('success') else 0
-    except Exception:
-        sv_recorded = 0
-
-    result = reassign_scientist(g.user_id, new_key)
-    if result['success']:
-        from utilities.postgres.activity import log_activity
-        new_sci = COLONY_SCIENTISTS[new_key]
-        old_name = current.get('name', 'None') if current else 'None'
-        log_activity(g.user_id, 'scientist_reassign', 'reassign',
-                     f'{old_name} → {new_sci["name"]}')
-        # Reset ALL SV building payout timestamps so SV starts fresh with new scientist
-        from utilities.postgres.core import db_cursor
-        with db_cursor(commit=True) as cur:
-            cur.execute("""
-                UPDATE pilgrim.colony_infrastructure
-                SET last_payout_at = NOW(), updated_at = NOW()
-                WHERE user_id = %s AND status = 'active'
-            """, (g.user_id,))
-        session.pop('_nav', None)
-        session.modified = True
-        if sv_recorded > 0:
-            result['sv_auto_recorded'] = sv_recorded
-        if shards_claimed > 0:
-            result['shards_auto_claimed'] = shards_claimed
-    return jsonify(result)
+    return jsonify(reassign_scientist_flow(g.user_id, data.get('scientist_key', ''), session))
 
 
 @app.route('/api/asset/delete/<int:asset_id>', methods=['POST'])
@@ -2633,71 +2425,24 @@ def api_admin_ideas_promote(idea_id):
 @app.route('/pilgrimbot')
 def pilgrimbot():
     """PilgrimBot chat interface — codebase Q&A."""
-    real_user_id = session.get('_real_uid') or session.get('user_id')
     if not session.get('_adm'):
         return redirect(url_for('home'))
+    real_user_id = session.get('_real_uid') or session.get('user_id')
     from utilities.pilgrimbot_utils import get_user_chats, get_user_role
+    from utilities.pilgrimbot_context import build_prefill_context
+
     chats = get_user_chats(real_user_id) if real_user_id else []
-    # Cache role in session for fast access on chat messages
     pb_role = session.get('_pb_role')
     if not pb_role:
         pb_role = get_user_role(real_user_id) if real_user_id else 'captain'
         session['_pb_role'] = pb_role
-    # Support ?brainstorm=<page> to pre-load brainstorm context
-    brainstorm_page = request.args.get('brainstorm')
-    brainstorm_context = ''
-    brainstorm_name = ''
-    if brainstorm_page:
-        brainstorm_titles = {
-            'signal': 'Signal & Endgame — Origin Sites, Decoder Terminal, Lost Sites',
-            'tech-tree': 'Tech Tree — research branches, progression, unlocks',
-            'trail-network': 'Trail Network — crew trails, speed caches, path building',
-            'icon-redesign': 'Icon Redesign — UI icons, 10-level upgrade visuals',
-            'aria-meetings': 'ARIA Meetings — bond system, multiplicity, cross-colony',
-            'sv-economy': 'SV Economy — science value generation & spending',
-            'progression': 'Progression Tree — Lab + Depot + Infrastructure',
-        }
-        brainstorm_name = brainstorm_titles.get(brainstorm_page, brainstorm_page)
-        brainstorm_context = (
-            f"We're brainstorming: {brainstorm_name}\n"
-            f"Brainstorm page: /brainstorm/{brainstorm_page}\n\n"
-            f"Help brainstorm ideas, challenge proposals, suggest implementation, or explore narrative possibilities.\n"
-            f"When actionable bugs or features surface, offer to create them in the bug tracker.\n"
-            f"Reference the brainstorm page URL in any bugs you suggest.")
 
-    # Support ?bug=<id> to pre-load bug context
-    bug_context = ''
+    brainstorm_page = request.args.get('brainstorm')
     bug_id = request.args.get('bug')
-    if bug_id:
-        from utilities.postgres.bugs import get_bug_by_id, search_bugs
-        bug = get_bug_by_id(int(bug_id))
-        if bug:
-            # Find potentially related bugs by keyword matching
-            words = bug['name'].split()[:3]
-            related = []
-            for w in words:
-                if len(w) > 3:
-                    related.extend(search_bugs(w))
-            seen = set()
-            related_lines = []
-            for r in related:
-                if r['id'] != bug['id'] and r['id'] not in seen:
-                    seen.add(r['id'])
-                    related_lines.append(f"  #{r['id']}: {r['name']} ({r['status']})")
-                if len(seen) >= 5:
-                    break
-            related_text = '\n'.join(related_lines) if related_lines else '  (none found)'
-            bug_context = (f"Give me a quick summary of this bug — what it is, current status, and your initial take:\n\n"
-                f"Bug #{bug['id']}: {bug['name']}\n"
-                f"Status: {bug['status']} | Priority: {bug['priority']} | Type: {bug['type']}\n"
-                f"Description: {bug.get('description','')}\n"
-                f"QA Notes: {bug.get('qa_notes','')}\n\n"
-                f"Keep it brief — just the essentials. I'll ask follow-up questions if I need more.")
-    bug_name = bug['name'] if bug_id and bug else ''
-    # Combine brainstorm + bug context (brainstorm as initial message, bug as pre-load)
-    combined_context = brainstorm_context or bug_context
+    combined_context, display_name, _bug, _bp = build_prefill_context(brainstorm_page, bug_id)
+
     return render_template('pilgrimbot.html', user=auth.get_current_user(),
-        chats=chats, bug_context=combined_context, bug_id=bug_id, bug_name=bug_name or brainstorm_name,
+        chats=chats, bug_context=combined_context, bug_id=bug_id, bug_name=display_name,
         pb_role=pb_role, brainstorm_page=brainstorm_page)
 
 

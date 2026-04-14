@@ -397,6 +397,45 @@ def save_name_suggestions(user_id: int, names: list) -> None:
         logger.error(f"save_name_suggestions failed for user {user_id}: {e}")
 
 
+def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
+                                   sci_name: Optional[str]) -> tuple:
+    """Full robot-build kickoff: validate lab level, pick sources, start build,
+    fire-and-forget Claude name suggestions. Returns (payload_dict, status_code).
+    """
+    from utilities.upgrades_utils import get_all_infrastructure_levels
+
+    levels = get_all_infrastructure_levels(user_id) or {}
+    if int(levels.get('robotics_lab', 0)) < 1:
+        return {
+            'success': False,
+            'error': 'Robotics Lab required. Build the Robotics Lab in your Colony first.',
+        }, 400
+
+    sources = pick_stage_sources(user_id)
+    if not sources or len(sources) < 5:
+        return {
+            'success': False,
+            'error': 'Insufficient expedition history to source robot parts.',
+        }, 400
+
+    start_robot_build(user_id, sources, initial_image_url=PLACEHOLDER_STAGE_IMAGE)
+
+    import threading
+
+    def _gen_names():
+        try:
+            from utilities.claude_utils import suggest_golem_names
+            names = suggest_golem_names(user_id, cmd_name, sci_name, sources)
+            if names:
+                save_name_suggestions(user_id, names)
+        except Exception as e:
+            logger.warning(f"Background golem name gen failed: {e}")
+
+    threading.Thread(target=_gen_names, daemon=True).start()
+
+    return {'success': True, 'data': get_robot_page_data(user_id)}, 200
+
+
 # ============================================================================
 # STUB STAGE ADVANCE — Step 4d ships a working visible loop with placeholder
 # images + fake tx hashes. Step 4c will swap _stub_advance_one_stage() for the

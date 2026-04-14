@@ -125,6 +125,61 @@ def reassign_scientist(user_id: int, new_scientist_key: str) -> dict:
         return {'success': False, 'error': str(e)}
 
 
+def reassign_scientist_flow(user_id: int, new_key: str, flask_session) -> dict:
+    """Full scientist-swap flow: validate, auto-claim pending shards + SV,
+    reassign, log activity, reset SV payout timestamps, clear nav cache.
+
+    Returns the payload to send back to the client.
+    """
+    from config import COLONY_SCIENTISTS
+
+    new_key = (new_key or '').strip()
+    if not new_key or new_key not in COLONY_SCIENTISTS:
+        return {'success': False, 'error': 'Invalid scientist'}
+
+    current = get_user_scientist(user_id)
+    if current and current.get('key') == new_key:
+        return {'success': False, 'error': 'Already your scientist'}
+
+    shards_claimed = 0
+    sv_recorded = 0
+    try:
+        from utilities.infrastructure_utils import claim_accumulated_income
+        claim_result = claim_accumulated_income(user_id, flask_session)
+        if claim_result.get('success'):
+            shards_claimed = claim_result.get('accumulated', 0)
+    except Exception:
+        pass
+    try:
+        from utilities.infrastructure_utils import record_science_value
+        sv_result = record_science_value(user_id)
+        if sv_result.get('success'):
+            sv_recorded = sv_result.get('sv_recorded', 0)
+    except Exception:
+        pass
+
+    result = reassign_scientist(user_id, new_key)
+    if result.get('success'):
+        from utilities.postgres.activity import log_activity
+        new_sci = COLONY_SCIENTISTS[new_key]
+        old_name = current.get('name', 'None') if current else 'None'
+        log_activity(user_id, 'scientist_reassign', 'reassign',
+                     f'{old_name} → {new_sci["name"]}')
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.colony_infrastructure
+                SET last_payout_at = NOW(), updated_at = NOW()
+                WHERE user_id = %s AND status = 'active'
+            """, (user_id,))
+        flask_session.pop('_nav', None)
+        flask_session.modified = True
+        if sv_recorded > 0:
+            result['sv_auto_recorded'] = sv_recorded
+        if shards_claimed > 0:
+            result['shards_auto_claimed'] = shards_claimed
+    return result
+
+
 def get_user_scientist(user_id: int) -> Optional[Dict]:
     """Get the scientist assigned to a user"""
     from config import COLONY_SCIENTISTS
