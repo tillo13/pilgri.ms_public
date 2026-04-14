@@ -15,3 +15,6 @@ from utilities.aria.chat import *  # noqa
 from utilities.aria.greetings import *  # noqa
 from utilities.aria.animations import *  # noqa
 from utilities.aria.handlers import *  # noqa
+
+# Explicit re-export for underscore-prefixed names (star-imports skip these).
+from utilities.aria.handlers import _build_aria_user_context  # noqa: F401
