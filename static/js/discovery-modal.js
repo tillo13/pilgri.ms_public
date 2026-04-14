@@ -5,7 +5,7 @@
 // Discovery Modal (inventory page) - uses ItemDetailModal with Analyze action
 // Payout multipliers: science value > shard extraction (common=0.5x, uncommon=0.75x, rare=1x, legendary=BLOCKED)
 window.showDiscoveryDetails = function(id) {
-    fetch(`/api/discovery_items/${id}/details`).then(r => r.json()).then(data => {
+    apiGet(`/api/discovery_items/${id}/details`).then(data => {
         if (!data.success) { showToast('Failed to load discovery details', 'error'); return; }
         const i = data.item;
         const rarity = i.rarity;
@@ -251,14 +251,10 @@ async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = 
     if (secondaryBtn) secondaryBtn.disabled = true;
 
     try {
-        const response = await fetch('/api/discovery/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const response = await apiPost('/api/discovery/analyze', {
                 discovery_item_id: discoveryItemId,
                 extract_all: extractAll,
                 ...(quantityToExtract ? { quantity_to_extract: quantityToExtract } : {})
-            })
         });
         const data = await response.json();
 

@@ -13,12 +13,7 @@ async function launchExpedition(l) {
 async function showPreLaunchModal(l) {
     // Fetch preview data
     try {
-        const r = await fetch('/api/expedition/preview', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ distance_km: l.distance_km, destination_type: l.type, destination_name: l.name })
-        });
-        const data = await r.json();
+        const data = await apiPost('/api/expedition/preview', { distance_km: l.distance_km, destination_type: l.type, destination_name: l.name });
         if (!data.success) { showToast(data.error || 'Preview failed', 'error'); return; }
         renderPreLaunchModal(l, data);
     } catch { showToast('Network error loading preview', 'error'); }
@@ -229,19 +224,14 @@ async function confirmExpeditionLaunch() {
     launchBtn.textContent = 'Launching...';
 
     try {
-        const r = await fetch('/api/expeditions/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const data = await apiPost('/api/expeditions/start', {
                 destination_name: l.name,
                 destination_type: l.type,
                 latitude: l.latitude,
                 longitude: l.longitude,
                 distance_km: l.distance_km,
                 vehicle_type: vehicleType
-            })
-        });
-        const data = await r.json();
+            });
         if (data.success) {
             if (data.new_balance !== undefined && typeof window.setBalance === 'function') {
                 window.setBalance(data.new_balance);
@@ -274,12 +264,7 @@ async function recallExpedition(expeditionId, btn) {
     btn.disabled = true;
     btn.textContent = 'Recalling...';
     try {
-        const r = await fetch('/api/expedition/recall', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ expedition_id: expeditionId })
-        });
-        const data = await r.json();
+        const data = await apiPost('/api/expedition/recall', { expedition_id: expeditionId });
         if (data.success) {
             const returnHours = Math.round(data.return_seconds / 3600);
             showToast(`${data.message}. Returns in ${returnHours}h.`, 'success');

@@ -149,12 +149,7 @@ async function autoClaimTrailMission(member) {
     const memberName = member === 'captain' ? 'Captain' : member === 'scientist' ? 'Scientist' : 'ARIA';
 
     try {
-        const res = await fetch('/api/trail/complete', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ worker_type: member })
-        });
-        const data = await res.json();
+        const data = await apiPost('/api/trail/complete', { worker_type: member });
 
         if (data.success) {
             let msg = `${memberName} returned! +${(data.km_added || 0).toFixed(3)} km to ${data.destination}`;
@@ -343,15 +338,10 @@ async function selectTrail(name) {
 
     try {
         // Use new km-based trail building API (duration calculated server-side)
-        const res = await fetch('/api/trail/build', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
+        const data = await apiPost('/api/trail/build', {
                 destination_name: name,
                 worker_type: pendingMissionMember
-            })
-        });
-        const data = await res.json();
+            });
 
         if (data.success) {
             const trail = data.trail;
@@ -376,12 +366,7 @@ async function selectTrailForAria(name) {
         btn.textContent = 'Attuning...';
 
         try {
-            const res = await fetch('/api/aria/resonance', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({destination_name: name})
-            });
-            const data = await res.json();
+            const data = await apiPost('/api/aria/resonance', {destination_name: name});
             if (data.success) {
                 showToast(`ARIA resonance: +2 trail to ${name} (now ${data.trail.trail_level})`, 'success');
                 loadCrewMissions();

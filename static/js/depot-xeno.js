@@ -101,12 +101,7 @@ async function runXenoExperiment() {
 
 async function upgradeXenoStat(stat) {
     try {
-        const r = await fetch('/api/xenobiology/upgrade_stat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ stat })
-        });
-        const data = await r.json();
+        const data = await apiPost('/api/xenobiology/upgrade_stat', { stat });
         if (data.success) {
             showToast(`${stat.charAt(0).toUpperCase() + stat.slice(1)} upgraded to ${data.new_total} (+${data.new_bonus})`, 'success');
             openXenobiologyModal();

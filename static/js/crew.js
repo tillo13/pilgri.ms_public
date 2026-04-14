@@ -47,8 +47,7 @@ function showFullImage(src, title) {
     window.recordSV = async function() {
         if (recordBtn) { recordBtn.disabled = true; recordBtn.textContent = 'Recording...'; }
         try {
-            const resp = await fetch('/api/scientist/record-sv', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-            const data = await resp.json();
+            const data = await apiPost('/api/scientist/record-sv');
             if (data.success) {
                 showToast('Recorded ' + data.sv_recorded + ' SV', 'success');
                 // Reset accumulated to 0, update total
@@ -123,12 +122,7 @@ async function executeScientistSwap() {
     errEl.style.display = 'none';
 
     try {
-        const resp = await fetch('/api/scientist/reassign', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({scientist_key: _pendingSwapKey})
-        });
-        const data = await resp.json();
+        const data = await apiPost('/api/scientist/reassign', {scientist_key: _pendingSwapKey});
         if (data.success) {
             // Close modals immediately
             document.getElementById('scientist-swap-modal').style.display = 'none';
@@ -193,12 +187,7 @@ async function saveCaptainName() {
     }
 
     try {
-        const res = await fetch('/api/commander/rename', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name: newName})
-        });
-        const data = await res.json();
+        const data = await apiPost('/api/commander/rename', {name: newName});
 
         if (data.success) {
             // Update all places where the name is displayed
@@ -229,12 +218,7 @@ async function saveCaptainNameFromServices() {
     if (!newName || newName.length < 1) { showToast('Name cannot be empty', 'error'); return; }
     if (newName.length > 30) { showToast('Name must be 30 characters or less', 'error'); return; }
     try {
-        const res = await fetch('/api/commander/rename', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name: newName})
-        });
-        const data = await res.json();
+        const data = await apiPost('/api/commander/rename', {name: newName});
         if (data.success) {
             document.getElementById('captainNameText').textContent = newName;
             const navName = document.getElementById('commanderNameText');
@@ -340,8 +324,7 @@ async function purchaseShardInfusion() {
     document.getElementById('mmActionBtn').onclick = async () => {
         MarsModal.show({ title: 'Infusing...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">Channeling Sepolia energy...</div>', width: 'sm' });
         try {
-            const resp = await fetch('/api/shop/reroll_stats', { method: 'POST', headers: {'Content-Type': 'application/json'} });
-            const data = await resp.json();
+            const data = await apiPost('/api/shop/reroll_stats');
             if (data.success) {
                 // Build stat change display
                 let statsHtml = '<div style="display:grid;gap:6px;margin:12px 0;">';
@@ -385,11 +368,7 @@ async function purchaseModifyAppearance() {
     document.getElementById('mmActionBtn').onclick = async () => {
         MarsModal.show({ title: 'Generating...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">AI is updating your captain\'s appearance...</div>', width: 'sm' });
         try {
-            const resp = await fetch('/api/shop/modify_character', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ prompt })
-            });
-            const data = await resp.json();
+            const data = await apiPost('/api/shop/modify_character', { prompt });
             if (data.success) {
                 MarsModal.show({
                     title: 'Appearance Updated!', badge: 'Complete', theme: 'success',
@@ -416,10 +395,7 @@ async function purchaseVideoBriefing() {
     document.getElementById('mmActionBtn').onclick = async () => {
         MarsModal.show({ title: 'Generating Video...', body: '<div style="text-align:center;padding:20px;color:var(--text-muted);">Creating your mission briefing... this takes about 60 seconds.</div>', width: 'sm' });
         try {
-            const resp = await fetch('/api/shop/generate_video', {
-                method: 'POST', headers: {'Content-Type': 'application/json'}
-            });
-            const data = await resp.json();
+            const data = await apiPost('/api/shop/generate_video');
             if (data.success) {
                 MarsModal.show({
                     title: 'Video Ready!', badge: 'Complete', theme: 'success',

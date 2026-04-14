@@ -284,11 +284,7 @@ async function attemptLostSiteDecode(siteId, code) {
     }
 
     try {
-        const response = await fetch('/api/signal/lost/decode', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ site_id: parseInt(siteId), code: code })
-        });
+        const response = await apiPost('/api/signal/lost/decode', { site_id: parseInt(siteId), code: code });
 
         const data = await response.json();
 
@@ -339,12 +335,7 @@ async function attemptOriginVisit(siteId) {
     }
 
     try {
-        const response = await fetch(`/api/signal/origin/visit/${siteId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
+        const data = await apiPost(`/api/signal/origin/visit/${siteId}`);
 
         if (data.success) {
             map.closePopup();
@@ -458,11 +449,7 @@ async function claimOriginSite(siteId) {
             btn.innerHTML = '⏳ Claiming...';
         }
 
-        const response = await fetch(`/api/signal/origin/claim/${siteId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
+        const data = await apiPost(`/api/signal/origin/claim/${siteId}`);
 
         if (data.success) {
             // Close any open popups

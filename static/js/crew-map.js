@@ -392,12 +392,7 @@ async function selectCrewMember(member) {
             requestBody.consumable_id = parseInt(selectedConsumableId);
         }
 
-        const res = await fetch('/api/trail/build', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(requestBody)
-        });
-        const data = await res.json();
+        const data = await apiPost('/api/trail/build', requestBody);
 
         if (data.success) {
             // Show toast with chain routing info
@@ -425,12 +420,7 @@ async function claimTrailMission(member) {
     const memberName = member === 'captain' ? 'Captain' : member === 'scientist' ? 'Scientist' : 'ARIA';
 
     try {
-        const res = await fetch('/api/trail/complete', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ worker_type: member })
-        });
-        const data = await res.json();
+        const data = await apiPost('/api/trail/complete', { worker_type: member });
 
         if (data.success) {
             const routeDesc = data.from_landmark && data.from_landmark !== 'HOME'

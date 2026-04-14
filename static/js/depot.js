@@ -420,7 +420,7 @@ async function buildStructure(type, name, time, cost) {
     disableBtn(btn);
     showToast(`🚀 Building ${name}...`, 'success', 'Construction Started', 4000);
     try {
-        const data = await postJSON('/api/infrastructure/build', { structure_type: type });
+        const data = await apiPost('/api/infrastructure/build', { structure_type: type });
         if (data.success) {
             // Update balance immediately from response
             if (data.new_balance !== undefined) setBalance(data.new_balance);

@@ -58,12 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         try {
-            const resp = await fetch('/api/signal/decode-tx', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tx_hash: code })
-            });
-            const data = await resp.json();
+            const data = await apiPost('/api/signal/decode-tx', { tx_hash: code });
 
             if (data.success && !data.no_signal) {
                 // Check if this is an ARIA bond fragment

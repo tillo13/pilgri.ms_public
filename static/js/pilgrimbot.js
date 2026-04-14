@@ -46,11 +46,7 @@
         const btn = document.getElementById('pbSaveToBug');
         btn.disabled = true;
         btn.textContent = 'Saving...';
-        fetch('/api/admin/bugs/' + BUG_ID + '/comments', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({author: 'PilgrimBot', body: lastResponseText})
-        }).then(r => r.json()).then(data => {
+        apiPost('/api/admin/bugs/' + BUG_ID + '/comments', {author: 'PilgrimBot', body: lastResponseText}).then(data => {
             btn.textContent = data.success ? 'Saved!' : 'Error';
             setTimeout(() => { btn.textContent = 'Save to Bug'; btn.disabled = false; }, 2000);
         }).catch(() => {
@@ -74,11 +70,7 @@
                 // Also add a comment noting the handoff
                 const note = 'Passed to dev for action. ' +
                     (lastResponseText ? 'PilgrimBot analysis saved above.' : '');
-                fetch('/api/admin/bugs/' + BUG_ID + '/comments', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({author: USER_NAME, body: note})
-                });
+                apiPost('/api/admin/bugs/' + BUG_ID + '/comments', {author: USER_NAME, body: note});
                 btn.textContent = 'Passed to Dev!';
                 btn.classList.add('pb-bug-action-done');
             } else {
@@ -144,11 +136,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creating...';
 
-            fetch('/api/pilgrimbot/create_bug', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({response_text: responseText, chat_id: currentChatId, title: title, priority: priority})
-            }).then(function(r) { return r.json(); }).then(function(data) {
+            apiPost('/api/pilgrimbot/create_bug', {response_text: responseText, chat_id: currentChatId, title: title, priority: priority}).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) {
                     overlay.remove();
                     showToast('Bug #' + data.bug_id + ' created!', 'success');
@@ -465,11 +453,7 @@
         }
 
         // === SSE fetch ===
-        fetch('/api/pilgrimbot/chat', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined})
-        }).then(response => {
+        apiPost('/api/pilgrimbot/chat', {message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined}).then(response => {
             if (!response.ok) throw new Error('Server error: ' + response.status);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -587,11 +571,7 @@
                 const btn = this;
                 btn.disabled = true;
                 btn.textContent = 'Saving...';
-                fetch('/api/admin/bugs/' + BUG_ID + '/comments', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({author: 'PilgrimBot', body: text})
-                }).then(r => r.json()).then(data => {
+                apiPost('/api/admin/bugs/' + BUG_ID + '/comments', {author: 'PilgrimBot', body: text}).then(data => {
                     btn.textContent = data.success ? 'Saved!' : 'Error saving';
                 }).catch(() => { btn.textContent = 'Error saving'; });
             });
@@ -628,11 +608,7 @@
 
         // Auto-save first PilgrimBot response to bug as comment
         if (window.PB_BUG_ID && text && window._pbAutoSave !== false) {
-            fetch('/api/admin/bugs/' + window.PB_BUG_ID + '/comments', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({author: 'PilgrimBot', body: text})
-            });
+            apiPost('/api/admin/bugs/' + window.PB_BUG_ID + '/comments', {author: 'PilgrimBot', body: text});
             window._pbAutoSave = false; // only auto-save the first response
         }
 
@@ -646,11 +622,7 @@
 
     function hideChat(chatId, el) {
         if (!confirm('Hide this conversation? It won\'t appear in the list anymore.')) return;
-        fetch('/api/pilgrimbot/hide', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({chat_id: chatId})
-        }).then(r => r.json()).then(data => {
+        apiPost('/api/pilgrimbot/hide', {chat_id: chatId}).then(data => {
             if (data.success) {
                 el.remove();
                 if (currentChatId === chatId) startNewChat();
@@ -796,11 +768,7 @@
     var roleSelect = document.getElementById('pbRoleSelect');
     if (roleSelect) {
         roleSelect.addEventListener('change', function() {
-            fetch('/api/pilgrimbot/role', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({role: this.value})
-            }).then(function(r) { return r.json(); }).then(function(data) {
+            apiPost('/api/pilgrimbot/role', {role: this.value}).then(function(r) { return r.json(); }).then(function(data) {
                 if (data.success) {
                     roleSelect.style.outline = '2px solid #4a4';
                     setTimeout(function() { roleSelect.style.outline = ''; }, 1000);

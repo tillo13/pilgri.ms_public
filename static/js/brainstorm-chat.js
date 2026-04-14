@@ -51,17 +51,11 @@ async function sendMessage() {
 
     try {
         const config = window.BRAINSTORM_CONFIG || {};
-        const response = await fetch(config.apiEndpoint || '/api/brainstorm/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const data = await apiPost(config.apiEndpoint || '/api/brainstorm/chat', {
                 message: message,
                 context: config.context || '',
                 history: conversationHistory
-            })
-        });
-
-        const data = await response.json();
+            });
         document.getElementById('typing-indicator')?.remove();
 
         if (data.success) {

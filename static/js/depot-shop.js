@@ -18,12 +18,7 @@ async function performUpgrade(category, itemKey) {
     }
 
     try {
-        const response = await fetch('/api/upgrade', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ category, item_key: itemKey })
-        });
-        const data = await response.json();
+        const data = await apiPost('/api/upgrade', { category, item_key: itemKey });
 
         if (data.success) {
             // Check if this is a building upgrade (has wait time) vs instant
@@ -475,8 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Channeling Sepolia shards into your neural pathways...', 'info', 'Infusing', 5000);
 
         try {
-            const r = await fetch('/api/shop/reroll_stats', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-            const data = await r.json();
+            const data = await apiPost('/api/shop/reroll_stats');
             if (data.success) {
                 const nextCost = data.next_infusion_cost || data.next_reroll_cost || (cost * 2);
                 const gained = data.total_gained || 0;
@@ -527,12 +521,7 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Modification started! Your captain is being outfitted...', 'info', 'Processing', 8000);
 
         try {
-            const r = await fetch('/api/shop/modify_character', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-            const data = await r.json();
+            const data = await apiPost('/api/shop/modify_character', { prompt });
             if (data.success) {
                 showToast('✓ Modification complete! Visit Crew tab in ~1 min to see your updated captain.', 'success', 'Complete!', 10000);
             } else {
@@ -566,8 +555,7 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Video generation started! This takes ~2 minutes.', 'info', 'Processing', 8000);
 
         try {
-            const r = await fetch('/api/shop/generate_video', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-            const data = await r.json();
+            const data = await apiPost('/api/shop/generate_video');
             if (data.success) {
                 showToast('✓ Video generation queued! Visit Crew tab in ~2 min to watch.', 'success', 'Complete!', 10000);
             } else {
@@ -601,12 +589,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setBalance(bal - cost);
 
         try {
-            const r = await fetch('/api/shop/purchase_upgrade', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item_id: itemId })
-            });
-            const data = await r.json();
+            const data = await apiPost('/api/shop/purchase_upgrade', { item_id: itemId });
 
             if (data.success) {
                 // Show build time in message

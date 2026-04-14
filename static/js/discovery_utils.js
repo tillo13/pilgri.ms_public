@@ -349,11 +349,7 @@ async function executeShardItAll() {
     if (btn) { btn.disabled = true; btn.textContent = 'Extracting...'; }
 
     try {
-        const response = await fetch('/api/discovery/shard_all', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
+        const data = await apiPost('/api/discovery/shard_all');
 
         if (data.success) {
             ItemDetailModal.hide();

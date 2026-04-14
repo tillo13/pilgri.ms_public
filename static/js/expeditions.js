@@ -218,12 +218,7 @@ async function fetchLandmarkCost(landmarkIndex) {
     if (!l || l._calculatedCost !== undefined) return;
 
     try {
-        const r = await fetch('/api/expeditions/calculate_cost', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ distance_km: l.distance_km, destination_type: l.type })
-        });
-        const data = await r.json();
+        const data = await apiPost('/api/expeditions/calculate_cost', { distance_km: l.distance_km, destination_type: l.type });
         if (data.success) {
             l._calculatedCost = data.total_pricing.total_cost_display;
             l._canAfford = data.total_pricing.can_afford;
@@ -253,12 +248,7 @@ async function updateAllExpeditionCosts() {
 
 async function updateExpeditionCost(card, l) {
     try {
-        const r = await fetch('/api/expeditions/calculate_cost', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ distance_km: l.distance_km, destination_type: l.type })
-        });
-        const data = await r.json();
+        const data = await apiPost('/api/expeditions/calculate_cost', { distance_km: l.distance_km, destination_type: l.type });
         if (data.success) updateCostDisplay(card, data, l);
         else card.querySelector('.expedition-total-cost').textContent = 'Error';
     } catch {

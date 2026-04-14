@@ -461,16 +461,10 @@ async function upgradeInfrastructure(buildingType) {
     showToast('Starting infrastructure upgrade...', 'info');
 
     try {
-        const response = await fetch('/api/upgrade', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const result = await apiPost('/api/upgrade', {
                 category: 'infrastructure',
                 item_key: buildingType
-            })
-        });
-
-        const result = await response.json();
+            });
 
         if (result.success) {
             const levelName = result.level_name || `Level ${result.new_level}`;

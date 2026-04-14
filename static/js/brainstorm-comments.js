@@ -45,11 +45,7 @@
             var btn = el.querySelector('.bs-comments-submit');
             btn.disabled = true;
 
-            fetch('/api/brainstorm/comments/' + PAGE_KEY, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({section_idx: idx, text: text})
-            })
+            apiPost('/api/brainstorm/comments/' + PAGE_KEY, {section_idx: idx, text: text})
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {

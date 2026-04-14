@@ -7,6 +7,20 @@ const $$ = sel => document.querySelectorAll(sel);
 const show = id => { const el = $(id); if (el) el.classList.remove('hidden'); };
 const hide = id => { const el = $(id); if (el) el.classList.add('hidden'); };
 
+// API helpers — replace the repeated fetch+JSON+parse boilerplate.
+// Usage: const data = await apiPost('/api/foo', {name: 'bar'});
+//        const data = await apiGet('/api/foo');
+async function apiPost(url, body) {
+    const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    return r.json();
+}
+async function apiGet(url) {
+    const r = await fetch(url);
+    return r.json();
+}
+
 // ============================================================================
 // UNIVERSAL TAB SYSTEM - Use this for all page tabs
 // Usage: switchTab('colony', 'discoveries') or switchTab('crew', 'trails')
@@ -85,8 +99,9 @@ function hideProcessing() {
 }
 function showError(msg) { const el = $('errorMessage'); if (el) { el.textContent = `Error: ${msg}`; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 5000); } }
 
+// apiCall() is apiPost/apiGet's strict sibling — throws on !data.success.
+// Kept for arrival.js's try/catch flow; new code should prefer apiPost/apiGet.
 async function apiCall(endpoint, options = {}) { const r = await fetch(endpoint, options); const data = await r.json(); if (!data.success) throw new Error(data.error); return data; }
-async function postJSON(endpoint, data = {}) { return apiCall(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); }
 
 function disableBtn(btn, text) { if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; if (text) btn.textContent = text; } }
 function enableBtn(btn, text) { if (btn) { btn.disabled = false; btn.style.opacity = '1'; if (text) btn.textContent = text; } }
@@ -584,12 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
             saveBtn.textContent = '...';
 
             try {
-                const resp = await fetch('/api/commander/rename', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newName })
-                });
-                const data = await resp.json();
+                const data = await apiPost('/api/commander/rename', { name: newName });
                 if (data.success) {
                     showToast('Captain renamed! Refreshing...', 'success');
                     // Reload page so ARIA and all UI elements get the new name

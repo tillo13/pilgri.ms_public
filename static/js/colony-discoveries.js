@@ -142,11 +142,7 @@ async function extractColonyDiscovery(discoveryItemId, expectedValue, extractAll
     try {
         const body = { discovery_item_id: discoveryItemId, extract_all: extractAll };
         if (quantityToExtract != null) body.quantity_to_extract = quantityToExtract;
-        const response = await fetch('/api/discovery/analyze', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const data = await response.json();
+        const data = await apiPost('/api/discovery/analyze', body);
         if (data.success) {
             ItemDetailModal.hide();
             let extractMsg = `Extracted ${data.shards_received.toFixed(0)} Shards!`;

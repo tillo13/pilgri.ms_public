@@ -56,20 +56,20 @@ function displayStats(stats) {
 // Mining
 async function triggerMining(e) {
     const btn = e.target; showProcessing('Mining asteroid for Shards...'); btn.disabled = true;
-    try { const r = await fetch('/api/asteroid_impact', { method: 'POST', headers: { 'Content-Type': 'application/json' } }); const data = await r.json(); if (data.success) location.reload(); else { hideProcessing(); showError(data.error || 'Mining failed'); btn.disabled = false; } }
+    try { const r = await apiPost('/api/asteroid_impact'); const data = await r.json(); if (data.success) location.reload(); else { hideProcessing(); showError(data.error || 'Mining failed'); btn.disabled = false; } }
     catch (err) { hideProcessing(); showError('Network error: ' + err.message); btn.disabled = false; }
 }
 
 async function claimAdditionalCache(e) {
     const btn = e.target; btn.disabled = true; showProcessing('Searching for additional deposits...');
-    try { await fetch('/api/clear_session_wallet', { method: 'POST', headers: { 'Content-Type': 'application/json' } }); const r = await fetch('/api/asteroid_impact', { method: 'POST', headers: { 'Content-Type': 'application/json' } }); const data = await r.json(); if (data.success) { showToast('Found more Shards!', 'success', 'Additional Cache!'); setTimeout(() => location.reload(), 1500); } else { hideProcessing(); showError(data.error || 'No caches available'); btn.disabled = false; } }
+    try { await apiPost('/api/clear_session_wallet'); const r = await apiPost('/api/asteroid_impact'); const data = await r.json(); if (data.success) { showToast('Found more Shards!', 'success', 'Additional Cache!'); setTimeout(() => location.reload(), 1500); } else { hideProcessing(); showError(data.error || 'No caches available'); btn.disabled = false; } }
     catch (err) { hideProcessing(); showError('Network error: ' + err.message); btn.disabled = false; }
 }
 
 // Mars Location
 function generateMarsLocation() {
     $('mars-lat').textContent = 'Scanning...'; $('mars-lon').textContent = 'Scanning...'; $('landmark-info').innerHTML = '<span style="opacity:0.7;">Analyzing surface data...</span>';
-    fetch('/api/arrival/mars_location').then(r => r.json()).then(data => {
+    apiGet('/api/arrival/mars_location').then(data => {
         if (data.success) {
             const c = data.coordinates, l = data.landmarks;
             setTimeout(() => { $('mars-lat').textContent = c.latitude.toFixed(4); $('mars-lon').textContent = c.longitude.toFixed(4); }, 300);
@@ -87,7 +87,7 @@ function generateMockMarsLocation() {
 
 function startFreshJourney() {
     showProcessing('Resetting journey...');
-    fetch('/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' } }).then(r => r.json()).then(data => { if (data.success) location.href = '/arrival/mining'; else { hideProcessing(); showError('Failed: ' + (data.error || 'Unknown')); } }).catch(e => { hideProcessing(); showError('Network error: ' + e.message); });
+    apiPost('/reset').then(data => { if (data.success) location.href = '/arrival/mining'; else { hideProcessing(); showError('Failed: ' + (data.error || 'Unknown')); } }).catch(e => { hideProcessing(); showError('Network error: ' + e.message); });
 }
 
 async function selectLeader(id) {
