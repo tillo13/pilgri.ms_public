@@ -867,7 +867,7 @@ def test_expedition_cost():
 @requires_import('replicate')
 def test_flux_import():
     try:
-        from utilities.flux_utils import FluxGenerator
+        from utilities.replicate_utils import FluxGenerator
         return True
     except ImportError as e:
         return f"FluxGenerator import failed: {e}"

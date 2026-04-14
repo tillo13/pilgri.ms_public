@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 Standalone test script for crew generation using Flux
-Only uses utilities.flux_utils - no config dependencies
+Only uses utilities.replicate_utils - no config dependencies
 """
 
-import utilities.flux_utils as flux_utils
+import utilities.replicate_utils as flux_utils
 import random
 import os
 

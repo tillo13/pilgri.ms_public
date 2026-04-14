@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.flux_utils import FluxGenerator
+from utilities.replicate_utils import FluxGenerator
 
 # The Rover Mk I base image we generated
 BASE_IMAGE = "https://storage.googleapis.com/galactica-pilgrim-assets/upgrade_items/vehicles_rover_lv1_1767742582.png"

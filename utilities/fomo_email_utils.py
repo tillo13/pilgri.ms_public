@@ -110,7 +110,7 @@ def get_user_video_data(user_id: int, commander_name: str = None) -> Optional[Di
     """
     from utilities.video_utils import extract_thumbnail, upload_thumbnail_to_gcs, download_video
     from utilities.depot_utils import get_latest_character_image
-    from utilities.flux_utils import FluxGenerator, animate_character_video
+    from utilities.replicate_utils import FluxGenerator, animate_character_video
 
     # Get user's latest character_video
     with db_cursor() as cur:

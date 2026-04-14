@@ -231,7 +231,7 @@ def generate_discovery_image(item: Dict, flux_generator=None) -> Optional[str]:
 
     try:
         # Use Flux to generate the image
-        # This would call flux_utils.generate_item_image() or similar
+        # This would call replicate_utils.generate_item_image() or similar
         # For now, return None - implement when ready
         logger.info(f"Would generate image for: {item['name']}")
         return None

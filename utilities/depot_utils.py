@@ -600,7 +600,7 @@ def purchase_character_modification(session, edit_prompt: str, flux_generator) -
     Process character modification purchase
     ALWAYS modifies the LATEST image (edited or original)
     """
-    from utilities.flux_utils import edit_character_image
+    from utilities.replicate_utils import edit_character_image
 
     if not edit_prompt or not edit_prompt.strip():
         raise Exception('No modification description provided')

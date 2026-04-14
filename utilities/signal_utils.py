@@ -1155,7 +1155,7 @@ def generate_legendary_item_for_origin(
         logger.info(f"Generating legendary item image for {site_code}: {item_name}")
 
         # Generate the image using Flux
-        from utilities.flux_utils import FluxGenerator
+        from utilities.replicate_utils import FluxGenerator
         from utilities.google_cloud_storage_utils import upload_blob_from_url
         from config import FLUX_MODEL
         import time
@@ -1570,7 +1570,7 @@ def generate_visitor_reward_image(
 
         logger.info(f"Generating visitor reward image for {commander_name} at {site_code}")
 
-        from utilities.flux_utils import FluxGenerator
+        from utilities.replicate_utils import FluxGenerator
         from utilities.google_cloud_storage_utils import upload_blob_from_url
         from config import FLUX_MODEL
         import time

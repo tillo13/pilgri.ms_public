@@ -16,7 +16,7 @@ from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_R
 
 # Cache-bust static files on each deploy (timestamp at startup)
 STATIC_V = str(int(time.time()))
-from utilities.flux_utils import FluxGenerator, process_uploaded_image, animate_character_video
+from utilities.replicate_utils import FluxGenerator, process_uploaded_image, animate_character_video
 from utilities.google_auth_utils import SimpleGoogleAuth, get_secret
 from utilities.postgres.core import db_cursor
 from utilities.postgres.assets import (

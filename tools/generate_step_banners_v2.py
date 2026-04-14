@@ -17,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image
 from google.cloud import storage
-from utilities.flux_utils import FluxGenerator
+from utilities.replicate_utils import FluxGenerator
 from config import FLUX_MODEL
 
 # GCS Configuration

@@ -208,7 +208,7 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
     is logged; caller falls back to stub.
     """
     try:
-        from utilities.flux_utils import FluxGenerator
+        from utilities.replicate_utils import FluxGenerator
         from utilities.google_cloud_storage_utils import upload_blob_from_url
     except ImportError as e:
         logger.error(f"_run_stage: missing dependency, cannot run Kontext: {e}")

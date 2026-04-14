@@ -1329,16 +1329,6 @@
       "generate_email_action_buttons — Generate HTML/text action buttons for email based on what's pending."
     ]
   },
-  "utilities/flux_utils.py": {
-    "exports": [
-      "get_secret",
-      "class FluxGenerator",
-      "process_uploaded_image — Process uploaded image, save to GCS, create new commander with fresh stats.",
-      "edit_character_image — Apply edit to character image, save to GCS with provenance.",
-      "animate_character_video — Create animation from character image, save to GCS (thread-safe - no session access)."
-    ],
-    "description": "Replicate Flux image + WAN video generation — captain portraits, equipment art, ARIA snapshots"
-  },
   "utilities/fomo_email_utils.py": {
     "description": "FOMO Email Utilities - Generate and send FOMO/re-engagement emails",
     "exports": [
@@ -1555,10 +1545,14 @@
   },
   "utilities/replicate_utils.py": {
     "exports": [
-      "get_secret — Retrieve secret from Google Cloud Secret Manager (cached)",
-      "class VisionAnalyzer — Generic image analysis using LLaVA-13B vision model"
+      "get_secret — Retrieve secret from env var or Google Cloud Secret Manager (cached).",
+      "class FluxGenerator",
+      "process_uploaded_image — Process uploaded image, save to GCS, create new commander with fresh stats.",
+      "edit_character_image — Apply edit to character image, save to GCS with provenance.",
+      "animate_character_video — Create animation from character image, save to GCS (thread-safe - no session access).",
+      "class VisionAnalyzer — Generic image analysis using LLaVA-13B vision model."
     ],
-    "description": "Low-level Replicate API wrapper — model predictions, polling, image download"
+    "description": "All Replicate-backed generation + analysis — Flux image edits, Kontext progressive edits, Nano Banana Pro, Wan video, LLaVA vision. FluxGenerator + VisionAnalyzer classes."
   },
   "utilities/robot_visuals.py": {
     "description": "Robot visual pipeline — Kontext-chained per-captain renders.",
@@ -2708,7 +2702,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

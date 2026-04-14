@@ -15,7 +15,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.flux_utils import FluxGenerator, get_secret
+from utilities.replicate_utils import FluxGenerator, get_secret
 import replicate
 
 

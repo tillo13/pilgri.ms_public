@@ -322,7 +322,7 @@ def test_build_time_cap():
 @test("FluxGenerator importable", tier=2, features=['crew'], mode='local')
 def test_flux_import():
     try:
-        from utilities.flux_utils import FluxGenerator
+        from utilities.replicate_utils import FluxGenerator
         return True
     except ImportError as e:
         return f"FluxGenerator import failed: {e}"

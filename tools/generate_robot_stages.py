@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
 import logging
-from utilities.flux_utils import FluxGenerator
+from utilities.replicate_utils import FluxGenerator
 from google.cloud import storage
 
 logging.basicConfig(level=logging.INFO)

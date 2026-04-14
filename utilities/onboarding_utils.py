@@ -763,7 +763,7 @@ def handle_custom_commander_upload(session, image_file, flux, logger):
     Lore: The Sepolia shards transmute the captain's essence using your photo as a template.
     Returns result dict for JSON response.
     """
-    from utilities.flux_utils import process_uploaded_image
+    from utilities.replicate_utils import process_uploaded_image
     from utilities.postgres.assets import update_asset_stats, set_primary_commander
     from utilities.postgres.users import get_user_escalation_counts, increment_transmutation_count, calculate_transmutation_cost
     from utilities.depot_utils import (

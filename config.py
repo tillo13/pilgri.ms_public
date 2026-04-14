@@ -67,28 +67,28 @@ QUICK_STYLES = {
 }
 
 ##############################################################################
-# FLUX_UTILS.PY CONFIGURATION
+# REPLICATE_UTILS.PY CONFIGURATION
 ##############################################################################
 
-# Secret Management (flux_utils.py)
+# Secret Management (replicate_utils.py)
 REPLICATE_TOKEN_ID = "REPLICATE_API_TOKEN"
 
-# Models (flux_utils.py)
+# Models (replicate_utils.py)
 FLUX_MODEL = "black-forest-labs/flux-kontext-pro"
 WAN_VIDEO_MODEL = "wan-video/wan-2.2-i2v-fast"
 
-# Prompts (flux_utils.py)
+# Prompts (replicate_utils.py)
 STANDALONE_CARTOON_PROMPT = "convert to cartoon video game character in a space suit without a helmet, or Mars exploration gear, standing on red martian terrain with rocky landscape and Earth visible as a blue marble in the starry sky above, dressed and adorned for interplanetary exploration, complete full body visible with bold outlines, stylized proportions, vibrant color palette with reds and oranges reflecting Mars atmosphere. if more than one character select only the most prominent one"
 
 VIDEO_ANIMATION_PROMPT = "A cartoon character in space exploration gear without a helmet stands on a red martian ridge overlooking rust-colored valleys and distant mountains, with Earth visible as a small blue sphere in the star-filled black sky above. The character slowly raises their hand to shield their eyes from the pale sun as they gaze toward the distant Mars horizon. The character turns their head left and right, surveying the alien red landscape with a sense of wonder and determination, occasionally glancing up at Earth and the stars. They point toward distant martian landmarks and the Earth above with deliberate, slow movements. The camera smoothly pans left to right and back again, showing different angles of the character against the expansive red planet vista with the starry cosmos and Earth visible in the pink-orange sky. All movements are slow and deliberate - the character's gestures are unhurried, the head turns are gradual, and the camera movement is smooth and steady. The scene captures the spirit of interplanetary exploration and discovery as the character contemplates the Mars journey ahead while remaining connected to their home world."
-# Animation Settings (flux_utils.py)
+# Animation Settings (replicate_utils.py)
 MAX_SPEED = True
 MIN_FRAMES = 81
 LOW_RESOLUTION = "480p"
 FAST_SAMPLE_SHIFT = 7
 STANDARD_FPS = 16
 
-# Retry Settings (flux_utils.py)
+# Retry Settings (replicate_utils.py)
 MAX_RETRIES = 3
 RETRY_DELAY = 2
 BACKOFF_MULTIPLIER = 2

@@ -239,7 +239,7 @@ def _generate_bond_image_async(bond_id: int, user_id_1: int, user_id_2: int, lan
                 f"mysterious ancient relic feel, legendary artifact quality"
             )
 
-            from utilities.flux_utils import FluxGenerator
+            from utilities.replicate_utils import FluxGenerator
             from utilities.google_cloud_storage_utils import upload_blob_from_url
             from config import FLUX_MODEL
             import time

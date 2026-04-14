@@ -9,7 +9,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from utilities.flux_utils import FluxGenerator
+from utilities.replicate_utils import FluxGenerator
 
 # Directories
 IMAGES_DIR = Path("static/images/default_leaders")

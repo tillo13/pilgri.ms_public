@@ -150,7 +150,7 @@ ITEMS_TO_REGENERATE = {
 
 def generate_image(item_key: str, item_data: dict, dry_run: bool = False) -> dict:
     """Generate a new image for an item using Flux."""
-    from utilities.flux_utils import FluxGenerator
+    from utilities.replicate_utils import FluxGenerator
     from utilities.google_cloud_storage_utils import upload_blob_from_url
 
     prompt = BASE_PROMPT.format(description=item_data['description'])

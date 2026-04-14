@@ -103,7 +103,7 @@ def generate_upgrade_image_background(
     Generate upgrade image using Kontext (runs in background thread).
     Returns the new GCS URL or None on failure.
     """
-    from utilities.flux_utils import FluxGenerator
+    from utilities.replicate_utils import FluxGenerator
     from utilities.google_cloud_storage_utils import upload_blob_from_url
     import time
 
@@ -309,7 +309,7 @@ def generate_tech_branch_icons(branch: str, branch_level: int, user_id: int = No
     Called when a branch levels up (all 5 techs complete).
     """
     from config_tech import TECH_CATALOG
-    from utilities.flux_utils import FluxGenerator
+    from utilities.replicate_utils import FluxGenerator
     from utilities.google_cloud_storage_utils import upload_blob_from_url
     import time
 

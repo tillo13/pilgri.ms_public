@@ -98,7 +98,7 @@ TASK_PRESETS = {
     "ai_generation": {
         "description": "Modify image/video generation via Replicate",
         "files": [
-            "utilities/flux_utils.py",
+            "utilities/replicate_utils.py",
             "utilities/google_cloud_storage_utils.py",
             "loader.py",
             "app.py",
@@ -119,7 +119,7 @@ TASK_PRESETS = {
             "tools/populate_discovery_items.py",
             "tools/populate_discovery_images.py",
             "utilities/claude_utils.py",
-            "utilities/flux_utils.py",
+            "utilities/replicate_utils.py",
             "utilities/postgres_utils.py",
             "config.py",
         ]
@@ -141,8 +141,6 @@ FILE_CATEGORIES = {
     ],
     "utilities": [
         "utilities/depot_utils.py",
-        "utilities/expedition_utils.py",
-        "utilities/flux_utils.py",
         "utilities/google_auth_utils.py",
         "utilities/google_cloud_storage_utils.py",
         "utilities/google_secret_utils.py",

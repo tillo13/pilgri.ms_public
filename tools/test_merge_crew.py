@@ -9,7 +9,7 @@ Focus: Generate individual well-cropped characters within strict Flux size limit
 - Optimized for Flux Kontext processing
 """
 
-import utilities.flux_utils as flux_utils
+import utilities.replicate_utils as flux_utils
 import random
 import os
 from PIL import Image

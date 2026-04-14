@@ -66,9 +66,8 @@ MANUAL_DESCRIPTIONS = {
     "config_tech.py": "Tech tree config — 4 branches × 5 techs, SV costs, research times, branch effects",
     "config_shop.py": "Shop catalog — one-time depot items, trail duration calc, build time formula",
     # Utilities without good docstrings
-    "utilities/flux_utils.py": "Replicate Flux image + WAN video generation — captain portraits, equipment art, ARIA snapshots",
     "utilities/gmail_utils.py": "Email sending via Gmail API — HTML templates, FOMO emails, notification formatting",
-    "utilities/replicate_utils.py": "Low-level Replicate API wrapper — model predictions, polling, image download",
+    "utilities/replicate_utils.py": "All Replicate-backed generation + analysis — Flux image edits, Kontext progressive edits, Nano Banana Pro, Wan video, LLaVA vision. FluxGenerator + VisionAnalyzer classes.",
     "utilities/mars_math.py": "Mars math — haversine_distance(), Mars radius constant, coordinate calculations",
     "utilities/session_helpers.py": "Session cache invalidation — invalidate_balance_cache, invalidate_nav_cache, clear helpers",
     # Key docs
