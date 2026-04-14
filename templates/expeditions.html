@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
              data-expedition-index="{{ loop.index0 }}"
              data-distance="{{ landmark.distance_km }}"
              data-landmark-index="{{ landmarks.index(landmark) }}"
-             data-slots-full="{% if active_expeditions and active_expeditions|length >= (max_concurrent_expeditions|default(1)) %}true{% else %}false{% endif %}">
+             data-slots-full="{% if active_expeditions and (active_expeditions|selectattr('status', 'in', ['traveling','recalled'])|list|length) >= (max_concurrent_expeditions|default(1)) %}true{% else %}false{% endif %}">
             <div class="exp-card-header">
                 <div>
                     <div class="exp-card-name">{{ landmark.name }}</div>

@@ -2085,6 +2085,17 @@ def claim_all_discoveries(user_id, expedition_id=None):
     if result['claimed_count'] == 0:
         return {'success': False, 'error': 'No discoveries to claim'}
 
+    # Claim-all from banner is an implicit acknowledgement — free the slot.
+    # Without this, completed expeditions with notified_at=NULL linger in the
+    # active list for up to 7 days and block new launches (bug #1332).
+    if expedition_id and expedition.get('status') == 'complete' and not expedition.get('notified_at'):
+        try:
+            from utilities.postgres_utils import db_cursor
+            with db_cursor(commit=True) as cur:
+                cur.execute("UPDATE pilgrim.expeditions SET notified_at = NOW() WHERE id = %s", (expedition_id,))
+        except Exception as e:
+            logger.warning(f"Failed to mark expedition {expedition_id} notified after claim: {e}")
+
     return {
         'success': True,
         'claimed_count': result['claimed_count'],

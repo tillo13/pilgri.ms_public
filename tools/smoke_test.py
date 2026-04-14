@@ -395,6 +395,19 @@ def test_expeditions_table():
     return True
 
 
+@test("claim_all marks expedition notified (bug #1332)", tier=2, features=['db', 'expeditions'])
+def test_claim_all_marks_notified():
+    # After claim_all_discoveries succeeds for a specific expedition,
+    # notified_at must be set so the banner-still-showing record stops
+    # inflating active_expeditions and blocking new launches.
+    import inspect
+    from utilities import expedition_utils
+    src = inspect.getsource(expedition_utils.claim_all_discoveries)
+    assert 'notified_at = NOW()' in src, \
+        "claim_all_discoveries must set notified_at after a successful claim (bug #1332)"
+    return True
+
+
 @test("expedition_discoveries table exists", tier=2, features=['db', 'expeditions'])
 def test_discoveries_table():
     from utilities.postgres_utils import db_cursor
