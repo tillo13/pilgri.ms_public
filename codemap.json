@@ -135,23 +135,9 @@
     ]
   },
   "tools/aria_snapshots.py": {
-    "description": "ARIA Snapshots - Generate Instagram-style photos of life at the colony",
+    "description": "ARIA Snapshots CLI — generate Instagram-style colony photos.",
     "exports": [
-      "calculate_sol_number — Calculate Mars sol number from user's account creation date.",
-      "save_generated_image — Save a generated image record to the tracking table.",
-      "get_user_snapshots — Get recent ARIA snapshots for a user.",
-      "get_user_by_email — Get user record by email",
-      "get_user_captain — Get user's primary captain image and info",
-      "get_recent_discoveries — Get user's recent discoveries with details",
-      "get_recent_expeditions — Get user's recent completed expeditions",
-      "get_user_rover_image — Get user's rover upgrade image if they have one.",
-      "get_user_infrastructure — Get user's active infrastructure",
-      "get_active_expeditions — Get user's currently active expeditions",
-      "get_recent_purchases — Get user's recent depot purchases from transaction log",
-      "get_user_upgrades — Get user's upgrade levels from player_upgrades table",
-      "get_expedition_stats — Get user's total expedition and discovery counts",
-      "get_user_balance — Get user's shard balance (display value) - returns estimated value for context only",
-      "get_recent_events — Get user's recent notable events from last 24 hours"
+      "main"
     ]
   },
   "tools/backfill_activity.py": {
@@ -2105,6 +2091,59 @@
       "load_colony_snapshot — Comprehensive colony data load - ARIA's full knowledge of this captain."
     ]
   },
+  "utilities/aria/photos/__init__.py": {
+    "description": "ARIA photo/snapshot generation — Instagram-style images of colony life."
+  },
+  "utilities/aria/photos/data.py": {
+    "description": "DB queries for ARIA snapshot context — read-only user/colony data.",
+    "exports": [
+      "get_user_by_email — Partial-match user lookup by email.",
+      "get_user_captain — User's primary captain image + stats.",
+      "get_recent_discoveries — Recent discoveries with expedition + item details.",
+      "get_recent_expeditions — Recent completed expeditions.",
+      "get_user_rover_image — Currently unused — rover images aren't stored per-user yet. Returns None.",
+      "get_user_infrastructure — Active colony infrastructure.",
+      "get_active_expeditions — Currently in-progress expeditions.",
+      "get_recent_purchases — Recent depot purchases with parsed item_details JSON.",
+      "get_user_upgrades — Upgrade levels keyed as 'category_item'.",
+      "get_expedition_stats — Total expedition + discovery counts.",
+      "get_user_balance — Estimated shard balance for prompt flavor (0 on failure — non-critical).",
+      "get_recent_events — Notable events in the last 24h for prompt context.",
+      "get_active_users_for_snapshots — Users with a captain image AND activity in the last `active_hours`."
+    ]
+  },
+  "utilities/aria/photos/generator.py": {
+    "description": "ARIA snapshot generators — Kontext edit, Nano Banana Pro, and the",
+    "exports": [
+      "get_source_image — Resolve a single reference image URL for a given source tag.",
+      "get_source_images — Resolve multiple reference image URLs (Nano Banana Pro multi-char scenes).",
+      "generate_snapshot — Generate a snapshot by editing an existing image with Flux Kontext.",
+      "generate_nano_banana_snapshot — Multi-character snapshot via Nano Banana Pro.",
+      "generate_snapshot_for_user — Generate one snapshot for a user looked up by email (partial match)."
+    ]
+  },
+  "utilities/aria/photos/orchestrator.py": {
+    "description": "Daily ARIA snapshot orchestrator — the cron entry point.",
+    "exports": [
+      "generate_daily_snapshots_for_user — Generate `num_snapshots` snapshots for one user using Claude-generated prompts.",
+      "generate_daily_snapshots — Cron entry point — generate daily snapshots for all active users."
+    ]
+  },
+  "utilities/aria/photos/prompts.py": {
+    "description": "ARIA snapshot prompt templates, constants, and shared helpers.",
+    "exports": [
+      "calculate_sol_number — Mars sol number from account creation date — matches status bar in core.js.",
+      "get_current_mars_time — Approximate Mars time-of-day bucket for prompt lighting.",
+      "get_daily_snapshot_types_for_user — Weighted random selection of `count` unique snapshot types for this user/day."
+    ]
+  },
+  "utilities/aria/photos/storage.py": {
+    "description": "Persistence for generated ARIA snapshots.",
+    "exports": [
+      "save_generated_image — Insert a generated image row into pilgrim.generated_images. Returns new id.",
+      "get_user_snapshots — Most recent ARIA snapshots for a user."
+    ]
+  },
   "utilities/static/__init__.py": {
     "description": "utilities.static — sitemaps, feeds, and other crawler-facing static responses."
   },
@@ -2702,7 +2741,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2715,7 +2754,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -2780,7 +2819,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

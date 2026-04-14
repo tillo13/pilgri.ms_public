@@ -412,7 +412,8 @@ def handle_admin_sync_balances():
 
 def handle_admin_generate_snapshots(target_user_id=None, dry_run=False):
     """Generate ARIA Photo Journal snapshots."""
-    from tools.aria_snapshots import generate_daily_snapshots, generate_daily_snapshots_for_user, FluxGenerator
+    from utilities.aria.photos import generate_daily_snapshots, generate_daily_snapshots_for_user
+    from utilities.replicate_utils import FluxGenerator
 
     if target_user_id:
         with db_cursor() as cur:
@@ -518,7 +519,7 @@ def start_background_snapshot_generation():
     """Start daily snapshot generation in a background thread."""
     def _run():
         try:
-            from tools.aria_snapshots import generate_daily_snapshots
+            from utilities.aria.photos import generate_daily_snapshots
             result = generate_daily_snapshots(dry_run=False)
             logger.info(f"Daily snapshot generation completed: {result['total_snapshots']} snapshots for {result['processed_users']} users")
         except Exception as e:
