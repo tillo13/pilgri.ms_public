@@ -1647,77 +1647,8 @@ def api_claim_all_expedition_discoveries(expedition_id):
 @login_required
 def api_expedition_haul(expedition_id):
     """Get full expedition haul data for the celebration modal"""
-    from utilities.db_expeditions import get_expedition_discoveries
-    expedition = get_expedition_by_id(expedition_id)
-    if not expedition or expedition['user_id'] != g.user_id:
-        return jsonify({'success': False, 'error': 'Unauthorized'})
-
-    # Get destination image from mars_mappings
-    destination_image = None
-    try:
-        with db_cursor() as cur:
-            cur.execute("SELECT image_url FROM pilgrim.mars_mappings WHERE name = %s LIMIT 1",
-                        (expedition['destination_name'],))
-            row = cur.fetchone()
-            if row:
-                destination_image = row.get('image_url')
-    except Exception as e:
-        logger.warning(f"Could not fetch destination image: {e}")
-
-    # Ensure all discoveries are unlocked for completed expeditions
-    if expedition['status'] in ('complete', 'recalled'):
-        from utilities.db_expeditions import unlock_discoveries_by_distance
-        unlock_discoveries_by_distance(expedition_id, float(expedition['distance_km']))
-
-    # Get all discoveries with full details
-    discoveries = get_expedition_discoveries(expedition_id, unlocked_only=True)
-
-    # Calculate travel time
-    travel_hours = 0
-    if expedition.get('departed_at') and expedition.get('completed_at'):
-        delta = expedition['completed_at'] - expedition['departed_at']
-        travel_hours = delta.total_seconds() / 3600
-    elif expedition.get('departed_at') and expedition.get('arrives_at'):
-        delta = expedition['arrives_at'] - expedition['departed_at']
-        travel_hours = delta.total_seconds() / 3600
-
-    # Format discoveries for frontend
-    formatted = [{
-        'id': d.get('id'), 'item_name': d.get('item_name'), 'rarity': d.get('rarity', 'common'),
-        'image_url': d.get('image_url'), 'description': d.get('description'),
-        'enhanced_value': float(d.get('enhanced_value') or d.get('scientific_value') or 0),
-        'claimed': d.get('claimed_by_user', False), 'item_type': d.get('item_type')
-    } for d in discoveries]
-
-    # Convert ETH to display shards
-    from utilities.depot_utils import eth_to_display
-    shards_display = eth_to_display(float(expedition.get('sepolia_earned') or 0))
-
-    # Calculate SV earned from distance
-    from utilities.db_expeditions import calculate_expedition_sv
-    distance = float(expedition['distance_km'])
-    sv_earned = calculate_expedition_sv(distance)
-
-    # Mark as seen (sets notified_at so it stops showing as "new return" on dashboard)
-    if expedition['status'] == 'complete' and not expedition.get('notified_at'):
-        try:
-            with db_cursor(commit=True) as cur:
-                cur.execute("UPDATE pilgrim.expeditions SET notified_at = NOW() WHERE id = %s", (expedition_id,))
-        except Exception:
-            pass
-
-    return jsonify({
-        'success': True,
-        'expedition': {
-            'id': expedition_id, 'destination': expedition['destination_name'],
-            'destination_type': expedition.get('destination_type'), 'destination_image': destination_image,
-            'distance_km': distance, 'vehicle_type': expedition.get('vehicle_type', 'rover'),
-            'shards_earned': shards_display, 'sv_earned': sv_earned,
-            'travel_hours': round(travel_hours, 1), 'status': expedition['status']
-        },
-        'discoveries': formatted,
-        'unclaimed_count': sum(1 for d in formatted if not d['claimed'])
-    })
+    from utilities.expeditions.haul_data import build_expedition_haul
+    return jsonify(build_expedition_haul(g.user_id, expedition_id))
 
 @app.route('/api/discovery_items/<signed_int:discovery_item_id>/details')
 @login_required
@@ -2845,57 +2776,15 @@ def admin_speed():
                           latest=latest, history=history, pool=pool, db_stats=db_stats)
 
 
-def _execute_speed_test(test_user_id):
-    """Core speed test: time page data functions, save to DB. Returns (pages, all_ok)."""
-    import time
-    import json as json_lib
-    from utilities.postgres_utils import db_cursor, get_pool_health
-    THRESHOLD = 3.0
-    pages = []
-    tests = [
-        ('Home /', 'get_dashboard_page_data', lambda: get_dashboard_page_data(test_user_id, auth)),
-        ('Crew /crew', 'get_command_page_data', lambda: get_command_page_data(test_user_id)),
-        ('Colony /colony', 'get_colony_page_data', lambda: get_colony_page_data(test_user_id, auth)),
-        ('Depot /depot', 'get_depot_page_data', lambda: get_depot_page_data(test_user_id, auth)),
-        ('Expeditions', 'get_expeditions_page_data', lambda: get_expeditions_page_data(test_user_id)),
-        ('Research', 'get_research_page_data', lambda: get_research_page_data(test_user_id)),
-        ('Admin /admin', 'get_admin_dashboard_data', lambda: get_admin_dashboard_data(test_user_id)),
-    ]
-    for label, func_name, fn in tests:
-        start = time.time()
-        try:
-            fn()
-            elapsed = round(time.time() - start, 3)
-            status = 'ok'
-        except Exception as e:
-            elapsed = round(time.time() - start, 3)
-            status = str(e)[:100]
-        pages.append({'page': label, 'function': func_name, 'time_s': elapsed, 'status': status})
-    # Capture pool health snapshot with each test
-    pool_snap = get_pool_health()
-    pages.append({'page': 'DB Pool', 'function': 'pool_health',
-                  'time_s': 0, 'status': f"{pool_snap['status']} ({pool_snap.get('used',0)}/{pool_snap['maxconn']}, {pool_snap['fallbacks']} fallbacks)"})
-    pages.sort(key=lambda x: x['time_s'], reverse=True)
-    slowest = next((p for p in pages if p['function'] != 'pool_health'), pages[0]) if pages else None
-    all_ok = all(r['status'] == 'ok' and r['time_s'] < THRESHOLD for r in pages if r['function'] != 'pool_health')
-    if pool_snap['fallbacks'] > 0:
-        all_ok = False  # Flag if any pool fallbacks occurred
-    with db_cursor(commit=True) as cur:
-        cur.execute(
-            "INSERT INTO speed_test_runs (tested_by, results, slowest_page, slowest_time, all_ok) VALUES (%s, %s, %s, %s, %s)",
-            (test_user_id, json_lib.dumps(pages), slowest['page'] if slowest else None, slowest['time_s'] if slowest else 0, all_ok)
-        )
-    return pages, all_ok
-
-
 @app.route('/api/admin/speed_test', methods=['POST'])
 @handle_api_error
 def api_admin_speed_test():
     """Admin-only: Time server-side page data functions and save to DB."""
+    from utilities.admin.speed_testing import execute_speed_test
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    pages, all_ok = _execute_speed_test(real_user_id)
+    pages, all_ok = execute_speed_test(real_user_id, auth)
     return jsonify({'success': True, 'results': pages, 'threshold_s': 3.0, 'all_ok': all_ok})
 
 
@@ -3200,134 +3089,8 @@ def api_pilgrimbot_chat():
         session['_pb_role'] = user_role
 
     # PilgrimBot actions — detect and execute before streaming
-    action_context = ""
-    msg_lower = message.lower()
-
-    # Pool health check
-    pool_triggers = ['pool health', 'pool status', 'db health', 'db pool', 'connection pool',
-                     'check pool', 'check connections', 'db connections']
-    if any(t in msg_lower for t in pool_triggers):
-        try:
-            from utilities.postgres_utils import get_pool_health, get_db_connection_stats
-            ph = get_pool_health()
-            ds = get_db_connection_stats()
-            action_context += "\n--- DB POOL HEALTH (live) ---\n"
-            action_context += f"Pool: {ph['status'].upper()} — {ph.get('used',0)}/{ph['maxconn']} used, {ph.get('available',0)} available\n"
-            action_context += f"Fallbacks since boot: {ph['fallbacks']} {'(NONE — healthy!)' if ph['fallbacks'] == 0 else '(pool was exhausted this many times)'}\n"
-            if ds and not ds.get('error'):
-                action_context += f"Global DB: {ds['total_used']}/{ds['max_connections']} connections ({ds['pct_used']}% used)\n"
-                action_context += f"States: {ds['by_state']}\n"
-        except Exception as e:
-            action_context += f"\n--- Pool health check failed: {e} ---\n"
-
-    # Speed test
-    speed_triggers = ['run speed test', 'run the speed', 'check the speed', 'test the speed',
-                      'test site speed', 'speed check', 'how fast is the site', 'run a speed',
-                      'site performance', 'check performance', 'test performance']
-    if any(t in msg_lower for t in speed_triggers):
-        try:
-            pages, all_ok = _execute_speed_test(real_user_id)
-            action_context += "\n--- FRESH SPEED TEST RESULTS (just ran & saved to DB) ---\n"
-            action_context += f"All pages OK: {all_ok}\n"
-            for p in pages:
-                action_context += f"  {p['page']}: {p['time_s']}s {'OK' if p['status'] == 'ok' else p['status']}\n"
-        except Exception as e:
-            action_context += f"\n--- Speed test failed: {e} ---\n"
-
-    # Bug status changes — "mark bug 5 as todo", "pass bug 3 to dev"
-    import re
-    bug_action_match = re.search(
-        r'(?:mark|set|move|change|update)\s+(?:bug\s*)?#?(\d+)\s+(?:to|as)\s+(new|todo|in review|review|done|dev)',
-        msg_lower
-    )
-    if not bug_action_match:
-        # Also match "pass bug 3 to dev"
-        bug_action_match = re.search(r'pass\s+(?:bug\s*)?#?(\d+)\s+to\s+dev', msg_lower)
-        if bug_action_match:
-            bug_action_match = type('M', (), {'group': lambda s, n: bug_action_match.group(1) if n == 1 else 'todo'})()
-    if bug_action_match:
-        try:
-            from utilities.db_bugs import get_bug_by_id, update_bug
-            action_bug_id = int(bug_action_match.group(1))
-            new_status_raw = bug_action_match.group(2).strip()
-            status_map = {'new': 'New', 'todo': 'Todo', 'in review': 'In Review',
-                          'review': 'In Review', 'dev': 'Todo', 'done': 'Done'}
-            new_status = status_map.get(new_status_raw, 'Todo')
-            bug = get_bug_by_id(action_bug_id)
-            if bug:
-                if new_status == 'Done':
-                    action_context += f"\n--- Bug #{action_bug_id}: Only Luke (QA) can mark bugs as Done. Status unchanged. ---\n"
-                else:
-                    update_bug(action_bug_id, 'PilgrimBot', status=new_status)
-                    action_context += f"\n--- Bug #{action_bug_id} status changed: {bug['status']} → {new_status} ---\n"
-            else:
-                action_context += f"\n--- Bug #{action_bug_id} not found ---\n"
-        except Exception as e:
-            action_context += f"\n--- Bug update failed: {e} ---\n"
-
-    # Create bug from conversation via chat message
-    bug_create_triggers = ['create a bug', 'log this as a bug', 'file a bug', 'make a bug',
-                           'log this bug', 'report this bug', 'submit this bug', 'open a bug',
-                           'file this as a bug', 'turn this into a bug', 'make this a bug']
-    if any(t in msg_lower for t in bug_create_triggers) and chat_id:
-        try:
-            from utilities.pilgrimbot_utils import create_bug_from_conversation
-            result = create_bug_from_conversation(chat_id, real_user_id)
-            if result.get('success'):
-                action_context += (f"\n--- BUG CREATED: #{result['bug_id']} — {result['title']} ---\n"
-                                   f"Link: /admin/bugs?open={result['bug_id']}\n"
-                                   f"Related bug discovery is running in the background.\n")
-            else:
-                action_context += f"\n--- Bug creation failed: {result.get('error', 'unknown')} ---\n"
-        except Exception as e:
-            action_context += f"\n--- Bug creation failed: {e} ---\n"
-
-    # Search for related/similar bugs based on conversation
-    related_triggers = ['relate to any', 'similar bug', 'related bug', 'any other bug',
-                        'duplicate bug', 'seen this before', 'known issue', 'existing bug',
-                        'already reported', 'been reported', 'any bugs like']
-    if any(t in msg_lower for t in related_triggers) and chat_id:
-        try:
-            from utilities.pilgrimbot_utils import get_chat_history
-            from utilities.db_bugs import search_bugs
-            history = get_chat_history(real_user_id, chat_id, limit=10)
-            # Extract keywords from recent conversation
-            recent_text = ' '.join(m['content'][:200] for m in history[-6:])
-            search_stopwords = {'this', 'that', 'have', 'been', 'does', 'what', 'about',
-                                'there', 'where', 'which', 'with', 'from', 'your', 'they',
-                                'just', 'like', 'know', 'think', 'seem', 'also', 'some',
-                                'relate', 'related', 'similar', 'bugs', 'other', 'existing'}
-            words = [w.lower().strip("?.,!()\"'") for w in recent_text.split()
-                     if len(w) > 4 and w.lower().strip("?.,!()\"'") not in search_stopwords]
-            # Search top 4 unique keywords
-            seen_words = set()
-            unique = []
-            for w in words:
-                if w not in seen_words:
-                    seen_words.add(w)
-                    unique.append(w)
-            all_results = {}
-            for keyword in unique[:4]:
-                for b in search_bugs(keyword):
-                    if b['id'] not in all_results:
-                        all_results[b['id']] = b
-            if all_results:
-                action_context += f"\n--- BUG SEARCH RESULTS ({len(all_results)} matches) ---\n"
-                for b in list(all_results.values())[:10]:
-                    action_context += f"  #{b['id']}: {b['name']} ({b['status']}/{b['priority']}) — {(b.get('description') or '')[:100]}\n"
-            else:
-                action_context += "\n--- No matching bugs found in the tracker ---\n"
-        except Exception as e:
-            action_context += f"\n--- Bug search failed: {e} ---\n"
-
-    # Sync balances
-    if any(t in msg_lower for t in ['sync balance', 'sync blockchain', 'check balances', 'refresh balances']):
-        try:
-            result = handle_admin_sync_balances()
-            action_context += f"\n--- BALANCE SYNC COMPLETE ---\n"
-            action_context += f"Synced: {result.get('synced', '?')} users | Errors: {result.get('errors', 0)}\n"
-        except Exception as e:
-            action_context += f"\n--- Balance sync failed: {e} ---\n"
+    from utilities.admin.pilgrimbot_actions import detect_and_execute_actions
+    action_context = detect_and_execute_actions(message, chat_id, real_user_id, auth)
 
     image_url = data.get('image_url')
     generator = handle_chat_streaming(message, chat_id, real_user_id, bug_mode=bug_mode, action_context=action_context, user_role=user_role, image_url=image_url)

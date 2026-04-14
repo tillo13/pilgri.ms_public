@@ -1793,6 +1793,21 @@
       "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL."
     ]
   },
+  "utilities/admin/__init__.py": {
+    "description": "utilities.admin — admin/ops helpers extracted from app.py."
+  },
+  "utilities/admin/pilgrimbot_actions.py": {
+    "description": "PilgrimBot chat action detection — parses the user message, runs live ops actions,",
+    "exports": [
+      "detect_and_execute_actions — Inspect a chat message for admin action triggers, run them, return aggregated context text."
+    ]
+  },
+  "utilities/admin/speed_testing.py": {
+    "description": "Admin speed test — times server-side page data functions and saves results to DB.",
+    "exports": [
+      "execute_speed_test — Run the full page-data speed test suite and persist results."
+    ]
+  },
   "utilities/postgres/activity.py": {
     "description": "Unified activity event logging and retrieval.",
     "exports": [
@@ -2033,6 +2048,12 @@
       "calculate_expedition_cost — Expedition cost + travel time.",
       "generate_expedition_narrative — Narrative explanation of an expedition's cost/speed breakdown.",
       "sort_landmarks_by_cost — Enrich each landmark with its expedition pricing, sort cheapest-first."
+    ]
+  },
+  "utilities/expeditions/haul_data.py": {
+    "description": "Expedition haul celebration modal — full discovery data for completed/recalled expeditions.",
+    "exports": [
+      "build_expedition_haul — Return full haul payload for the celebration modal, or an error dict."
     ]
   },
   "utilities/expeditions/lifecycle.py": {
@@ -2746,7 +2767,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
