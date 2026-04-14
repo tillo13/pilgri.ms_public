@@ -1047,6 +1047,19 @@
       "Fetching Bug Screenshots"
     ]
   },
+  "docs/continuation_cleanup.md": {
+    "description": "Continuation Cleanup — app.py Routing-Only Refactor",
+    "exports": [
+      "Goal",
+      "Ground rules (keep these when resuming)",
+      "What shipped (3 rounds so far)",
+      "Pick up here — Round 4 targets",
+      "Known follow-ups (deferred, not blocking the refactor)",
+      "Refactor-session hygiene (do this every time)",
+      "PilgrimBot data freshness (refreshed 2026-04-14)",
+      "Quick sanity checklist before resuming"
+    ]
+  },
   "docs/deployment.md": {
     "description": "Deployment & Operations",
     "exports": [
@@ -2842,7 +2855,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

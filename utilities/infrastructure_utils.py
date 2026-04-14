@@ -1034,7 +1034,7 @@ def record_science_value(user_id):
                                 for lv in cat.get('levels', {}).values())]
     if sv_building_types:
         from utilities.postgres.core import db_cursor
-        with _db_cursor(commit=True) as cur:
+        with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.colony_infrastructure
                 SET last_payout_at = NOW(), updated_at = NOW()

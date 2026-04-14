@@ -866,7 +866,7 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
     # Trail network
     try:
         from utilities.postgres.core import db_cursor
-        with _db_cursor() as cur:
+        with db_cursor() as cur:
             cur.execute("""
                 SELECT destination_name, trail_level, total_distance_km, km_built
                 FROM pilgrim.trail_segments WHERE user_id = %s ORDER BY created_at
