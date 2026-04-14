@@ -1,0 +1,81 @@
+"""ARIA first-contact cinematic data — one-shot bond-reveal and replay."""
+
+import logging
+from types import SimpleNamespace
+
+from utilities.postgres.core import db_cursor
+
+logger = logging.getLogger(__name__)
+
+
+def _build_render_payload(bond, bond_number, sol, replay=False):
+    """Shared render-kwargs for the first-contact template."""
+    from utilities.aria_bond_utils import _get_commander_name
+    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
+    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
+    return {
+        'bond': SimpleNamespace(**bond),
+        'captain_1': captain_1,
+        'captain_2': captain_2,
+        'bond_number': bond_number,
+        'sol': sol,
+        'replay': replay,
+    }
+
+
+def _bond_number(bond_id):
+    with db_cursor() as cur:
+        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond_id,))
+        return cur.fetchone()['count']
+
+
+def build_first_contact_render_data(user_id, session):
+    """Prepare render data for the cinematic, completing the bond as a side effect.
+
+    Returns (payload_dict, 'redirect') where exactly one is truthy:
+      - payload: pass to render_template('aria_first_contact.html', **payload)
+      - redirect: caller should redirect to the named endpoint ('home')
+    """
+    from utilities.aria_bond_utils import get_pending_first_contact, _complete_bond
+    from utilities.mars_environment_utils import get_mars_sol_number
+
+    bond = get_pending_first_contact(user_id)
+    if not bond:
+        session['_fc_shown'] = True
+        session.modified = True
+        return None, 'home'
+
+    # Complete bond immediately on cinematic load — don't wait for button click.
+    try:
+        _complete_bond(bond['id'])
+        logger.info(f"Bond #{bond['id']} completed on cinematic load for user {user_id}")
+    except Exception as e:
+        logger.warning(f"Bond completion on load failed (may already be bonded): {e}")
+
+    # Mark first_contact_shown for this user (DB per-bond, session tracks "all shown").
+    field = 'first_contact_shown_user_1' if user_id == bond['user_id_1'] else 'first_contact_shown_user_2'
+    with db_cursor(commit=True) as cur:
+        cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond['id'],))
+    session.pop('_fc_shown_all', None)
+    session.pop('_fc_shown', None)
+    session.modified = True
+
+    return _build_render_payload(bond, _bond_number(bond['id']), get_mars_sol_number()), None
+
+
+def build_replay_render_data(user_id):
+    """Prepare render data for replay of an existing bond, or 'home' to redirect."""
+    from utilities.mars_environment_utils import get_mars_sol_number
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT * FROM pilgrim.aria_bonds
+            WHERE (user_id_1 = %s OR user_id_2 = %s)
+            ORDER BY created_at DESC LIMIT 1
+        """, (user_id, user_id))
+        bond = cur.fetchone()
+    if not bond:
+        return None, 'home'
+
+    sol = get_mars_sol_number(bond.get('bonded_at') or bond['created_at'])
+    return _build_render_payload(bond, _bond_number(bond['id']), sol, replay=True), None

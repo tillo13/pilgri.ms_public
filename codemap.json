@@ -48,7 +48,7 @@
       "check_first_contact — Intercept page loads for pending ARIA bond first-contact cinematic.",
       "log_request_time — Log request duration to console for performance monitoring.",
       "set_security_headers — Add security headers including HSTS to force HTTPS.",
-      "inject_global_stats — Inject global user stats into all templates for nav bar and user menu.",
+      "inject_global_stats — Inject global user stats into all templates. Delegates to utilities.session.user_hydration.",
       "handle_api_error — Decorator for consistent API error handling",
       "login_required — Require authentication for route. Sets g.user_id for convenience.",
       "indexnow_key — Serve IndexNow verification key.",
@@ -2107,6 +2107,31 @@
       "calculate_segmented_travel_time — Travel time using trail-segment compounding."
     ]
   },
+  "utilities/aria/__init__.py": {
+    "description": "utilities.aria — ARIA orb chat, greetings, bonds, and first-contact cinematic."
+  },
+  "utilities/aria/first_contact.py": {
+    "description": "ARIA first-contact cinematic data — one-shot bond-reveal and replay.",
+    "exports": [
+      "build_first_contact_render_data — Prepare render data for the cinematic, completing the bond as a side effect.",
+      "build_replay_render_data — Prepare render data for replay of an existing bond, or 'home' to redirect."
+    ]
+  },
+  "utilities/static/__init__.py": {
+    "description": "utilities.static — sitemaps, feeds, and other crawler-facing static responses."
+  },
+  "utilities/static/feeds.py": {
+    "description": "Sitemap, robots.txt, and Atom feed XML — crawler-facing static content."
+  },
+  "utilities/session/__init__.py": {
+    "description": "utilities.session — per-request user hydration + template context helpers."
+  },
+  "utilities/session/user_hydration.py": {
+    "description": "Global template context — hydrates session cache and builds the dict injected into every template.",
+    "exports": [
+      "build_global_context — Return the template context dict for the global nav/status bar on every page."
+    ]
+  },
   "static/css/admin-bugs.css": {
     "description": "Bug Tracker — Admin page styles"
   },
@@ -2702,7 +2727,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -2767,7 +2792,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

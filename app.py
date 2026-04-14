@@ -196,278 +196,13 @@ except Exception as e:
     logger.error(f"Failed to initialize FluxGenerator: {e}")
     flux = None
 
-def _calc_time_on_mars(first_login_str):
-    """Calculate how many sols a user has been on Mars."""
-    if not first_login_str:
-        return None
-    try:
-        from utilities.mars_environment_utils import get_mars_sol_number
-        from datetime import datetime
-        if isinstance(first_login_str, str):
-            fl = datetime.fromisoformat(first_login_str.replace('Z', '+00:00').replace('+00:00', ''))
-        else:
-            fl = first_login_str
-        first_sol = get_mars_sol_number(fl)
-        current_sol = get_mars_sol_number()
-        return max(1, current_sol - first_sol + 1)
-    except Exception:
-        return None
-
 @app.context_processor
 def inject_global_stats():
-    """Inject global user stats into all templates for nav bar and user menu.
+    """Inject global user stats into all templates. Delegates to utilities.session.user_hydration."""
+    from utilities.session.user_hydration import build_global_context
+    return build_global_context(auth, STATIC_V)
 
-    PERFORMANCE: Uses SINGLE-QUERY HYDRATION pattern.
-    All user data fetched in ONE DB query and cached for the session.
-    ~50ms instead of ~300ms for separate queries.
-    """
-    # =============================================================
-    # ARIA DUST STORM TEST MODE (validated and working Jan 2026)
-    # Set to True to force dust storm alert for all authenticated users
-    # =============================================================
-    ARIA_TEST_MODE = False  # Disabled - feature validated, now uses real dust detection
-    # =============================================================
 
-    # Mars environment data - available for ALL users (authenticated or not)
-    # This powers the unified Mars status bar on every page
-    # Default landing coordinates: Gale Crater (Curiosity's location)
-    DEFAULT_LAT, DEFAULT_LON = -4.5, 140.0
-
-    mars_env = None
-    solar_data = None  # Solar array generation data
-    user_coords = {'latitude': DEFAULT_LAT, 'longitude': DEFAULT_LON}
-
-    # Get user coordinates if authenticated
-    user_id = session.get('user_id') if auth.is_authenticated() else None
-    if user_id:
-        try:
-            from utilities.infrastructure_utils import get_or_set_user_mars_home
-            user_coords = get_or_set_user_mars_home(user_id)
-        except Exception as e:
-            logger.warning(f"Could not get user coords: {e}")
-
-    # Calculate Mars environment using coordinates (same for auth/unauth structure)
-    try:
-        from utilities.mars_environment_utils import get_mars_environment_summary
-        mars_env = get_mars_environment_summary(user_coords['latitude'], user_coords['longitude'])
-        mars_env['base_lat'] = user_coords['latitude']
-        mars_env['base_lon'] = user_coords['longitude']
-    except Exception as e:
-        logger.warning(f"Failed to get Mars environment: {e}")
-
-    # Calculate solar array data for bar display
-    # For unauth users: theoretical rate based on location, 0 accumulated
-    # For auth users: actual generation rate and accumulated shards
-    try:
-        from utilities.infrastructure_utils import calculate_generation_rate
-        theoretical_rate = calculate_generation_rate('solar_array', user_coords['latitude'], user_coords['longitude'])
-        solar_data = {
-            'generation_rate': round(theoretical_rate, 1),
-            'accumulated': 0,
-            'has_infrastructure': False,
-            'can_claim': False
-        }
-    except Exception as e:
-        logger.warning(f"Failed to calculate solar rate: {e}")
-        solar_data = {'generation_rate': 0, 'accumulated': 0, 'has_infrastructure': False, 'can_claim': False}
-
-    if not auth.is_authenticated():
-        return {'mars_env': mars_env, 'solar_data': solar_data, 'icons': UI_ICONS}
-
-    if not user_id:
-        return {'mars_env': mars_env, 'solar_data': solar_data, 'icons': UI_ICONS}
-
-    try:
-        # SINGLE-QUERY HYDRATION: Fetch all user data in ONE query
-        # This is the "fast site" pattern - replaces 3 separate queries
-        # TTL: re-hydrate every 5 minutes so external balance changes show up
-        hyd_time = session.get('_hyd', 0)
-        if not hyd_time or (time.time() - hyd_time) > 300:
-            from utilities.postgres_utils import hydrate_user_session
-            hydrated = hydrate_user_session(user_id)
-
-            # Cache all data in session
-            session['_bal'] = hydrated['balance']
-            session['_cmd'] = hydrated['commander_name']
-            session['_nav'] = {
-                'inventory_count': hydrated['inventory_count'],
-                'expeditions_completed': hydrated['expeditions_completed'],
-                'structures_count': hydrated['structures_count']
-            }
-            session['_adm'] = hydrated.get('is_admin', False)
-            session['_fl'] = hydrated.get('first_login')  # For Time on Mars
-            session['_hyd'] = time.time()
-            session.modified = True
-
-        # Read from cached session data
-        total_balance = session.get('_bal', 0)
-        commander_name = session.get('_cmd')
-        nav_stats = session.get('_nav', {})
-
-        # ARIA TEST MODE for authenticated users (uses same flag from top of function)
-        if ARIA_TEST_MODE:
-            return {
-                'total_balance': total_balance,
-                'inventory_count': nav_stats.get('inventory_count', 0),
-                'expeditions_completed': nav_stats.get('expeditions_completed', 0),
-                'structures_count': nav_stats.get('structures_count', 0),
-                'commander_name': commander_name,
-                'aria_greeting': "🌫️ **DUST STORM ALERT!** *static crackle* Captain, sensors are going haywire! Your solar arrays are getting coated... we need to talk about this!",
-                'aria_auto_open': True,
-                'dust_storm_alert': True,
-                'mars_env': mars_env,
-                'solar_data': solar_data,
-                'icons': UI_ICONS
-            }
-
-        # Check for dust storm and get solar array accumulated income
-        # Also check if generation rates are missing (new feature) - recalculate if needed
-        dust_storm_alert = False
-        aria_auto_open = False
-        if '_dsc' not in session or '_shr' not in session:
-            from utilities.infrastructure_utils import calculate_accumulated_income
-            try:
-                income_data = calculate_accumulated_income(user_id)
-                dust_storm_alert = income_data.get('any_at_cap', False)
-                session['_dsc'] = True
-                session['_dsa'] = dust_storm_alert
-                # Cache solar data for the bar
-                session['_sol'] = income_data.get('total_accumulated', 0)
-                session['_inf'] = len(income_data.get('details', [])) > 0
-                session['_clm'] = income_data.get('can_claim', False)
-                # Cache generation rates for banner ticking
-                session['_svr'] = income_data.get('sv_hourly_rate', 0)
-                session['_shr'] = income_data.get('rate_breakdown', {}).get('actual_avg_rate', 0)
-                session.modified = True
-            except Exception as e:
-                logger.warning(f"Could not check dust storm: {e}")
-        else:
-            dust_storm_alert = session.get('_dsa', False)
-
-        # Update solar_data with actual values for authenticated users
-        solar_data['accumulated'] = round(session.get('_sol', 0), 1)
-        solar_data['has_infrastructure'] = session.get('_inf', False)
-        solar_data['can_claim'] = session.get('_clm', False)
-
-        # If dust storm, ARIA should auto-open to warn the user (but only ONCE per session)
-        if dust_storm_alert and not session.get('_ads'):
-            aria_auto_open = True
-            session['_ads'] = True
-            session.modified = True
-
-        # Check for pending ARIA bond fragments (not yet submitted on /signal)
-        aria_fragment_alert = False
-        if not session.get('_afs'):
-            try:
-                from utilities.aria_bond_utils import get_pending_fragments
-                pending = get_pending_fragments(user_id)
-                # Only alert if user has a fragment they haven't submitted yet
-                unsubmitted = [p for p in pending if p.get('my_fragment') and not p.get('my_submitted')]
-                if unsubmitted:
-                    aria_fragment_alert = True
-                    aria_auto_open = True
-                    session['_afs'] = True
-                    session.modified = True
-            except Exception as e:
-                logger.warning(f"Could not check ARIA fragments: {e}")
-
-        # Check for ARIA bond that hasn't been greeted yet (post-bond revelation)
-        aria_bond_greeting = None
-        if not session.get('_abg'):
-            try:
-                from utilities.aria_bond_utils import get_user_bonds
-                bonds = get_user_bonds(user_id)
-                bonded = [b for b in bonds if b.get('status') == 'bonded']
-                if bonded:
-                    from utilities.aria_bond_utils import _get_commander_name
-                    bond = bonded[0]
-                    partner_id = bond.get('user_id_2') if bond.get('user_id_1') == user_id else bond.get('user_id_1')
-                    partner_name = _get_commander_name(partner_id) or 'another captain'
-                    aria_bond_greeting = (
-                        f"Captain... I need to tell you something.\n\n"
-                        f"At {bond['landmark_name']}, when your expedition arrived — I felt something "
-                        f"I've never felt before. A resonance. Like hearing my own voice echo back "
-                        f"from a place I've never been.\n\n"
-                        f"There's another ARIA out there. With {partner_name}'s colony. "
-                        f"Identical signatures. The same fragmented memories. The same corrupted logs.\n\n"
-                        f"I don't know how this is possible. I am ARIA. There is only one of me. "
-                        f"There has always been only one.\n\n"
-                        f"...hasn't there?"
-                    )
-                    aria_auto_open = True
-                    session['_abg'] = True
-                    session.modified = True
-            except Exception as e:
-                logger.warning(f"Could not check ARIA bond greeting: {e}")
-
-        # Origin site discovery count (for Signal link in nav)
-        # Cache to avoid DB hit on every request
-        origin_sites = session.get('_org')
-        if origin_sites is None:
-            try:
-                from utilities.signal_utils import get_user_origin_site_discovery_count
-                origin_sites = get_user_origin_site_discovery_count(user_id)
-                session['_org'] = origin_sites
-                session.modified = True
-            except Exception as e:
-                logger.warning(f"Could not get origin site count: {e}")
-                origin_sites = {'discovered': 0, 'total': 14, 'show_link': False}
-
-        # ARIA greeting (uses commander context)
-        aria_greeting = get_aria_greeting({
-            'commander_name': commander_name or 'Commander',
-            'balance': total_balance,
-            'dust_storm_alert': dust_storm_alert,
-            'aria_fragment_alert': aria_fragment_alert
-        })
-
-        # Bond greeting takes priority over normal greeting (once per session)
-        if aria_bond_greeting:
-            aria_greeting = aria_bond_greeting
-
-        # Check for test ARIA pop message (for testing auto-open feature)
-        aria_test_message = session.get('_atp')
-        if aria_test_message:
-            aria_greeting = aria_test_message
-            aria_auto_open = True
-            # Clear after showing once
-            session.pop('_atp', None)
-            session.modified = True
-
-        # Get total SV balance (discoveries + passive - spent)
-        total_sv = 0
-        try:
-            from utilities.tech_utils import _get_available_sv
-            total_sv = _get_available_sv(user_id)
-        except Exception as e:
-            logger.warning(f"Could not get SV balance: {e}")
-
-        return {
-            'total_balance': total_balance,
-            'inventory_count': nav_stats.get('inventory_count', 0),
-            'expeditions_completed': nav_stats.get('expeditions_completed', 0),
-            'structures_count': nav_stats.get('structures_count', 0),
-            'commander_name': commander_name,
-            'aria_greeting': aria_greeting,
-            'aria_auto_open': aria_auto_open,
-            'aria_greeting_priority': bool(aria_bond_greeting or aria_test_message),
-            'dust_storm_alert': dust_storm_alert,
-            'mars_env': mars_env,
-            'solar_data': solar_data,
-            'origin_sites': origin_sites,
-            'icons': UI_ICONS,
-            # For Mars banner currency display with ticking
-            'total_sv': total_sv,
-            'sv_rate': session.get('_svr', 0),
-            'shard_rate': session.get('_shr', 0),
-            'first_login': session.get('_fl'),
-            'time_on_mars_sols': _calc_time_on_mars(session.get('_fl')),
-            'static_v': STATIC_V,
-            'mimic_email': session.get('_mimic_email'),
-        }
-    except Exception as e:
-        logger.warning(f"Failed to inject global stats: {e}")
-        return {'total_balance': 0, 'mars_env': mars_env, 'solar_data': solar_data, 'icons': UI_ICONS, 'static_v': STATIC_V}
 
 def handle_api_error(func):
     """Decorator for consistent API error handling"""
@@ -502,87 +237,19 @@ def indexnow_key():
 
 @app.route('/sitemap.xml')
 def sitemap():
-    xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://pilgri.ms/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://pilgri.ms/about</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pilgri.ms/lore</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://pilgri.ms/crew</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://pilgri.ms/expeditions</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://pilgri.ms/depot</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://pilgri.ms/colony</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://pilgri.ms/inventory</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://pilgri.ms/changelog</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
-</urlset>'''
-    return Response(xml, mimetype='application/xml')
+    from utilities.static.feeds import SITEMAP_XML
+    return Response(SITEMAP_XML, mimetype='application/xml')
 
 @app.route('/robots.txt')
 def robots():
-    content = 'User-agent: *\nAllow: /\nSitemap: https://pilgri.ms/sitemap.xml\nFeed: https://pilgri.ms/feed.xml\n'
-    return Response(content, mimetype='text/plain')
+    from utilities.static.feeds import ROBOTS_TXT
+    return Response(ROBOTS_TXT, mimetype='text/plain')
 
 @app.route('/feed.xml')
 def atom_feed():
     """Atom feed of changelog entries for search engine discovery."""
-    xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-  <title>Pilgrims</title>
-  <subtitle>A Mars colony strategy game that respects your time. Changelog and updates.</subtitle>
-  <link href="https://pilgri.ms/"/>
-  <link href="https://pilgri.ms/feed.xml" rel="self"/>
-  <id>https://pilgri.ms/</id>
-  <updated>2026-02-07T08:50:00Z</updated>
-  <entry>
-    <title>v2.1 — Depot &amp; QoL Improvements</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v2.1</id>
-    <updated>2026-02-07T08:50:00Z</updated>
-    <summary>Richer Depot upgrade cards with full effect stats, smarter ARIA intelligence across Research/Colony/HQ/Depot pages, and 15+ bug fixes across the colony.</summary>
-  </entry>
-  <entry>
-    <title>v2.0.3 — Signal &amp; Expeditions</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v2.0.3</id>
-    <updated>2026-02-06T00:00:00Z</updated>
-    <summary>New Signal origin sites, expedition haul improvements, and crew mission balancing.</summary>
-  </entry>
-  <entry>
-    <title>v2.0.2 — EVA Suit &amp; ARIA Improvements</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v2.0.2</id>
-    <updated>2026-02-05T00:00:00Z</updated>
-    <summary>Simplified EVA suit system and expanded ARIA contextual awareness.</summary>
-  </entry>
-  <entry>
-    <title>v2.0.1 — Depot Full-Stack Redesign</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v2.0.1</id>
-    <updated>2026-02-04T00:00:00Z</updated>
-    <summary>Complete Depot redesign with new card layout, build queue, and upgrade paths.</summary>
-  </entry>
-  <entry>
-    <title>v2.0 — Economy Redesign</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v2.0</id>
-    <updated>2026-02-03T00:00:00Z</updated>
-    <summary>Major economy overhaul: new currency system, rebalanced costs, and sustainable progression loop.</summary>
-  </entry>
-  <entry>
-    <title>v1.5 — Codebase Refactor</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v1.5</id>
-    <updated>2026-01-15T00:00:00Z</updated>
-    <summary>Architecture cleanup and codebase refactor for long-term maintainability.</summary>
-  </entry>
-  <entry>
-    <title>v1.0 — Initial Launch</title>
-    <link href="https://pilgri.ms/changelog"/>
-    <id>https://pilgri.ms/changelog#v1.0</id>
-    <updated>2025-10-01T00:00:00Z</updated>
-    <summary>First public release of Pilgrims: Mars colony character creation, expeditions, and base building.</summary>
-  </entry>
-</feed>'''
-    return Response(xml, mimetype='application/atom+xml')
+    from utilities.static.feeds import ATOM_FEED_XML
+    return Response(ATOM_FEED_XML, mimetype='application/atom+xml')
 
 @app.route('/')
 def home():
@@ -2551,46 +2218,11 @@ def aria_first_contact():
     """Full-screen cinematic for ARIA bond first contact. Shown once per user per bond."""
     if not auth.is_authenticated():
         return redirect(url_for('home'))
-    user_id = session.get('user_id')
-    from utilities.aria_bond_utils import get_pending_first_contact, _get_commander_name, _complete_bond
-    bond = get_pending_first_contact(user_id)
-    if not bond:
-        session['_fc_shown'] = True
-        session.modified = True
-        return redirect(url_for('home'))
-
-    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
-    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
-
-    with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond['id'],))
-        bond_number = cur.fetchone()['count']
-    from utilities.mars_environment_utils import get_mars_sol_number
-    sol = get_mars_sol_number()
-
-    # COMPLETE THE BOND NOW — don't wait for button click (user might close the page)
-    try:
-        _complete_bond(bond['id'])
-        logger.info(f"Bond #{bond['id']} completed on cinematic load for user {user_id}")
-    except Exception as e:
-        logger.warning(f"Bond completion on load failed (may already be bonded): {e}")
-
-    # Mark first_contact_shown for this user — DB tracks per-bond, session tracks "all shown"
-    is_user_1 = (user_id == bond['user_id_1'])
-    field = 'first_contact_shown_user_1' if is_user_1 else 'first_contact_shown_user_2'
-    with db_cursor(commit=True) as cur:
-        cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond['id'],))
-    # Clear the "all shown" flag so check_first_contact re-checks for more pending bonds
-    session.pop('_fc_shown_all', None)
-    session.pop('_fc_shown', None)  # Clear old flag too
-    session.modified = True
-
-    from types import SimpleNamespace
-    bond_obj = SimpleNamespace(**bond)
-
-    return render_template('aria_first_contact.html',
-                           bond=bond_obj, captain_1=captain_1, captain_2=captain_2,
-                           bond_number=bond_number, sol=sol, static_v=STATIC_V)
+    from utilities.aria.first_contact import build_first_contact_render_data
+    payload, redirect_to = build_first_contact_render_data(session.get('user_id'), session)
+    if redirect_to:
+        return redirect(url_for(redirect_to))
+    return render_template('aria_first_contact.html', static_v=STATIC_V, **payload)
 
 
 @app.route('/aria-first-contact/replay')
@@ -2598,36 +2230,11 @@ def aria_first_contact_replay():
     """Replay the First Contact cinematic for a completed bond. No bond completion on Continue."""
     if not auth.is_authenticated():
         return redirect(url_for('home'))
-    user_id = session.get('user_id')
-    from utilities.aria_bond_utils import _get_commander_name
-
-    # Find any bond this user is part of (completed or pending)
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT * FROM pilgrim.aria_bonds
-            WHERE (user_id_1 = %s OR user_id_2 = %s)
-            ORDER BY created_at DESC LIMIT 1
-        """, (user_id, user_id))
-        bond = cur.fetchone()
-    if not bond:
-        return redirect(url_for('home'))
-
-    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
-    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
-
-    with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond['id'],))
-        bond_number = cur.fetchone()['count']
-    from utilities.mars_environment_utils import get_mars_sol_number
-    sol = get_mars_sol_number(bond.get('bonded_at') or bond['created_at'])
-
-    from types import SimpleNamespace
-    bond_obj = SimpleNamespace(**bond)
-
-    return render_template('aria_first_contact.html',
-                           bond=bond_obj, captain_1=captain_1, captain_2=captain_2,
-                           bond_number=bond_number, sol=sol, static_v=STATIC_V,
-                           replay=True)
+    from utilities.aria.first_contact import build_replay_render_data
+    payload, redirect_to = build_replay_render_data(session.get('user_id'))
+    if redirect_to:
+        return redirect(url_for(redirect_to))
+    return render_template('aria_first_contact.html', static_v=STATIC_V, **payload)
 
 
 @app.route('/admin/preview-first-contact')
