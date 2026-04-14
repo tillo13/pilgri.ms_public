@@ -39,6 +39,94 @@ CREATE_BUG_TOOL = {
 }
 
 
+QUERY_BUGS_TOOL = {
+    "name": "query_bugs",
+    "description": (
+        "Read from the bug tracker. Use this whenever the user asks about bugs, issues, "
+        "reports, comments, or screenshots — you have full access. "
+        "action='get' with bug_id fetches one bug + all comments + history + screenshot URLs. "
+        "action='search' with keyword finds matching bugs (title/description). "
+        "action='list' returns open bugs (optionally filtered by priority P1-P5 or status)."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["get", "search", "list"]},
+            "bug_id": {"type": "integer", "description": "Required when action='get'"},
+            "keyword": {"type": "string", "description": "Required when action='search'"},
+            "priority": {"type": "string", "description": "Optional P1-P5 filter for action='list'"},
+            "status": {"type": "string", "description": "Optional status filter for action='list' (e.g. 'Todo', 'In Review', 'New')"},
+        },
+        "required": ["action"],
+    },
+}
+
+
+def execute_query_bugs_tool(input_data):
+    """Execute query_bugs tool call. Returns formatted result string."""
+    from utilities.postgres.bugs import (
+        get_bug_by_id, get_bug_comments, get_bug_history,
+        search_bugs, get_active_bugs,
+    )
+    action = (input_data.get('action') or '').lower()
+
+    if action == 'get':
+        bug_id = input_data.get('bug_id')
+        if not bug_id:
+            return "ERROR: action='get' requires bug_id."
+        bug = get_bug_by_id(int(bug_id))
+        if not bug:
+            return f"Bug #{bug_id} not found."
+        lines = [f"=== BUG #{bug_id} ==="]
+        for key in ['name', 'description', 'status', 'priority', 'bug_type',
+                    'source', 'qa_notes', 'dev_notes', 'assigned_to',
+                    'qa_approved', 'screenshot_urls', 'created_at', 'updated_at']:
+            val = bug.get(key)
+            if val not in (None, '', [], {}):
+                lines.append(f"{key}: {val}")
+        comments = get_bug_comments(int(bug_id)) or []
+        if comments:
+            lines.append(f"\n--- Comments ({len(comments)}) ---")
+            for c in comments[-25:]:
+                lines.append(f"[{c.get('author', 'anon')} @ {c.get('created_at', '')}] "
+                             f"{str(c.get('body', ''))[:500]}")
+        history = get_bug_history(int(bug_id)) or []
+        if history:
+            lines.append(f"\n--- History ({len(history)}) ---")
+            for h in history[-15:]:
+                lines.append(f"{h.get('changed_at', '')}: {h.get('field', '')} → "
+                             f"{h.get('new_value', '')} (by {h.get('changed_by', '?')})")
+        return "\n".join(lines)
+
+    if action == 'search':
+        kw = (input_data.get('keyword') or '').strip()
+        if not kw:
+            return "ERROR: action='search' requires keyword."
+        results = search_bugs(kw) or []
+        if not results:
+            return f"No bugs found matching '{kw}'."
+        lines = [f"=== {len(results)} bugs matching '{kw}' ==="]
+        for b in results[:25]:
+            lines.append(f"#{b['id']} [{b.get('status', '?')}/{b.get('priority', '?')}] "
+                         f"{b.get('name', '')} — {(b.get('description') or '')[:120]}")
+        return "\n".join(lines)
+
+    if action == 'list':
+        results = get_active_bugs(
+            priority=input_data.get('priority'),
+            status=input_data.get('status'),
+        ) or []
+        if not results:
+            return "No active bugs."
+        lines = [f"=== {len(results)} active bugs ==="]
+        for b in results[:40]:
+            lines.append(f"#{b['id']} [{b.get('status', '?')}/{b.get('priority', '?')}] "
+                         f"{b.get('name', '')}")
+        return "\n".join(lines)
+
+    return f"ERROR: unknown action '{action}'. Use get, search, or list."
+
+
 def execute_create_bug_tool(input_data, user_id, chat_id=None):
     """Execute the create_bug tool call. Returns formatted result string."""
     from utilities.postgres.bugs import create_bug, add_bug_comment

@@ -50,7 +50,7 @@ def get_user_info(user_id):
 
 def get_bond_tx():
     """Get the bond tx_hash for Andy+Luke."""
-    from utilities.aria_bond_utils import get_user_bonds
+    from utilities.aria.bonds import get_user_bonds
     bonds = get_user_bonds(ANDY)
     bonded = [b for b in bonds if b.get('status') == 'bonded']
     return bonded[0]['bond_tx_hash'] if bonded else None

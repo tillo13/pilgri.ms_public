@@ -401,8 +401,8 @@ def test_claim_all_marks_notified():
     # notified_at must be set so the banner-still-showing record stops
     # inflating active_expeditions and blocking new launches.
     import inspect
-    from utilities import expedition_utils
-    src = inspect.getsource(expedition_utils.claim_all_discoveries)
+    from utilities.expeditions import lifecycle
+    src = inspect.getsource(lifecycle.claim_all_discoveries)
     assert 'notified_at = NOW()' in src, \
         "claim_all_discoveries must set notified_at after a successful claim (bug #1332)"
     return True
@@ -454,7 +454,7 @@ def test_mars_messages_table():
 @test("aria_bonds table + bond system", tier=2, features=['db', 'signal', 'colony'])
 def test_aria_bonds_table():
     from utilities.postgres.core import db_cursor
-    from utilities.aria_bond_utils import get_user_bonds, get_pending_fragments, check_for_aria_bond, process_fragment_submission, get_user_bond_count, send_bond_notification_email
+    from utilities.aria.bonds import get_user_bonds, get_pending_fragments, check_for_aria_bond, process_fragment_submission, get_user_bond_count, send_bond_notification_email
     with db_cursor() as cur:
         cur.execute("SELECT id, user_id_1, user_id_2, landmark_name, status, bond_tx_hash FROM pilgrim.aria_bonds LIMIT 1")
     assert isinstance(get_user_bonds(45), list) and isinstance(get_pending_fragments(45), list)
@@ -707,7 +707,7 @@ def test_pilgrimbot_calls_table():
 @test("load_colony_snapshot loads for Andy", tier=1, features=['aria', 'crew'])
 @requires_import('anthropic', 'web3')
 def test_snapshot_andy():
-    from utilities.aria_utils import load_colony_snapshot
+    from utilities.aria.snapshot import load_colony_snapshot
     snapshot = load_colony_snapshot(45)
     assert isinstance(snapshot, dict), f"Expected dict, got {type(snapshot)}"
     assert 'commander' in snapshot, "Missing commander in snapshot"
@@ -719,7 +719,7 @@ def test_snapshot_andy():
 @test("load_colony_snapshot loads for Luke", tier=1, features=['aria', 'crew'])
 @requires_import('anthropic', 'web3')
 def test_snapshot_luke():
-    from utilities.aria_utils import load_colony_snapshot
+    from utilities.aria.snapshot import load_colony_snapshot
     snapshot = load_colony_snapshot(112)
     assert isinstance(snapshot, dict), f"Expected dict, got {type(snapshot)}"
     assert 'commander' in snapshot, "Missing commander in snapshot"
@@ -734,7 +734,7 @@ def test_snapshot_luke():
 def test_snapshot_no_bad_table():
     """pilgrim.discoveries doesn't exist — snapshot must use expedition_discoveries."""
     import inspect
-    from utilities.aria_utils import load_colony_snapshot
+    from utilities.aria.snapshot import load_colony_snapshot
     src = inspect.getsource(load_colony_snapshot)
     assert 'pilgrim.discoveries' not in src, "load_colony_snapshot still references nonexistent pilgrim.discoveries table!"
     return True
@@ -849,7 +849,7 @@ def test_signal_data():
 @requires_web3
 def test_expedition_cost():
     """Core game loop — wrong cost breaks expedition launches."""
-    from utilities.expedition_utils import calculate_expedition_cost
+    from utilities.expeditions.cost import calculate_expedition_cost
     result = calculate_expedition_cost(
         distance_km=500.0,
         destination_type='crater',
@@ -1004,7 +1004,7 @@ def test_recent_discoveries_filter():
 def test_aria_trail_context():
     """Verify ARIA context builder checks captain, scientist, AND aria trail missions."""
     import inspect
-    from utilities.aria_utils import _build_friend_prompt
+    from utilities.aria.prompts import _build_friend_prompt
     source = inspect.getsource(_build_friend_prompt)
     assert "crew.get('aria')" in source, "ARIA context must check for aria trail missions"
     return True
@@ -1015,7 +1015,8 @@ def test_aria_trail_context():
 @test("ARIA friend prompt has first-person self-status framing", tier=2, features=['aria'])
 def test_aria_self_status_framing():
     import inspect
-    from utilities.aria_utils import _build_friend_prompt, _build_snapshot_prompt
+    from utilities.aria.prompts import _build_friend_prompt
+    from utilities.aria.snapshot import _build_snapshot_prompt
     fsrc = inspect.getsource(_build_friend_prompt)
     ssrc = inspect.getsource(_build_snapshot_prompt)
     assert 'aria_self_status' in fsrc, "friend prompt must build aria_self_status field"
@@ -1029,7 +1030,7 @@ def test_aria_self_status_framing():
 @test("ARIA snapshot includes complete_pending_collection mission status", tier=2, features=['aria'])
 def test_aria_mission_status_field():
     import inspect
-    from utilities.aria_utils import load_colony_snapshot
+    from utilities.aria.snapshot import load_colony_snapshot
     src = inspect.getsource(load_colony_snapshot)
     assert "complete_pending_collection" in src, "snapshot must mark stale missions as complete_pending_collection (not silently drop them)"
     return True
@@ -1106,7 +1107,7 @@ def test_haversine():
 @test("calculate_travel_time returns dict", tier=3, features=['expeditions'])
 @requires_web3
 def test_travel_time():
-    from utilities.expedition_utils import calculate_travel_time
+    from utilities.expeditions.terrain import calculate_travel_time
     result = calculate_travel_time(1000, 1.0)  # 1000 km, 1x speed
     assert isinstance(result, dict), f"Expected dict, got {type(result)}"
     assert 'travel_hours' in result or 'travel_days' in result, "Missing time keys"
@@ -1629,7 +1630,7 @@ def test_robot_in_aria_and_pilgrimbot():
       3. PILGRIMBOT_DATA_TOOL enum includes 'robot'.
       4. query_player_data('robot', uid) returns text mentioning Robotics Lab.
     """
-    from utilities.aria_utils import load_colony_snapshot
+    from utilities.aria.snapshot import load_colony_snapshot
     from utilities.pilgrimbot_data import (
         PLAYER_DATA_TOOL, PLAYER_DATA_MAP, query_player_data
     )

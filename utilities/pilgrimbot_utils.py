@@ -535,6 +535,13 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
                     result_text = execute_create_bug_tool(block.input, current_user_id, chat_id=chat_id)
                     logger.info(f"PilgrimBot created bug via tool: {block.input.get('title', '?')}")
                     yield ("tool_call", {"file": "bug:create", "found": True})
+                elif block.name == "query_bugs":
+                    from utilities.pilgrimbot_bugs import execute_query_bugs_tool
+                    result_text = execute_query_bugs_tool(block.input)
+                    action = block.input.get('action', '?')
+                    ref = block.input.get('bug_id') or block.input.get('keyword') or ''
+                    logger.info(f"PilgrimBot query_bugs: {action} {ref}")
+                    yield ("tool_call", {"file": f"bugs:{action}:{ref}", "found": True})
                 else:
                     # read_file tool
                     fpath = block.input.get("file_path", "")
@@ -911,8 +918,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "If something isn't loaded yet, say 'pulling that up now' — never expose internal errors."
         )
 
-        from utilities.pilgrimbot_bugs import CREATE_BUG_TOOL
-        active_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL]
+        from utilities.pilgrimbot_bugs import CREATE_BUG_TOOL, QUERY_BUGS_TOOL
+        active_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL, QUERY_BUGS_TOOL]
 
         yield _sse({'type': 'status', 'message': 'Thinking...'})
 
@@ -977,7 +984,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         deep_system = system_base + surgical_context
 
         # Always give file tools + codemap in bug mode — PilgrimBot should always be able to read code
-        deep_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL]
+        deep_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL, QUERY_BUGS_TOOL]
         if bug_mode:
             deep_tools.append(READ_FILE_TOOL)
             codemap = load_codemap()

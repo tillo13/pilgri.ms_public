@@ -119,7 +119,7 @@ def check_crew_trails():
 def check_expeditions():
     """Launch expeditions for idle vehicles."""
     try:
-        from utilities.expedition_utils import launch_expedition
+        from utilities.expeditions.lifecycle import launch_expedition
     except (ImportError, ModuleNotFoundError) as e:
         log.info(f"  ⚠️  Skipped locally (needs {e.name} — works on GCP)")
         return
@@ -261,7 +261,7 @@ def check_lab_research():
 def check_expedition_completion():
     """Close any expeditions whose return timer has elapsed."""
     from utilities.postgres.core import db_cursor
-    from utilities.expedition_utils import complete_expedition_if_ready
+    from utilities.expeditions.lifecycle import complete_expedition_if_ready
 
     with db_cursor() as cur:
         cur.execute("""

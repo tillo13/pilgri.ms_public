@@ -15,12 +15,10 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.expedition_utils import (
-    calculate_segmented_travel_time,
-    TRAIL_SPEED_MULTIPLIERS,
-    BASE_SPEED_KM_PER_HOUR,
-    get_expedition_preview
-)
+from utilities.expeditions.travel import calculate_segmented_travel_time
+from utilities.expeditions.config import BASE_SPEED_KM_PER_HOUR
+from utilities.expeditions.preview import get_expedition_preview
+from utilities.postgres.trails import TRAIL_SPEED_MULTIPLIERS
 from utilities.postgres.core import db_cursor
 from utilities.postgres.trails import get_user_trail
 

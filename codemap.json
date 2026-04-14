@@ -1182,6 +1182,17 @@
     ],
     "keywords": "database access, session cache, display currency, API patterns, db_cursor"
   },
+  "docs/refactor_damage_log.md": {
+    "description": "Refactor Damage Log — 2026-04-14",
+    "exports": [
+      "1. Rollback targets (last-known-good)",
+      "2. Every commit in the damage window (2026-04-14 07:06 → 13:59)",
+      "3. PilgrimBot-specific files touched",
+      "4. Test evidence captured today (post-deploy, version `vcycb8vwtn`)",
+      "5. What I deployed today (version map)",
+      "6. How to pick this up later"
+    ]
+  },
   "docs/signal.md": {
     "description": "SIGNAL.md — Mars Mission Message System & Blockchain Easter Eggs",
     "exports": [
@@ -1487,6 +1498,7 @@
   "utilities/pilgrimbot_bugs.py": {
     "description": "PilgrimBot bug creation and cross-linking utilities.",
     "exports": [
+      "execute_query_bugs_tool — Execute query_bugs tool call. Returns formatted result string.",
       "execute_create_bug_tool — Execute the create_bug tool call. Returns formatted result string.",
       "create_bug_from_question — Save a bug/feature report via the unified bug tracker.",
       "create_bug_from_conversation — Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.",
@@ -2777,7 +2789,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2855,7 +2867,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

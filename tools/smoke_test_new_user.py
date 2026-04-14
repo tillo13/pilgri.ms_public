@@ -221,7 +221,7 @@ def run_new_user_tests(user_id, verbose=False):
     # Test 9: Get expeditions page data
     @test("Load expeditions page", verbose)
     def test_expeditions_page():
-        from utilities.expedition_utils import get_expeditions_page_data
+        from utilities.expeditions.page_data import get_expeditions_page_data
         data = get_expeditions_page_data(user_id)
         assert isinstance(data, dict), "Expeditions data not a dict"
         assert 'landmarks' in data, "No landmarks"
