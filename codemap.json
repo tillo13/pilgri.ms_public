@@ -1275,8 +1275,8 @@
       "clear_all_aria_conversations — Clear ALL ARIA conversation history for ALL users.",
       "get_aria_relationship_tier — Calculate relationship tier based on account age, activity, and chat history.",
       "get_spatial_hints — Calculate nearby interesting things for ARIA to hint about mysteriously.",
-      "analyze_playstyle — Analyze captain's playstyle for personalized recommendations.",
-      "load_colony_snapshot — Comprehensive colony data load - ARIA's full knowledge of this captain."
+      "check_for_aria_animation — Check if ARIA should show an animation based on conversation context.",
+      "record_aria_animation — Record that an animation was shown to track the once-per-day limit."
     ],
     "keywords": "ARIA chat, colony snapshot, AI assistant, personality tier, relationship"
   },
@@ -2110,11 +2110,21 @@
   "utilities/aria/__init__.py": {
     "description": "utilities.aria — ARIA orb chat, greetings, bonds, and first-contact cinematic."
   },
+  "utilities/aria/config.py": {
+    "description": "ARIA constants — name/image/animations, personality, backstory, game knowledge, forbidden topics."
+  },
   "utilities/aria/first_contact.py": {
     "description": "ARIA first-contact cinematic data — one-shot bond-reveal and replay.",
     "exports": [
       "build_first_contact_render_data — Prepare render data for the cinematic, completing the bond as a side effect.",
       "build_replay_render_data — Prepare render data for replay of an existing bond, or 'home' to redirect."
+    ]
+  },
+  "utilities/aria/snapshot.py": {
+    "description": "ARIA colony snapshot — analyze_playstyle, load_colony_snapshot, _build_snapshot_prompt.",
+    "exports": [
+      "analyze_playstyle — Analyze captain's playstyle for personalized recommendations.",
+      "load_colony_snapshot — Comprehensive colony data load - ARIA's full knowledge of this captain."
     ]
   },
   "utilities/static/__init__.py": {
@@ -2714,7 +2724,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2792,7 +2802,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
