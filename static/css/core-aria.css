@@ -1,0 +1,558 @@
+/* ============================================================================
+   ARIA CHAT WIDGET
+   ============================================================================ */
+
+/* Floating orb button - glowing purple crystal */
+.aria-orb {
+    position: fixed;
+    bottom: 24px; /* Lower - just above page bottom */
+    right: 24px;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-full);
+    background: radial-gradient(ellipse at 30% 30%, #c084fc 0%, #a855f7 40%, #7c3aed 70%, #5b21b6 100%);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    box-shadow:
+        0 0 30px rgba(168, 85, 247, 0.7),
+        0 0 60px rgba(168, 85, 247, 0.4),
+        0 0 90px rgba(168, 85, 247, 0.2),
+        0 6px 20px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    transition: all 0.3s ease;
+    animation: aria-pulse 3s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.aria-orb::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.3) 0%, transparent 50%);
+    border-radius: var(--radius-full);
+}
+
+.aria-orb::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle, #f97316 0%, #ea580c 50%, transparent 70%);
+    border-radius: var(--radius-full);
+    animation: aria-inner-glow 2s ease-in-out infinite alternate;
+}
+
+.aria-orb:hover {
+    transform: scale(1.1);
+    box-shadow:
+        0 0 30px rgba(168, 85, 247, 0.7),
+        0 0 60px rgba(168, 85, 247, 0.4),
+        0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.aria-orb.active {
+    animation: none;
+    box-shadow:
+        0 0 25px rgba(168, 85, 247, 0.6),
+        0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes aria-pulse {
+    0%, 100% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.7), 0 0 60px rgba(168, 85, 247, 0.4), 0 0 90px rgba(168, 85, 247, 0.2), 0 6px 20px rgba(0, 0, 0, 0.4); }
+    50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.9), 0 0 80px rgba(168, 85, 247, 0.5), 0 0 120px rgba(168, 85, 247, 0.3), 0 6px 20px rgba(0, 0, 0, 0.4); }
+}
+
+@keyframes aria-inner-glow {
+    0% { opacity: 0.6; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Gentle idle animation - no jumping, just pulse */
+.aria-orb:not(.active):not(:hover) {
+    animation: aria-pulse 3s ease-in-out infinite;
+}
+
+/* Proximity-based excitement - orb stays purple, only inner red dot gets more active */
+.aria-orb.aria-nearby:not(.active)::after {
+    animation: aria-inner-glow-medium 0.8s ease-in-out infinite alternate !important;
+}
+
+.aria-orb.aria-close:not(.active)::after {
+    animation: aria-inner-glow-intense 0.4s ease-in-out infinite alternate !important;
+}
+
+/* Medium proximity - inner dot pulses faster and grows slightly */
+@keyframes aria-inner-glow-medium {
+    0% { opacity: 0.7; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1.3); }
+}
+
+/* Close proximity - inner dot pulses rapidly and grows more */
+@keyframes aria-inner-glow-intense {
+    0% { opacity: 0.8; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1.6); }
+}
+
+/* Urgent alert mode (dust storm warning) */
+.aria-orb.aria-urgent {
+    background: linear-gradient(135deg, #ff6b35 0%, #f44336 100%) !important;
+    animation: aria-urgent-pulse 0.8s ease-in-out infinite !important;
+    box-shadow: 0 0 30px rgba(244, 67, 54, 0.6) !important;
+}
+
+@keyframes aria-urgent-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+    }
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 0 40px rgba(244, 67, 54, 0.8);
+    }
+}
+
+/* Chat window */
+.aria-chat {
+    position: fixed;
+    bottom: 100px; /* Above the orb */
+    right: 24px;
+    width: min(340px, calc(100vw - 48px));
+    max-width: 340px;
+    max-height: 580px;
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    z-index: 1002;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+[data-theme="dark"] .aria-chat {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.aria-chat.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+/* Chat header - Mars-themed */
+.aria-chat-header {
+    background: linear-gradient(135deg, var(--color-aria) 0%, var(--color-aria-dark) 100%);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--white);
+}
+
+.aria-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    border: 2px solid rgba(255,255,255,0.3);
+    object-fit: cover;
+    background: rgba(255,255,255,0.1);
+}
+
+.aria-header-info {
+    flex: 1;
+}
+
+.aria-header-name {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 2px;
+}
+
+.aria-header-status {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.aria-close-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    color: var(--white);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all var(--tr);
+}
+
+.aria-close-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Chat messages area */
+.aria-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 200px;
+    max-height: 300px;
+    background: var(--bg-secondary);
+}
+
+.aria-message {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    animation: aria-message-in 0.3s ease;
+}
+
+@keyframes aria-message-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.aria-message.aria {
+    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+    color: #1c1917;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+[data-theme="dark"] .aria-message.aria {
+    background: linear-gradient(135deg, var(--sepolia-800) 0%, var(--sepolia-900) 100%);
+    color: var(--neutral-100);
+}
+
+.aria-message.user {
+    background: var(--primary-gradient);
+    color: var(--white);
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+
+.aria-message.typing {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+}
+
+.aria-message.typing span {
+    width: 8px;
+    height: 8px;
+    background: #7c3aed;
+    border-radius: var(--radius-full);
+    animation: aria-typing 1.4s infinite;
+}
+
+.aria-message.typing span:nth-child(2) { animation-delay: 0.2s; }
+.aria-message.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes aria-typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Streaming message style */
+.aria-message.streaming {
+    min-height: 20px;
+}
+
+.typing-dots {
+    color: #7c3aed;
+    animation: typing-pulse 1s infinite;
+}
+
+@keyframes typing-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* ARIA animation video (rare treat - once per week) */
+.aria-animation {
+    align-self: center;
+    padding: 8px;
+    animation: aria-animation-in 0.5s ease;
+    transition: opacity 0.5s ease;
+}
+
+.aria-animation video {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+}
+
+@keyframes aria-animation-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Chat input area */
+.aria-chat-input {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-default);
+    display: flex;
+    gap: 10px;
+    background: var(--bg-card);
+}
+
+.aria-input {
+    flex: 1;
+    border: 1px solid var(--border-default);
+    border-radius: 20px;
+    padding: 10px 16px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: all var(--tr);
+}
+
+.aria-input:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.aria-send-btn {
+    background: var(--purple-gradient);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    color: var(--white);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all var(--tr);
+}
+
+.aria-send-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.aria-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .aria-orb {
+        bottom: 80px; /* Above the mobile nav bar */
+        right: 16px;
+        width: 52px;
+        height: 52px;
+    }
+
+    .aria-chat {
+        bottom: 0;
+        right: 0;
+        left: 0;
+        width: 100%;
+        max-height: 70vh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .aria-chat-messages {
+        max-height: calc(70vh - 140px);
+    }
+}
+
+/* Extra small phones: Narrower margins for ARIA chat */
+@media (max-width: 380px) {
+    .aria-chat {
+        right: 12px;
+        width: calc(100vw - 24px);
+        max-width: 360px;
+    }
+}
+
+/* ==========================================================================
+   CTA BANNERS - Clear call-to-action elements
+   ========================================================================== */
+
+.cta-banner {
+    background: var(--gradient-mars);
+    padding: 16px 20px;
+    text-align: center;
+    border-radius: 0;
+}
+
+.cta-banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.cta-banner-icon {
+    font-size: 24px;
+    animation: bounce-down 1s ease-in-out infinite;
+}
+
+.cta-banner-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.5px;
+}
+
+.cta-banner-hint {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 4px;
+}
+
+/* Success variant - warm bronze for "proceed" actions */
+.cta-banner-success {
+    background: var(--gradient-success);
+    animation: cta-glow-success 2s ease-in-out infinite;
+}
+
+.cta-banner-arrow {
+    font-size: 24px;
+    animation: bounce-right 1s ease-in-out infinite;
+}
+
+@keyframes bounce-right {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+}
+
+@keyframes cta-glow-success {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--color-success-rgb), 0); }
+    50% { box-shadow: 0 0 20px 4px rgba(var(--color-success-rgb), 0.4); }
+}
+
+/* Pulse effect on banner */
+.cta-banner-pulse {
+    animation: cta-glow 2s ease-in-out infinite;
+}
+
+@keyframes bounce-down {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+}
+
+@keyframes cta-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--color-mars-rgb), 0); }
+    50% { box-shadow: 0 0 20px 4px rgba(var(--color-mars-rgb), 0.4); }
+}
+
+/* ==========================================================================
+   CAPTAIN SELECTION GRID - Onboarding flow
+   ========================================================================== */
+
+.captain-selection-card {
+    padding: 16px;
+}
+
+.captain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+}
+
+.captain-card {
+    cursor: pointer;
+    text-align: center;
+    padding: 10px;
+    border-radius: 12px;
+    border: 2px solid var(--border-color);
+    background: var(--bg-primary);
+    transition: all 0.2s ease;
+}
+
+.captain-card:hover {
+    border-color: var(--color-mars);
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(var(--color-mars-rgb), 0.3);
+}
+
+.captain-card-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.captain-card-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Highlighted first card - pulsing border */
+.captain-card-highlight {
+    border-color: var(--color-mars);
+    animation: pulse-border 1.5s ease-in-out infinite;
+    position: relative;
+}
+
+.captain-card-highlight::before {
+    content: "TAP ME";
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-mars);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+    animation: bounce-subtle 1s ease-in-out infinite;
+    z-index: 10;
+}
+
+@keyframes pulse-border {
+    0%, 100% {
+        border-color: var(--color-mars);
+        box-shadow: 0 0 0 0 rgba(var(--color-mars-rgb), 0.4);
+    }
+    50% {
+        border-color: var(--color-sepolia);
+        box-shadow: 0 0 16px 4px rgba(var(--color-mars-rgb), 0.3);
+    }
+}
+
+@keyframes bounce-subtle {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-2px); }
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+    .captain-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .captain-card {
+        padding: 6px;
+    }
+    .captain-card-name {
+        font-size: 10px;
+    }
+    .cta-banner-text {
+        font-size: 16px;
+    }
+}

@@ -1986,6 +1986,15 @@
   "static/css/colony.css": {
     "description": "Colony page styles — discovery cards, equipment grid, activity feed, tabs"
   },
+  "static/css/core-aria.css": {
+    "description": "Styles for core-aria"
+  },
+  "static/css/core-mars-bar.css": {
+    "description": "Styles for core-mars-bar"
+  },
+  "static/css/core-utilities.css": {
+    "description": "Styles for core-utilities"
+  },
   "static/css/core.css": {
     "description": "Shared styles — layout, 5-tab nav, modals, toast, buttons, Mars theme, colorblind-safe palette, status bar"
   },
@@ -2557,7 +2566,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -2622,7 +2631,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

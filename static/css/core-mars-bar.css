@@ -1,0 +1,762 @@
+
+/* ==========================================================================
+   MARS STATUS BAR (global, all pages)
+   ========================================================================== */
+
+/* Main bar - fixed below nav, clickable */
+.mars-status-bar {
+    position: fixed;
+    top: 58px;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    padding: 18px 20px 10px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: nowrap;
+    cursor: pointer;
+    transition: filter 0.2s ease;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mars-status-bar:hover {
+    filter: brightness(1.1);
+}
+
+.mars-status-icon { font-size: 18px; flex-shrink: 0; }
+.mars-status-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; flex-shrink: 0; }
+.mars-status-label { font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+.mars-status-value { font-size: 14px; font-weight: 700; }
+.mars-status-sep { opacity: 0.4; font-size: 10px; flex-shrink: 0; }
+.mars-desktop-only { display: inline; } /* Hide on mobile via media query */
+.mars-status-expand { opacity: 0.7; font-size: 16px; flex-shrink: 0; padding-left: 8px; }
+/* Currency display - flat style to match SOL timer (no pill box to avoid bounce on tick) */
+.mars-currency .mars-status-label { opacity: 1; font-weight: 600; }
+.mars-currency .mars-status-value { font-size: 13px; min-width: 75px; display: inline-block; }
+
+/* Night-only accent colors (high contrast: colored text on dark indigo bg) */
+.mars-night .mars-temp * { color: var(--color-warning) !important; }
+.mars-night #shardsItem * { color: var(--color-warning) !important; }
+.mars-night #scienceItem * { color: var(--color-aria) !important; }
+
+/* Adjust main content padding for fixed Mars bar (nav 58px + bar ~44px + 26px buffer) */
+.main-content { padding-top: 128px !important; }
+
+/* Time of Day Themes — muted gradients, less saturation */
+.mars-dawn { background: linear-gradient(135deg, #b45309 0%, #92400e 50%, #78350f 100%); }
+.mars-day { background: linear-gradient(135deg, #a16207 0%, #854d0e 50%, #713f12 100%); }
+.mars-dusk { background: linear-gradient(135deg, #5b21b6 0%, #4c1d95 30%, #7c3aed 65%, #9333ea 100%); }
+.mars-night { background: linear-gradient(135deg, #171534 0%, #272463 50%, #3b1772 100%); }
+
+/* Dawn/Day: Light text on muted dark-warm backgrounds */
+.mars-dawn, .mars-day {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+.mars-dawn *, .mars-day * {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+.mars-dawn .mars-status-label,
+.mars-day .mars-status-label {
+    opacity: 0.6;
+}
+.mars-dawn .mars-status-sep,
+.mars-day .mars-status-sep {
+    opacity: 0.4;
+}
+
+/* Status Colors - uses semantic vars with proper contrast in both modes */
+.status-good { color: var(--color-success) !important; }
+.status-warning { color: var(--color-warning) !important; }
+.status-danger { color: var(--color-danger) !important; }
+
+/* Dusk/Night: Force ALL text white for contrast on dark/gradient backgrounds */
+.mars-dusk, .mars-night {
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.mars-dusk *, .mars-night * {
+    color: white !important;
+}
+.mars-dusk .mars-status-label,
+.mars-night .mars-status-label {
+    opacity: 0.8;
+}
+.mars-dusk .mars-status-sep,
+.mars-night .mars-status-sep {
+    opacity: 0.5;
+}
+
+/* Mars Details Modal */
+.mars-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mars-modal-overlay.active {
+    display: flex;
+}
+
+.mars-modal {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    max-width: 480px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    animation: marsModalIn 0.25s ease-out;
+}
+
+@keyframes marsModalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.mars-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.mars-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+}
+
+.mars-modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.mars-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.mars-modal-body {
+    padding: 20px;
+}
+
+.mars-modal-section {
+    margin-bottom: 20px;
+}
+
+.mars-modal-section:last-child {
+    margin-bottom: 0;
+}
+
+.mars-modal-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mars-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.mars-modal-stat {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mars-modal-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.mars-modal-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Data source badge at top of modal */
+.mars-modal-source {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.15) 0%, rgba(var(--color-sepolia-rgb), 0.15) 100%);
+    border: 1px solid rgba(var(--color-mars-rgb), 0.3);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.mars-modal-source-icon {
+    font-size: 16px;
+}
+
+.mars-modal-source a {
+    color: var(--color-mars);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.mars-modal-source a:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVE IMPROVEMENTS - All Pages
+   ========================================================================== */
+
+/* Mobile: Stack claimables grid */
+@media (max-width: 768px) {
+    .claimables-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Mars status bar - mobile: only shards + science */
+    .mars-status-bar {
+        top: 56px;
+        padding: 14px 12px 8px;
+        gap: 10px;
+        overflow: hidden;
+        justify-content: flex-start;
+    }
+    .mars-status-icon { font-size: 16px; }
+    .mars-status-label {
+        font-size: 10px;
+        letter-spacing: 0.3px;
+    }
+    .mars-status-value {
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .mars-status-sep { font-size: 9px; }
+    .mars-desktop-only { display: none !important; }
+    .mars-status-expand { font-size: 14px; padding-left: 4px; }
+
+    /* Adjust main content for Mars bar (nav 56px + bar ~36px + 26px buffer) */
+    .main-content { padding-top: 118px !important; }
+
+    /* Legacy Mars conditions bar - compact on mobile */
+    .mars-conditions-bar {
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .mars-conditions-bar > div:first-child {
+        gap: 8px !important;
+    }
+
+    .mars-stat-value {
+        font-size: 12px;
+    }
+
+    /* Hero section compact */
+    .hero-section {
+        margin: -15px -15px 12px -15px !important;
+        padding: 30px 15px 20px 15px !important;
+        min-height: 100px !important;
+    }
+
+    .hero-title {
+        font-size: 22px !important;
+    }
+
+    /* ========================================
+       DEPOT PAGE - Mobile
+       ======================================== */
+
+    /* Filter buttons wrap and scroll */
+    .depot-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .depot-controls .filter-group {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+
+    .depot-controls .filter-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    /* Depot grid single column */
+    .depot-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Colony banner more compact */
+    .colony-banner-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .colony-banner-info {
+        gap: 8px !important;
+    }
+
+    /* Mars conditions panel (depot-specific) */
+    .mars-conditions-panel {
+        padding: 8px 12px;
+    }
+
+    .conditions-row {
+        gap: 8px !important;
+        justify-content: space-between;
+    }
+
+    .condition-label {
+        font-size: 9px !important;
+    }
+
+    .condition-value {
+        font-size: 12px !important;
+    }
+
+    /* ========================================
+       EXPEDITIONS PAGE - Mobile
+       ======================================== */
+
+    /* Status bar stack */
+    .expedition-status-bar {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .expedition-status-item {
+        min-width: 100% !important;
+        padding: 10px 14px;
+    }
+
+    .expedition-status-value {
+        font-size: 18px !important;
+    }
+
+    /* Tab buttons compact */
+    .expedition-tabs {
+        padding: 2px;
+    }
+
+    .expedition-tab {
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+
+    .expedition-tab .tab-count {
+        font-size: 10px;
+        padding: 1px 5px;
+    }
+
+    /* Expedition grid single column */
+    .expedition-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Expedition card metrics tighter */
+    .exp-card-metrics {
+        gap: 4px;
+        padding: 8px;
+    }
+
+    .exp-metric-value {
+        font-size: 13px !important;
+    }
+
+    /* Active expedition banner compact */
+    .active-expedition-banner {
+        padding: 12px;
+    }
+
+    .active-expedition-header {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .active-expedition-name {
+        font-size: 15px !important;
+    }
+
+    .active-expedition-timer {
+        font-size: 18px !important;
+    }
+
+    /* Sort controls stack */
+    .expedition-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    /* Mars map shorter on mobile */
+    #mars-map {
+        height: 250px !important;
+    }
+
+    /* ========================================
+       INVENTORY PAGE - Mobile
+       ======================================== */
+
+    /* Status bar wrap */
+    .inventory-status-bar {
+        gap: 8px !important;
+    }
+
+    .inventory-status-item {
+        min-width: calc(50% - 6px) !important;
+        padding: 10px 12px;
+    }
+
+    .inventory-status-value {
+        font-size: 18px !important;
+    }
+
+    /* Tab buttons compact - show icons only or smaller */
+    .inventory-tabs {
+        padding: 2px;
+        gap: 2px;
+    }
+
+    .inventory-tab {
+        padding: 8px 6px;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .inventory-tab-icon {
+        font-size: 18px;
+    }
+
+    .inventory-tab-label {
+        font-size: 9px;
+    }
+
+    /* Filter controls stack */
+    .inventory-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .inventory-controls .filter-group {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+
+    .inventory-controls .filter-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    /* Inventory grid single column */
+    .inventory-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Activity feed compact */
+    .activity-item {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .activity-title {
+        font-size: 13px;
+    }
+
+    .activity-amount {
+        font-size: 14px;
+        padding: 4px 8px;
+    }
+
+    /* Shard It All banner compact */
+    .shard-it-all-banner {
+        padding: 10px 12px;
+    }
+
+    .shard-banner-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .shard-banner-quote {
+        max-width: 100%;
+    }
+
+    /* ========================================
+       CREW PAGE - Mobile
+       ======================================== */
+
+    /* Two-column hero grid stacks (already has this, but ensure consistency) */
+    .crew-hero-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Step navigation compact on mobile */
+    div[style*="display: flex"][style*="gap: 8px"][style*="margin-bottom: 16px"] {
+        gap: 4px !important;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Stats grid 3 columns tighter on mobile */
+    div[style*="grid-template-columns: repeat(5, 1fr)"] {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 6px !important;
+    }
+
+    /* Captain stats panel compact */
+    .commander-stats-panel {
+        padding: 12px;
+    }
+
+    .stat-pill {
+        padding: 10px 12px;
+    }
+
+    .stat-name {
+        font-size: 12px;
+    }
+
+    .stat-value {
+        font-size: 16px;
+    }
+
+    .stat-desc {
+        font-size: 10px;
+    }
+
+    /* ========================================
+       SHARED COMPONENTS - Mobile
+       ======================================== */
+
+    /* Dashboard cards tighter padding */
+    .dashboard-card {
+        padding: 14px !important;
+        margin-bottom: 12px !important;
+    }
+
+    /* Details/summary elements */
+    details.dashboard-card summary {
+        font-size: 14px;
+    }
+
+    /* Help text smaller */
+    .help-text {
+        font-size: 11px !important;
+    }
+
+    /* Buttons in cards */
+    .btn-block {
+        padding: 10px 16px !important;
+        font-size: 13px !important;
+    }
+
+    /* Sort selects */
+    .sort-select {
+        width: 100%;
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Mars status bar: Enable horizontal scrolling on very small screens */
+    .mars-status-bar {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .mars-status-bar::-webkit-scrollbar {
+        display: none;
+    }
+    .mars-status-sep {
+        display: none;
+    }
+
+    /* Even more compact Mars bar on small phones */
+    .mars-conditions-bar {
+        padding: 6px 10px;
+        gap: 6px;
+        font-size: 10px;
+    }
+
+    .mars-conditions-bar span[style*="font-size: 11px"] {
+        font-size: 9px !important;
+    }
+
+    .mars-stat-value {
+        font-size: 11px;
+    }
+
+    /* Shard Reserve / Mars Operations cards on small screens */
+    .card-stats-box {
+        padding: 8px !important;
+    }
+
+    /* Hero even smaller */
+    .hero-section {
+        padding: 24px 12px 16px 12px !important;
+        min-height: 80px !important;
+    }
+
+    .hero-title {
+        font-size: 18px !important;
+    }
+
+    .hero-subtitle {
+        font-size: 10px !important;
+    }
+
+    /* ========================================
+       EXTRA SMALL SCREENS (< 480px)
+       ======================================== */
+
+    /* Inventory status items - 2x2 grid on tiny screens */
+    .inventory-status-bar {
+        flex-wrap: wrap;
+    }
+
+    .inventory-status-item {
+        min-width: calc(50% - 4px) !important;
+        padding: 8px 10px;
+    }
+
+    .inventory-status-label {
+        font-size: 9px !important;
+    }
+
+    .inventory-status-value {
+        font-size: 16px !important;
+    }
+
+    /* Expedition status items smaller */
+    .expedition-status-value {
+        font-size: 16px !important;
+    }
+
+    .expedition-status-label {
+        font-size: 9px !important;
+    }
+
+    /* Tab buttons even more compact */
+    .expedition-tab,
+    .inventory-tab {
+        padding: 8px 4px !important;
+        font-size: 11px !important;
+    }
+
+    .inventory-tab-label {
+        display: none; /* Icon only on very small screens */
+    }
+
+    /* Filter buttons smaller */
+    .filter-btn {
+        padding: 5px 8px !important;
+        font-size: 10px !important;
+    }
+
+    /* Active expedition even more compact */
+    .active-expedition-name {
+        font-size: 14px !important;
+    }
+
+    .active-expedition-timer {
+        font-size: 16px !important;
+    }
+
+    /* Activity feed tighter */
+    .activity-item {
+        padding: 10px;
+        flex-wrap: wrap;
+    }
+
+    .activity-content {
+        min-width: 100%;
+        order: 2;
+        margin-top: 8px;
+    }
+
+    .activity-amount {
+        order: 1;
+        margin-left: auto;
+    }
+
+    /* Crew stats grid 3 columns only */
+    div[style*="grid-template-columns: repeat(5, 1fr)"] {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    /* Card metrics tighter */
+    .exp-card-metrics,
+    .inv-card-stats {
+        gap: 4px !important;
+        padding: 6px !important;
+    }
+
+    /* Mars map even shorter */
+    #mars-map {
+        height: 200px !important;
+    }
+
+    /* Depot card images smaller */
+    .depot-card-image {
+        height: 120px !important;
+    }
+
+    /* Discovery card images smaller */
+    .inv-card-image {
+        height: 120px !important;
+    }
+}
