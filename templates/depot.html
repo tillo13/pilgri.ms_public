@@ -576,11 +576,11 @@ document.addEventListener('DOMContentLoaded', function() {
 {
     "currentBalance": {{ current_balance if current_balance else 0 }},
     "pricing": {
-        "reroll_cost": {{ (pricing.reroll_cost if pricing and pricing.reroll_cost is not none else 500)|tojson }},
-        "transmutation_cost": {{ (pricing.transmutation_cost if pricing and pricing.transmutation_cost is not none else 1000)|tojson }},
-        "modify_cost": {{ (pricing.modify_cost if pricing and pricing.modify_cost is not none else 15)|tojson }},
-        "reroll_count": {{ (pricing.reroll_count if pricing and pricing.reroll_count is not none else 0)|tojson }},
-        "transmutation_count": {{ (pricing.transmutation_count if pricing and pricing.transmutation_count is not none else 0)|tojson }}
+        "reroll_cost": {{ pricing.reroll_cost|default(500)|tojson }},
+        "transmutation_cost": {{ pricing.transmutation_cost|default(1000)|tojson }},
+        "modify_cost": {{ pricing.modify_cost|default(15)|tojson }},
+        "reroll_count": {{ pricing.reroll_count|default(0)|tojson }},
+        "transmutation_count": {{ pricing.transmutation_count|default(0)|tojson }}
     },
     "hasCommander": {{ 'true' if has_commander else 'false' }},
     "currentCommanderUrl": "{{ commander.gcs_url if commander else '' }}",
