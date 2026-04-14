@@ -13,7 +13,7 @@ import hashlib
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

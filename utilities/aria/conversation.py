@@ -20,7 +20,7 @@ def save_aria_message(user_id: int, role: str, content: str) -> bool:
     Returns:
         True if saved successfully, False otherwise
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor(commit=True) as cur:
@@ -45,7 +45,7 @@ def get_aria_conversation_history(user_id: int, limit: int = 20) -> List[Dict[st
     Returns:
         List of message dicts with 'role' and 'content' keys, oldest first
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor() as cur:
@@ -82,7 +82,7 @@ def get_aria_memory_summary(user_id: int) -> str:
     Returns:
         A summary string to include in ARIA's system prompt
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor() as cur:
@@ -148,7 +148,7 @@ def clear_aria_conversation_history(user_id: int) -> bool:
     Returns:
         True if cleared successfully, False otherwise
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor(commit=True) as cur:
@@ -172,7 +172,7 @@ def clear_all_aria_conversations() -> dict:
     Returns:
         dict with 'success', 'deleted_count', and optionally 'error'
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor(commit=True) as cur:

@@ -27,7 +27,8 @@ import logging
 from typing import Dict, Any, Optional, List
 from config import UPGRADE_CATALOG, get_upgrade_item_config as _get_upgrade_item_config, get_upgrade_level_stats as _get_upgrade_level_stats
 from config_infrastructure import INFRASTRUCTURE_CATALOG
-from utilities.postgres_utils import db_cursor, get_user_infrastructure
+from utilities.postgres.core import db_cursor
+from utilities.postgres.shop import get_user_infrastructure
 
 logger = logging.getLogger(__name__)
 
@@ -597,7 +598,7 @@ def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any
             cost_eth = display_to_eth(cost_display)
 
             # Immediate DB balance deduction
-            from utilities.postgres_utils import update_sepolia_wallet_balance
+            from utilities.postgres.wallets import update_sepolia_wallet_balance
             new_balance_eth = float(primary_wallet.get('current_balance_eth', 0)) - cost_eth
             update_sepolia_wallet_balance(primary_wallet.get('wallet_address'), new_balance_eth)
 
@@ -641,7 +642,7 @@ def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any
                     next_level, ready_at, tx_hash
                 ))
                 logger.info(f"⏱️ User {user_id} started upgrade {category}/{item_key} to Lv{next_level} (ready in {build_time_days} days)")
-                from utilities.db_activity import log_activity
+                from utilities.postgres.activity import log_activity
                 log_activity(user_id, 'upgrade', 'upgrade_started',
                              f"Upgrading: {item_key.replace('_', ' ').title()} Lv{next_level}",
                              amount=cost_display, detail=f"{category} · {build_time_days}d build",
@@ -657,7 +658,7 @@ def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any
                     DO UPDATE SET level = %s, pending_level = NULL, ready_at = NULL, upgraded_at = NOW(), tx_hash = %s
                 """, (user_id, category, item_key, next_level, tx_hash, next_level, tx_hash))
                 logger.info(f"✅ User {user_id} instantly upgraded {category}/{item_key} to Lv{next_level}")
-                from utilities.db_activity import log_activity
+                from utilities.postgres.activity import log_activity
                 log_activity(user_id, 'upgrade', 'upgrade_complete',
                              f"Upgraded: {item_key.replace('_', ' ').title()} Lv{next_level}",
                              amount=cost_display, detail=category, tx_hash=tx_hash or '',
@@ -1079,7 +1080,7 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
 
     # Captain Logistics stat → build speed bonus
     try:
-        from utilities.postgres_utils import get_commander_stats
+        from utilities.postgres.assets import get_commander_stats
         stats = get_commander_stats(user_id)
         if stats:
             logistics = stats.get('logistics', 0) or 0

@@ -12,9 +12,11 @@ def build_expedition_haul(user_id: int, expedition_id: int) -> dict:
     Side effects: unlocks distance-gated discoveries on completed/recalled expeditions,
     and stamps notified_at on completed expeditions so they stop showing as "new return".
     """
-    from utilities.db_expeditions import (
-        get_expedition_by_id, get_expedition_discoveries,
-        unlock_discoveries_by_distance, calculate_expedition_sv,
+    from utilities.postgres.expeditions import (
+        get_expedition_by_id,
+        get_expedition_discoveries,
+        unlock_discoveries_by_distance,
+        calculate_expedition_sv,
     )
     from utilities.depot_utils import eth_to_display
 

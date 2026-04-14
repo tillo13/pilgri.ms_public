@@ -191,7 +191,7 @@ def start_crew_mission(user_id: int, crew_member: str, destination_name: str,
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
             """, (user_id, crew_member, 'trail_building', destination_name, now))
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'trail', 'trail_mission_start', f"Trail Mission: {destination_name}",
                          detail=f"{crew_member} · {km_to_add:.1f} km", source_table='crew_missions',
                          metadata={'crew_member': crew_member, 'km_to_add': km_to_add, 'duration_minutes': duration_minutes})

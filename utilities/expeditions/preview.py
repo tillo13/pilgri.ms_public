@@ -15,7 +15,7 @@ from utilities.expeditions.config import (
 )
 from utilities.expeditions.cost import calculate_expedition_cost
 from utilities.expeditions.travel import calculate_segmented_travel_time
-from utilities.db_trails import TRAIL_SPEED_MULTIPLIERS
+from utilities.postgres.trails import TRAIL_SPEED_MULTIPLIERS
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,9 @@ def get_expedition_cost_preview(
     Preview calculations use DB-cached balance (synced hourly by cron).
     Actual launch still uses live blockchain for transaction execution.
     """
-    from utilities.postgres_utils import (
-        get_user_primary_sepolia_wallet,
-        get_or_set_user_mars_home,
-        get_user_completed_expeditions_count
-    )
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
+    from utilities.postgres.map import get_or_set_user_mars_home
+    from utilities.postgres.expeditions import get_user_completed_expeditions_count
     from utilities.depot_utils import (
         eth_to_display,
         generate_commander_stats,
@@ -147,13 +145,9 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     Returns all data needed: vehicles, trip estimates, speed breakdown,
     captain stats, scientist info, fleet status, discovery potential.
     """
-    from utilities.postgres_utils import (
-        get_or_set_user_mars_home,
-        get_user_active_expeditions,
-        get_user_completed_expeditions_count,
-        get_user_scientist,
-        get_user_discovered_landmarks
-    )
+    from utilities.postgres.map import get_or_set_user_mars_home
+    from utilities.postgres.expeditions import get_user_active_expeditions, get_user_completed_expeditions_count, get_user_discovered_landmarks
+    from utilities.postgres.users import get_user_scientist
     from utilities.upgrades_utils import get_user_owned_vehicles
     from utilities.depot_utils import get_commander_and_stats
 
@@ -226,7 +220,7 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     terrain_name = terrain_info.get('reason', 'Standard terrain')
 
     # Trail multiplier: repeated trips to same destination build speed
-    from utilities.postgres_utils import get_user_trail
+    from utilities.postgres.trails import get_user_trail
     trail_data = get_user_trail(user_id, destination_name)
     trail_speed_mult = TRAIL_SPEED_MULTIPLIERS.get(trail_data['trail_level'], 1.0)
 
@@ -326,7 +320,7 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
 
     # Storage capacity check (Storage Bunker upgrade) - counts ALL inventory, not just unclaimed
     from utilities.upgrades_utils import get_user_upgrade_effects
-    from utilities.db_expeditions import get_total_discovery_count
+    from utilities.postgres.expeditions import get_total_discovery_count
     upgrade_effects = get_user_upgrade_effects(user_id)
     storage_capacity = upgrade_effects.get('storage_capacity', 300)
     current_total = get_total_discovery_count(user_id)

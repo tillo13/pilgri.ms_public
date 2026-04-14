@@ -22,8 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import gspread
 from google.oauth2.service_account import Credentials
-from utilities.postgres_utils import db_cursor
-from utilities.db_bugs import ensure_bug_tables
+from utilities.postgres.core import db_cursor
+from utilities.postgres.bugs import ensure_bug_tables
 
 CREDENTIALS_PATH = Path(__file__).parent / 'credentials' / os.environ.get('GCP_SA_FILENAME', 'service-account.json')
 SPREADSHEET_ID = os.environ.get('BUGS_SPREADSHEET_ID', '')

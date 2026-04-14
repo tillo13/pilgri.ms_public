@@ -12,10 +12,8 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utilities.postgres_utils import (
-    get_db_connection,
-    create_replicate_asset
-)
+from utilities.postgres.core import get_db_connection
+from utilities.postgres.assets import create_replicate_asset
 from config import BUCKET_NAME, DEFAULT_LEADERS_GCS_BASE
 
 ##############################################################################

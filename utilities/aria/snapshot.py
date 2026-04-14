@@ -22,7 +22,7 @@ def analyze_playstyle(user_id: int) -> dict:
     - Current bottlenecks
     - Personalized suggestions
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from datetime import datetime, timedelta
 
     analysis = {
@@ -131,7 +131,9 @@ def load_colony_snapshot(user_id: int) -> dict:
 
     Returns everything ARIA needs to know to answer ANY colony question.
     """
-    from utilities.postgres_utils import db_cursor, get_user_commander, get_user_scientist
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.assets import get_user_commander
+    from utilities.postgres.users import get_user_scientist
     from utilities.depot_utils import get_fast_balance_and_wallet_info
     from datetime import datetime
 
@@ -405,7 +407,7 @@ def load_colony_snapshot(user_id: int) -> dict:
 
             # Last completed buggy expedition
             try:
-                from utilities.db_expeditions import get_last_completed_buggy_expedition
+                from utilities.postgres.expeditions import get_last_completed_buggy_expedition
                 lbe = get_last_completed_buggy_expedition(user_id)
                 if lbe:
                     snapshot['expeditions']['last_buggy'] = {
@@ -622,7 +624,7 @@ def load_colony_snapshot(user_id: int) -> dict:
         # Robot crew member (Step 4d) — outside the main cursor block to keep
         # the speed budget tight; db_robot uses its own cursor.
         try:
-            from utilities.db_robot import get_robot_page_data
+            from utilities.postgres.robot import get_robot_page_data
             robot_data = get_robot_page_data(user_id) or {}
             snapshot['robot'] = {
                 'lab_unlocked': bool(robot_data.get('lab_unlocked')),
@@ -863,7 +865,7 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
 
     # Trail network
     try:
-        from utilities.postgres_utils import db_cursor as _db_cursor
+        from utilities.postgres.core import db_cursor
         with _db_cursor() as cur:
             cur.execute("""
                 SELECT destination_name, trail_level, total_distance_km, km_built

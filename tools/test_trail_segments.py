@@ -21,7 +21,8 @@ from utilities.expedition_utils import (
     BASE_SPEED_KM_PER_HOUR,
     get_expedition_preview
 )
-from utilities.postgres_utils import db_cursor, get_user_trail
+from utilities.postgres.core import db_cursor
+from utilities.postgres.trails import get_user_trail
 
 
 def test_no_intermediate_trails(user_id):

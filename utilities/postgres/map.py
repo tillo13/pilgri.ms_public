@@ -315,7 +315,7 @@ def get_available_landmarks_by_discovery(user_id: int, base_coords: dict, limit:
     - Each discovery also reveals its nearest 3 unexplored neighbors
     - Total undiscovered landmarks capped to prevent overwhelming UI
     """
-    from utilities.db_expeditions import get_user_discovered_landmarks
+    from utilities.postgres.expeditions import get_user_discovered_landmarks
     discovered = get_user_discovered_landmarks(user_id)
     discovered_names = {d['landmark_name'] for d in discovered}
     num_discoveries = len(discovered)

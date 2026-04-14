@@ -9,7 +9,7 @@ import threading
 import time as _time
 
 from utilities.claude_utils import create_client, log_api_usage
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -41,7 +41,7 @@ CREATE_BUG_TOOL = {
 
 def execute_create_bug_tool(input_data, user_id, chat_id=None):
     """Execute the create_bug tool call. Returns formatted result string."""
-    from utilities.db_bugs import create_bug, add_bug_comment
+    from utilities.postgres.bugs import create_bug, add_bug_comment
     title = (input_data.get('title', 'PilgrimBot bug'))[:200]
     description = (input_data.get('description', ''))[:2000]
     priority = input_data.get('priority', 'P3')
@@ -74,7 +74,7 @@ def _strip_markdown_json(text):
 def create_bug_from_question(question, user_display_name="PilgrimBot User", description=None):
     """Save a bug/feature report via the unified bug tracker."""
     try:
-        from utilities.db_bugs import create_bug
+        from utilities.postgres.bugs import create_bug
         title = question[:200]
         bug = create_bug(name=title, description=description or '',
                          source='PilgrimBot', type='Bug')
@@ -90,7 +90,7 @@ def create_bug_from_question(question, user_display_name="PilgrimBot User", desc
 def _cross_link_related_bugs(bug_id, bug_name, affected_areas):
     """Background task: find related bugs and cross-link with comments."""
     try:
-        from utilities.db_bugs import add_bug_comment
+        from utilities.postgres.bugs import add_bug_comment
         related = _find_related_bugs(bug_id, bug_name, affected_areas)
         if not related:
             logger.info(f"Bug #{bug_id}: no related bugs found")
@@ -120,7 +120,7 @@ def _find_related_bugs(new_bug_id, title, affected_areas=""):
     """Find bugs related to a newly created one via keyword search.
     Searches title words + affected area words against all active bugs.
     Returns up to 5 related bugs (excludes the new bug itself)."""
-    from utilities.db_bugs import search_bugs
+    from utilities.postgres.bugs import search_bugs
     stopwords = {'the', 'and', 'for', 'not', 'but', 'with', 'from', 'that', 'this',
                  'does', 'doesn', 'have', 'has', 'are', 'was', 'were', 'been', 'being',
                  'both', 'give', 'gives', 'when', 'after', 'before', 'should', 'could',
@@ -245,7 +245,7 @@ Return JSON with exactly these fields:
         logger.warning(f"Bug extraction parse error: {e}")
         return {'success': False, 'error': 'Could not parse conversation into a bug'}
 
-    from utilities.db_bugs import create_bug, add_bug_comment
+    from utilities.postgres.bugs import create_bug, add_bug_comment
     bug = create_bug(
         name=(title_override or parsed.get('title', 'PilgrimBot bug'))[:200],
         description=parsed.get('description', '')[:2000],
@@ -314,7 +314,7 @@ Return JSON with exactly these fields:
         logger.warning(f"Bug extraction from response parse error: {e}")
         return {'success': False, 'error': 'Could not parse response into a bug'}
 
-    from utilities.db_bugs import create_bug, add_bug_comment
+    from utilities.postgres.bugs import create_bug, add_bug_comment
     bug = create_bug(
         name=(title_override or parsed.get('title', 'PilgrimBot bug'))[:200],
         description=parsed.get('description', '')[:2000],
@@ -347,7 +347,7 @@ Return JSON with exactly these fields:
 def get_reports(limit=50):
     """Get PilgrimBot-submitted reports from the bug tracker."""
     try:
-        from utilities.db_bugs import get_active_bugs
+        from utilities.postgres.bugs import get_active_bugs
         return get_active_bugs(search=None)[:limit]
     except Exception as e:
         logger.warning(f"Failed to get reports: {e}")

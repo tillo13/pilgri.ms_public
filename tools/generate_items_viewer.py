@@ -13,7 +13,7 @@ import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import get_db_connection
+from utilities.postgres.core import get_db_connection
 
 def fetch_all_items():
     """Fetch all discovery items from database"""

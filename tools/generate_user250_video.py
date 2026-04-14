@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utilities.flux_utils import FluxGenerator
 from utilities.video_utils import extract_thumbnail, upload_video_to_gcs, upload_thumbnail_to_gcs
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 
 def download_video(url: str, output_path: str) -> bool:

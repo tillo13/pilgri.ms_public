@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from utilities.sepolia_utils import MarsAsteroidMiner
-from utilities.postgres_utils import create_sepolia_wallet_for_user
+from utilities.postgres.wallets import create_sepolia_wallet_for_user
 
 # ============================================================================
 # CONFIGURATION

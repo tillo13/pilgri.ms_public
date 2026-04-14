@@ -32,8 +32,8 @@ import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from utilities.postgres_utils import db_cursor
-from utilities.db_robot import (
+from utilities.postgres.core import db_cursor
+from utilities.postgres.robot import (
     ROBOT_STAGES,
     PLACEHOLDER_STAGE_IMAGE,
     log_stage,

@@ -28,7 +28,8 @@ WALKING_SPEED_KM_PER_HOUR = BASE_SPEED_KM_PER_HOUR
 
 from utilities.mars_math import haversine_distance, MARS_RADIUS_KM  # noqa: F401
 
-from utilities.db_trails import (  # noqa: F401
+from utilities.postgres.trails import (
+    # noqa: F401
     TRAIL_LEVEL_THRESHOLDS,
     TRAIL_SPEED_MULTIPLIERS,
     get_trail_level_from_count,

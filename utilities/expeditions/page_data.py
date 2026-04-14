@@ -24,11 +24,8 @@ def get_expeditions_page_data(user_id: int) -> dict:
     Returns:
         dict with all template variables for expeditions.html
     """
-    from utilities.postgres_utils import (
-        get_or_set_user_mars_home, get_user_active_expeditions,
-        get_user_discovered_landmarks, get_available_landmarks_by_discovery,
-        get_user_completed_expeditions_count
-    )
+    from utilities.postgres.map import get_or_set_user_mars_home, get_available_landmarks_by_discovery
+    from utilities.postgres.expeditions import get_user_active_expeditions, get_user_discovered_landmarks, get_user_completed_expeditions_count
     from utilities.depot_utils import get_fast_balance_and_wallet_info, get_commander_and_stats, generate_commander_stats
 
     total_balance, _, _ = get_fast_balance_and_wallet_info(user_id)  # FAST: no blockchain
@@ -67,7 +64,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
     landmarks = sort_landmarks_by_cost(landmarks, commander_stats, expeditions_completed, home_coords, user_id=user_id)
 
     # Fetch all user trails for map visualization
-    from utilities.postgres_utils import get_user_trails
+    from utilities.postgres.trails import get_user_trails
     all_trails = get_user_trails(user_id)
     trails_by_name = {t['destination_name']: t for t in all_trails}
 

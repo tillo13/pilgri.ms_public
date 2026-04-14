@@ -18,7 +18,7 @@ import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 from utilities.upgrade_image_utils import (
     get_stored_image_url, get_level_image_url,
     get_infrastructure_level_image_url, get_best_available_image,

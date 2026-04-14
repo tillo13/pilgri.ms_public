@@ -10,7 +10,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor, get_user_primary_sepolia_wallet
+from utilities.postgres.core import db_cursor
+from utilities.postgres.wallets import get_user_primary_sepolia_wallet
 from utilities.signal_utils import get_user_origin_site_eligibility, get_all_origin_sites
 
 # Test for Andy (user_id = 45) claiming Curiosity (site_id = 7)

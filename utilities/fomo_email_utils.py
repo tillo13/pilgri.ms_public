@@ -25,7 +25,8 @@ import random
 from typing import Dict, List, Optional
 from datetime import datetime, timezone
 
-from utilities.postgres_utils import db_cursor, get_user_fomo_data
+from utilities.postgres.core import db_cursor
+from utilities.postgres.notifications import get_user_fomo_data
 from utilities.gmail_utils import send_simple_email
 
 logger = logging.getLogger(__name__)
@@ -413,7 +414,7 @@ def send_welcome_back_email(to_email: str, user_name: str, days_away: int, pendi
             # Save quote to captain's log
             if user_id:
                 try:
-                    from utilities.postgres_utils import save_commander_quote
+                    from utilities.postgres.notifications import save_commander_quote
                     # Build context data for the log
                     dest_name = None
                     if active_expeditions:

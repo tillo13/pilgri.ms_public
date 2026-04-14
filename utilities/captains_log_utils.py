@@ -95,7 +95,7 @@ def get_captain_context(user_id: int) -> Dict[str, Any]:
     - discovery stats
     - recent quotes from the log
     """
-    from utilities.postgres_utils import get_user_fomo_data, get_commander_quotes
+    from utilities.postgres.notifications import get_user_fomo_data, get_commander_quotes
 
     fomo_data = get_user_fomo_data(user_id)
     recent_quotes = get_commander_quotes(user_id, limit=5)

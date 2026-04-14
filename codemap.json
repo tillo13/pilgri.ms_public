@@ -1276,48 +1276,6 @@
       "get_claude_response_for_shared_chat — Get Claude response for shared chat with collaborative context"
     ]
   },
-  "utilities/db_activity.py": {
-    "description": "utilities.db_activity — thin re-export shim."
-  },
-  "utilities/db_assets.py": {
-    "description": "utilities.db_assets — thin re-export shim."
-  },
-  "utilities/db_brainstorm.py": {
-    "description": "utilities.db_brainstorm — thin re-export shim.",
-    "keywords": "brainstorm, comments, discussion, design decisions, team notes"
-  },
-  "utilities/db_bugs.py": {
-    "description": "utilities.db_bugs — thin re-export shim.",
-    "keywords": "bug tracker, bugs, QA, priority, status, comments, history, screenshot, complete, reopen"
-  },
-  "utilities/db_expeditions.py": {
-    "description": "utilities.db_expeditions — thin re-export shim.",
-    "keywords": "expedition CRUD, discovery items, expedition status"
-  },
-  "utilities/db_map.py": {
-    "description": "utilities.db_map — thin re-export shim.",
-    "keywords": "map, landmarks, discoveries, fog of war, frontier, exploration, coordinates"
-  },
-  "utilities/db_notifications.py": {
-    "description": "utilities.db_notifications — thin re-export shim."
-  },
-  "utilities/db_robot.py": {
-    "description": "utilities.db_robot — thin re-export shim."
-  },
-  "utilities/db_shop.py": {
-    "description": "utilities.db_shop — thin re-export shim."
-  },
-  "utilities/db_trails.py": {
-    "description": "utilities.db_trails — thin re-export shim."
-  },
-  "utilities/db_users.py": {
-    "description": "utilities.db_users — thin re-export shim.",
-    "keywords": "user CRUD, auth, session hydration, login, register"
-  },
-  "utilities/db_wallets.py": {
-    "description": "utilities.db_wallets — thin re-export shim.",
-    "keywords": "wallet operations, sepolia balance, primary wallet"
-  },
   "utilities/depot_utils.py": {
     "description": "Depot Utilities - Supply Depot Operations",
     "exports": [
@@ -1584,9 +1542,6 @@
       "handle_chat_streaming — Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."
     ],
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
-  },
-  "utilities/postgres_utils.py": {
-    "description": "utilities.postgres_utils — thin re-export shim."
   },
   "utilities/reclaim_assets.py": {
     "description": "Asset reclamation utility for inactive accounts.",
@@ -2770,7 +2725,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

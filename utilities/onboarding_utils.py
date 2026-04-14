@@ -60,7 +60,7 @@ def format_transaction_info(wallet_data, current_balance):
 def handle_existing_wallet(wallet_data, miner=None):
     """Process existing wallet and return formatted response"""
     from utilities.sepolia_utils import MarsAsteroidMiner
-    from utilities.postgres_utils import update_sepolia_wallet_balance
+    from utilities.postgres.wallets import update_sepolia_wallet_balance
 
     current_balance = safe_float(wallet_data['current_balance_eth']) or 0.0
 
@@ -87,7 +87,12 @@ def process_asteroid_impact(session):
     For anonymous users, uses the preview_cache_address if available (so they get
     the same wallet they saw on the home page), otherwise gets a random one.
     """
-    from utilities.postgres_utils import get_random_unclaimed_cache, claim_anonymous_wallet, get_wallet_by_address, get_user_primary_sepolia_wallet
+    from utilities.postgres.wallets import (
+        get_random_unclaimed_cache,
+        claim_anonymous_wallet,
+        get_wallet_by_address,
+        get_user_primary_sepolia_wallet,
+    )
 
     user_id = session.get('user_id')
     is_anonymous = not user_id
@@ -154,7 +159,7 @@ def process_asteroid_impact(session):
 
 def has_completed_mining(session):
     """Check if user has mined Sepolia (has wallet in session OR database)"""
-    from utilities.postgres_utils import get_user_primary_sepolia_wallet
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
 
     if session.get('_wal_addr') or session.get('_wal'):  # Check both new and legacy format
         return True
@@ -164,7 +169,7 @@ def has_completed_mining(session):
 def get_current_balance_and_wallet(session):
     """Get current balance and wallet info. Returns: (has_wallet, current_balance_display, wallet_info)"""
     from utilities.depot_utils import eth_to_display
-    from utilities.postgres_utils import get_user_primary_sepolia_wallet, get_wallet_by_address
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet, get_wallet_by_address
 
     user_id = session.get('user_id')
 
@@ -301,7 +306,7 @@ def select_default_leader(user_id, leader_id=None):
     Creates database assets for both anonymous (user_id=5) and authenticated users.
     Anonymous users' assets are claimed when they log in via handle_auth_callback.
     """
-    from utilities.postgres_utils import create_replicate_asset
+    from utilities.postgres.assets import create_replicate_asset
 
     available = discover_default_leaders()
     if not available:
@@ -387,7 +392,7 @@ def get_arrival_mining_data(session, user_id=None):
     - Always show a preview balance from a random unclaimed cache
     - Store the cache in session so they get the same one when selecting captain
     """
-    from utilities.postgres_utils import get_user_sepolia_wallets, get_random_unclaimed_cache
+    from utilities.postgres.wallets import get_user_sepolia_wallets, get_random_unclaimed_cache
     from utilities.depot_utils import eth_to_display, get_fast_balance_and_wallet_info
 
     if user_id:
@@ -409,7 +414,7 @@ def get_arrival_mining_data(session, user_id=None):
             # FAST: Use DB-cached balance, never hit blockchain for preview
             if session.get('preview_cache_address'):
                 # Get cached balance from DB (fast!)
-                from utilities.postgres_utils import get_wallet_by_address
+                from utilities.postgres.wallets import get_wallet_by_address
                 cached_wallet = get_wallet_by_address(session['preview_cache_address'])
                 if cached_wallet:
                     cache_balance = cached_wallet.get('current_balance_eth') or cached_wallet.get('initial_balance_eth')
@@ -444,7 +449,8 @@ def get_arrival_commander_data(session, user_id=None):
     - Cache will be auto-claimed when they select a captain
     - Anonymous users get a random scientist assigned (stored in session)
     """
-    from utilities.postgres_utils import get_user_sepolia_wallets, get_user_replicate_assets
+    from utilities.postgres.wallets import get_user_sepolia_wallets
+    from utilities.postgres.assets import get_user_replicate_assets
     from utilities.depot_utils import eth_to_display
     from config import get_random_scientist
 
@@ -469,7 +475,7 @@ def get_arrival_commander_data(session, user_id=None):
             preview_balance = session['preview_balance_fallback']
         elif session.get('preview_cache_address'):
             # FAST: Get balance from DB cache (not blockchain!)
-            from utilities.postgres_utils import get_wallet_by_address
+            from utilities.postgres.wallets import get_wallet_by_address
             cached_wallet = get_wallet_by_address(session['preview_cache_address'])
             if cached_wallet:
                 cache_balance = cached_wallet.get('current_balance_eth') or cached_wallet.get('initial_balance_eth')
@@ -478,7 +484,7 @@ def get_arrival_commander_data(session, user_id=None):
 
         # If still 0, get a fresh random cache (user may have come directly to /crew)
         if preview_balance == 0:
-            from utilities.postgres_utils import get_random_unclaimed_cache
+            from utilities.postgres.wallets import get_random_unclaimed_cache
             preview_cache = get_random_unclaimed_cache()
             if preview_cache:
                 cache_balance = preview_cache.get('current_balance_eth') or preview_cache.get('initial_balance_eth')
@@ -518,7 +524,9 @@ def get_arrival_deploy_data(session, user_id=None):
     The cache is auto-claimed when they select a captain.
     Also assigns a scientist to the user at this point (the landing step).
     """
-    from utilities.postgres_utils import get_user_sepolia_wallets, get_user_replicate_assets, get_user_scientist, assign_scientist_to_user
+    from utilities.postgres.wallets import get_user_sepolia_wallets
+    from utilities.postgres.assets import get_user_replicate_assets
+    from utilities.postgres.users import get_user_scientist, assign_scientist_to_user
     from utilities.depot_utils import eth_to_display
     from config import get_random_scientist
 
@@ -547,7 +555,7 @@ def get_arrival_deploy_data(session, user_id=None):
             current_balance = session['preview_balance_fallback']
         elif session.get('preview_cache_address'):
             # FAST: Get balance from DB cache (not blockchain!)
-            from utilities.postgres_utils import get_wallet_by_address
+            from utilities.postgres.wallets import get_wallet_by_address
             cached_wallet = get_wallet_by_address(session['preview_cache_address'])
             if cached_wallet:
                 cache_balance = cached_wallet.get('current_balance_eth') or cached_wallet.get('initial_balance_eth')
@@ -555,7 +563,7 @@ def get_arrival_deploy_data(session, user_id=None):
                     current_balance = eth_to_display(float(cache_balance))
         # If still 0, get a fresh random cache
         if current_balance == 0:
-            from utilities.postgres_utils import get_random_unclaimed_cache
+            from utilities.postgres.wallets import get_random_unclaimed_cache
             preview_cache = get_random_unclaimed_cache()
             if preview_cache:
                 cache_balance = preview_cache.get('current_balance_eth') or preview_cache.get('initial_balance_eth')
@@ -604,10 +612,9 @@ def ensure_user_onboarded(user_id, logger):
     - Mars home coordinates (if not set)
     - Wallet is already handled by handle_auth_callback's fallback logic
     """
-    from utilities.postgres_utils import (
-        get_user_replicate_assets, assign_scientist_to_user, get_user_scientist,
-        set_primary_commander, get_or_set_user_mars_home
-    )
+    from utilities.postgres.assets import get_user_replicate_assets, set_primary_commander
+    from utilities.postgres.users import assign_scientist_to_user, get_user_scientist
+    from utilities.postgres.map import get_or_set_user_mars_home
 
     # Check if user has a captain
     images = get_user_replicate_assets(user_id, asset_type='character_image', limit=1)
@@ -639,7 +646,9 @@ def ensure_user_onboarded(user_id, logger):
 
 def handle_auth_callback(session, auth, logger):
     """Handle OAuth callback logic - returns redirect endpoint name."""
-    from utilities.postgres_utils import get_user_by_google_id, claim_anonymous_wallet, claim_anonymous_assets, update_asset_stats, set_primary_commander
+    from utilities.postgres.users import get_user_by_google_id
+    from utilities.postgres.wallets import claim_anonymous_wallet
+    from utilities.postgres.assets import claim_anonymous_assets, update_asset_stats, set_primary_commander
 
     if not auth.handle_callback():
         return 'login'
@@ -683,7 +692,7 @@ def handle_auth_callback(session, auth, logger):
 
     # FALLBACK: If no wallet was claimed (session lost during OAuth), assign one from the pool
     if not wallet_claimed:
-        from utilities.postgres_utils import get_random_unclaimed_cache, get_user_sepolia_wallets
+        from utilities.postgres.wallets import get_random_unclaimed_cache, get_user_sepolia_wallets
         existing_wallets = get_user_sepolia_wallets(user_id)
         if not existing_wallets:
             logger.info(f"🔄 No wallet for user {user_id}, assigning from pool")
@@ -741,7 +750,7 @@ def handle_leader_selection(session, user_id, leader_id=None):
 
 def get_mars_location_data():
     """Get random Mars coordinates and nearby landmarks."""
-    from utilities.postgres_utils import get_random_mars_coordinates, get_nearest_mars_landmarks
+    from utilities.postgres.map import get_random_mars_coordinates, get_nearest_mars_landmarks
 
     coords = get_random_mars_coordinates()
     landmarks = get_nearest_mars_landmarks(coords['latitude'], coords['longitude'], limit=5)
@@ -755,10 +764,8 @@ def handle_custom_commander_upload(session, image_file, flux, logger):
     Returns result dict for JSON response.
     """
     from utilities.flux_utils import process_uploaded_image
-    from utilities.postgres_utils import (
-        update_asset_stats, set_primary_commander,
-        get_user_escalation_counts, increment_transmutation_count, calculate_transmutation_cost
-    )
+    from utilities.postgres.assets import update_asset_stats, set_primary_commander
+    from utilities.postgres.users import get_user_escalation_counts, increment_transmutation_count, calculate_transmutation_cost
     from utilities.depot_utils import (
         eth_to_display, display_to_eth, get_user_wallet_and_balance,
         check_sufficient_balance, execute_purchase_transaction,

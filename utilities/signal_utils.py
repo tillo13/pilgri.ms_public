@@ -14,7 +14,7 @@ import math
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +229,7 @@ def claim_origin_site(
                 VALUES ('origin', %s, %s, %s, 1, 'legendary', %s, %s, %s)
             """, (site_id, user_id, commander_name, expedition_id, tx_hash, sol))
             logger.info("[CLAIM] site_claims INSERT complete")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'claim', 'claim_origin', f"Claimed Origin: {site_code}",
                          detail=mission_name, tx_hash=tx_hash or '', source_table='site_claims')
 
@@ -414,7 +414,7 @@ def visit_origin_site(
             claim_id = cur.fetchone()['id']
 
             logger.info(f"📍 ORIGIN VISITOR: {commander_name} visited {site['site_code']} as {tier_name} (rank {visitor_rank})")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'claim', 'origin_visit', f"Visited Origin: {site['site_code']}",
                          detail=f"Rank #{visitor_rank} ({tier_name})", source_table='site_claims', source_id=claim_id)
 
@@ -820,7 +820,7 @@ def maybe_spawn_echo_site(
             site_id = cur.fetchone()[0]
 
             logger.info(f"✨ Echo Site {site_code} spawned at {new_lat:.4f}, {new_lon:.4f}")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'discovery', 'echo_site_spawn', f"Echo Site Spawned: {site_code}",
                          detail=nearby_landmark or '', source_table='echo_sites', source_id=site_id)
 
@@ -905,7 +905,7 @@ def claim_echo_site(
             rank_suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(new_rank, 'th')
 
             logger.info(f"⚡ Echo Claim: {commander_name} is {new_rank}{rank_suffix} at {site_code} ({tier})")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'claim', 'claim_echo', f"Echo Claim: {site_code}",
                          detail=f"Rank #{new_rank} ({tier})", tx_hash=tx_hash or '', source_table='site_claims')
 
@@ -1289,7 +1289,7 @@ def get_origin_site_legendary_item(site_id: int) -> Optional[Dict]:
 
 def _get_commander_name_for_user(user_id: int) -> Optional[str]:
     """Get commander name - tries primary, then most recent."""
-    from utilities.postgres_utils import get_primary_commander
+    from utilities.postgres.assets import get_primary_commander
 
     commander = get_primary_commander(user_id)
     if commander and commander.get('commander_name'):
@@ -1313,7 +1313,7 @@ def handle_origin_site_claim(user_id: int, site_id: int, session) -> Dict:
     Returns result dict for JSON response.
     """
     import threading
-    from utilities.postgres_utils import get_user_primary_sepolia_wallet
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
     from utilities.sepolia_utils import MarsAsteroidMiner
 
     commander_name = _get_commander_name_for_user(user_id)
@@ -1437,7 +1437,7 @@ def handle_origin_site_visit(user_id: int, site_id: int, session) -> Dict:
     2. Flux image generation for reward item
     """
     import threading
-    from utilities.postgres_utils import get_user_primary_sepolia_wallet
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
     from utilities.sepolia_utils import MarsAsteroidMiner
 
     commander_name = _get_commander_name_for_user(user_id)
@@ -1747,7 +1747,7 @@ def decode_signal_puzzle(user_id: int, commander_name: str, code: str) -> Dict:
             INSERT INTO pilgrim.puzzle_solvers (puzzle_id, user_id, commander_name, solve_rank, reward_name)
             VALUES (%s, %s, %s, %s, %s)
         """, (puzzle_id, user_id, commander_name, solve_rank, reward_name))
-        from utilities.db_activity import log_activity
+        from utilities.postgres.activity import log_activity
         log_activity(user_id, 'discovery', 'puzzle_solved', f"Decoded: {puzzle_name}",
                      detail=f"Rank #{solve_rank}", source_table='puzzle_solvers')
 
@@ -1802,7 +1802,7 @@ def decode_signal_tx(user_id: int, tx_hash: str) -> Dict:
     import re
     import hashlib
     from utilities.sepolia_utils import MarsAsteroidMiner
-    from utilities.postgres_utils import get_user_commander
+    from utilities.postgres.assets import get_user_commander
 
     if not tx_hash:
         return {'success': False, 'error': 'No transaction provided'}
@@ -1884,7 +1884,7 @@ def decode_signal_tx(user_id: int, tx_hash: str) -> Dict:
             INSERT INTO pilgrim.puzzle_solvers (puzzle_id, user_id, commander_name, solve_rank, reward_name)
             VALUES (%s, %s, %s, %s, %s)
         """, (puzzle_id, user_id, user['commander_name'], solve_rank, f"TX Proof: {tx_hash[:20]}..."))
-        from utilities.db_activity import log_activity
+        from utilities.postgres.activity import log_activity
         log_activity(user_id, 'discovery', 'puzzle_solved', f"TX Decoded: {puzzle_name}",
                      detail=f"Rank #{solve_rank}", tx_hash=tx_hash or '', source_table='puzzle_solvers')
 

@@ -67,7 +67,7 @@ def _hydrate_session(user_id):
     hyd_time = session.get('_hyd', 0)
     if hyd_time and (time.time() - hyd_time) <= HYDRATION_TTL_SECONDS:
         return
-    from utilities.postgres_utils import hydrate_user_session
+    from utilities.postgres.users import hydrate_user_session
     h = hydrate_user_session(user_id)
     session['_bal'] = h['balance']
     session['_cmd'] = h['commander_name']

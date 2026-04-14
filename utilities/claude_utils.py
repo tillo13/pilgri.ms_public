@@ -84,7 +84,7 @@ APP_NAME = 'galactica'
 def _get_kumori_connection():
     """Get a connection to the kumori DB specifically for usage logging."""
     import psycopg2
-    from utilities.postgres_utils import get_secret
+    from utilities.postgres.core import get_secret
     host = get_secret('KUMORI_POSTGRES_IP')
     dbname = get_secret('KUMORI_POSTGRES_DB_NAME')
     user = get_secret('KUMORI_POSTGRES_USERNAME')

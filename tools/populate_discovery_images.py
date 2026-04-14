@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utilities.flux_utils import FluxGenerator
 from utilities.google_cloud_storage_utils import upload_blob_from_url
-from utilities.postgres_utils import get_db_connection
+from utilities.postgres.core import get_db_connection
 
 logging.basicConfig(
     level=logging.INFO,

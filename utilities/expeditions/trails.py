@@ -13,9 +13,8 @@ logger = logging.getLogger(__name__)
 
 def handle_trail_build_request(user_id, data):
     """Handle a trail build request. Returns result dict for jsonify."""
-    from utilities.postgres_utils import (
-        get_crew_mission_status, start_crew_mission, db_cursor, consume_discovery_for_trail
-    )
+    from utilities.postgres.trails import get_crew_mission_status, start_crew_mission, consume_discovery_for_trail
+    from utilities.postgres.core import db_cursor
     from utilities.shop_utils import get_scanner_trail_bonus
     from config import get_scientist_trail_bonus, COLONY_SCIENTISTS
 
@@ -128,7 +127,7 @@ def handle_trail_build_request(user_id, data):
     km_to_add = trail_calc['km_to_add']
 
     # Chain routing: find nearest connected node to build from
-    from utilities.db_trails import find_nearest_trail_origin
+    from utilities.postgres.trails import find_nearest_trail_origin
     origin = find_nearest_trail_origin(user_id, destination)
     from_landmark = origin.get('from_landmark', 'HOME')
 
@@ -157,7 +156,7 @@ def handle_trail_build_request(user_id, data):
 
 def get_trail_consumables_data(user_id):
     """Get available consumables and scanner bonus for trail building."""
-    from utilities.postgres_utils import get_trail_consumable_discoveries
+    from utilities.postgres.trails import get_trail_consumable_discoveries
     from utilities.shop_utils import get_scanner_trail_bonus
     from config import TRAIL_CONSUMABLE_BONUSES
 

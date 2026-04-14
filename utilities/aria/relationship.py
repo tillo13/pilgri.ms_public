@@ -75,7 +75,7 @@ def get_aria_relationship_tier(user_id: int) -> dict:
 
     Returns dict with tier name and supporting data.
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from datetime import datetime
 
     try:
@@ -137,7 +137,7 @@ def get_spatial_hints(user_id: int) -> dict:
     - Bond opportunities (landmarks other players visited)
     - Unexplored directions
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     import math
 
     hints = {

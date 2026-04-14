@@ -10,9 +10,9 @@ import os
 import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor, _fetchall, json_serial
-from utilities.db_activity import ensure_activity_table
-from utilities.db_shop import _format_depot_activity
+from utilities.postgres.core import db_cursor, _fetchall, json_serial
+from utilities.postgres.activity import ensure_activity_table
+from utilities.postgres.shop import _format_depot_activity
 
 DRY_RUN = '--dry-run' in sys.argv
 rows_to_insert = []

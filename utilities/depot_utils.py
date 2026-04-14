@@ -7,13 +7,10 @@ import logging
 import requests
 from datetime import datetime
 from utilities.sepolia_utils import MarsAsteroidMiner, sanitize_tx_error
-from utilities.postgres_utils import (
-    get_user_primary_sepolia_wallet,
-    update_sepolia_wallet_balance,
-    get_user_replicate_assets,
-    create_depot_transaction,
-    db_cursor
-)
+from utilities.postgres.wallets import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance
+from utilities.postgres.assets import get_user_replicate_assets
+from utilities.postgres.shop import create_depot_transaction
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +87,7 @@ def get_latest_character_image(user_id: int) -> tuple:
     Returns:
         tuple: (image_url, asset_id)
     """
-    from utilities.postgres_utils import get_primary_commander, get_user_commander_images
+    from utilities.postgres.assets import get_primary_commander, get_user_commander_images
 
     # First, try to get the ACTIVE (primary) commander
     primary = get_primary_commander(user_id)
@@ -139,9 +136,7 @@ def get_latest_character_video(user_id: int) -> tuple:
 
 def get_pricing_info(user_id: int = None) -> dict:
     """Get pricing info for templates, including escalating costs for authenticated users."""
-    from utilities.postgres_utils import (
-        get_user_escalation_counts, calculate_reroll_cost, calculate_transmutation_cost
-    )
+    from utilities.postgres.users import get_user_escalation_counts, calculate_reroll_cost, calculate_transmutation_cost
 
     # Base/fixed costs
     modify_cost = eth_to_display(CHARACTER_MODIFY_COST_ETH)
@@ -288,7 +283,7 @@ def get_commander_and_stats(user_id):
     Returns:
         tuple: (commander_dict, stats_dict) or (None, None)
     """
-    from utilities.postgres_utils import get_primary_commander
+    from utilities.postgres.assets import get_primary_commander
 
     commander = get_primary_commander(user_id)
     stats = extract_commander_stats(commander) if commander else None
@@ -310,7 +305,7 @@ def get_user_wallet_and_balance(session) -> tuple:
         return wallet, current_balance_eth
     else:
         # New slim format: just wallet address in session, look up from DB
-        from utilities.postgres_utils import get_wallet_by_address
+        from utilities.postgres.wallets import get_wallet_by_address
         session_wallet_addr = session.get('_wal_addr')
         if session_wallet_addr:
             wallet = get_wallet_by_address(session_wallet_addr)
@@ -489,10 +484,9 @@ def purchase_stat_reroll(session) -> dict:
 
     The shards gamble: you always pay, but might not improve.
     """
-    from utilities.postgres_utils import (
-        get_user_escalation_counts, increment_reroll_count, calculate_reroll_cost,
-        get_commander_stats, update_asset_stats, db_cursor
-    )
+    from utilities.postgres.users import get_user_escalation_counts, increment_reroll_count, calculate_reroll_cost
+    from utilities.postgres.assets import get_commander_stats, update_asset_stats
+    from utilities.postgres.core import db_cursor
 
     user_id = session.get('user_id')
     wallet, current_balance_eth = get_user_wallet_and_balance(session)
@@ -653,12 +647,12 @@ def purchase_character_modification(session, edit_prompt: str, flux_generator) -
     if user_id:
         # Make the new edited image the active commander
         if new_asset_id:
-            from utilities.postgres_utils import set_primary_commander
+            from utilities.postgres.assets import set_primary_commander
             set_primary_commander(user_id, new_asset_id)
 
     commander_stats = None
     if user_id:
-        from utilities.postgres_utils import get_commander_stats
+        from utilities.postgres.assets import get_commander_stats
         commander_stats = get_commander_stats(user_id)
     else:
         commander_stats = session.get('commander_stats')

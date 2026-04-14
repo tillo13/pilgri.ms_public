@@ -11,7 +11,7 @@ import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import get_db_connection
+from utilities.postgres.core import get_db_connection
 from utilities.expedition_utils import calculate_enhanced_item_value
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

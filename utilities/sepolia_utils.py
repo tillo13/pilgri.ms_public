@@ -67,7 +67,7 @@ def sanitize_tx_error(raw_error: str) -> str:
 
 def append_cryptic_mars_message(base_message: str) -> str:
     """Append cryptic Mars mission message to transaction"""
-    from utilities.postgres_utils import get_next_mars_message
+    from utilities.postgres.shop import get_next_mars_message
     
     mars_message = get_next_mars_message()
     mars_text = mars_message['message_text'] if mars_message else random.choice([
@@ -491,7 +491,7 @@ class MarsAsteroidMiner:
 
             # Sync recipient's DB balance to match on-chain
             try:
-                from utilities.postgres_utils import update_sepolia_wallet_balance
+                from utilities.postgres.wallets import update_sepolia_wallet_balance
                 update_sepolia_wallet_balance(to_address, float(target_balance))
             except Exception as db_err:
                 logger.warning(f"⚠️ DB balance sync failed (non-fatal): {db_err}")
@@ -747,7 +747,7 @@ class MarsAsteroidMiner:
         Check live Sepolia balance and update database
         Pure blockchain + DB operation - no session logic
         """
-        from utilities.postgres_utils import update_sepolia_wallet_balance
+        from utilities.postgres.wallets import update_sepolia_wallet_balance
         
         if not self.w3 and not self.connect():
             logger.warning(f"Network unavailable, using fallback: {fallback_balance}")

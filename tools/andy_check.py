@@ -66,9 +66,11 @@ ANDY_USER_ID = 45
 
 def check_crew_trails():
     """Send idle crew members on trail missions."""
-    from utilities.db_trails import (
-        get_crew_mission_status, start_crew_mission,
-        complete_crew_mission, get_visited_sites_for_trails
+    from utilities.postgres.trails import (
+        get_crew_mission_status,
+        start_crew_mission,
+        complete_crew_mission,
+        get_visited_sites_for_trails,
     )
 
     status = get_crew_mission_status(ANDY_USER_ID)
@@ -122,8 +124,9 @@ def check_expeditions():
         log.info(f"  ⚠️  Skipped locally (needs {e.name} — works on GCP)")
         return
     from utilities.upgrades_utils import get_user_owned_vehicles
-    from utilities.postgres_utils import get_or_set_user_mars_home, get_user_active_expeditions
-    from utilities.db_map import get_available_landmarks_by_discovery
+    from utilities.postgres.map import get_or_set_user_mars_home
+    from utilities.postgres.expeditions import get_user_active_expeditions
+    from utilities.postgres.map import get_available_landmarks_by_discovery
 
     owned = get_user_owned_vehicles(ANDY_USER_ID)
     active = get_user_active_expeditions(ANDY_USER_ID)
@@ -257,7 +260,7 @@ def check_lab_research():
 
 def check_expedition_completion():
     """Close any expeditions whose return timer has elapsed."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.expedition_utils import complete_expedition_if_ready
 
     with db_cursor() as cur:
@@ -290,7 +293,7 @@ def check_expedition_completion():
 
 def check_discovery_claims():
     """Batch claim any unclaimed discoveries from completed expeditions."""
-    from utilities.db_expeditions import (
+    from utilities.postgres.expeditions import (
         claim_all_pending_discoveries,
         get_total_unclaimed_discoveries_count,
     )
@@ -311,7 +314,7 @@ def check_discovery_claims():
 
 def check_shard_extraction():
     """Scientist extracts shards from unanalyzed common/uncommon discoveries."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.discovery_utils import shard_all_discoveries
 
     with db_cursor() as cur:
@@ -347,7 +350,7 @@ def check_shard_extraction():
 def check_shop_builds():
     """Activate any shop items whose build timer has elapsed."""
     try:
-        from utilities.db_shop import complete_ready_builds, get_building_upgrades
+        from utilities.postgres.shop import complete_ready_builds, get_building_upgrades
     except (ImportError, ModuleNotFoundError) as e:
         log.info(f"  ⚠  Skipped locally (needs {e.name} — works on GCP)")
         return
@@ -370,9 +373,13 @@ def check_shop_builds():
 def check_robot():
     """Tick robot build, set name/dial if unset. Skip if robot already in good state."""
     try:
-        from utilities.db_robot import (
-            get_robot, tick_robot_build, set_robot_name, set_robot_dial,
-            start_robot_build, pick_stage_sources,
+        from utilities.postgres.robot import (
+            get_robot,
+            tick_robot_build,
+            set_robot_name,
+            set_robot_dial,
+            start_robot_build,
+            pick_stage_sources,
         )
         from utilities.upgrades_utils import get_all_infrastructure_levels
     except (ImportError, ModuleNotFoundError) as e:
@@ -444,7 +451,7 @@ def check_robot():
 
 def check_echo_sites():
     """Claim any unclaimed Signal echo site."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.signal_utils import get_active_echo_sites, claim_echo_site
 
     sites = get_active_echo_sites() or []
@@ -482,7 +489,7 @@ def check_echo_sites():
 
 def check_infrastructure_builds():
     """Activate any infrastructure whose build timer has elapsed."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.infrastructure_utils import check_construction_status
 
     with db_cursor() as cur:
@@ -513,7 +520,7 @@ def check_new_infrastructure():
     try:
         from utilities.infrastructure_utils import start_construction
         from utilities.upgrades_utils import get_all_infrastructure_levels
-        from utilities.postgres_utils import get_or_set_user_mars_home
+        from utilities.postgres.map import get_or_set_user_mars_home
         from config_infrastructure import INFRASTRUCTURE_CATALOG
     except (ImportError, ModuleNotFoundError) as e:
         log.info(f"  ⚠  Skipped locally (needs {e.name} — works on GCP)")

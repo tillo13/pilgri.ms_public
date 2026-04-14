@@ -17,7 +17,7 @@ import logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utilities.claude_utils import create_client
-from utilities.postgres_utils import get_db_connection
+from utilities.postgres.core import get_db_connection
 from utilities.google_secret_utils import get_credential_blob
 
 # Configure logging

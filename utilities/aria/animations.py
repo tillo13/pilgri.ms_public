@@ -19,7 +19,7 @@ def check_for_aria_animation(user_id: int, user_message: str, aria_response: str
     - Only if emotion naturally fits the conversation
     - Returns animation URL or None
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from datetime import datetime, timedelta
 
     if not user_id:
@@ -62,7 +62,7 @@ def check_for_aria_animation(user_id: int, user_message: str, aria_response: str
 
 def record_aria_animation(user_id: int, animation_url: str):
     """Record that an animation was shown to track the once-per-day limit."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor(commit=True) as cur:
@@ -90,7 +90,7 @@ def get_contextual_hint(user_id: int) -> Dict[str, Any]:
     Returns:
         Dict with 'hint' (the message) and 'priority' (for sorting)
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.depot_utils import get_live_balance_and_wallet_info
 
     hints = []

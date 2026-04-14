@@ -12,7 +12,7 @@ from . import test, requires_web3, requires_flask, TESTS, PASSED, FAILED, SKIPPE
 
 @test("Database connection", tier=1, features=['db'], mode='local')
 def test_db_connection():
-    from utilities.postgres_utils import get_db_connection
+    from utilities.postgres.core import get_db_connection
     conn = get_db_connection()
     assert conn is not None, "Failed to get DB connection"
     conn.close()
@@ -21,7 +21,7 @@ def test_db_connection():
 
 @test("Users table has data", tier=1, features=['db'], mode='local')
 def test_users_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM pilgrim.users")
         row = cur.fetchone()
@@ -32,7 +32,7 @@ def test_users_table():
 
 @test("player_upgrades has ready_at column", tier=1, features=['db', 'depot'], mode='local')
 def test_upgrades_schema():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor(commit=True) as cur:
         cur.execute("""
             ALTER TABLE pilgrim.player_upgrades
@@ -51,7 +51,7 @@ def test_upgrades_schema():
 
 @test("colony_infrastructure table exists", tier=1, features=['db', 'colony'], mode='local')
 def test_infrastructure_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.colony_infrastructure LIMIT 1")
     return True
@@ -59,7 +59,7 @@ def test_infrastructure_table():
 
 @test("player_techs table exists", tier=1, features=['db', 'tech'], mode='local')
 def test_techs_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.player_techs LIMIT 1")
     return True
@@ -222,7 +222,7 @@ def test_stat_names():
 
 @test("expeditions table exists", tier=2, features=['db', 'expeditions'], mode='local')
 def test_expeditions_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.expeditions LIMIT 1")
     return True
@@ -230,7 +230,7 @@ def test_expeditions_table():
 
 @test("expedition_discoveries table exists", tier=2, features=['db', 'expeditions'], mode='local')
 def test_discoveries_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.expedition_discoveries LIMIT 1")
     return True
@@ -238,7 +238,7 @@ def test_discoveries_table():
 
 @test("replicate_assets table exists", tier=2, features=['db', 'crew'], mode='local')
 def test_replicate_assets_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.replicate_assets LIMIT 1")
     return True
@@ -246,7 +246,7 @@ def test_replicate_assets_table():
 
 @test("sepolia_assets table exists", tier=2, features=['db', 'blockchain'], mode='local')
 def test_wallets_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.sepolia_assets LIMIT 1")
     return True
@@ -254,7 +254,7 @@ def test_wallets_table():
 
 @test("depot_transactions table exists", tier=2, features=['db', 'depot'], mode='local')
 def test_depot_tx_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.depot_transactions LIMIT 1")
     return True
@@ -262,7 +262,7 @@ def test_depot_tx_table():
 
 @test("mars_mission_messages table exists", tier=2, features=['db', 'signal'], mode='local')
 def test_mars_messages_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM pilgrim.mars_mission_messages")
         row = cur.fetchone()
@@ -273,7 +273,7 @@ def test_mars_messages_table():
 
 @test("aria_bonds table exists", tier=2, features=['db', 'signal'], mode='local')
 def test_aria_bonds_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.aria_bonds LIMIT 1")
     return True
@@ -281,7 +281,7 @@ def test_aria_bonds_table():
 
 @test("trail_segments table exists", tier=2, features=['db', 'expeditions'], mode='local')
 def test_trails_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.trail_segments LIMIT 1")
     return True

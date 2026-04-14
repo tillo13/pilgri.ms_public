@@ -18,7 +18,7 @@ import logging
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 from utilities.google_cloud_storage_utils import upload_blob_from_url, BUCKET_NAME
 from datetime import datetime
 

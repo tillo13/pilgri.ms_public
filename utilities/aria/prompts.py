@@ -156,7 +156,7 @@ def _build_friend_prompt(captain_name: str, snapshot: Optional[Dict], user_conte
         # Trail network
         trail_str = 'none'
         try:
-            from utilities.postgres_utils import db_cursor as _db_cursor
+            from utilities.postgres.core import db_cursor
             with _db_cursor() as cur:
                 cur.execute("""
                     SELECT destination_name, trail_level, total_distance_km, km_built

@@ -461,9 +461,10 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
 
     Returns: { success, shards_received, quantity_analyzed, tx_hash, error }
     """
-    from utilities.postgres_utils import (
-        get_user_primary_sepolia_wallet, create_depot_transaction, db_cursor, get_user_scientist
-    )
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
+    from utilities.postgres.shop import create_depot_transaction
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.users import get_user_scientist
     from utilities.sepolia_utils import MarsAsteroidMiner, sanitize_tx_error
     from utilities.depot_utils import display_to_eth, invalidate_balance_cache
 
@@ -603,7 +604,7 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
     # STEP 1b: Award bonus SV (extraction gives BOTH shards + SV)
     sv_bonus = math.floor(total_value * EXTRACTION_SV_BONUS_RATE)
     if sv_bonus > 0:
-        from utilities.db_users import add_passive_sv
+        from utilities.postgres.users import add_passive_sv
         add_passive_sv(user_id, sv_bonus)
         logger.info(f"User {user_id} earned {sv_bonus} bonus SV from extraction")
 
@@ -672,7 +673,7 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
     # Optimistically update DB wallet balance so ribbon stays correct after page reload
     # (matches pattern used by purchases in depot_utils, upgrades_utils, etc.)
     from utilities.depot_utils import update_session_balance, get__bal
-    from utilities.db_wallets import update_sepolia_wallet_balance
+    from utilities.postgres.wallets import update_sepolia_wallet_balance
     old_balance_eth = float(wallet.get('current_balance_eth', 0))
     new_balance_eth = old_balance_eth + amount_eth
     update_sepolia_wallet_balance(wallet['wallet_address'], new_balance_eth)
@@ -712,9 +713,10 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
 
     Returns: { success, shards_received, quantity_analyzed, items_processed, tx_hash, error }
     """
-    from utilities.postgres_utils import (
-        get_user_primary_sepolia_wallet, create_depot_transaction, db_cursor, get_user_scientist
-    )
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
+    from utilities.postgres.shop import create_depot_transaction
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.users import get_user_scientist
     from utilities.sepolia_utils import MarsAsteroidMiner, sanitize_tx_error
     from utilities.depot_utils import display_to_eth, invalidate_balance_cache
 
@@ -807,7 +809,7 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
     # STEP 1b: Award bonus SV (extraction gives BOTH shards + SV)
     sv_bonus = math.floor(total_value * EXTRACTION_SV_BONUS_RATE)
     if sv_bonus > 0:
-        from utilities.db_users import add_passive_sv
+        from utilities.postgres.users import add_passive_sv
         add_passive_sv(user_id, sv_bonus)
         logger.info(f"User {user_id} earned {sv_bonus} bonus SV from bulk extraction")
 
@@ -875,7 +877,7 @@ def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
 
     # Optimistically update DB wallet balance so ribbon stays correct after page reload
     from utilities.depot_utils import update_session_balance, get__bal
-    from utilities.db_wallets import update_sepolia_wallet_balance
+    from utilities.postgres.wallets import update_sepolia_wallet_balance
     old_balance_eth = float(wallet.get('current_balance_eth', 0))
     new_balance_eth = old_balance_eth + amount_eth
     update_sepolia_wallet_balance(wallet['wallet_address'], new_balance_eth)

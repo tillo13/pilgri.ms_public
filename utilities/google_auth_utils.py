@@ -76,7 +76,8 @@ class SimpleGoogleAuth:
                     }
                     
                     # Save to database
-                    from utilities.postgres_utils import upsert_user, get_user_primary_sepolia_wallet, claim_anonymous_wallet
+                    from utilities.postgres.users import upsert_user
+                    from utilities.postgres.wallets import get_user_primary_sepolia_wallet, claim_anonymous_wallet
                     user_id = upsert_user(user_info)
                     if user_id:
                         session['user_id'] = user_id

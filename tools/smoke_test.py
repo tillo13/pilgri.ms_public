@@ -172,7 +172,7 @@ def requires_flask(func):
 
 @test("Database connection", tier=1, features=['db'])
 def test_db_connection():
-    from utilities.postgres_utils import get_db_connection
+    from utilities.postgres.core import get_db_connection
     conn = get_db_connection()
     assert conn is not None, "Failed to get DB connection"
     conn.close()
@@ -181,7 +181,7 @@ def test_db_connection():
 
 @test("Users table has data", tier=1, features=['db'])
 def test_users_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM pilgrim.users")
         row = cur.fetchone()
@@ -192,7 +192,7 @@ def test_users_table():
 
 @test("player_upgrades has ready_at column", tier=1, features=['db', 'depot'])
 def test_upgrades_schema():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     # Ensure columns exist (migration)
     with db_cursor(commit=True) as cur:
         cur.execute("""
@@ -213,7 +213,7 @@ def test_upgrades_schema():
 
 @test("colony_infrastructure table exists", tier=1, features=['db', 'colony'])
 def test_infrastructure_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.colony_infrastructure LIMIT 1")
     return True
@@ -221,7 +221,7 @@ def test_infrastructure_table():
 
 @test("player_techs table exists", tier=1, features=['db', 'tech'])
 def test_techs_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.player_techs LIMIT 1")
     return True
@@ -376,7 +376,7 @@ def test_stat_names():
 
 @test("last buggy expedition query", tier=2, features=['db', 'expeditions'])
 def test_last_buggy_expedition():
-    from utilities.db_expeditions import get_last_completed_buggy_expedition, calculate_expedition_sv
+    from utilities.postgres.expeditions import get_last_completed_buggy_expedition, calculate_expedition_sv
     # SV helper
     assert calculate_expedition_sv(200) == 200
     assert calculate_expedition_sv(3500) == 1800
@@ -389,7 +389,7 @@ def test_last_buggy_expedition():
 
 @test("expeditions table exists", tier=2, features=['db', 'expeditions'])
 def test_expeditions_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.expeditions LIMIT 1")
     return True
@@ -410,7 +410,7 @@ def test_claim_all_marks_notified():
 
 @test("expedition_discoveries table exists", tier=2, features=['db', 'expeditions'])
 def test_discoveries_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.expedition_discoveries LIMIT 1")
     return True
@@ -418,7 +418,7 @@ def test_discoveries_table():
 
 @test("replicate_assets table exists", tier=2, features=['db', 'crew'])
 def test_replicate_assets_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.replicate_assets LIMIT 1")
     return True
@@ -426,7 +426,7 @@ def test_replicate_assets_table():
 
 @test("sepolia_assets table exists", tier=2, features=['db', 'blockchain'])
 def test_wallets_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.sepolia_assets LIMIT 1")
     return True
@@ -434,7 +434,7 @@ def test_wallets_table():
 
 @test("depot_transactions table exists", tier=2, features=['db', 'depot'])
 def test_depot_tx_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.depot_transactions LIMIT 1")
     return True
@@ -442,7 +442,7 @@ def test_depot_tx_table():
 
 @test("mars_mission_messages table exists", tier=2, features=['db', 'signal'])
 def test_mars_messages_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM pilgrim.mars_mission_messages")
         row = cur.fetchone()
@@ -453,7 +453,7 @@ def test_mars_messages_table():
 
 @test("aria_bonds table + bond system", tier=2, features=['db', 'signal', 'colony'])
 def test_aria_bonds_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.aria_bond_utils import get_user_bonds, get_pending_fragments, check_for_aria_bond, process_fragment_submission, get_user_bond_count, send_bond_notification_email
     with db_cursor() as cur:
         cur.execute("SELECT id, user_id_1, user_id_2, landmark_name, status, bond_tx_hash FROM pilgrim.aria_bonds LIMIT 1")
@@ -463,7 +463,7 @@ def test_aria_bonds_table():
 
 @test("trail_segments table exists", tier=2, features=['db', 'expeditions'])
 def test_trails_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT 1 FROM pilgrim.trail_segments LIMIT 1")
 
@@ -683,7 +683,7 @@ def test_sv_sources_query():
 
 @test("PilgrimBot calls logging table exists", tier=1, features=['pilgrimbot'])
 def test_pilgrimbot_calls_table():
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("""
             SELECT column_name FROM information_schema.columns
@@ -761,7 +761,7 @@ def test_analyze_endpoint():
 # Bug #1135 — SV bonus must show in Colony Activity feed for discovery extractions
 @test("discovery_analysis activity detail includes SV bonus", tier=1, features=['discovery'])
 def test_discovery_activity_includes_sv():
-    from utilities.db_shop import _format_depot_activity
+    from utilities.postgres.shop import _format_depot_activity
     title, cat, detail = _format_depot_activity('discovery_analysis', {
         'item_name': 'Machined Hematite', 'rarity': 'uncommon',
         'quantity_analyzed': 1, 'shards_extracted': 191, 'sv_bonus': 95,
@@ -784,7 +784,7 @@ def test_discovery_activity_includes_sv():
 @test("hydrate_user_session returns valid dict", tier=2, features=['db', 'crew'])
 def test_hydrate_session():
     """Every page load depends on session hydration — if broken, everything breaks."""
-    from utilities.db_users import hydrate_user_session
+    from utilities.postgres.users import hydrate_user_session
     data = hydrate_user_session(112)
     assert isinstance(data, dict), f"Expected dict, got {type(data)}"
     return True
@@ -792,7 +792,7 @@ def test_hydrate_session():
 
 @test("get_user_scientist returns dict or None", tier=2, features=['crew'])
 def test_get_scientist():
-    from utilities.db_users import get_user_scientist
+    from utilities.postgres.users import get_user_scientist
     sci = get_user_scientist(112)
     assert sci is None or isinstance(sci, dict), f"Expected dict/None, got {type(sci)}"
     if sci:
@@ -921,7 +921,7 @@ def test_api_changelog():
 
 @test("get_unified_activity returns list", tier=2, features=['colony', 'api'])
 def test_unified_activity():
-    from utilities.db_shop import get_unified_activity
+    from utilities.postgres.shop import get_unified_activity
     activity = get_unified_activity(112, limit=10)  # Andy's user_id
     assert isinstance(activity, list), f"Expected list, got {type(activity)}"
     return True
@@ -931,7 +931,7 @@ def test_unified_activity():
 def test_activity_limit():
     """Verify activity limit was increased from 200 to 500."""
     import inspect
-    from utilities.db_shop import get_unified_activity
+    from utilities.postgres.shop import get_unified_activity
     sig = inspect.signature(get_unified_activity)
     default_limit = sig.parameters['limit'].default
     assert default_limit >= 500, f"Activity limit should be 500+, got {default_limit}"
@@ -994,7 +994,7 @@ def test_env_impact_cap():
 def test_recent_discoveries_filter():
     """Verify get_recent_discoveries query includes expedition status check."""
     import inspect
-    from utilities.db_expeditions import get_recent_discoveries
+    from utilities.postgres.expeditions import get_recent_discoveries
     source = inspect.getsource(get_recent_discoveries)
     assert "e.status = 'complete'" in source, "Recent discoveries query must filter by expedition status='complete'"
     return True
@@ -1136,7 +1136,7 @@ def test_upgrade_effects_query_count():
 
     try:
         # Use user_id=1 as a safe read-only test (any valid user works)
-        from utilities.postgres_utils import db_cursor
+        from utilities.postgres.core import db_cursor
         with original_cursor() as cur:
             cur.execute("SELECT id FROM pilgrim.users LIMIT 1")
             row = cur.fetchone()
@@ -1176,7 +1176,7 @@ def test_income_calc_query_count():
     pu.db_cursor = counted_cursor
 
     try:
-        from utilities.postgres_utils import db_cursor
+        from utilities.postgres.core import db_cursor
         with original_cursor() as cur:
             cur.execute("SELECT id FROM pilgrim.users LIMIT 1")
             row = cur.fetchone()
@@ -1219,7 +1219,7 @@ def test_effective_rate_matches_applied():
       5. page_data_utils surfaces `effective_rate` in income_data dict
     """
     from utilities.infrastructure_utils import calculate_accumulated_income
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     # Find a captain with active generating infrastructure
     with db_cursor() as cur:
@@ -1283,13 +1283,13 @@ def test_effective_rate_matches_applied():
 
 @test("Bug tracker tables create without error", tier=1, features=['db', 'bugs'])
 def test_bug_tables():
-    from utilities.db_bugs import ensure_bug_tables
+    from utilities.postgres.bugs import ensure_bug_tables
     ensure_bug_tables()
 
 @test("Bug tracker CRUD works", tier=2, features=['db', 'bugs'])
 def test_bug_crud():
-    from utilities.db_bugs import create_bug, get_bug_by_id, update_bug, search_bugs
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.bugs import create_bug, get_bug_by_id, update_bug, search_bugs
+    from utilities.postgres.core import db_cursor
     bug = create_bug(name='__smoke_test_bug__', description='Auto-test', type='Bug', priority='P5')
     assert bug and bug['id'], "create_bug returned None"
     fetched = get_bug_by_id(bug['id'])
@@ -1305,7 +1305,7 @@ def test_bug_crud():
 
 @test("Bug tracker stats returns dict", tier=2, features=['db', 'bugs'])
 def test_bug_stats():
-    from utilities.db_bugs import get_bug_stats
+    from utilities.postgres.bugs import get_bug_stats
     stats = get_bug_stats()
     assert isinstance(stats, dict), f"Expected dict, got {type(stats)}"
     assert 'active_count' in stats, "Missing active_count key"
@@ -1313,8 +1313,8 @@ def test_bug_stats():
 @test("Admin bugs page data loads without error", tier=2, features=['db', 'bugs'])
 def test_admin_bugs_page_data():
     """Smoke test the exact query path that /admin/bugs uses to render."""
-    from utilities.db_bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
-    from utilities.postgres_utils import db_cursor, _fetchall
+    from utilities.postgres.bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
+    from utilities.postgres.core import db_cursor, _fetchall
     # This is the exact query from the admin_bugs() route — if it fails, the page 500s
     with db_cursor() as cur:
         cur.execute("SELECT name, given_name, email FROM pilgrim.users WHERE is_admin = true ORDER BY name")
@@ -1347,7 +1347,7 @@ def test_tech_summary_shape():
       6. Empty-user case still returns the full branch ladder (zero completions).
     """
     from utilities.tech_utils import get_tech_summary
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from config_tech import TECH_CATALOG
 
     # Find a captain with at least 2 completed techs (stacking is only
@@ -1524,11 +1524,15 @@ def test_robot_tables_and_page_shape():
       4. ROBOT_STAGES has exactly 5 entries with the keys the template iterates.
       5. DEFAULT_DIAL sums to 100 and uses mod-5 increments.
     """
-    from utilities.db_robot import (
-        ensure_robot_tables, get_robot_page_data, ROBOT_STAGES,
-        DEFAULT_DIAL, DIAL_KEYS, STAGE_DURATION_SECONDS,
+    from utilities.postgres.robot import (
+        ensure_robot_tables,
+        get_robot_page_data,
+        ROBOT_STAGES,
+        DEFAULT_DIAL,
+        DIAL_KEYS,
+        STAGE_DURATION_SECONDS,
     )
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     # 1. Idempotent table ensure
     ensure_robot_tables()
@@ -1597,7 +1601,7 @@ def test_robot_tables_and_page_shape():
 @test("robot dial validation rejects bad input", tier=1, features=['crew', 'robot'])
 def test_robot_dial_validation():
     """set_robot_dial must reject non-mod-5, negatives, and sums != 100."""
-    from utilities.db_robot import set_robot_dial
+    from utilities.postgres.robot import set_robot_dial
     bad_inputs = [
         {'mining': 33, 'exploration': 33, 'science': 17, 'combat': 17},   # not mod-5
         {'mining': 25, 'exploration': 25, 'science': 25, 'combat': 30},   # sums to 105
@@ -1629,7 +1633,7 @@ def test_robot_in_aria_and_pilgrimbot():
     from utilities.pilgrimbot_data import (
         PLAYER_DATA_TOOL, PLAYER_DATA_MAP, query_player_data
     )
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     # Pick any user with completed account hydration
     with db_cursor() as cur:
@@ -1744,7 +1748,7 @@ def test_robot_visuals_pipeline_shape():
         _release(test_uid, test_stage)
 
     # 5: tick_robot_build still imports cleanly after being re-wired
-    from utilities.db_robot import tick_robot_build  # noqa: F401
+    from utilities.postgres.robot import tick_robot_build  # noqa: F401
     return True
 
 

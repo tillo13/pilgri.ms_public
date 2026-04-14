@@ -42,7 +42,7 @@ def result(name, ok, detail=""):
 
 def get_user_info(user_id):
     """Get google_id and email from DB."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     with db_cursor() as cur:
         cur.execute("SELECT google_id, email FROM pilgrim.users WHERE id = %s", (user_id,))
         return cur.fetchone()

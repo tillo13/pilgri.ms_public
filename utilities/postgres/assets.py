@@ -52,7 +52,7 @@ def create_replicate_asset(user_id: int = None, asset_type: str = 'character_ima
             asset_id = cur.fetchone()['id']
             primary_msg = " (set as PRIMARY)" if is_primary else ""
             logger.info(f"✅ Created asset ID {asset_id} ({asset_type}){primary_msg}")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'media', asset_type or 'captain_portrait',
                          f"{'Captain Portrait' if asset_type == 'character_image' else asset_type.replace('_', ' ').title()}",
                          image_url=gcs_url or '', source_table='replicate_assets', source_id=asset_id)

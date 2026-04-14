@@ -5,7 +5,7 @@ import random
 import threading
 from datetime import datetime
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +241,7 @@ def handle_mimic_action(session, action, target_user_id, real_user_id):
         session['user_id'] = int(target_user_id)
         # Store mimicked user's email for the banner
         try:
-            from utilities.postgres_utils import db_cursor
+            from utilities.postgres.core import db_cursor
             with db_cursor() as cur:
                 cur.execute("SELECT email FROM pilgrim.users WHERE id = %s", (int(target_user_id),))
                 row = cur.fetchone()

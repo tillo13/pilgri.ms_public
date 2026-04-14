@@ -17,7 +17,7 @@ import argparse
 import logging
 import time
 from datetime import datetime
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 from utilities.sepolia_utils import MarsAsteroidMiner, PILGRIM_ADDRESS
 from utilities.gmail_utils import send_email
 

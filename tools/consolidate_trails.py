@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 from utilities.mars_math import haversine_distance
 
 

@@ -245,7 +245,8 @@ def process_idle_discoveries(dry_run: bool = False):
     Main entry point: check all inactive users and process discoveries.
     Run via cron: python -m utilities.idle_discovery_utils
     """
-    from utilities.postgres_utils import get_inactive_users, get_commander_stats
+    from utilities.postgres.notifications import get_inactive_users
+    from utilities.postgres.assets import get_commander_stats
 
     logger.info("Starting idle discovery processing...")
 

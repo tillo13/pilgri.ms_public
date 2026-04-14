@@ -79,7 +79,7 @@ def _bug_status_action(msg_lower):
     if not m:
         return ""
     try:
-        from utilities.db_bugs import get_bug_by_id, update_bug
+        from utilities.postgres.bugs import get_bug_by_id, update_bug
         action_bug_id = int(m.group(1))
         new_status = 'Todo' if pass_to_dev else BUG_STATUS_MAP.get(m.group(2).strip(), 'Todo')
         bug = get_bug_by_id(action_bug_id)
@@ -109,7 +109,7 @@ def _create_bug_action(chat_id, real_user_id):
 def _related_bugs_action(chat_id, real_user_id):
     try:
         from utilities.pilgrimbot_utils import get_chat_history
-        from utilities.db_bugs import search_bugs
+        from utilities.postgres.bugs import search_bugs
         history = get_chat_history(real_user_id, chat_id, limit=10)
         recent_text = ' '.join(m['content'][:200] for m in history[-6:])
         words = [w.lower().strip("?.,!()\"'") for w in recent_text.split()

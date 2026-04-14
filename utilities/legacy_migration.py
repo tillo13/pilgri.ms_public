@@ -4,7 +4,7 @@ Converts old user_upgrades records to player_upgrades records.
 Runs lazily (once per user per app session).
 """
 import logging
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ import logging
 import os
 from datetime import datetime
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -182,7 +182,7 @@ def load_dynamic_context(message):
 
     if matched_pages:
         try:
-            from utilities.db_brainstorm import get_comments_for_page
+            from utilities.postgres.brainstorm import get_comments_for_page
             for page_key in matched_pages:
                 comments = get_comments_for_page(page_key)
                 if comments:
@@ -222,7 +222,7 @@ def load_dynamic_context(message):
     bug_keywords = ['bug', 'issue', 'broken', 'fix', 'reported', 'tracker']
     if any(k in msg_lower for k in bug_keywords):
         try:
-            from utilities.db_bugs import get_bug_stats, search_bugs
+            from utilities.postgres.bugs import get_bug_stats, search_bugs
             stats = get_bug_stats()
             if stats:
                 extra += f"\n--- Bug Tracker ---\n"

@@ -151,7 +151,7 @@ def use_aria_resonance(user_id: int, destination_name: str) -> dict:
                 INSERT INTO pilgrim.crew_missions (user_id, crew_member, mission_type, destination_name, started_at, completed_at, trip_count_added)
                 VALUES (%s, 'aria', 'resonance', %s, %s, %s, 2)
             """, (user_id, destination_name, now, now))
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'trail', 'trail_resonance', f"ARIA Resonance: {destination_name}",
                          detail=f"+{resonance_km:.2f}km · Trail Lv{new_level} · {new_count} trips", source_table='crew_missions')
 

@@ -19,15 +19,15 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import (
-    db_cursor,
+from utilities.postgres.core import db_cursor
+from utilities.postgres.trails import (
     ensure_crew_missions_schema,
     get_crew_mission_status,
     get_nearby_trails_for_missions,
     start_crew_mission,
     complete_crew_mission,
     use_aria_resonance,
-    get_user_trail
+    get_user_trail,
 )
 
 

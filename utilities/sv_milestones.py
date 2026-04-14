@@ -7,7 +7,7 @@ Milestones are permanent achievements, awarded once per threshold.
 """
 
 import logging
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def check_and_award_milestones(user_id: int) -> list:
 
     Returns list of newly awarded milestones (may be empty).
     """
-    from utilities.db_users import add_passive_sv
+    from utilities.postgres.users import add_passive_sv
 
     ensure_milestone_table()
 

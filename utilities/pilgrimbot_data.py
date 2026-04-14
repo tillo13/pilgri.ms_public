@@ -5,7 +5,7 @@ a specific player's colony, upgrades, expeditions, etc.
 """
 
 import logging
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -55,8 +55,8 @@ def query_player_data(category, user_id):
     from datetime import datetime, timezone
     try:
         if category == 'overview':
-            from utilities.postgres_utils import get_user_commander
-            from utilities.db_users import get_user_scientist
+            from utilities.postgres.assets import get_user_commander
+            from utilities.postgres.users import get_user_scientist
             from utilities.aria.relationship import get_aria_relationship_tier
             from utilities.aria.snapshot import analyze_playstyle
             commander = get_user_commander(user_id)
@@ -407,7 +407,7 @@ def query_player_data(category, user_id):
             return "\n".join(lines)
 
         elif category == 'robot':
-            from utilities.db_robot import get_robot_page_data
+            from utilities.postgres.robot import get_robot_page_data
             data = get_robot_page_data(user_id) or {}
             lines = ["=== ROBOT CREW MEMBER (Step 4d) ==="]
             lines.append(f"Robotics Lab: Lv{data.get('lab_level', 0)} ({'unlocked' if data.get('lab_unlocked') else 'LOCKED — needs Research Station Lv3 + Regolith Forge Lv3'})")

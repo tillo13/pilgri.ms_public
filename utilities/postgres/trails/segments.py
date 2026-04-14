@@ -244,7 +244,7 @@ def add_km_to_trail(user_id: int, destination_name: str, km_amount: float,
         # SV Economy Pillar 5: Award 5 SV per km of trail built
         if km_amount > 0:
             try:
-                from utilities.db_users import add_passive_sv
+                from utilities.postgres.users import add_passive_sv
                 trail_sv = int(km_amount * 2)
                 if trail_sv > 0:
                     add_passive_sv(user_id, trail_sv)
@@ -484,7 +484,7 @@ def cron_drone_trail_build():
             # Award SV (2 SV/km, same as manual)
             if actual_km > 0:
                 try:
-                    from utilities.db_users import add_passive_sv
+                    from utilities.postgres.users import add_passive_sv
                     trail_sv = int(actual_km * 2)
                     if trail_sv > 0:
                         add_passive_sv(user_id, trail_sv)

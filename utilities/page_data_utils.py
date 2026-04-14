@@ -17,9 +17,10 @@ def get_command_page_data(user_id):
     Returns:
         dict with all template variables for command.html
     """
-    from utilities.postgres_utils import get_asset_edit_chain, get_user_scientist, assign_scientist_to_user, get_user_research_data
+    from utilities.postgres.assets import get_asset_edit_chain
+    from utilities.postgres.users import get_user_scientist, assign_scientist_to_user, get_user_research_data
     from utilities.depot_utils import get_commander_and_stats, get_fast_balance_and_wallet_info, get_pricing_info, get_latest_character_image, eth_to_display
-    from utilities.postgres_utils import get_user_replicate_assets
+    from utilities.postgres.assets import get_user_replicate_assets
     from utilities.shop_utils import get_effective_commander_stats
 
     primary_commander, base_stats = get_commander_and_stats(user_id)
@@ -38,7 +39,7 @@ def get_command_page_data(user_id):
     total_balance, wallet_info, _ = get_fast_balance_and_wallet_info(user_id)  # FAST: no blockchain
 
     # Single query for both character_image and edited_image
-    from utilities.postgres_utils import get_user_commander_images
+    from utilities.postgres.assets import get_user_commander_images
     commander_images = get_user_commander_images(user_id, limit=50)
     all_images = commander_images['all_images']  # Already sorted by created_at desc
     all_videos = get_user_replicate_assets(user_id, asset_type='character_video', limit=50)
@@ -92,7 +93,7 @@ def get_command_page_data(user_id):
     # Scientist research stats for crew page
     scientist_research = {'sv_rate': 0, 'sv_total': 0, 'sv_available': 0, 'sv_accumulated': 0}
     if scientist and has_research_station:
-        from utilities.postgres_utils import get_passive_sv
+        from utilities.postgres.users import get_passive_sv
         from utilities.tech_utils import _get_available_sv
         from utilities.infrastructure_utils import calculate_accumulated_income
         scientist_research['sv_rate'] = 2.0  # From research_station config
@@ -106,7 +107,7 @@ def get_command_page_data(user_id):
     base_coords = get_or_set_user_mars_home(user_id)
 
     # ARIA skills for crew page display (Resonance, Crystal Sensing, Lore Memory)
-    from utilities.db_trails import get_aria_skills
+    from utilities.postgres.trails import get_aria_skills
     aria_skills = get_aria_skills(user_id)
 
     return {
@@ -139,7 +140,8 @@ def build_recent_activity(user_id, limit=10):
     Build combined activity list from assets and transactions.
     Consolidates repeated activity-building logic from app.py.
     """
-    from utilities.postgres_utils import get_user_depot_transactions, get_user_replicate_assets
+    from utilities.postgres.shop import get_user_depot_transactions
+    from utilities.postgres.assets import get_user_replicate_assets
     from utilities.depot_utils import eth_to_display
 
     assets = get_user_replicate_assets(user_id, limit=limit)
@@ -168,7 +170,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
 
     Returns a dict with all briefing data or {'show_briefing': False} if nothing to report.
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.aria.conversation import get_aria_conversation_history
     from datetime import datetime, timezone
     import math
@@ -725,7 +727,7 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
     - 1000-2000km: 5x "Frontier Run"
     - 2000+ km: 10x "Legendary Journey"
     """
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     def get_distance_bonus(distance_km: float) -> Dict:
         """Get multiplier and label for distance."""
@@ -883,11 +885,12 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
 
 def get_dashboard_page_data(user_id, auth):
     """Get all data needed for colony/dashboard page."""
-    from utilities.postgres_utils import (
-        get_user_sepolia_wallets, get_user_by_google_id, get_user_active_expeditions,
-        get_user_completed_expeditions_count, get_user_visited_locations_count,
-        get_crew_mission_status, get_user_replicate_assets, db_cursor
-    )
+    from utilities.postgres.wallets import get_user_sepolia_wallets
+    from utilities.postgres.users import get_user_by_google_id
+    from utilities.postgres.expeditions import get_user_active_expeditions, get_user_completed_expeditions_count, get_user_visited_locations_count
+    from utilities.postgres.trails import get_crew_mission_status
+    from utilities.postgres.assets import get_user_replicate_assets
+    from utilities.postgres.core import db_cursor
     from utilities.infrastructure_utils import get_user_infrastructure
     from utilities.depot_utils import get_fast_balance_and_wallet_info, get_commander_and_stats
 
@@ -1088,7 +1091,7 @@ def get_dashboard_page_data(user_id, auth):
     # Last completed buggy expedition for cinematic card
     last_buggy_expedition = None
     try:
-        from utilities.db_expeditions import get_last_completed_buggy_expedition
+        from utilities.postgres.expeditions import get_last_completed_buggy_expedition
         from utilities.upgrades_utils import get_user_upgrade_level
         lbe = get_last_completed_buggy_expedition(user_id)
         if lbe:
@@ -1152,7 +1155,8 @@ def get_dashboard_page_data(user_id, auth):
 
 def get_profile_page_data(user_id, auth):
     """Get all data needed for colony/profile page - LEGACY, use get_colony_page_data instead."""
-    from utilities.postgres_utils import get_user_sepolia_wallets, get_user_replicate_assets
+    from utilities.postgres.wallets import get_user_sepolia_wallets
+    from utilities.postgres.assets import get_user_replicate_assets
     from utilities.depot_utils import get_fast_balance_and_wallet_info
     return {
         'user': auth.get_current_user(),
@@ -1169,7 +1173,8 @@ def get_colony_page_data(user_id, auth):
     Includes: discoveries, equipment, infrastructure, vehicles, building items.
     """
     from datetime import datetime
-    from utilities.postgres_utils import get_building_upgrades, complete_ready_builds, db_cursor
+    from utilities.postgres.shop import get_building_upgrades, complete_ready_builds
+    from utilities.postgres.core import db_cursor
     from utilities.infrastructure_utils import get_user_infrastructure, INFRASTRUCTURE_CATALOG, get_or_set_user_mars_home, calculate_generation_rate
     from utilities.upgrades_utils import get_user_owned_vehicles
     from config_upgrades import UPGRADE_CATALOG
@@ -1438,7 +1443,7 @@ def get_colony_page_data(user_id, auth):
         })
 
     # Discovery-based range multiplier (for vehicle range display)
-    from utilities.postgres_utils import get_user_discovered_landmarks
+    from utilities.postgres.expeditions import get_user_discovered_landmarks
     discovered = get_user_discovered_landmarks(user_id)
     discovery_count = len(discovered) if discovered else 0
     fog_radius = min(1000, 300 + discovery_count * 50)
@@ -1490,7 +1495,7 @@ def get_colony_page_data(user_id, auth):
 def get_depot_page_data(user_id, auth):
     """Get all data needed for colony/depot page."""
     from utilities.depot_utils import get_fast_balance_and_wallet_info, get_commander_and_stats, get_pricing_info, OPERATIONS_FEE_BUFFER_DISPLAY
-    from utilities.postgres_utils import get_user_replicate_assets
+    from utilities.postgres.assets import get_user_replicate_assets
 
     total_balance, wallet_info, _ = get_fast_balance_and_wallet_info(user_id)  # FAST: no blockchain
     images = get_user_replicate_assets(user_id, asset_type='character_image', limit=1)
@@ -1561,7 +1566,7 @@ def get_depot_page_data(user_id, auth):
     active_builds.sort(key=lambda b: b['seconds_remaining'])
 
     # Discovery-based range multiplier (for vehicle effective range display)
-    from utilities.postgres_utils import get_user_discovered_landmarks
+    from utilities.postgres.expeditions import get_user_discovered_landmarks
     discovered = get_user_discovered_landmarks(user_id)
     depot_discovery_count = len(discovered) if discovered else 0
     depot_fog_radius = min(1000, 300 + depot_discovery_count * 50)
@@ -1594,7 +1599,7 @@ def get_depot_page_data(user_id, auth):
 
 def get_claimed_discoveries_data(user_id):
     """Get claimed discoveries with aggregated stats, plus ARIA bonds."""
-    from utilities.postgres_utils import get_claimed_discoveries
+    from utilities.postgres.expeditions import get_claimed_discoveries
 
     raw_discoveries = get_claimed_discoveries(user_id)
 
@@ -1662,7 +1667,7 @@ def get_claimed_discoveries_data(user_id):
 
 def get_formatted_discovery_items():
     """Get all discovery items formatted for API response."""
-    from utilities.postgres_utils import get_all_discovery_items
+    from utilities.postgres.expeditions import get_all_discovery_items
 
     items = get_all_discovery_items()
     return {'items': [{

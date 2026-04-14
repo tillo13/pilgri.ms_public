@@ -62,12 +62,16 @@ def calculate_daylight_fraction(hours_elapsed: float, longitude: float) -> tuple
 
         return day_fraction, 1.0 - day_fraction
 from config_infrastructure import INFRASTRUCTURE_CATALOG
-from utilities.postgres_utils import (
-    create_infrastructure, get_user_infrastructure, update_infrastructure_status,
-    get_infrastructure_by_id, get_user_primary_sepolia_wallet, create_depot_transaction,
-    get_db_connection, update_sepolia_wallet_balance, get_or_set_user_mars_home,
-    db_cursor
+from utilities.postgres.shop import (
+    create_infrastructure,
+    get_user_infrastructure,
+    update_infrastructure_status,
+    get_infrastructure_by_id,
+    create_depot_transaction,
 )
+from utilities.postgres.wallets import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance
+from utilities.postgres.core import get_db_connection, db_cursor
+from utilities.postgres.map import get_or_set_user_mars_home
 from utilities.sepolia_utils import MarsAsteroidMiner, sanitize_tx_error
 
 logger = logging.getLogger(__name__)
@@ -523,7 +527,7 @@ def calculate_accumulated_income(user_id):
     NIGHT CYCLE:
     - Solar arrays generate 0% at night unless battery_storage is built (then 50%)
     """
-    from utilities.postgres_utils import ensure_dust_covered_column, set_infrastructure_dust_covered
+    from utilities.postgres.shop import ensure_dust_covered_column, set_infrastructure_dust_covered
     ensure_dust_covered_column()  # Ensure column exists
 
     structures = get_user_infrastructure(user_id)
@@ -701,7 +705,7 @@ def calculate_accumulated_income(user_id):
     #    Added per bug #1030 — Luke approved adding this mechanic
     scientist_shard_mult = 1.0
     try:
-        from utilities.postgres_utils import get_user_scientist
+        from utilities.postgres.users import get_user_scientist
         scientist = get_user_scientist(user_id)
         if scientist:
             analysis_stat = scientist.get('stats', {}).get('analysis', 0)
@@ -818,7 +822,7 @@ def calculate_accumulated_income(user_id):
     sv_scientist_bonus = 1.0
     sv_scientist_extra = 0.0
     try:
-        from utilities.postgres_utils import get_user_scientist
+        from utilities.postgres.users import get_user_scientist
         scientist = get_user_scientist(user_id)
         if scientist:
             analysis_stat = scientist.get('stats', {}).get('analysis', 0)
@@ -946,7 +950,7 @@ def claim_accumulated_income(user_id, session=None):
     logger.info(f"✅ User {user_id} harvested {calc['total_accumulated']} Sepolia from {coords['latitude']:.2f}°N, {coords['longitude']:.2f}°E")
 
     # Update activity timestamp for ARIA photo generation
-    from utilities.postgres_utils import update_user_activity
+    from utilities.postgres.users import update_user_activity
     update_user_activity(user_id)
 
     # === STEP 3: BLOCKCHAIN TX IN BACKGROUND — per CLAUDE.md pattern ===
@@ -1019,7 +1023,8 @@ def record_science_value(user_id):
     if sv_amount < 1:
         return {'success': False, 'error': 'Not enough SV to record (minimum: 1)'}
 
-    from utilities.postgres_utils import add_passive_sv, get_db_connection
+    from utilities.postgres.users import add_passive_sv
+    from utilities.postgres.core import get_db_connection
     add_passive_sv(user_id, sv_amount)
 
     # Reset last_payout_at on ALL SV-generating buildings so SV doesn't re-accumulate
@@ -1028,7 +1033,7 @@ def record_science_value(user_id):
                          if any(lv.get('science_generation_rate', 0) > 0
                                 for lv in cat.get('levels', {}).values())]
     if sv_building_types:
-        from utilities.postgres_utils import db_cursor as _db_cursor
+        from utilities.postgres.core import db_cursor
         with _db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.colony_infrastructure
@@ -1194,7 +1199,7 @@ def handle_infrastructure_build(user_id, structure_type, session):
         update_session_balance(session, result['new_balance'])
         session.modified = True
         # Update activity timestamp for ARIA photo generation
-        from utilities.postgres_utils import update_user_activity
+        from utilities.postgres.users import update_user_activity
         update_user_activity(user_id)
 
     return result
@@ -1363,7 +1368,9 @@ def _get_experiment_max_roll(total_experiments: int) -> int:
 
 def get_xenobiology_status(user_id: int) -> dict:
     """Get research status for Xenobiology Lab modal"""
-    from utilities.postgres_utils import get_user_research_data, get_user_infrastructure, get_commander_stats
+    from utilities.postgres.users import get_user_research_data
+    from utilities.postgres.shop import get_user_infrastructure
+    from utilities.postgres.assets import get_commander_stats
     from utilities.depot_utils import get_fast_balance_and_wallet_info
     from config import MAX_DISPLAY_STAT
 
@@ -1405,7 +1412,8 @@ def get_xenobiology_status(user_id: int) -> dict:
 def run_xenobiology_experiment(user_id: int, session) -> dict:
     """Run an experiment to gain research points"""
     import random
-    from utilities.postgres_utils import get_user_research_data, add_research_points, get_user_infrastructure
+    from utilities.postgres.users import get_user_research_data, add_research_points
+    from utilities.postgres.shop import get_user_infrastructure
     from utilities.depot_utils import get_fast_balance_and_wallet_info, invalidate_balance_cache
     from utilities.sepolia_utils import MarsAsteroidMiner
     from utilities.depot_utils import display_to_eth
@@ -1451,7 +1459,8 @@ def run_xenobiology_experiment(user_id: int, session) -> dict:
 
 def upgrade_xenobiology_stat(user_id: int, stat_name: str) -> dict:
     """Spend research points to upgrade a stat"""
-    from utilities.postgres_utils import get_user_research_data, spend_research_points, get_commander_stats
+    from utilities.postgres.users import get_user_research_data, spend_research_points
+    from utilities.postgres.assets import get_commander_stats
     from config import MAX_DISPLAY_STAT
 
     if stat_name not in ['leadership', 'strategy', 'exploration', 'logistics', 'charisma']:

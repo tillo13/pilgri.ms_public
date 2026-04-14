@@ -81,7 +81,7 @@ def test_user_exists(user_id):
     """Test that user exists and has basic data"""
     result = TestResult("User Exists")
 
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     with db_cursor() as cur:
         cur.execute("SELECT id, email, given_name, created_at, login_count FROM pilgrim.users WHERE id = %s", (user_id,))
@@ -106,10 +106,11 @@ def test_onboarding_complete(user_id):
     """Test that user has completed onboarding (commander, scientist, wallet, location)"""
     result = TestResult("Onboarding Complete")
 
-    from utilities.postgres_utils import (
-        db_cursor, get_user_replicate_assets, get_user_scientist,
-        get_user_sepolia_wallets, get_or_set_user_mars_home
-    )
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.assets import get_user_replicate_assets
+    from utilities.postgres.users import get_user_scientist
+    from utilities.postgres.wallets import get_user_sepolia_wallets
+    from utilities.postgres.map import get_or_set_user_mars_home
 
     # Check commander
     commanders = get_user_replicate_assets(user_id, asset_type='character_image')
@@ -155,7 +156,7 @@ def test_infrastructure_state(user_id):
     """Test user's infrastructure - what they've built"""
     result = TestResult("Infrastructure State")
 
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
     from utilities.infrastructure_utils import get_user_infrastructure
     from config import INFRASTRUCTURE_CATALOG
 
@@ -216,7 +217,7 @@ def test_welcome_bonus(user_id):
     """Test that welcome bonus was received (750 shards for first solar array)"""
     result = TestResult("Welcome Bonus")
 
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     # Check depot transactions for infrastructure_completion reward
     with db_cursor() as cur:
@@ -253,7 +254,8 @@ def test_expedition_capability(user_id):
     """Test that user can launch expeditions"""
     result = TestResult("Expedition Capability")
 
-    from utilities.postgres_utils import db_cursor, get_user_active_expeditions
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.expeditions import get_user_active_expeditions
     from utilities.upgrades_utils import get_user_upgrade_level, get_user_owned_vehicles
 
     # Check vehicle levels
@@ -309,7 +311,7 @@ def test_discovery_state(user_id):
     """Test user's discovery inventory and extraction capability"""
     result = TestResult("Discoveries & Extraction")
 
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     # Check discoveries via expeditions
     with db_cursor() as cur:
@@ -572,7 +574,7 @@ def run_all_tests(user_id, dry_run=False):
 
 def get_test_users():
     """Get list of recent users for testing"""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     with db_cursor() as cur:
         cur.execute("""

@@ -88,7 +88,7 @@ def create_depot_transaction(user_id: int, wallet_address: str, purchase_type: s
             transaction_id = result['id'] if result else None
             logger.info(f"✅ Transaction saved (ID: {transaction_id}, type: {purchase_type})")
             # Log to unified activity
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             title, cat, detail = _format_depot_activity(purchase_type, item_details or {})
             log_activity(user_id, cat, purchase_type, title, amount=float(amount_eth) * 10000000 if amount_eth else 0,
                          detail=detail, tx_hash=tx_hash or '', source_table='depot_transactions', source_id=transaction_id)
@@ -189,7 +189,7 @@ def _format_depot_activity(purchase_type: str, details: dict) -> tuple:
 
 def get_unified_activity(user_id: int, limit: int = 500) -> List[Dict]:
     """Get unified activity log from activity_events table (single source of truth)."""
-    from utilities.db_activity import get_activity
+    from utilities.postgres.activity import get_activity
     rows = get_activity(user_id, limit=limit)
     return [{
         'category': r['category'], 'title': r['title'], 'detail': r.get('detail', ''),
@@ -222,7 +222,7 @@ def create_infrastructure(user_id, structure_type, structure_name, latitude, lon
             result = cur.fetchone()
             infra_id = result['id'] if result else None
             logger.info(f"✅ Infrastructure created with ID: {infra_id}")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'infrastructure', 'infrastructure_build',
                          f"Building: {structure_name or structure_type.replace('_', ' ').title()}",
                          amount=float(cost_sepolia) * 10000000 if cost_sepolia else 0,

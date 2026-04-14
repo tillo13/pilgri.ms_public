@@ -18,18 +18,35 @@ from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_R
 STATIC_V = str(int(time.time()))
 from utilities.flux_utils import FluxGenerator, process_uploaded_image, animate_character_video
 from utilities.google_auth_utils import SimpleGoogleAuth, get_secret
-from utilities.postgres_utils import (
-    db_cursor, set_primary_commander, delete_asset, get_recent_discoveries,
-    get_discovery_item_details, claim_expedition_discovery, update_commander_name,
-    get_total_unclaimed_discoveries_count, get_unified_activity,
-    get_commander_quotes, get_commander_quote_count, get_user_fomo_data,
-    get_user_commander, get_user_scientist, hydrate_user_session,
-    get_user_expedition_history, get_expedition_by_id, get_expedition_discovery_items,
-    get_crew_mission_status, get_aria_skills, get_visited_sites_for_trails,
-    start_crew_mission, complete_crew_mission,
-    use_aria_resonance, get_trail_progress, get_user_by_id,
-    ensure_action_tokens_table, sync_all_wallet_balances,
+from utilities.postgres.core import db_cursor
+from utilities.postgres.assets import (
+    set_primary_commander,
+    delete_asset,
+    update_commander_name,
+    get_user_commander,
 )
+from utilities.postgres.expeditions import (
+    get_recent_discoveries,
+    get_discovery_item_details,
+    claim_expedition_discovery,
+    get_total_unclaimed_discoveries_count,
+    get_user_expedition_history,
+    get_expedition_by_id,
+    get_expedition_discovery_items,
+)
+from utilities.postgres.shop import get_unified_activity, ensure_action_tokens_table
+from utilities.postgres.notifications import get_commander_quotes, get_commander_quote_count, get_user_fomo_data
+from utilities.postgres.users import get_user_scientist, hydrate_user_session, get_user_by_id
+from utilities.postgres.trails import (
+    get_crew_mission_status,
+    get_aria_skills,
+    get_visited_sites_for_trails,
+    start_crew_mission,
+    complete_crew_mission,
+    use_aria_resonance,
+    get_trail_progress,
+)
+from utilities.postgres.wallets import sync_all_wallet_balances
 from utilities.expedition_utils import (
     complete_expedition_if_ready, get_expeditions_page_data, claim_all_discoveries,
     get_discovery_progress_formatted, get_expedition_cost_preview_formatted, start_expedition_from_request,
@@ -288,7 +305,7 @@ def crew():
         from utilities.depot_utils import get_pricing_info
         data['pricing'] = get_pricing_info(session.get('user_id'))
         # Robot tab data — auto-advances any ready stages on every render
-        from utilities.db_robot import get_robot_page_data
+        from utilities.postgres.robot import get_robot_page_data
         data['robot_data'] = get_robot_page_data(session.get('user_id'))
         return render_template('crew.html', active_tab='crew', user=auth.get_current_user(), **data)
     else:
@@ -310,7 +327,7 @@ def crew():
 @handle_api_error
 def api_robot_status():
     """Return latest robot state — auto-ticks ready stages first."""
-    from utilities.db_robot import get_robot_page_data
+    from utilities.postgres.robot import get_robot_page_data
     return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
 
 
@@ -320,9 +337,11 @@ def api_robot_status():
 def api_robot_build():
     """Start a new robot build. Picks 5 source manifests from the captain's
     real expedition history, requires robotics_lab Lv1+."""
-    from utilities.db_robot import (
-        pick_stage_sources, start_robot_build, get_robot_page_data,
-        PLACEHOLDER_STAGE_IMAGE
+    from utilities.postgres.robot import (
+        pick_stage_sources,
+        start_robot_build,
+        get_robot_page_data,
+        PLACEHOLDER_STAGE_IMAGE,
     )
     from utilities.upgrades_utils import get_all_infrastructure_levels
 
@@ -350,7 +369,7 @@ def api_robot_build():
     def _gen_names():
         try:
             from utilities.claude_utils import suggest_golem_names
-            from utilities.db_robot import save_name_suggestions
+            from utilities.postgres.robot import save_name_suggestions
             names = suggest_golem_names(uid, cmd_name, sci_name, sources)
             if names:
                 save_name_suggestions(uid, names)
@@ -366,7 +385,7 @@ def api_robot_build():
 @handle_api_error
 def api_robot_name():
     """Set or rename the captain's robot. Names trimmed to 64 chars."""
-    from utilities.db_robot import set_robot_name, get_robot_page_data
+    from utilities.postgres.robot import set_robot_name, get_robot_page_data
     name = (request.get_json() or {}).get('name', '')
     if not set_robot_name(g.user_id, name):
         return jsonify({'success': False, 'error': 'Name required'}), 400
@@ -378,7 +397,7 @@ def api_robot_name():
 @handle_api_error
 def api_robot_dial():
     """Set the robot's role dial. 4 values, mod-5 each, must sum to 100."""
-    from utilities.db_robot import set_robot_dial, get_robot_page_data
+    from utilities.postgres.robot import set_robot_dial, get_robot_page_data
     dial = (request.get_json() or {}).get('dial', {})
     try:
         set_robot_dial(g.user_id, dial)
@@ -392,7 +411,7 @@ def api_robot_dial():
 @handle_api_error
 def api_robot_cinematic_played():
     """Mark the build-complete cinematic as shown so it doesn't replay."""
-    from utilities.db_robot import mark_cinematic_played
+    from utilities.postgres.robot import mark_cinematic_played
     mark_cinematic_played(g.user_id)
     return jsonify({'success': True})
 
@@ -402,7 +421,7 @@ def api_robot_cinematic_played():
 def api_robot_generate_video():
     """Generate an awakening video for the golem using its current image."""
     import threading
-    from utilities.db_robot import get_robot
+    from utilities.postgres.robot import get_robot
     robot = get_robot(g.user_id)
     if not robot or robot.get('build_status') != 'complete':
         return jsonify({'success': False, 'error': 'Golem must be fully built.'}), 400
@@ -421,7 +440,7 @@ def api_robot_generate_video():
         try:
             video_url = animate_character_video(image_url, flux, user_id=uid)
             app.config[status_key].update({'url': video_url, 'generating': False})
-            from utilities.postgres_utils import db_cursor
+            from utilities.postgres.core import db_cursor
             with db_cursor(commit=True) as cur:
                 cur.execute("UPDATE pilgrim.robot SET video_url = %s, updated_at = NOW() WHERE user_id = %s",
                             (video_url, uid))
@@ -449,7 +468,7 @@ def api_robot_video_status():
 def api_robot_suggest_names():
     """Generate 5 AI-suggested golem names based on colony context."""
     from utilities.claude_utils import suggest_golem_names
-    from utilities.db_robot import get_robot_page_data
+    from utilities.postgres.robot import get_robot_page_data
     data = get_robot_page_data(g.user_id)
     robot = data.get('robot') or {}
     commander_name = session.get('_cmd', {}).get('name') if session.get('_cmd') else None
@@ -701,7 +720,7 @@ def api_sv_economy_brainstorm_chat():
 @handle_api_error
 def api_brainstorm_comments_get(page_key):
     """Get all comments for a brainstorm page."""
-    from utilities.db_brainstorm import get_comments_for_page
+    from utilities.postgres.brainstorm import get_comments_for_page
     comments = get_comments_for_page(page_key)
     for c in comments:
         c['created_at'] = c['created_at'].isoformat() if c['created_at'] else None
@@ -712,7 +731,7 @@ def api_brainstorm_comments_get(page_key):
 @handle_api_error
 def api_brainstorm_comments_post(page_key):
     """Add a comment to a brainstorm page section."""
-    from utilities.db_brainstorm import add_comment
+    from utilities.postgres.brainstorm import add_comment
     data = request.get_json() or {}
     text = (data.get('text') or '').strip()
     if not text or len(text) > 2000:
@@ -1714,7 +1733,7 @@ def api_record_sv():
 @handle_api_error
 def api_reassign_scientist():
     """Reassign colony scientist. Free for QA testing — cost/cooldown to be added later."""
-    from utilities.db_users import reassign_scientist, get_user_scientist
+    from utilities.postgres.users import reassign_scientist, get_user_scientist
     from config import COLONY_SCIENTISTS
 
     data = request.get_json() or {}
@@ -1743,13 +1762,13 @@ def api_reassign_scientist():
 
     result = reassign_scientist(g.user_id, new_key)
     if result['success']:
-        from utilities.db_activity import log_activity
+        from utilities.postgres.activity import log_activity
         new_sci = COLONY_SCIENTISTS[new_key]
         old_name = current.get('name', 'None') if current else 'None'
         log_activity(g.user_id, 'scientist_reassign', 'reassign',
                      f'{old_name} → {new_sci["name"]}')
         # Reset ALL SV building payout timestamps so SV starts fresh with new scientist
-        from utilities.postgres_utils import db_cursor
+        from utilities.postgres.core import db_cursor
         with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.colony_infrastructure
@@ -2184,7 +2203,7 @@ def cron_drone_trail_build():
     if not request.headers.get('X-Appengine-Cron') and not app.debug:
         return jsonify({'error': 'Forbidden'}), 403
     try:
-        from utilities.db_trails import cron_drone_trail_build
+        from utilities.postgres.trails import cron_drone_trail_build
         results = cron_drone_trail_build()
         return jsonify({'success': True, 'results': results, 'count': len(results)})
     except Exception as e:
@@ -2371,7 +2390,7 @@ def admin_speed():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
-    from utilities.postgres_utils import db_cursor, get_pool_health, get_db_connection_stats
+    from utilities.postgres.core import db_cursor, get_pool_health, get_db_connection_stats
     import json
     with db_cursor() as cur:
         cur.execute("SELECT id, tested_by, results, slowest_page, slowest_time, all_ok, tested_at FROM speed_test_runs ORDER BY tested_at DESC LIMIT 30")
@@ -2405,7 +2424,7 @@ def api_admin_pool_health():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.postgres_utils import get_pool_health, get_db_connection_stats
+    from utilities.postgres.core import get_pool_health, get_db_connection_stats
     return jsonify({'success': True, 'pool': get_pool_health(), 'db': get_db_connection_stats()})
 
 
@@ -2419,8 +2438,8 @@ def admin_bugs():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
-    from utilities.db_bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
-    from utilities.postgres_utils import db_cursor, _fetchall
+    from utilities.postgres.bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
+    from utilities.postgres.core import db_cursor, _fetchall
     with db_cursor() as cur:
         cur.execute("SELECT name, given_name, email FROM pilgrim.users WHERE is_admin = true ORDER BY name")
         mention_users = [{'name': r['name'], 'handle': (r.get('given_name') or r['name'].split()[0]).lower(), 'email': r['email']} for r in _fetchall(cur)]
@@ -2436,7 +2455,7 @@ def api_admin_bugs_list():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
+    from utilities.postgres.bugs import get_active_bugs, get_completed_bugs, get_ideas, get_bug_stats
     return jsonify({'success': True,
         'active': get_active_bugs(), 'completed': get_completed_bugs(),
         'ideas': get_ideas(), 'stats': get_bug_stats() or {}})
@@ -2449,7 +2468,7 @@ def api_admin_bugs_create():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import create_bug
+    from utilities.postgres.bugs import create_bug
     data = request.get_json() or {}
     bug = create_bug(name=data.get('name', ''), description=data.get('description', ''),
         type=data.get('type', 'Bug'), priority=data.get('priority', 'P3'),
@@ -2464,7 +2483,7 @@ def api_admin_bugs_get(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import get_bug_by_id, get_bug_history, get_bug_comments
+    from utilities.postgres.bugs import get_bug_by_id, get_bug_history, get_bug_comments
     bug = get_bug_by_id(bug_id)
     return jsonify({'success': bool(bug), 'bug': bug,
         'history': get_bug_history(bug_id) if bug else [],
@@ -2478,7 +2497,7 @@ def api_admin_bugs_update(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import update_bug
+    from utilities.postgres.bugs import update_bug
     data = request.get_json() or {}
     changed_by = data.pop('changed_by', 'Admin')
     ok = update_bug(bug_id, changed_by, **data)
@@ -2492,7 +2511,7 @@ def api_admin_bugs_complete(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import complete_bug
+    from utilities.postgres.bugs import complete_bug
     data = request.get_json() or {}
     ok, err = complete_bug(bug_id, data.get('changed_by', 'Admin'))
     return jsonify({'success': ok, 'error': err})
@@ -2505,7 +2524,7 @@ def api_admin_bugs_reopen(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import reopen_bug
+    from utilities.postgres.bugs import reopen_bug
     data = request.get_json() or {}
     ok, err = reopen_bug(bug_id, data.get('changed_by', 'Admin'))
     return jsonify({'success': ok})
@@ -2518,7 +2537,7 @@ def api_admin_bugs_screenshot(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import upload_bug_screenshot, get_bug_by_id
+    from utilities.postgres.bugs import upload_bug_screenshot, get_bug_by_id
     f = request.files.get('file')
     if not f:
         return jsonify({'success': False, 'error': 'No file provided'})
@@ -2543,7 +2562,7 @@ def api_admin_bugs_delete_screenshot(bug_id, field):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
     if field not in ('screenshot_url', 'screenshot_2_url', 'screenshot_3_url'):
         return jsonify({'success': False, 'error': 'Invalid field'})
-    from utilities.db_bugs import update_bug
+    from utilities.postgres.bugs import update_bug
     update_bug(bug_id, 'system', **{field: ''})
     return jsonify({'success': True})
 
@@ -2555,7 +2574,7 @@ def api_admin_bugs_comment(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import add_bug_comment
+    from utilities.postgres.bugs import add_bug_comment
     data = request.get_json() or {}
     body = (data.get('body') or '').strip()
     if not body:
@@ -2571,7 +2590,7 @@ def api_admin_ideas_list():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import get_ideas
+    from utilities.postgres.bugs import get_ideas
     return jsonify({'success': True, 'ideas': get_ideas()})
 
 
@@ -2582,7 +2601,7 @@ def api_admin_ideas_create():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import create_idea
+    from utilities.postgres.bugs import create_idea
     data = request.get_json() or {}
     idea = create_idea(name=data.get('name', ''), description=data.get('description', ''),
         category=data.get('category', 'Feature'))
@@ -2596,7 +2615,7 @@ def api_admin_ideas_promote(idea_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.db_bugs import promote_idea
+    from utilities.postgres.bugs import promote_idea
     data = request.get_json() or {}
     bug = promote_idea(idea_id, data.get('priority', 'P3'))
     return jsonify({'success': bool(bug), 'bug': bug})
@@ -2645,7 +2664,7 @@ def pilgrimbot():
     bug_context = ''
     bug_id = request.args.get('bug')
     if bug_id:
-        from utilities.db_bugs import get_bug_by_id, search_bugs
+        from utilities.postgres.bugs import get_bug_by_id, search_bugs
         bug = get_bug_by_id(int(bug_id))
         if bug:
             # Find potentially related bugs by keyword matching

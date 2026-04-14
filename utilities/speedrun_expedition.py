@@ -35,10 +35,10 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 from utilities.discovery_utils import generate_expedition_discoveries
-from utilities.db_expeditions import get_discovery_items_catalog, create_expedition_discoveries
-from utilities.db_map import get_nearest_mars_landmarks
+from utilities.postgres.expeditions import get_discovery_items_catalog, create_expedition_discoveries
+from utilities.postgres.map import get_nearest_mars_landmarks
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def load_expedition_context(expedition_id: int) -> dict:
         base_lon = float(user['home_mars_lon'])
 
         # Scientist stats
-        from utilities.db_users import get_user_scientist
+        from utilities.postgres.users import get_user_scientist
         scientist = get_user_scientist(user_id)
         sci_stats = scientist.get('stats', {}) if scientist else {}
 

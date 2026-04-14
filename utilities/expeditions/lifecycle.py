@@ -16,7 +16,7 @@ from utilities.expeditions.config import (
     TERRAIN_MODIFIERS,
 )
 from utilities.expeditions.cost import calculate_expedition_cost
-from utilities.db_trails import TRAIL_SPEED_MULTIPLIERS
+from utilities.postgres.trails import TRAIL_SPEED_MULTIPLIERS
 
 logger = logging.getLogger(__name__)
 
@@ -37,20 +37,18 @@ def launch_expedition(
     - DB updates
     - Discovery generation
     """
-    from utilities.postgres_utils import (
-        get_user_primary_sepolia_wallet,
-        get_or_set_user_mars_home,
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance
+    from utilities.postgres.map import get_or_set_user_mars_home, get_nearest_mars_landmarks
+    from utilities.postgres.expeditions import (
         get_user_completed_expeditions_count,
-        update_sepolia_wallet_balance,
-        create_depot_transaction,
         create_expedition,
-        get_nearest_mars_landmarks,
         get_discovery_items_catalog,
         create_expedition_discoveries,
         get_user_active_expeditions,
-        get_user_scientist,
-        get_user_discovered_landmarks
+        get_user_discovered_landmarks,
     )
+    from utilities.postgres.shop import create_depot_transaction
+    from utilities.postgres.users import get_user_scientist
     from utilities.sepolia_utils import MarsAsteroidMiner
     from utilities.depot_utils import generate_commander_stats
 
@@ -92,7 +90,7 @@ def launch_expedition(
                 terrain_mult = info.get('speed_mult', 1.0)
                 break
     # Trail speed bonus for this route
-    from utilities.postgres_utils import get_user_trail
+    from utilities.postgres.trails import get_user_trail
     trail_data = get_user_trail(user_id, destination_name)
     launch_trail_mult = TRAIL_SPEED_MULTIPLIERS.get(trail_data['trail_level'], 1.0)
 
@@ -128,7 +126,7 @@ def launch_expedition(
     base_coords = get_or_set_user_mars_home(user_id)
 
     # Single query for both character_image and edited_image
-    from utilities.postgres_utils import get_user_commander_images
+    from utilities.postgres.assets import get_user_commander_images
     all_images = get_user_commander_images(user_id, limit=1)['all_images']
 
     if not all_images:
@@ -137,7 +135,7 @@ def launch_expedition(
     commander = all_images[0]
 
     # Use REAL commander stats (not random!) + EVA Suit bonuses
-    from utilities.postgres_utils import get_commander_stats
+    from utilities.postgres.assets import get_commander_stats
     from utilities.shop_utils import get_effective_commander_stats
     base_commander_stats = get_commander_stats(user_id)
     if not base_commander_stats:
@@ -250,7 +248,7 @@ def launch_expedition(
 
         try:
             from utilities.discovery_utils import generate_expedition_discoveries
-            from utilities.db_expeditions import get_total_discovery_count
+            from utilities.postgres.expeditions import get_total_discovery_count
 
             # Storage capacity check - counts ALL inventory (claimed + unclaimed, not analyzed)
             storage_capacity = upgrade_effects.get('storage_capacity', 300)
@@ -294,7 +292,7 @@ def launch_expedition(
             logger.error(f"Failed to generate discoveries: {e}")
 
         # Update activity timestamp for ARIA photo generation
-        from utilities.postgres_utils import update_user_activity
+        from utilities.postgres.users import update_user_activity
         update_user_activity(user_id)
 
         # --- Background thread: blockchain tx + depot transaction ---
@@ -371,7 +369,9 @@ def recall_expedition(user_id: int, expedition_id: int) -> dict:
     Return speed uses full speed stack (vehicle × logistics × scientist × trail × terrain).
     No discoveries generated for recalled expeditions.
     """
-    from utilities.postgres_utils import get_expedition_by_id, db_cursor, get_user_scientist
+    from utilities.postgres.expeditions import get_expedition_by_id
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.users import get_user_scientist
     from utilities.upgrades_utils import get_vehicle_for_expedition
 
     expedition = get_expedition_by_id(expedition_id)
@@ -413,7 +413,7 @@ def recall_expedition(user_id: int, expedition_id: int) -> dict:
     scientist_nav_mult = 1.0 + (sci_stats.get('navigation', 0) / 150.0)
 
     # Trail speed bonus for this route
-    from utilities.postgres_utils import get_user_trail
+    from utilities.postgres.trails import get_user_trail
     trail_data = get_user_trail(user_id, expedition['destination_name'])
     trail_speed_mult = TRAIL_SPEED_MULTIPLIERS.get(trail_data['trail_level'], 1.0)
 
@@ -469,13 +469,9 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     Check if expedition is complete and process rewards if ready
     Returns status with completion data if finished
     """
-    from utilities.postgres_utils import (
-        get_expedition_by_id,
-        get_user_primary_sepolia_wallet,
-        create_depot_transaction,
-        update_expedition_complete,
-        record_landmark_discovery
-    )
+    from utilities.postgres.expeditions import get_expedition_by_id, update_expedition_complete, record_landmark_discovery
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
+    from utilities.postgres.shop import create_depot_transaction
     from utilities.sepolia_utils import MarsAsteroidMiner
     from utilities.depot_utils import eth_to_display
     from utilities.discovery_utils import calculate_expedition_discovery
@@ -546,7 +542,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     wallet = get_user_primary_sepolia_wallet(user_id)
     if wallet:
         # 1. Credit balance atomically in DB — this is the source of truth
-        from utilities.postgres_utils import db_cursor
+        from utilities.postgres.core import db_cursor
         with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.sepolia_assets
@@ -607,7 +603,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     # TRAIL NETWORK: Increment trail for completed route
     # ========================================================================
     try:
-        from utilities.postgres_utils import increment_user_trail
+        from utilities.postgres.trails import increment_user_trail
         trail_result = increment_user_trail(user_id, expedition['destination_name'])
         logger.info(f"🛤️ Trail updated: {expedition['destination_name']} → {trail_result['trail_level']} ({trail_result['trip_count']} trips)")
     except Exception as e:
@@ -619,7 +615,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     # Formula: base SV scales with distance, Dr. Bo analyzes field data on return
     # ========================================================================
     try:
-        from utilities.postgres_utils import add_passive_sv
+        from utilities.postgres.users import add_passive_sv
         distance = float(expedition.get('distance_km', 0))
         if distance <= 200:
             expedition_sv = 100 + int(distance * 0.5)  # 100-200 SV
@@ -674,11 +670,7 @@ def get_expedition_discovery_progress(expedition_id: int, user_id: int) -> dict:
     Get expedition discoveries with current progress unlocking
     FIXED: Ensures discoveries persist after expedition completion and shows claim status
     """
-    from utilities.postgres_utils import (
-        get_expedition_by_id,
-        get_expedition_discoveries,
-        unlock_discoveries_by_distance
-    )
+    from utilities.postgres.expeditions import get_expedition_by_id, get_expedition_discoveries, unlock_discoveries_by_distance
 
     expedition = get_expedition_by_id(expedition_id)
     if not expedition or expedition['user_id'] != user_id:
@@ -734,7 +726,7 @@ def claim_all_discoveries(user_id, expedition_id=None):
     """Claim all unlocked discoveries for user (optionally for specific expedition).
     Uses batch SQL update for efficiency - handles 1000s of discoveries in one query.
     """
-    from utilities.postgres_utils import claim_all_pending_discoveries, get_expedition_by_id
+    from utilities.postgres.expeditions import claim_all_pending_discoveries, get_expedition_by_id
 
     # Verify expedition ownership and completion if specified
     if expedition_id:
@@ -755,7 +747,7 @@ def claim_all_discoveries(user_id, expedition_id=None):
     # active list for up to 7 days and block new launches (bug #1332).
     if expedition_id and expedition.get('status') == 'complete' and not expedition.get('notified_at'):
         try:
-            from utilities.postgres_utils import db_cursor
+            from utilities.postgres.core import db_cursor
             with db_cursor(commit=True) as cur:
                 cur.execute("UPDATE pilgrim.expeditions SET notified_at = NOW() WHERE id = %s", (expedition_id,))
         except Exception as e:

@@ -30,7 +30,9 @@ def _build_aria_user_context(user_id, is_authenticated, page_context, referrer=N
         return context
 
     try:
-        from utilities.postgres_utils import get_user_commander, get_user_scientist, db_cursor
+        from utilities.postgres.assets import get_user_commander
+        from utilities.postgres.users import get_user_scientist
+        from utilities.postgres.core import db_cursor
         from utilities.depot_utils import get_fast_balance_and_wallet_info
 
         commander = get_user_commander(user_id)
@@ -149,7 +151,7 @@ def handle_aria_chat_sync(message, history, user_context, user_id, is_authentica
 def get_aria_album_data(user_id):
     """Fetch all ARIA photo journal snapshots for a user."""
     import json as json_lib
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     snapshots = []
     with db_cursor() as cur:

@@ -13,7 +13,7 @@ from datetime import datetime
 
 import time as _time
 from utilities.claude_utils import create_client, CLAUDE_MODELS, log_api_usage
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -727,7 +727,7 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
         bug_match = _re.search(r'#(\d+)', message)
         if bug_match:
             try:
-                from utilities.db_bugs import get_bug_by_id, get_bug_comments, get_bug_history
+                from utilities.postgres.bugs import get_bug_by_id, get_bug_comments, get_bug_history
                 bug_id = int(bug_match.group(1))
                 bug = get_bug_by_id(bug_id)
                 if bug:
@@ -764,7 +764,7 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
     brainstorm_keys = plan.get('brainstorm') if isinstance(plan.get('brainstorm'), list) else []
     if brainstorm_keys:
         try:
-            from utilities.db_brainstorm import get_comments_for_page
+            from utilities.postgres.brainstorm import get_comments_for_page
             for page_key in brainstorm_keys[:3]:
                 comments = get_comments_for_page(page_key)
                 if comments:

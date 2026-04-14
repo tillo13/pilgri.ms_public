@@ -44,7 +44,7 @@ def create_expedition(user_id: int, commander_asset_id: int, destination_name: s
             result = cur.fetchone()
             expedition_id = result['id'] if result else None
             logger.info(f"✅ Created expedition {expedition_id} to {destination_name} (return at {return_arrives_at})")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'expedition', 'expedition_launch', f"Expedition to {destination_name}",
                          amount=float(fuel_cost_eth) * 10000000 if fuel_cost_eth else 0,
                          detail=vehicle_type, source_table='expeditions', source_id=expedition_id,
@@ -280,7 +280,7 @@ def record_landmark_discovery(user_id: int, landmark_name: str, landmark_type: s
                 ON CONFLICT (user_id, landmark_name) DO UPDATE SET discovered_at = NOW(), sepolia_earned = EXCLUDED.sepolia_earned, expedition_id = EXCLUDED.expedition_id
             """, (user_id, landmark_name, landmark_type, latitude, longitude, distance_km, sepolia_earned, expedition_id))
             logger.info(f"✅ Recorded discovery of {landmark_name}")
-            from utilities.db_activity import log_activity
+            from utilities.postgres.activity import log_activity
             log_activity(user_id, 'landmark', 'landmark_discovery', f"Discovered: {landmark_name}",
                          amount=float(sepolia_earned) * 10000000 if sepolia_earned else 0,
                          detail=landmark_type, source_table='landmark_discoveries',
@@ -370,7 +370,7 @@ def unlock_discoveries_by_distance(expedition_id: int, current_distance_km: floa
 
 def claim_expedition_discovery(discovery_id: int, user_id: int) -> bool:
     """Mark discovery as claimed — only if expedition has returned (complete/recalled)"""
-    from utilities.db_users import update_user_activity
+    from utilities.postgres.users import update_user_activity
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
@@ -381,7 +381,7 @@ def claim_expedition_discovery(discovery_id: int, user_id: int) -> bool:
             """, (discovery_id, user_id))
             if cur.rowcount > 0:
                 update_user_activity(user_id)
-                from utilities.db_activity import log_activity
+                from utilities.postgres.activity import log_activity
                 log_activity(user_id, 'discovery', 'discovery_claimed', f"Claimed discovery #{discovery_id}",
                              source_table='expedition_discoveries', source_id=discovery_id)
                 return True
@@ -394,7 +394,7 @@ def claim_all_pending_discoveries(user_id: int, expedition_id: int = None) -> Di
     """Claim ALL unclaimed discoveries for a user at once (optionally for specific expedition).
     Used by email actions and expedition claim_all endpoint.
     """
-    from utilities.db_users import update_user_activity
+    from utilities.postgres.users import update_user_activity
     try:
         with db_cursor(commit=True) as cur:
             # Build WHERE clause — only allow claiming from returned expeditions

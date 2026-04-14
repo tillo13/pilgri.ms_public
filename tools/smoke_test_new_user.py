@@ -63,8 +63,8 @@ def test(name, verbose=False):
 
 def create_test_user():
     """Create a test user and try to claim an anonymous wallet"""
-    from utilities.postgres_utils import db_cursor
-    from utilities.db_wallets import get_random_unclaimed_cache, claim_anonymous_wallet
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.wallets import get_random_unclaimed_cache, claim_anonymous_wallet
     import random
 
     test_email = f"test_new_user_{random.randint(10000, 99999)}@pilgrims.test"
@@ -91,7 +91,7 @@ def create_test_user():
 
 def cleanup_test_user(user_id):
     """Delete test user and all associated data"""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     with db_cursor(commit=True) as cur:
         # Delete in correct order (foreign key constraints)
@@ -119,7 +119,7 @@ def run_new_user_tests(user_id, verbose=False):
     # Test 1: User has wallet (or gracefully handles no wallet)
     @test("User has wallet or handles missing wallet", verbose)
     def test_wallet():
-        from utilities.postgres_utils import get_user_primary_sepolia_wallet
+        from utilities.postgres.wallets import get_user_primary_sepolia_wallet
         wallet = get_user_primary_sepolia_wallet(user_id)
         if wallet:
             assert wallet['wallet_address'], "Wallet exists but has no address"
@@ -133,7 +133,7 @@ def run_new_user_tests(user_id, verbose=False):
     # Test 2: User can get Mars home coords
     @test("User has Mars home coordinates", verbose)
     def test_mars_home():
-        from utilities.postgres_utils import get_or_set_user_mars_home
+        from utilities.postgres.map import get_or_set_user_mars_home
         coords = get_or_set_user_mars_home(user_id)
         assert coords is not None, "No Mars home"
         assert 'latitude' in coords and 'longitude' in coords
@@ -145,7 +145,7 @@ def run_new_user_tests(user_id, verbose=False):
     @test("Build FREE solar array (critical for new users!)", verbose)
     def test_build_solar():
         from utilities.infrastructure_utils import start_construction
-        from utilities.postgres_utils import get_or_set_user_mars_home
+        from utilities.postgres.map import get_or_set_user_mars_home
         coords = get_or_set_user_mars_home(user_id)
         result = start_construction(user_id, 'solar_array', coords['latitude'], coords['longitude'])
         assert result['success'], f"Build failed: {result.get('error', 'unknown')}"
@@ -194,7 +194,7 @@ def run_new_user_tests(user_id, verbose=False):
     # Test 7: Get crew page data
     @test("Load crew page", verbose)
     def test_crew_page():
-        from utilities.postgres_utils import get_user_scientist
+        from utilities.postgres.users import get_user_scientist
         scientist = get_user_scientist(user_id)
         # New users don't have scientist until auto-assigned, so None is OK
         return f"Scientist: {scientist['scientist_name'] if scientist else 'None (will auto-assign)'}"

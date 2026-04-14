@@ -195,7 +195,7 @@ def execute_claim_sepolia(user_id: int) -> Dict:
             }
 
         # Get user's name for personalized message
-        from utilities.postgres_utils import get_user_email_info
+        from utilities.postgres.users import get_user_email_info
         user_info = get_user_email_info(user_id)
         user_name = user_info.get('given_name') or user_info.get('name') if user_info else None
         if not user_name:
@@ -236,7 +236,7 @@ def execute_claim_discoveries(user_id: int) -> Dict:
     Returns result dict with preview of top discoveries.
     """
     try:
-        from utilities.postgres_utils import claim_all_pending_discoveries, get_recent_discoveries
+        from utilities.postgres.expeditions import claim_all_pending_discoveries, get_recent_discoveries
 
         # Get preview of discoveries BEFORE claiming (top 3 for display)
         preview_discoveries = get_recent_discoveries(user_id, limit=3)
@@ -316,13 +316,13 @@ def execute_action(action: str, user_id: int, extra_data: Dict = None) -> Dict:
 
 def mark_token_used(token_nonce: str, user_id: int, action: str) -> bool:
     """Mark a token as used in the database."""
-    from utilities.postgres_utils import mark_action_token_used
+    from utilities.postgres.shop import mark_action_token_used
     return mark_action_token_used(token_nonce, user_id, action)
 
 
 def is_token_used(token_nonce: str) -> bool:
     """Check if a token has already been used."""
-    from utilities.postgres_utils import is_action_token_used
+    from utilities.postgres.shop import is_action_token_used
     return is_action_token_used(token_nonce)
 
 

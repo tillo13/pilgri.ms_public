@@ -147,7 +147,7 @@ def generate_upgrade_image_background(
 
 def _store_generated_image_url(category: str, item_key: str, level: int, gcs_url: str):
     """Store the generated image URL in the database."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor(commit=True) as cur:
@@ -179,7 +179,7 @@ def _store_generated_image_url(category: str, item_key: str, level: int, gcs_url
 
 def get_stored_image_url(category: str, item_key: str, level: int) -> Optional[str]:
     """Get the stored image URL from database (overrides config if exists)."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor() as cur:
@@ -264,7 +264,7 @@ def maybe_generate_upgrade_image(
 
 def _mark_first_reveal(category: str, item_key: str, level: int, user_id: int):
     """Mark a user as the first to reveal this upgrade level."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor(commit=True) as cur:
@@ -279,7 +279,7 @@ def _mark_first_reveal(category: str, item_key: str, level: int, user_id: int):
 
 def is_first_reveal_user(category: str, item_key: str, level: int, user_id: int) -> bool:
     """Check if this user was the first to reveal this upgrade level."""
-    from utilities.postgres_utils import db_cursor
+    from utilities.postgres.core import db_cursor
 
     try:
         with db_cursor() as cur:

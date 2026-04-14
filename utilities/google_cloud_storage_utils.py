@@ -223,7 +223,7 @@ def save_character_image(replicate_url, user_id=None, commander_stats=None, comm
     Returns:
         dict with gcs_url, blob_name, asset_id
     """
-    from utilities.postgres_utils import create_replicate_asset
+    from utilities.postgres.assets import create_replicate_asset
     
     timestamp = int(datetime.now().timestamp())
     user_prefix = f"user{user_id}_" if user_id else "guest_"
@@ -268,7 +268,8 @@ def save_edited_image(replicate_url, user_id=None, edit_number=1, parent_asset_i
     Returns:
         dict with gcs_url, blob_name, asset_id
     """
-    from utilities.postgres_utils import create_replicate_asset, db_cursor
+    from utilities.postgres.assets import create_replicate_asset
+    from utilities.postgres.core import db_cursor
 
     timestamp = int(datetime.now().timestamp())
     user_prefix = f"user{user_id}_" if user_id else "guest_"
@@ -318,7 +319,7 @@ def save_character_video(replicate_url, user_id=None, character_asset_id=None):
     """
     Save character video from Replicate to GCS and record in database
     """
-    from utilities.postgres_utils import create_replicate_asset
+    from utilities.postgres.assets import create_replicate_asset
     import time as time_module
     
     start_time = time_module.time()

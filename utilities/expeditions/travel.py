@@ -11,7 +11,7 @@ Pure orchestration — no mutations. Reads trails + base coords from the DB.
 import logging
 
 from utilities.expeditions.config import BASE_SPEED_KM_PER_HOUR
-from utilities.db_trails import (
+from utilities.postgres.trails import (
     TRAIL_SPEED_MULTIPLIERS,
     get_trail_speed_mult_for_destination,
 )
@@ -48,7 +48,7 @@ def calculate_segmented_travel_time(
 
     Returns dict with total_hours, segments[], effective_trail_mult (weighted avg).
     """
-    from utilities.postgres_utils import db_cursor  # local: avoid top-level cycle
+    from utilities.postgres.core import db_cursor  # local: avoid top-level cycle
 
     try:
         with db_cursor() as cur:

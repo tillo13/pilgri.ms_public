@@ -15,7 +15,7 @@ import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 from utilities.google_cloud_storage_utils import create_thumbnail, BUCKET_NAME, GCP_PROJECT_ID
 from google.cloud import storage
 import requests

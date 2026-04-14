@@ -16,7 +16,7 @@ from config import (
     TECH_CATALOG, SCIENTIST_BRANCHES, SCIENTIST_SECONDARY_BRANCHES,
     get_scientist_branch_bonuses, TECH_MIGRATION_MAP
 )
-from utilities.postgres_utils import db_cursor
+from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
 _schema_ensured = False
@@ -135,7 +135,7 @@ def _auto_complete_research(user_id: int) -> Optional[Dict]:
     def do_blockchain():
         try:
             from utilities.sepolia_utils import MarsAsteroidMiner
-            from utilities.postgres_utils import get_user_primary_sepolia_wallet
+            from utilities.postgres.wallets import get_user_primary_sepolia_wallet
             wallet = get_user_primary_sepolia_wallet(user_id)
             if not wallet:
                 return
@@ -149,7 +149,7 @@ def _auto_complete_research(user_id: int) -> Optional[Dict]:
                 context="tech_complete"
             )
             if result and result.get('tx_hash'):
-                from utilities.postgres_utils import update_sepolia_wallet_balance
+                from utilities.postgres.wallets import update_sepolia_wallet_balance
                 update_sepolia_wallet_balance(
                     wallet['wallet_address'],
                     wallet.get('current_balance_eth', 0) + 0.0000001
@@ -419,7 +419,7 @@ def _get_available_sv(user_id: int) -> int:
         total_sv = int(cur.fetchone()['total_sv'])
 
         # Add passive SV from scientist (Research Station generation)
-        from utilities.postgres_utils import get_passive_sv
+        from utilities.postgres.users import get_passive_sv
         total_sv += int(get_passive_sv(user_id))
 
         # SV already spent on research
@@ -477,7 +477,7 @@ def start_research(user_id: int, branch: str, tech_key: str, session) -> Dict[st
 
     bonus_label = branch_bonus.get('label', '')
     logger.info(f"Research started: user={user_id}, {branch}/{tech_key} @ level {current_level}, cost={adjusted_cost}SV")
-    from utilities.db_activity import log_activity
+    from utilities.postgres.activity import log_activity
     log_activity(user_id, 'research', 'tech_research_start',
                  f"Researching: {tech_key.replace('_', ' ').title()} Lv{current_level}",
                  amount=adjusted_cost, detail=f"{branch} branch",

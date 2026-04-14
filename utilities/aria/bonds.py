@@ -13,7 +13,8 @@ import logging
 import random
 import threading
 from datetime import datetime
-from utilities.postgres_utils import db_cursor, get_user_primary_sepolia_wallet
+from utilities.postgres.core import db_cursor
+from utilities.postgres.wallets import get_user_primary_sepolia_wallet
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ def _create_bond(user_id: int, other_id: int, landmark_name: str) -> dict | None
         bond_id = cur.fetchone()['id']
         logger.info(f"✨ Created aria_bond {bond_id}: {captain_1} + {captain_2} at {landmark_name}")
         # Log for both captains
-        from utilities.db_activity import log_activity
+        from utilities.postgres.activity import log_activity
         for uid in (user_id_1, user_id_2):
             log_activity(uid, 'discovery', 'aria_bond', f"ARIA Bond: {landmark_name}",
                          detail=f"{captain_1} + {captain_2}", source_table='aria_bonds', source_id=bond_id)
