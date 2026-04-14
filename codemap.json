@@ -1245,19 +1245,7 @@
     ]
   },
   "utilities/aria_bond_utils.py": {
-    "description": "ARIA Bond System - Handles bonds between players when scouts visit shared locations.",
-    "exports": [
-      "check_for_aria_bond — Check if another player has visited this landmark.",
-      "process_fragment_submission — Process when a user submits a bond tx hash on /signal.",
-      "get_user_bonds — Get all bonds for a user.",
-      "get_user_bond_count — Get count of completed bonds for a user.",
-      "user_has_aria_bond — Check if user has at least one completed bond.",
-      "get_bonds_for_display — Get bonds formatted for template display. Single source of truth for all pages",
-      "get_pending_first_contact — Check if user has a pending bond where they haven't seen the First Contact cinematic.",
-      "get_pending_fragments — Get pending bonds for this user - returns the SHARED tx hash.",
-      "send_bond_notification_email — Send individual bond notification emails to BOTH captains.",
-      "retry_stuck_bonds — Safety net: find pending bonds with no tx_hash and retry them."
-    ]
+    "description": "utilities.aria_bond_utils — thin re-export shim."
   },
   "utilities/aria_utils.py": {
     "description": "utilities.aria_utils — thin re-export shim.",
@@ -2101,6 +2089,21 @@
       "get_contextual_hint — Generate a contextual hint for the user based on their current game state."
     ]
   },
+  "utilities/aria/bonds.py": {
+    "description": "ARIA Bond System - Handles bonds between players when scouts visit shared locations.",
+    "exports": [
+      "check_for_aria_bond — Check if another player has visited this landmark.",
+      "process_fragment_submission — Process when a user submits a bond tx hash on /signal.",
+      "get_user_bonds — Get all bonds for a user.",
+      "get_user_bond_count — Get count of completed bonds for a user.",
+      "user_has_aria_bond — Check if user has at least one completed bond.",
+      "get_bonds_for_display — Get bonds formatted for template display. Single source of truth for all pages",
+      "get_pending_first_contact — Check if user has a pending bond where they haven't seen the First Contact cinematic.",
+      "get_pending_fragments — Get pending bonds for this user - returns the SHARED tx hash.",
+      "send_bond_notification_email — Send individual bond notification emails to BOTH captains.",
+      "retry_stuck_bonds — Safety net: find pending bonds with no tx_hash and retry them."
+    ]
+  },
   "utilities/aria/chat.py": {
     "description": "ARIA chat — sync `get_aria_response` and streaming `stream_aria_response`.",
     "exports": [
@@ -2761,7 +2764,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2774,7 +2777,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
