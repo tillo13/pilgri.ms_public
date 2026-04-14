@@ -126,7 +126,7 @@
     letter-spacing: 0.06em;
     padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--overlay-white-08);
     color: var(--text-secondary);
 }
 .robot-stage-rarity.rarity-common    { color: #b8c7ce; background: rgba(184,199,206,0.14); }

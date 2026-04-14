@@ -49,7 +49,7 @@
     display: inline-block; background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 10px;
     font-size: 12px; margin-left: 6px;
 }
-.expedition-tab.active .tab-count { background: rgba(255,255,255,0.3); }
+.expedition-tab.active .tab-count { background: var(--overlay-white-30); }
 
 /* Sort Controls */
 .expedition-controls {
@@ -130,10 +130,10 @@
 .active-expedition-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .active-expedition-name { font-size: 18px; font-weight: 700; }
 .active-expedition-timer { font-size: 24px; font-weight: 700; font-family: monospace; }
-.active-expedition-progress { background: rgba(255,255,255,0.2); border-radius: 6px; height: 8px; overflow: hidden; }
+.active-expedition-progress { background: var(--overlay-white-20); border-radius: 6px; height: 8px; overflow: hidden; }
 .active-expedition-progress-fill { background: white; height: 100%; transition: width 0.5s; }
 .expedition-complete { transition: transform 0.15s, box-shadow 0.15s; }
-.expedition-complete:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.expedition-complete:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--overlay-black-30); }
 
 /* Discovery Log Compact */
 .discovery-log-compact {
@@ -219,7 +219,7 @@
 
 /* Vehicle mini-cards */
 .colony-mini-card {
-    background: rgba(255,255,255,0.08);
+    background: var(--overlay-white-08);
     border-radius: 6px;
     display: flex;
     align-items: center;

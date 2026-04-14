@@ -122,15 +122,15 @@
     --text-tertiary: var(--neutral-700);       /* #3d3530 - medium dark */
     --text-muted: var(--neutral-600);          /* #5c5045 - readable muted (was 500, too light) */
     --text-inverse: var(--neutral-50);
-    --text-link: var(--primary-600);           /* #b45309 - warm amber link */
+    --text-link: var(--primary-600);           /* var(--primary-600) - warm amber link */
     --text-link-hover: var(--primary-700);     /* #92400e - darker on hover */
 
     /* Brand text colors - warm palette, NO reds */
-    --text-brand-mars: var(--mars-600);        /* #dd5a1d - vibrant orange */
-    --text-brand-sepolia: var(--sepolia-600);  /* #8f5f52 - warm mauve */
+    --text-brand-mars: var(--mars-600);        /* var(--mars-600) - vibrant orange */
+    --text-brand-sepolia: var(--sepolia-600);  /* var(--sepolia-600) - warm mauve */
     --text-brand-success: var(--success-600);  /* #995c32 - bronze */
-    --text-brand-danger: var(--mars-700);      /* #b7441a - warm rust, NOT red */
-    --text-brand-primary: var(--primary-600);  /* #b45309 - warm amber */
+    --text-brand-danger: var(--mars-700);      /* var(--mars-700) - warm rust, NOT red */
+    --text-brand-primary: var(--primary-600);  /* var(--primary-600) - warm amber */
 
     /* Borders */
     --border-default: var(--neutral-200);
@@ -138,28 +138,82 @@
     --border-focus: var(--primary-500);
 
     /* Brand colors (semantic) - LIGHT MODE warm Mars palette, NO cold reds */
-    --color-mars: var(--mars-600);            /* #dd5a1d - vibrant orange */
+    --color-mars: var(--mars-600);            /* var(--mars-600) - vibrant orange */
     --color-mars-hover: var(--mars-700);
     --color-mars-dark: var(--mars-700);
-    --color-sepolia: var(--sepolia-600);      /* #8f5f52 - warm mauve */
+    --color-sepolia: var(--sepolia-600);      /* var(--sepolia-600) - warm mauve */
     --color-sepolia-hover: var(--sepolia-700);
     --color-sepolia-dark: var(--sepolia-700);
     --color-success: var(--success-600);      /* #995c32 - warm bronze */
     --color-success-hover: var(--success-700);
     --color-success-dark: var(--success-700);
-    --color-danger: var(--mars-700);          /* #b7441a - warm rust (NOT red) */
+    --color-danger: var(--mars-700);          /* var(--mars-700) - warm rust (NOT red) */
     --color-danger-hover: var(--mars-800);
     --color-danger-dark: var(--mars-800);
-    --color-warning: var(--mars-600);         /* #dd5a1d - vibrant orange */
+    --color-warning: var(--mars-600);         /* var(--mars-600) - vibrant orange */
     --color-warning-dark: var(--mars-700);
     --color-warning-rgb: 221, 90, 29;         /* mars-600 */
-    --color-primary: var(--primary-600);      /* #b45309 - warm amber */
+    --color-mars-rgb: 221, 90, 29;            /* mars-600 */
+    --color-sepolia-rgb: 143, 95, 82;         /* sepolia-600 */
+    --color-success-rgb: 153, 92, 50;         /* success-600 */
+    --color-primary: var(--primary-600);      /* var(--primary-600) - warm amber */
     --color-primary-hover: var(--primary-700);
     --color-primary-dark: var(--primary-700);
 
     /* ARIA companion colors - Mars-themed */
     --color-aria: var(--sepolia-600);         /* Warm mauve */
     --color-aria-dark: var(--sepolia-700);
+    --color-aria-rgb: 143, 95, 82;            /* sepolia-600 (matches --color-aria) */
+
+    /* ==========================================================================
+       ACCENT SCALES - off-palette colors used across app for UI differentiation
+       Keep minimal: only shades actually used (grep-verified). Use CSS vars
+       instead of hardcoded hex to enforce DRY.
+       ========================================================================== */
+
+    /* Violet (ARIA orb + chat widget accents) */
+    --violet-300: #c084fc;
+    --violet-400: #a855f7;
+    --violet-500: #7c3aed;
+    --violet-700: #5b21b6;
+    --color-violet-rgb: 168, 85, 247;
+
+    /* Amber (attention/highlight - brighter than Mars brand orange)
+       Note: var(--primary-600) is --primary-600, use that for darker amber */
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --color-amber-rgb: 251, 191, 36;
+
+    /* Blue + Cyan (information states) */
+    --blue-400: #60a5fa;
+    --cyan-500: #06b6d4;
+
+    /* Emerald (affirmative / go signals - distinct from Mars bronze success) */
+    --emerald-400: #4ade80;
+    --emerald-500: #22c55e;
+
+    /* Red (pure error red, distinct from warm Mars danger) */
+    --red-300: #f87171;
+    --red-400: #ef4444;
+
+    /* White/black overlays - extracted from 150+ hardcoded rgba() calls */
+    --overlay-white-05: var(--overlay-white-05);
+    --overlay-white-06: var(--overlay-white-06);
+    --overlay-white-08: var(--overlay-white-08);
+    --overlay-white-10: var(--overlay-white-10);
+    --overlay-white-12: var(--overlay-white-12);
+    --overlay-white-15: var(--overlay-white-15);
+    --overlay-white-20: rgba(255,255,255,0.20);
+    --overlay-white-25: var(--overlay-white-25);
+    --overlay-white-30: rgba(255,255,255,0.30);
+    --overlay-white-40: rgba(255,255,255,0.40);
+    --overlay-white-50: rgba(255,255,255,0.50);
+    --overlay-white-70: rgba(255,255,255,0.70);
+    --overlay-white-80: rgba(255,255,255,0.80);
+    --overlay-black-08: var(--overlay-black-08);
+    --overlay-black-30: rgba(0,0,0,0.30);
+    --overlay-black-40: rgba(0,0,0,0.40);
+    --overlay-black-50: rgba(0,0,0,0.50);
 
     /* Rarity colors - Mars-authentic palette */
     --color-rarity-common: var(--neutral-600);        /* Dusty gray */
@@ -168,13 +222,13 @@
     --color-rarity-legendary: var(--mars-600);        /* Mars orange */
 
     /* Map marker colors - colorblind-friendly (yellow/blue/red on Mars terrain) */
-    --color-marker-base: #fbbf24;                     /* Bright yellow - home base (stands out) */
-    --color-marker-base-border: #d97706;
+    --color-marker-base: var(--amber-400);                     /* Bright yellow - home base (stands out) */
+    --color-marker-base-border: var(--primary-500);
     --color-marker-visited: #3b82f6;                  /* Blue - explored (clear contrast with red terrain) */
     --color-marker-visited-border: #1d4ed8;
-    --color-marker-unexplored: #ef4444;               /* Bright red - undiscovered (distinct from terrain orange) */
+    --color-marker-unexplored: var(--red-400);               /* Bright red - undiscovered (distinct from terrain orange) */
     --color-marker-unexplored-border: #b91c1c;
-    --color-marker-route: #fbbf24;                    /* Yellow route line - visible on Mars */
+    --color-marker-route: var(--amber-400);                    /* Yellow route line - visible on Mars */
 
     /* Interactive element backgrounds */
     --bg-mars: var(--mars-500);
@@ -236,7 +290,7 @@
     --radius-lg: 12px;
     --radius-xl: 15px;
     --radius-full: 50%;
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+    --shadow-sm: 0 2px 4px var(--overlay-black-08);
     --shadow-md: 0 4px 8px rgba(0,0,0,0.12);
     --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
     --tr: 0.2s ease;
@@ -262,15 +316,15 @@
     --text-tertiary: #d4c9bd;        /* Light tan - 8.1:1 contrast ✓ */
     --text-muted: #c0b3a5;           /* Boosted muted - 6.5:1 contrast ✓ */
     --text-inverse: var(--neutral-900);
-    --text-link: var(--primary-300);           /* #f6b87a - 10.5:1 contrast ✓ (was 400) */
+    --text-link: var(--primary-300);           /* var(--primary-300) - 10.5:1 contrast ✓ (was 400) */
     --text-link-hover: var(--primary-200);     /* #fbd9b5 - 13.1:1 contrast ✓ (was 300) */
 
     /* Brand text colors - lighter shades for dark backgrounds, warm palette */
-    --text-brand-mars: var(--mars-400);        /* #f1924c - warm orange */
+    --text-brand-mars: var(--mars-400);        /* var(--mars-400) - warm orange */
     --text-brand-sepolia: var(--sepolia-300);  /* #d3b8b0 - warm mauve */
     --text-brand-success: var(--success-300);  /* #e4bb97 - light bronze */
-    --text-brand-danger: var(--mars-400);      /* #f1924c - warm orange, NOT red */
-    --text-brand-primary: var(--primary-300);  /* #f6b87a - light amber */
+    --text-brand-danger: var(--mars-400);      /* var(--mars-400) - warm orange, NOT red */
+    --text-brand-primary: var(--primary-300);  /* var(--primary-300) - light amber */
 
     /* Borders - warm, not cold gray */
     --border-default: #3d3530;       /* Warm border */
@@ -293,6 +347,9 @@
     --color-warning: var(--mars-400);
     --color-warning-dark: var(--mars-600);
     --color-warning-rgb: 251, 146, 60;        /* Lighter orange for dark mode */
+    --color-mars-rgb: 241, 146, 76;           /* mars-400 (lighter for dark) */
+    --color-sepolia-rgb: 188, 148, 137;       /* sepolia-400 */
+    --color-success-rgb: 212, 155, 106;       /* success-400 */
     --color-primary: var(--primary-400);
     --color-primary-hover: var(--primary-300);
     --color-primary-dark: var(--primary-600);
@@ -300,6 +357,7 @@
     /* ARIA companion colors - Mars-themed (dark mode) */
     --color-aria: var(--sepolia-400);
     --color-aria-dark: var(--sepolia-500);
+    --color-aria-rgb: 188, 148, 137;          /* sepolia-400 (matches --color-aria) */
 
     /* Rarity colors - lighter for dark mode */
     --color-rarity-common: var(--neutral-400);
@@ -309,11 +367,11 @@
 
     /* Map marker colors - colorblind-friendly (yellow/blue/red for dark mode) */
     --color-marker-base: #fcd34d;                     /* Bright yellow - home base */
-    --color-marker-base-border: #f59e0b;
-    --color-marker-visited: #60a5fa;                  /* Light blue - explored */
+    --color-marker-base-border: var(--amber-500);
+    --color-marker-visited: var(--blue-400);                  /* Light blue - explored */
     --color-marker-visited-border: #3b82f6;
-    --color-marker-unexplored: #f87171;               /* Light red - undiscovered */
-    --color-marker-unexplored-border: #ef4444;
+    --color-marker-unexplored: var(--red-300);               /* Light red - undiscovered */
+    --color-marker-unexplored-border: var(--red-400);
     --color-marker-route: #fcd34d;                    /* Yellow route line */
 
     /* Interactive backgrounds */
@@ -356,9 +414,9 @@
     --black: var(--neutral-50);
 
     /* Shadows - more subtle in dark mode */
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 8px rgba(0,0,0,0.4);
-    --shadow-lg: 0 4px 12px rgba(0,0,0,0.5);
+    --shadow-sm: 0 2px 4px var(--overlay-black-30);
+    --shadow-md: 0 4px 8px var(--overlay-black-40);
+    --shadow-lg: 0 4px 12px var(--overlay-black-50);
 }
 
 /* Dark mode icon brightness - boost visibility without separate icon sets */
@@ -603,7 +661,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 
 /* Card Background Images */
 .card-bg-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.4; z-index: 0; }
-.card-bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.8) 100%); z-index: 1; }
+.card-bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, var(--overlay-white-80) 100%); z-index: 1; }
 [data-theme="dark"] .card-bg-overlay { background: linear-gradient(180deg, rgba(28,25,23,0.6) 0%, rgba(28,25,23,0.85) 100%); }
 
 /* Card Text Classes (dark mode compatible) */
@@ -621,9 +679,9 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
 .toast { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px 20px; box-shadow: var(--shadow-lg), 0 0 20px rgba(168, 85, 247, 0.1); display: flex; align-items: flex-start; gap: 12px; animation: slideIn 0.3s ease; border-left: 4px solid var(--color-aria); }
 .toast.success { border-left-color: var(--color-aria); }
-.toast.error { border-left-color: #ef4444; }
-.toast.warning { border-left-color: #f59e0b; }
-.toast.celebration { border-left-color: #fbbf24; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(251, 191, 36, 0.1) 100%); box-shadow: var(--shadow-lg), 0 0 30px rgba(251, 191, 36, 0.2); animation: slideIn 0.3s ease, celebration-glow 2s ease-in-out infinite; }
+.toast.error { border-left-color: var(--red-400); }
+.toast.warning { border-left-color: var(--amber-500); }
+.toast.celebration { border-left-color: var(--amber-400); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(251, 191, 36, 0.1) 100%); box-shadow: var(--shadow-lg), 0 0 30px rgba(251, 191, 36, 0.2); animation: slideIn 0.3s ease, celebration-glow 2s ease-in-out infinite; }
 @keyframes celebration-glow { 0%, 100% { box-shadow: var(--shadow-lg), 0 0 20px rgba(251, 191, 36, 0.15); } 50% { box-shadow: var(--shadow-lg), 0 0 40px rgba(251, 191, 36, 0.3); } }
 .toast-icon { flex-shrink: 0; }
 .toast-icon.aria-orb { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 12px rgba(168, 85, 247, 0.5); animation: toast-orb-pulse 2s ease-in-out infinite; border: 2px solid rgba(168, 85, 247, 0.4); }
@@ -682,7 +740,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .mm-close {
     position: absolute; top: 8px; right: 8px; width: 44px; height: 44px;
     min-width: 44px; min-height: 44px;
-    background: rgba(0,0,0,0.5); border: none; border-radius: 50%; color: white;
+    background: var(--overlay-black-50); border: none; border-radius: 50%; color: white;
     font-size: 24px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center;
     transition: background 0.2s;
 }
@@ -723,7 +781,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 
 /* MM Hero image slot */
 .mm-hero { width: 100%; height: 180px; object-fit: cover; border-radius: 16px 16px 0 0; display: block; }
-.mm-hero-auto { height: auto; max-height: 60vh; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 12px 12px 0 0; }
+.mm-hero-auto { height: auto; max-height: 60vh; object-fit: contain; background: var(--overlay-black-30); border-radius: 12px 12px 0 0; }
 .mm-xl { max-width: 640px; }
 
 /* MM Badge */
@@ -731,20 +789,20 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .mm-badge {
     display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 10px;
     font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;
-    background: rgba(255,255,255,0.1); color: var(--text-primary);
+    background: var(--overlay-white-10); color: var(--text-primary);
 }
 
 /* MM Theme accents — border + glow only, colorblind safe */
 .mm-theme-legendary { border: 2px solid rgba(251,191,36,0.5); box-shadow: 0 8px 40px rgba(251,191,36,0.15); }
-.mm-theme-legendary .mm-badge { background: rgba(251,191,36,0.2); color: #fbbf24; }
+.mm-theme-legendary .mm-badge { background: rgba(251,191,36,0.2); color: var(--amber-400); }
 .mm-theme-aria { border: 2px solid rgba(138,112,219,0.4); box-shadow: 0 8px 40px rgba(138,112,219,0.15); }
 .mm-theme-aria .mm-badge { background: rgba(138,112,219,0.2); color: #8a70db; }
 .mm-theme-success { border: 2px solid rgba(34,197,94,0.4); box-shadow: 0 8px 40px rgba(34,197,94,0.1); }
-.mm-theme-success .mm-badge { background: rgba(34,197,94,0.15); color: #22c55e; }
+.mm-theme-success .mm-badge { background: rgba(34,197,94,0.15); color: var(--emerald-500); }
 .mm-theme-mars { border: 2px solid rgba(193,68,14,0.4); box-shadow: 0 8px 40px rgba(193,68,14,0.1); }
 .mm-theme-mars .mm-badge { background: rgba(193,68,14,0.15); color: var(--color-mars); }
 .mm-theme-danger { border: 2px solid rgba(239,68,68,0.4); box-shadow: 0 8px 40px rgba(239,68,68,0.1); }
-.mm-theme-danger .mm-badge { background: rgba(239,68,68,0.15); color: #ef4444; }
+.mm-theme-danger .mm-badge { background: rgba(239,68,68,0.15); color: var(--red-400); }
 
 /* MM Carousel nav */
 .mm-carousel-nav {
@@ -817,7 +875,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .discovery-card-full.rarity-legendary { border-color: var(--color-rarity-legendary); }
 .discovery-card-full.rarity-rare { border-color: var(--color-primary); }
 .discovery-card-full.rarity-uncommon { border-color: var(--color-success); }
-.discovery-card-compact { background: rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 12px; display: flex; gap: 12px; align-items: center; transition: all 0.3s; animation: discoveryUnlock 0.5s ease; }
+.discovery-card-compact { background: var(--overlay-white-10); border-radius: var(--radius-md); padding: 12px; display: flex; gap: 12px; align-items: center; transition: all 0.3s; animation: discoveryUnlock 0.5s ease; }
 .discovery-card-compact:hover { background: rgba(255,255,255,0.18); transform: translateX(4px); }
 .discovery-image-small { width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover; background: rgba(0,0,0,0.2); flex-shrink: 0; }
 .discovery-info { flex: 1; min-width: 0; }
@@ -840,8 +898,8 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .exp-discovery-name { font-weight: 600; font-size: 13px; color: var(--neutral-900); }
 .exp-discovery-meta { font-size: 11px; color: var(--neutral-600); }
 .exp-discovery-status { font-size: 11px; color: var(--success-700); font-weight: 600; }
-.exp-discovery-more { text-align: center; font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 8px; }
-.exp-discovery-empty { text-align: center; color: rgba(255,255,255,0.7); padding: 20px; }
+.exp-discovery-more { text-align: center; font-size: 11px; color: var(--overlay-white-80); margin-top: 8px; }
+.exp-discovery-empty { text-align: center; color: var(--overlay-white-70); padding: 20px; }
 
 /* Rarity colors for discovery meta - must work on light background */
 .exp-discovery-item .rarity-text-common { color: var(--neutral-500); }
@@ -872,27 +930,27 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .destination-marker-container { background: none !important; border: none !important; }
 .destination-marker-active {
     width: 28px; height: 28px;
-    background: radial-gradient(circle, #ec7427 0%, rgba(236, 116, 39, 0.5) 50%, transparent 70%);
+    background: radial-gradient(circle, var(--mars-500) 0%, rgba(236, 116, 39, 0.5) 50%, transparent 70%);
     border: 3px dashed rgba(255, 255, 255, 0.9);
     border-radius: 50%;
-    box-shadow: 0 0 20px #ec7427, inset 0 0 10px rgba(255,255,255,0.3);
+    box-shadow: 0 0 20px var(--mars-500), inset 0 0 10px var(--overlay-white-30);
     animation: destinationPulse 2s ease-in-out infinite;
 }
 .destination-marker-arrived {
     width: 28px; height: 28px;
-    background: radial-gradient(circle, #22c55e 0%, rgba(34, 197, 94, 0.5) 50%, transparent 70%);
+    background: radial-gradient(circle, var(--emerald-500) 0%, rgba(34, 197, 94, 0.5) 50%, transparent 70%);
     border: 3px solid rgba(255, 255, 255, 0.9);
     border-radius: 50%;
-    box-shadow: 0 0 16px #22c55e, inset 0 0 10px rgba(255,255,255,0.3);
+    box-shadow: 0 0 16px var(--emerald-500), inset 0 0 10px var(--overlay-white-30);
     animation: arrivedPulse 1s ease-in-out infinite;
 }
 @keyframes destinationPulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 20px #ec7427, inset 0 0 10px rgba(255,255,255,0.3); opacity: 1; }
-    50% { transform: scale(1.2); box-shadow: 0 0 35px #ec7427, inset 0 0 15px rgba(255,255,255,0.5); opacity: 0.85; }
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--mars-500), inset 0 0 10px var(--overlay-white-30); opacity: 1; }
+    50% { transform: scale(1.2); box-shadow: 0 0 35px var(--mars-500), inset 0 0 15px var(--overlay-white-50); opacity: 0.85; }
 }
 @keyframes arrivedPulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 16px #22c55e; }
-    50% { transform: scale(1.1); box-shadow: 0 0 25px #22c55e; }
+    0%, 100% { transform: scale(1); box-shadow: 0 0 16px var(--emerald-500); }
+    50% { transform: scale(1.1); box-shadow: 0 0 25px var(--emerald-500); }
 }
 
 /* Destination popup styles */
@@ -911,7 +969,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .commander-card.active-commander { border-color: var(--color-success); box-shadow: 0 4px 16px rgba(var(--color-success-rgb),0.4); }
 .commander-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .video-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 10000; cursor: pointer; animation: fadeIn 0.2s ease; }
-.video-modal video { max-width: 90%; max-height: 90%; border-radius: var(--radius-lg); box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.video-modal video { max-width: 90%; max-height: 90%; border-radius: var(--radius-lg); box-shadow: 0 8px 32px var(--overlay-black-50); }
 
 /* LEGACY UTILITIES - kept for backwards compatibility, see utility classes at end of file */
 .hidden { display: none !important; }

@@ -46,9 +46,9 @@
 .main-content { padding-top: 128px !important; }
 
 /* Time of Day Themes — muted gradients, less saturation */
-.mars-dawn { background: linear-gradient(135deg, #b45309 0%, #92400e 50%, #78350f 100%); }
+.mars-dawn { background: linear-gradient(135deg, var(--primary-600) 0%, #92400e 50%, #78350f 100%); }
 .mars-day { background: linear-gradient(135deg, #a16207 0%, #854d0e 50%, #713f12 100%); }
-.mars-dusk { background: linear-gradient(135deg, #5b21b6 0%, #4c1d95 30%, #7c3aed 65%, #9333ea 100%); }
+.mars-dusk { background: linear-gradient(135deg, var(--violet-700) 0%, #4c1d95 30%, var(--violet-500) 65%, #9333ea 100%); }
 .mars-night { background: linear-gradient(135deg, #171534 0%, #272463 50%, #3b1772 100%); }
 
 /* Dawn/Day: Light text on muted dark-warm backgrounds */
@@ -75,7 +75,7 @@
 /* Dusk/Night: Force ALL text white for contrast on dark/gradient backgrounds */
 .mars-dusk, .mars-night {
     color: white !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 2px var(--overlay-black-50);
 }
 .mars-dusk *, .mars-night * {
     color: white !important;
@@ -115,7 +115,7 @@
     width: 100%;
     max-height: 85vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 20px 60px var(--overlay-black-40);
     animation: marsModalIn 0.25s ease-out;
 }
 
@@ -130,7 +130,7 @@
     align-items: center;
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    background: linear-gradient(135deg, var(--violet-500) 0%, var(--violet-400) 100%);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
@@ -142,7 +142,7 @@
 }
 
 .mars-modal-close {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--overlay-white-20);
     border: none;
     color: white;
     width: 32px;
@@ -157,7 +157,7 @@
 }
 
 .mars-modal-close:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--overlay-white-30);
 }
 
 .mars-modal-body {

@@ -393,7 +393,7 @@
 .step-active { background: linear-gradient(135deg, rgba(236,116,39,0.3) 0%, rgba(236,116,39,0.15) 100%); border: 2px solid var(--color-mars); box-shadow: 0 0 12px rgba(236,116,39,0.3); }
 .step-active .step-number { background: var(--color-mars); color: white; }
 .step-active .step-label { color: var(--color-mars); font-weight: 700; }
-.step-inactive { background: rgba(255,255,255,0.05); border: 1px solid var(--border-default); }
+.step-inactive { background: var(--overlay-white-05); border: 1px solid var(--border-default); }
 .step-inactive .step-number { background: var(--bg-tertiary); color: var(--text-muted); }
 .step-inactive .step-label { color: var(--text-muted); font-weight: 600; }
 .step-complete { background: rgba(var(--color-success-rgb), 0.2); border: 1px solid rgba(var(--color-success-rgb), 0.4); }

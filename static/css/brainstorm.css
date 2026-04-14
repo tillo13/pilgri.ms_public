@@ -427,11 +427,11 @@
 
 .answer-box.answer-no {
     background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.07);
-    border-left-color: var(--color-danger, #ef4444);
+    border-left-color: var(--color-danger, var(--red-400));
 }
 
 .answer-box.answer-no .answer-label {
-    color: var(--color-danger, #ef4444);
+    color: var(--color-danger, var(--red-400));
 }
 
 .question-box h4 {
@@ -451,7 +451,7 @@
 
 .crew-card.captain { border-color: var(--color-success); }
 .crew-card.scientist { border-color: var(--color-sepolia); }
-.crew-card.aria { border-color: #a855f7; }
+.crew-card.aria { border-color: var(--violet-400); }
 
 .crew-icon {
     font-size: 32px;
@@ -508,7 +508,7 @@
 .chat-header-icon {
     width: 40px;
     height: 40px;
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--overlay-white-20);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -524,7 +524,7 @@
 
 .chat-header-text p {
     margin: 4px 0 0 0;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--overlay-white-80);
     font-size: 12px;
 }
 

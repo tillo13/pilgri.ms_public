@@ -3,7 +3,7 @@
 /* Crew Page Tabs */
 .crew-tabs {
     display: flex; gap: 0; background: var(--bg-primary); border-radius: 12px; padding: 4px; margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px var(--overlay-black-08);
 }
 .crew-tab {
     flex: 1; padding: 12px 16px; border: none; background: transparent; cursor: pointer;

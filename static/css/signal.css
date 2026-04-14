@@ -18,10 +18,10 @@ body.page-signal .main-content { scrollbar-width: none; -ms-overflow-style: none
     background: radial-gradient(ellipse at center,
         rgba(var(--color-sepolia-rgb), 0.15) 0%,
         transparent 50%);
-    animation: pulse 4s ease-in-out infinite;
+    animation: signal-pulse 4s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes signal-pulse {
     0%, 100% { opacity: 0.3; transform: scale(1); }
     50% { opacity: 0.6; transform: scale(1.05); }
 }
@@ -387,7 +387,7 @@ details[open] .signal-summary::after {
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 1px;
-    color: #fbbf24;
+    color: var(--amber-400);
     background: rgba(251, 191, 36, 0.2);
     padding: 2px 6px;
     border-radius: 3px;
@@ -397,12 +397,12 @@ details[open] .signal-summary::after {
 .signal-legendary-name {
     font-size: 14px;
     font-weight: 600;
-    color: #fbbf24;
+    color: var(--amber-400);
 }
 
 .signal-legendary-view {
     font-size: 11px;
-    color: #fbbf24;
+    color: var(--amber-400);
     opacity: 0.7;
     white-space: nowrap;
 }
@@ -704,7 +704,7 @@ details[open] .signal-summary::after {
 }
 
 .decoder-terminal {
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--overlay-black-40);
     border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);
     border-radius: var(--radius-md);
     padding: 16px;
@@ -749,7 +749,7 @@ details[open] .signal-summary::after {
 
 .decoder-input {
     flex: 1;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--overlay-black-50);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 10px 12px;
