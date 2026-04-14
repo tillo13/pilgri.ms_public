@@ -23,7 +23,6 @@ from utilities.postgres.assets import (
     set_primary_commander,
     delete_asset,
     update_commander_name,
-    get_user_commander,
 )
 from utilities.postgres.expeditions import (
     get_recent_discoveries,
@@ -41,7 +40,6 @@ from utilities.postgres.users import get_user_scientist, hydrate_user_session, g
 from utilities.postgres.trails import (
     get_crew_mission_status,
     get_aria_skills,
-    get_visited_sites_for_trails,
     start_crew_mission,
     complete_crew_mission,
     use_aria_resonance,
@@ -88,7 +86,7 @@ from utilities.tech_utils import (
 )
 from utilities.shop_utils import get_user_equipment_data
 from utilities.upgrades_utils import perform_upgrade, get_upgrade_catalog_for_user, get_vehicle_for_expedition
-from utilities.claude_utils import brainstorm_chat, generate_aria_snapshot_narrative
+from utilities.claude_utils import brainstorm_chat
 from utilities.aria.handlers import (
     get_aria_album_data, _build_aria_user_context,
     handle_aria_chat_streaming, handle_aria_chat_sync,
@@ -250,6 +248,17 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+def cron_only(f):
+    """Reject non-cron traffic. GAE adds the X-Appengine-Cron header on all cron.yaml calls."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not request.headers.get('X-Appengine-Cron') and not app.debug:
+            logger.warning(f"Cron endpoint {request.path} called without X-Appengine-Cron header")
+            return jsonify({'error': 'Forbidden'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
 # ============================================================================
 # PAGE ROUTES
 # ============================================================================
@@ -388,36 +397,9 @@ def api_robot_cinematic_played():
 @handle_api_error
 def api_robot_generate_video():
     """Generate an awakening video for the golem using its current image."""
-    import threading
-    from utilities.postgres.robot import get_robot
-    robot = get_robot(g.user_id)
-    if not robot or robot.get('build_status') != 'complete':
-        return jsonify({'success': False, 'error': 'Golem must be fully built.'}), 400
-    if robot.get('video_url'):
-        return jsonify({'success': True, 'video_url': robot['video_url'], 'already_exists': True})
-
-    image_url = robot.get('current_image_url')
-    if not image_url:
-        return jsonify({'success': False, 'error': 'No golem image found.'}), 400
-
-    uid = g.user_id
-    status_key = f'golem_video_{uid}'
-    app.config[status_key] = {'generating': True, 'url': None}
-
-    def _gen():
-        try:
-            video_url = animate_character_video(image_url, flux, user_id=uid)
-            app.config[status_key].update({'url': video_url, 'generating': False})
-            from utilities.postgres.core import db_cursor
-            with db_cursor(commit=True) as cur:
-                cur.execute("UPDATE pilgrim.robot SET video_url = %s, updated_at = NOW() WHERE user_id = %s",
-                            (video_url, uid))
-        except Exception as e:
-            logger.error(f"Golem video gen failed: {e}")
-            app.config[status_key].update({'url': None, 'generating': False, 'error': str(e)})
-
-    threading.Thread(target=_gen, daemon=True).start()
-    return jsonify({'success': True, 'status_key': status_key, 'generating': True})
+    from utilities.postgres.robot import start_robot_awakening_video
+    payload, status = start_robot_awakening_video(g.user_id, app.config, flux)
+    return jsonify(payload), status
 
 
 @app.route('/api/robot/video_status')
@@ -699,31 +681,13 @@ def api_brainstorm_comments_get(page_key):
 @handle_api_error
 def api_brainstorm_comments_post(page_key):
     """Add a comment to a brainstorm page section."""
-    from utilities.postgres.brainstorm import add_comment
-    data = request.get_json() or {}
-    text = (data.get('text') or '').strip()
-    if not text or len(text) > 2000:
-        return jsonify({'success': False, 'error': 'Comment must be 1-2000 characters'})
-    section_idx = data.get('section_idx')
-    if section_idx is None or not isinstance(section_idx, int):
-        return jsonify({'success': False, 'error': 'Missing section_idx'})
-
-    if auth.is_authenticated():
-        author_name = auth.get_current_user().get('name', 'Unknown')
-        author_type = 'user'
-    else:
-        anon_id = request.cookies.get('bs_anon')
-        if not anon_id:
-            import random, string
-            anon_id = 'anon_' + ''.join(random.choices(string.digits, k=5))
-        author_name = anon_id
-        author_type = 'anon'
-
-    comment = add_comment(page_key, section_idx, author_name, author_type, text)
-    comment['created_at'] = comment['created_at'].isoformat() if comment['created_at'] else None
-    resp = jsonify({'success': True, 'comment': comment})
-    if author_type == 'anon':
-        resp.set_cookie('bs_anon', author_name, max_age=60*60*24*365, httponly=True, samesite='Lax')
+    from utilities.postgres.brainstorm import add_comment_from_request
+    auth_name = auth.get_current_user().get('name', 'Unknown') if auth.is_authenticated() else None
+    payload, new_cookie = add_comment_from_request(
+        page_key, request.get_json() or {}, auth_name, request.cookies.get('bs_anon'))
+    resp = jsonify(payload)
+    if new_cookie:
+        resp.set_cookie('bs_anon', new_cookie, max_age=60*60*24*365, httponly=True, samesite='Lax')
     return resp
 
 
@@ -1061,49 +1025,19 @@ def api_captains_log_chat():
 
 @app.route('/api/aria/snapshot-narrative', methods=['POST'])
 def api_aria_snapshot_narrative():
-    """
-    Generate an ARIA narrative for a photo journal snapshot.
-    Like an Instagram caption - ARIA describes what's happening in the image.
-    Uses Claude to generate a short, in-character response.
-    """
+    """Generate an ARIA narrative for a photo journal snapshot."""
     data = request.get_json() or {}
-    snapshot_id = data.get('snapshot_id')
     caption = data.get('caption', '')
-    snapshot_type = data.get('type', '')
-    image_url = data.get('image_url', '')
-
     if not caption:
         return jsonify({'success': False, 'error': 'No caption provided'})
-
-    user_id = session.get('user_id')
-    commander_name = None
-
-    # Get commander name for personalization
-    if user_id:
-        try:
-            commander = get_user_commander(user_id)
-            if commander:
-                commander_name = commander.get('name')
-        except Exception:
-            pass
-
     try:
-        narrative = generate_aria_snapshot_narrative(
-            caption=caption,
-            snapshot_type=snapshot_type,
-            commander_name=commander_name,
-            user_id=user_id,
-        )
-        return jsonify({
-            'success': True,
-            'narrative': narrative
-        })
+        from utilities.aria.photos import get_snapshot_narrative_for_user
+        narrative = get_snapshot_narrative_for_user(
+            session.get('user_id'), caption, data.get('type', ''))
+        return jsonify({'success': True, 'narrative': narrative})
     except Exception as e:
         logger.error(f"Error generating snapshot narrative: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/api/aria/snapshot/delete', methods=['POST'])
@@ -1359,77 +1293,16 @@ def api_expedition_items(expedition_id):
 @login_required
 def api_crew_mission_status():
     """Get current mission status and stats for captain, scientist, and ARIA"""
-    status = get_crew_mission_status(g.user_id)
-
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT captain_logistics_xp, scientist_navigation_xp
-            FROM pilgrim.users WHERE id = %s
-        """, (g.user_id,))
-        row = cur.fetchone()
-        if row:
-            logistics_xp = row.get('captain_logistics_xp') or 0
-            nav_xp = row.get('scientist_navigation_xp') or 0
-            # Captain: Base × (1 + logistics_xp/1000)
-            status['captain']['stat_value'] = logistics_xp
-            status['captain']['stat_multiplier'] = round(1.0 + (logistics_xp / 1000), 2)
-            status['captain']['stat_desc'] = f"Logistics {logistics_xp} XP"
-            # Scientist: Base × (1 + navigation_xp/1500)
-            if status.get('scientist'):
-                status['scientist']['stat_value'] = nav_xp
-                status['scientist']['stat_multiplier'] = round(1.0 + (nav_xp / 1500), 2)
-                status['scientist']['stat_desc'] = f"Navigation {nav_xp} XP"
-
-    # ARIA: Base × (1 + resonance_level/100)
-    aria_skills = get_aria_skills(g.user_id)
-    resonance_level = aria_skills.get('resonance_level') or 1
-    if status.get('aria'):
-        status['aria']['stat_value'] = resonance_level
-        status['aria']['stat_multiplier'] = round(1.0 + (resonance_level / 100), 2)
-        status['aria']['stat_desc'] = f"Resonance Lv{resonance_level}"
-
-    return jsonify({'success': True, **status})
+    from utilities.postgres.trails import get_crew_mission_status_with_stats
+    return jsonify({'success': True, **get_crew_mission_status_with_stats(g.user_id)})
 
 
 @app.route('/api/crew/mission/nearby', methods=['GET'])
 @login_required
 def api_crew_mission_nearby():
     """Get ALL visited sites for trail building - no distance limit"""
-    trails = get_visited_sites_for_trails(g.user_id)
-
-    base_coords = None
-    try:
-        with db_cursor() as cur:
-            cur.execute("SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = %s", (g.user_id,))
-            user = cur.fetchone()
-            if user and user['home_mars_lat']:
-                base_coords = {'latitude': float(user['home_mars_lat']), 'longitude': float(user['home_mars_lon'])}
-    except Exception:
-        pass
-
-    formatted = []
-    for t in trails:
-        formatted.append({
-            'name': t['name'],
-            'type': t['type'],
-            'distance_km': round(float(t.get('distance_km') or 0), 1),
-            'from_landmark': t.get('from_landmark', 'HOME'),
-            'from_latitude': float(t['from_latitude']) if t.get('from_latitude') else None,
-            'from_longitude': float(t['from_longitude']) if t.get('from_longitude') else None,
-            'segment_distance_km': round(float(t.get('segment_distance_km') or 0), 1),
-            'visit_count': t.get('visit_count', 0),
-            'km_built': round(float(t.get('km_built') or 0), 3),
-            'captain_km': round(float(t.get('captain_km') or 0), 3),
-            'scientist_km': round(float(t.get('scientist_km') or 0), 3),
-            'aria_km': round(float(t.get('aria_km') or 0), 3),
-            'trip_count': t.get('trip_count', 0),
-            'trail_level': t.get('trail_level', 'none'),
-            'latitude': float(t['latitude']) if t.get('latitude') else None,
-            'longitude': float(t['longitude']) if t.get('longitude') else None,
-            'is_complete': bool(t.get('is_complete', False)),
-        })
-
-    return jsonify({'success': True, 'trails': formatted, 'base_coords': base_coords})
+    from utilities.postgres.trails import get_crew_nearby_payload
+    return jsonify(get_crew_nearby_payload(g.user_id))
 
 
 
@@ -1927,17 +1800,9 @@ def api_vehicle_stats(vehicle_type):
 # =============================================================================
 
 @app.route('/api/cron/sync_balances', methods=['GET'])
+@cron_only
 def cron_sync_balances():
-    """
-    Hourly blockchain balance sync - Updates all user wallet balances in DB.
-    This allows page loads to use fast DB-cached balances instead of hitting blockchain.
-    Triggered by App Engine cron.yaml every hour.
-    """
-    # Verify request is from App Engine cron (security check)
-    if not request.headers.get('X-Appengine-Cron') and not app.debug:
-        logger.warning("Cron endpoint called without X-Appengine-Cron header")
-        return jsonify({'error': 'Forbidden'}), 403
-
+    """Hourly blockchain balance sync — updates wallet balances in DB."""
     try:
         result = sync_all_wallet_balances()
         logger.info(f"✅ Balance sync completed: {result['updated']}/{result['total']} wallets updated")
@@ -1948,8 +1813,9 @@ def cron_sync_balances():
 
 
 @app.route('/api/cron/aria_test_email', methods=['GET'])
+@cron_only
 def cron_aria_test_email():
-    """Hourly ARIA email - TEST ONLY, sends to andy.tillo@gmail.com."""
+    """Hourly ARIA email — TEST ONLY, sends to andy.tillo@gmail.com."""
     result = handle_cron_aria_test_email(request.headers.get('X-Appengine-Cron'), app.debug)
     if isinstance(result, tuple):
         return jsonify(result[0]), result[1]
@@ -1957,19 +1823,17 @@ def cron_aria_test_email():
 
 
 @app.route('/api/cron/generate_snapshots', methods=['GET'])
+@cron_only
 def cron_generate_snapshots():
-    """Daily ARIA Photo Journal generation - kicked off in background thread."""
-    if not request.headers.get('X-Appengine-Cron') and not app.debug:
-        return jsonify({'error': 'Forbidden'}), 403
+    """Daily ARIA Photo Journal generation — background thread."""
     start_background_snapshot_generation()
     return jsonify({'success': True, 'message': 'Snapshot generation started in background'})
 
 
 @app.route('/api/cron/qa_bot', methods=['GET'])
+@cron_only
 def cron_qa_bot():
-    """QA Bot - plays the game as user 250 (Trustable CC) to catch regressions."""
-    if not request.headers.get('X-Appengine-Cron') and not app.debug:
-        return jsonify({'error': 'Forbidden'}), 403
+    """QA Bot — plays the game as user 250 to catch regressions."""
     try:
         from tools.qa_bot import run_bot_session
         result = run_bot_session()
@@ -1981,10 +1845,9 @@ def cron_qa_bot():
 
 
 @app.route('/api/cron/retry_bonds', methods=['GET'])
+@cron_only
 def cron_retry_bonds():
-    """Safety net: retry stuck ARIA bonds that failed to create blockchain tx."""
-    if not request.headers.get('X-Appengine-Cron') and not app.debug:
-        return jsonify({'error': 'Forbidden'}), 403
+    """Retry stuck ARIA bonds that failed to create blockchain tx."""
     try:
         from utilities.aria.bonds import retry_stuck_bonds
         result = retry_stuck_bonds()
@@ -1995,10 +1858,9 @@ def cron_retry_bonds():
 
 
 @app.route('/api/cron/drone_trail_build', methods=['GET'])
+@cron_only
 def cron_drone_trail_build():
-    """Passive trail building via Automation Drone upgrades. Runs every 30 min."""
-    if not request.headers.get('X-Appengine-Cron') and not app.debug:
-        return jsonify({'error': 'Forbidden'}), 403
+    """Passive trail building via Automation Drone upgrades (every 30 min)."""
     try:
         from utilities.postgres.trails import cron_drone_trail_build
         results = cron_drone_trail_build()
@@ -2058,69 +1920,26 @@ def aria_first_contact_replay():
 
 @app.route('/admin/preview-first-contact')
 def admin_preview_first_contact():
-    """Admin preview of the First Contact cinematic — uses bond #3 data without completing it."""
+    """Admin preview of the First Contact cinematic — bond #3 data, no side effects."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
-
-    from utilities.aria.bonds import _get_commander_name
-    # Load bond #3 directly for preview
-    with db_cursor() as cur:
-        cur.execute("SELECT * FROM pilgrim.aria_bonds WHERE id = 3")
-        bond = cur.fetchone()
-    if not bond:
-        return "No bond #3 found", 404
-
-    captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
-    captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
-
-    with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) as count FROM pilgrim.aria_bonds WHERE id <= %s", (bond['id'],))
-        bond_number = cur.fetchone()['count']
-    from utilities.mars_environment_utils import get_mars_sol_number
-    sol = get_mars_sol_number()
-
-    from types import SimpleNamespace
-    bond_obj = SimpleNamespace(**bond)
-
-    return render_template('aria_first_contact.html',
-                           bond=bond_obj, captain_1=captain_1, captain_2=captain_2,
-                           bond_number=bond_number, sol=sol, static_v=STATIC_V)
+    from utilities.aria.first_contact import build_admin_preview_render_data
+    payload, err = build_admin_preview_render_data()
+    if err:
+        return err, 404
+    return render_template('aria_first_contact.html', static_v=STATIC_V, **payload)
 
 
 @app.route('/api/aria-bond/complete', methods=['POST'])
 @handle_api_error
 def api_aria_bond_complete():
-    """Complete ARIA bond from First Contact cinematic — marks bond as bonded, creates inventory."""
+    """Complete ARIA bond from First Contact cinematic."""
     if not auth.is_authenticated():
         return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-    user_id = session.get('user_id')
+    from utilities.aria.first_contact import complete_bond_from_cinematic
     data = request.get_json() or {}
-    bond_id = data.get('bond_id')
-    if not bond_id:
-        return jsonify({'success': False, 'error': 'Missing bond_id'})
-
-    # Mark first_contact_shown for this user
-    with db_cursor(commit=True) as cur:
-        cur.execute("SELECT user_id_1, user_id_2 FROM pilgrim.aria_bonds WHERE id = %s", (bond_id,))
-        bond = cur.fetchone()
-        if not bond:
-            return jsonify({'success': False, 'error': 'Bond not found'})
-        if user_id not in (bond['user_id_1'], bond['user_id_2']):
-            return jsonify({'success': False, 'error': 'Unauthorized'})
-
-        field = 'first_contact_shown_user_1' if user_id == bond['user_id_1'] else 'first_contact_shown_user_2'
-        cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond_id,))
-
-    # Complete the bond (marks bonded, creates inventory items)
-    from utilities.aria.bonds import _complete_bond
-    result = _complete_bond(bond_id)
-
-    # Set session flag so before_request stops redirecting
-    session['_fc_shown'] = True
-    session.modified = True
-
-    return jsonify(result)
+    return jsonify(complete_bond_from_cinematic(session.get('user_id'), data.get('bond_id'), session))
 
 
 @app.route('/admin')

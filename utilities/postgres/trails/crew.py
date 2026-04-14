@@ -631,3 +631,81 @@ def _format_trail_sites(trails: list, base_lat: float, base_lon: float) -> list:
     # Keeps the picker showing buildable trails at the top.
     results.sort(key=lambda s: (s['is_complete'], s['segment_distance_km']))
     return results
+
+
+def get_crew_mission_status_with_stats(user_id: int) -> dict:
+    """Mission status enriched with per-crew stat multipliers — used by the
+    /api/crew/mission/status endpoint."""
+    from utilities.postgres.trails.aria_skills import get_aria_skills
+
+    status = get_crew_mission_status(user_id)
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT captain_logistics_xp, scientist_navigation_xp
+            FROM pilgrim.users WHERE id = %s
+        """, (user_id,))
+        row = cur.fetchone()
+        if row:
+            logistics_xp = row.get('captain_logistics_xp') or 0
+            nav_xp = row.get('scientist_navigation_xp') or 0
+            status['captain']['stat_value'] = logistics_xp
+            status['captain']['stat_multiplier'] = round(1.0 + (logistics_xp / 1000), 2)
+            status['captain']['stat_desc'] = f"Logistics {logistics_xp} XP"
+            if status.get('scientist'):
+                status['scientist']['stat_value'] = nav_xp
+                status['scientist']['stat_multiplier'] = round(1.0 + (nav_xp / 1500), 2)
+                status['scientist']['stat_desc'] = f"Navigation {nav_xp} XP"
+
+    aria_skills = get_aria_skills(user_id)
+    resonance_level = aria_skills.get('resonance_level') or 1
+    if status.get('aria'):
+        status['aria']['stat_value'] = resonance_level
+        status['aria']['stat_multiplier'] = round(1.0 + (resonance_level / 100), 2)
+        status['aria']['stat_desc'] = f"Resonance Lv{resonance_level}"
+
+    return status
+
+
+def get_crew_nearby_payload(user_id: int) -> dict:
+    """Formatted trails + home base coords for the /api/crew/mission/nearby endpoint."""
+    trails = get_visited_sites_for_trails(user_id)
+
+    base_coords = None
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                "SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = %s",
+                (user_id,))
+            user = cur.fetchone()
+            if user and user['home_mars_lat']:
+                base_coords = {
+                    'latitude': float(user['home_mars_lat']),
+                    'longitude': float(user['home_mars_lon']),
+                }
+    except Exception:
+        pass
+
+    formatted = []
+    for t in trails:
+        formatted.append({
+            'name': t['name'],
+            'type': t['type'],
+            'distance_km': round(float(t.get('distance_km') or 0), 1),
+            'from_landmark': t.get('from_landmark', 'HOME'),
+            'from_latitude': float(t['from_latitude']) if t.get('from_latitude') else None,
+            'from_longitude': float(t['from_longitude']) if t.get('from_longitude') else None,
+            'segment_distance_km': round(float(t.get('segment_distance_km') or 0), 1),
+            'visit_count': t.get('visit_count', 0),
+            'km_built': round(float(t.get('km_built') or 0), 3),
+            'captain_km': round(float(t.get('captain_km') or 0), 3),
+            'scientist_km': round(float(t.get('scientist_km') or 0), 3),
+            'aria_km': round(float(t.get('aria_km') or 0), 3),
+            'trip_count': t.get('trip_count', 0),
+            'trail_level': t.get('trail_level', 'none'),
+            'latitude': float(t['latitude']) if t.get('latitude') else None,
+            'longitude': float(t['longitude']) if t.get('longitude') else None,
+            'is_complete': bool(t.get('is_complete', False)),
+        })
+
+    return {'success': True, 'trails': formatted, 'base_coords': base_coords}

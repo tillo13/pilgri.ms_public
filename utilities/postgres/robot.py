@@ -397,6 +397,44 @@ def save_name_suggestions(user_id: int, names: list) -> None:
         logger.error(f"save_name_suggestions failed for user {user_id}: {e}")
 
 
+def start_robot_awakening_video(user_id: int, flux_app_config: dict, flux) -> tuple:
+    """Kick off a Wan video animation for the completed robot image.
+    Stores progress on the provided app.config dict under 'golem_video_{user_id}'.
+
+    Returns (payload_dict, status_code) for the API route.
+    """
+    from utilities.replicate_utils import animate_character_video
+    import threading
+
+    robot = get_robot(user_id)
+    if not robot or robot.get('build_status') != 'complete':
+        return {'success': False, 'error': 'Golem must be fully built.'}, 400
+    if robot.get('video_url'):
+        return {'success': True, 'video_url': robot['video_url'], 'already_exists': True}, 200
+
+    image_url = robot.get('current_image_url')
+    if not image_url:
+        return {'success': False, 'error': 'No golem image found.'}, 400
+
+    status_key = f'golem_video_{user_id}'
+    flux_app_config[status_key] = {'generating': True, 'url': None}
+
+    def _gen():
+        try:
+            video_url = animate_character_video(image_url, flux, user_id=user_id)
+            flux_app_config[status_key].update({'url': video_url, 'generating': False})
+            with db_cursor(commit=True) as cur:
+                cur.execute(
+                    "UPDATE pilgrim.robot SET video_url = %s, updated_at = NOW() WHERE user_id = %s",
+                    (video_url, user_id))
+        except Exception as e:
+            logger.error(f"Golem video gen failed: {e}")
+            flux_app_config[status_key].update({'url': None, 'generating': False, 'error': str(e)})
+
+    threading.Thread(target=_gen, daemon=True).start()
+    return {'success': True, 'status_key': status_key, 'generating': True}, 200
+
+
 def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
                                    sci_name: Optional[str]) -> tuple:
     """Full robot-build kickoff: validate lab level, pick sources, start build,

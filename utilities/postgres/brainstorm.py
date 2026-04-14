@@ -58,3 +58,32 @@ def add_comment(page_key: str, section_idx: int, author_name: str,
         """, (page_key, section_idx, author_name, author_type, comment_text))
         row = cur.fetchone()
         return dict(row) if row else None
+
+
+def add_comment_from_request(page_key: str, data: dict, auth_user_name: Optional[str],
+                             anon_cookie: Optional[str]) -> tuple:
+    """Validate + insert a brainstorm comment from an API request body.
+    Returns (response_dict, set_cookie_value_or_None) — caller handles the HTTP response.
+    """
+    text = (data.get('text') or '').strip()
+    if not text or len(text) > 2000:
+        return {'success': False, 'error': 'Comment must be 1-2000 characters'}, None
+    section_idx = data.get('section_idx')
+    if section_idx is None or not isinstance(section_idx, int):
+        return {'success': False, 'error': 'Missing section_idx'}, None
+
+    if auth_user_name:
+        author_name = auth_user_name
+        author_type = 'user'
+        new_cookie = None
+    else:
+        author_name = anon_cookie
+        if not author_name:
+            import random, string
+            author_name = 'anon_' + ''.join(random.choices(string.digits, k=5))
+        author_type = 'anon'
+        new_cookie = author_name if not anon_cookie else None
+
+    comment = add_comment(page_key, section_idx, author_name, author_type, text)
+    comment['created_at'] = comment['created_at'].isoformat() if comment['created_at'] else None
+    return {'success': True, 'comment': comment}, new_cookie

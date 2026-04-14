@@ -63,6 +63,45 @@ def build_first_contact_render_data(user_id, session):
     return _build_render_payload(bond, _bond_number(bond['id']), get_mars_sol_number()), None
 
 
+def build_admin_preview_render_data():
+    """Admin preview of bond #3 — loads data without completing the bond.
+    Returns (payload_dict_or_None, error_message_or_None)."""
+    from utilities.mars_environment_utils import get_mars_sol_number
+
+    with db_cursor() as cur:
+        cur.execute("SELECT * FROM pilgrim.aria_bonds WHERE id = 3")
+        bond = cur.fetchone()
+    if not bond:
+        return None, "No bond #3 found"
+    return _build_render_payload(bond, _bond_number(bond['id']), get_mars_sol_number()), None
+
+
+def complete_bond_from_cinematic(user_id, bond_id, flask_session):
+    """Complete an ARIA bond after the First Contact cinematic.
+    Marks first_contact_shown for the viewer and invokes the bond-complete flow.
+    """
+    from utilities.aria.bonds import _complete_bond
+
+    if not bond_id:
+        return {'success': False, 'error': 'Missing bond_id'}
+
+    with db_cursor(commit=True) as cur:
+        cur.execute("SELECT user_id_1, user_id_2 FROM pilgrim.aria_bonds WHERE id = %s", (bond_id,))
+        bond = cur.fetchone()
+        if not bond:
+            return {'success': False, 'error': 'Bond not found'}
+        if user_id not in (bond['user_id_1'], bond['user_id_2']):
+            return {'success': False, 'error': 'Unauthorized'}
+
+        field = 'first_contact_shown_user_1' if user_id == bond['user_id_1'] else 'first_contact_shown_user_2'
+        cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond_id,))
+
+    result = _complete_bond(bond_id)
+    flask_session['_fc_shown'] = True
+    flask_session.modified = True
+    return result
+
+
 def build_replay_render_data(user_id):
     """Prepare render data for replay of an existing bond, or 'home' to redirect."""
     from utilities.mars_environment_utils import get_mars_sol_number

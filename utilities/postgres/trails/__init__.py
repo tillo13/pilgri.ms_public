@@ -30,6 +30,8 @@ from utilities.postgres.trails.aria_skills import (  # noqa: F401
 from utilities.postgres.trails.crew import (  # noqa: F401
     ensure_crew_missions_schema,
     get_crew_mission_status,
+    get_crew_mission_status_with_stats,
+    get_crew_nearby_payload,
     start_crew_mission,
     complete_crew_mission,
     get_trail_consumable_discoveries,

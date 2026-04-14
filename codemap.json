@@ -51,11 +51,11 @@
       "inject_global_stats — Inject global user stats into all templates. Delegates to utilities.session.user_hydration.",
       "handle_api_error — Decorator for consistent API error handling",
       "login_required — Require authentication for route. Sets g.user_id for convenience.",
+      "cron_only — Reject non-cron traffic. GAE adds the X-Appengine-Cron header on all cron.yaml calls.",
       "indexnow_key — Serve IndexNow verification key.",
       "sitemap",
       "robots",
-      "atom_feed — Atom feed of changelog entries for search engine discovery.",
-      "home — Home page - works for both anonymous and authenticated users"
+      "atom_feed — Atom feed of changelog entries for search engine discovery."
     ]
   },
   "config.py": {
@@ -1735,7 +1735,8 @@
     "exports": [
       "ensure_brainstorm_comments_table — Create brainstorm_comments table if it doesn't exist (lazy, once per process).",
       "get_comments_for_page — Return all comments for a brainstorm page, ordered by section then time.",
-      "add_comment — Insert a comment and return it."
+      "add_comment — Insert a comment and return it.",
+      "add_comment_from_request — Validate + insert a brainstorm comment from an API request body."
     ]
   },
   "utilities/postgres/bugs.py": {
@@ -1832,6 +1833,7 @@
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
       "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
+      "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image.",
       "start_build_with_name_prefetch — Full robot-build kickoff: validate lab level, pick sources, start build,",
       "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —",
       "get_robot_page_data — Bundle everything the Robot tab needs in one call. Speed-conscious:"
@@ -1914,7 +1916,9 @@
       "get_trail_consumable_discoveries — Get claimed discoveries that can be consumed for trail building bonuses.",
       "consume_discovery_for_trail — Consume a discovery item for trail building bonus.",
       "get_nearby_trails_for_missions — DEPRECATED: Use get_visited_sites_for_trails instead",
-      "get_visited_sites_for_trails — Get exactly 4 active trail destinations for trail construction."
+      "get_visited_sites_for_trails — Get exactly 4 active trail destinations for trail construction.",
+      "get_crew_mission_status_with_stats — Mission status enriched with per-crew stat multipliers — used by the",
+      "get_crew_nearby_payload — Formatted trails + home base coords for the /api/crew/mission/nearby endpoint."
     ]
   },
   "utilities/postgres/trails/segments.py": {
@@ -2062,6 +2066,8 @@
     "description": "ARIA first-contact cinematic data — one-shot bond-reveal and replay.",
     "exports": [
       "build_first_contact_render_data — Prepare render data for the cinematic, completing the bond as a side effect.",
+      "build_admin_preview_render_data — Admin preview of bond #3 — loads data without completing the bond.",
+      "complete_bond_from_cinematic — Complete an ARIA bond after the First Contact cinematic.",
       "build_replay_render_data — Prepare render data for replay of an existing bond, or 'home' to redirect."
     ]
   },
@@ -2102,7 +2108,10 @@
     ]
   },
   "utilities/aria/photos/__init__.py": {
-    "description": "ARIA photo/snapshot generation — Instagram-style images of colony life."
+    "description": "ARIA photo/snapshot generation — Instagram-style images of colony life.",
+    "exports": [
+      "get_snapshot_narrative_for_user — Claude-powered narrative for a snapshot — looks up the captain name"
+    ]
   },
   "utilities/aria/photos/data.py": {
     "description": "DB queries for ARIA snapshot context — read-only user/colony data.",
