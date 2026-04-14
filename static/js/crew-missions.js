@@ -411,16 +411,22 @@ let trailMapMarkers = [];
 // Preserve template-injected baseCoords if set
 window.baseCoords = window.baseCoords || null;
 
+function isAuthenticated() {
+    const el = document.getElementById('aria-chat');
+    return el && el.dataset.authenticated === 'true';
+}
+
 // Load on page init
 document.addEventListener('DOMContentLoaded', function() {
+    if (!isAuthenticated()) return;  // Anonymous users can't hit auth'd endpoints
     loadCrewMissions();
 
     // Init trail map after a short delay
     setTimeout(initCrewTrailMap, 500);
 });
 
-// Refresh every 30s
-setInterval(loadCrewMissions, 30000);
+// Refresh every 30s (only when authenticated)
+setInterval(function() { if (isAuthenticated()) loadCrewMissions(); }, 30000);
 
 // Register crew tab callbacks (uses universal switchTab from core.js)
 window.tabCallbacks = window.tabCallbacks || {};

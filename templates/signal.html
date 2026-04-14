@@ -15,7 +15,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/css/signal.css?v={{ static_v }}">
-<script>document.body.classList.add('page-signal');</script>
+<script>document.addEventListener('DOMContentLoaded', function(){ document.body.classList.add('page-signal'); });</script>
 {% endblock %}
 
 {% block extra_js %}
