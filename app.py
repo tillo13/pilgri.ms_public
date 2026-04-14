@@ -66,11 +66,14 @@ from utilities.tech_utils import (
 from utilities.shop_utils import get_user_equipment_data
 from utilities.upgrades_utils import perform_upgrade, get_upgrade_catalog_for_user, get_vehicle_for_expedition
 from utilities.claude_utils import brainstorm_chat, generate_aria_snapshot_narrative
-from utilities.aria_utils import (
-    get_aria_album_data, get_aria_conversation_history, get_contextual_hint,
-    _build_aria_user_context, load_colony_snapshot,
-    handle_aria_chat_streaming, handle_aria_chat_sync, get_aria_greeting,
+from utilities.aria.handlers import (
+    get_aria_album_data, _build_aria_user_context,
+    handle_aria_chat_streaming, handle_aria_chat_sync,
 )
+from utilities.aria.animations import get_contextual_hint
+from utilities.aria.conversation import get_aria_conversation_history
+from utilities.aria.greetings import get_aria_greeting
+from utilities.aria.snapshot import load_colony_snapshot
 from utilities.captains_log_utils import chat_with_captain
 from utilities.email_actions_utils import validate_action_token, execute_action, is_token_used, mark_token_used
 from utilities.admin_utils import (
@@ -143,7 +146,7 @@ def check_first_contact():
     if not user_id:
         return
     try:
-        from utilities.aria_bond_utils import get_pending_first_contact
+        from utilities.aria.bonds import get_pending_first_contact
         bond = get_pending_first_contact(user_id)
         if bond:
             return redirect('/aria-first-contact')
@@ -761,7 +764,7 @@ def signal():
     signal_bonds = []
     if auth.is_authenticated():
         try:
-            from utilities.aria_bond_utils import get_bonds_for_display
+            from utilities.aria.bonds import get_bonds_for_display
             signal_bonds = get_bonds_for_display(session.get('user_id'))
             if signal_bonds:
                 bond_fragment_hint = signal_bonds[0]['bond_tx_hash']
@@ -2167,7 +2170,7 @@ def cron_retry_bonds():
     if not request.headers.get('X-Appengine-Cron') and not app.debug:
         return jsonify({'error': 'Forbidden'}), 403
     try:
-        from utilities.aria_bond_utils import retry_stuck_bonds
+        from utilities.aria.bonds import retry_stuck_bonds
         result = retry_stuck_bonds()
         return jsonify({'success': True, **result})
     except Exception as e:
@@ -2244,7 +2247,7 @@ def admin_preview_first_contact():
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
 
-    from utilities.aria_bond_utils import _get_commander_name
+    from utilities.aria.bonds import _get_commander_name
     # Load bond #3 directly for preview
     with db_cursor() as cur:
         cur.execute("SELECT * FROM pilgrim.aria_bonds WHERE id = 3")
@@ -2294,7 +2297,7 @@ def api_aria_bond_complete():
         cur.execute(f"UPDATE pilgrim.aria_bonds SET {field} = TRUE WHERE id = %s", (bond_id,))
 
     # Complete the bond (marks bonded, creates inventory items)
-    from utilities.aria_bond_utils import _complete_bond
+    from utilities.aria.bonds import _complete_bond
     result = _complete_bond(bond_id)
 
     # Set session flag so before_request stops redirecting
@@ -2358,7 +2361,7 @@ def api_admin_clear_aria_chats():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.aria_utils import clear_all_aria_conversations
+    from utilities.aria.conversation import clear_all_aria_conversations
     return jsonify(clear_all_aria_conversations())
 
 

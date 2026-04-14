@@ -1813,7 +1813,7 @@ def decode_signal_tx(user_id: int, tx_hash: str) -> Dict:
     # ARIA BONDS: Check if this is an entangled crystal fragment
     # ========================================================================
     try:
-        from utilities.aria_bond_utils import process_fragment_submission
+        from utilities.aria.bonds import process_fragment_submission
         bond_result = process_fragment_submission(tx_hash, user_id)
         if bond_result.get('is_fragment'):
             # This IS an ARIA fragment - return bond-specific response

@@ -566,7 +566,7 @@ def load_colony_snapshot(user_id: int) -> dict:
                 # Load the other captain's name and basic colony info for all bonds (bonded or pending with tx)
                 if row.get('other_id'):
                     other_id = row['other_id']
-                    from utilities.aria_bond_utils import _get_commander_name
+                    from utilities.aria.bonds import _get_commander_name
                     other_name = _get_commander_name(other_id)
                     bond_info['other_captain'] = other_name or f"Captain {other_id}"
                     # Get the player's real name from email for context

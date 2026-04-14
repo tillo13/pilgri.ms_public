@@ -651,7 +651,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     # ========================================================================
     aria_fragment = None
     try:
-        from utilities.aria_bond_utils import check_for_aria_bond
+        from utilities.aria.bonds import check_for_aria_bond
         aria_fragment = check_for_aria_bond(user_id, expedition['destination_name'])
         if aria_fragment:
             logger.info(f"⚡ ARIA fragment created for user {user_id} at {expedition['destination_name']}")

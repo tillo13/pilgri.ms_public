@@ -57,7 +57,8 @@ def query_player_data(category, user_id):
         if category == 'overview':
             from utilities.postgres_utils import get_user_commander
             from utilities.db_users import get_user_scientist
-            from utilities.aria_utils import get_aria_relationship_tier, analyze_playstyle
+            from utilities.aria.relationship import get_aria_relationship_tier
+            from utilities.aria.snapshot import analyze_playstyle
             commander = get_user_commander(user_id)
             scientist = get_user_scientist(user_id)
             tier = get_aria_relationship_tier(user_id)

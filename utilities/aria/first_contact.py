@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def _build_render_payload(bond, bond_number, sol, replay=False):
     """Shared render-kwargs for the first-contact template."""
-    from utilities.aria_bond_utils import _get_commander_name
+    from utilities.aria.bonds import _get_commander_name
     captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
     captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
     return {
@@ -36,7 +36,7 @@ def build_first_contact_render_data(user_id, session):
       - payload: pass to render_template('aria_first_contact.html', **payload)
       - redirect: caller should redirect to the named endpoint ('home')
     """
-    from utilities.aria_bond_utils import get_pending_first_contact, _complete_bond
+    from utilities.aria.bonds import get_pending_first_contact, _complete_bond
     from utilities.mars_environment_utils import get_mars_sol_number
 
     bond = get_pending_first_contact(user_id)

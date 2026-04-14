@@ -1708,7 +1708,7 @@ def suggest_golem_names(user_id: int, commander_name: str = None,
     # Mine ARIA chat history for personality, preferences, name mentions
     chat_snippet = ""
     try:
-        from utilities.aria_utils import get_aria_conversation_history
+        from utilities.aria.conversation import get_aria_conversation_history
         history = get_aria_conversation_history(user_id, limit=40)
         if history:
             # Extract just the user messages for context (skip ARIA responses)

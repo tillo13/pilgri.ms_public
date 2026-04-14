@@ -169,7 +169,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
     Returns a dict with all briefing data or {'show_briefing': False} if nothing to report.
     """
     from utilities.postgres_utils import db_cursor
-    from utilities.aria_utils import get_aria_conversation_history
+    from utilities.aria.conversation import get_aria_conversation_history
     from datetime import datetime, timezone
     import math
     import json
@@ -550,7 +550,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
             pending_fragments = []
             processing_bonds = []  # bonds where tx hasn't fired yet
             try:
-                from utilities.aria_bond_utils import get_pending_fragments
+                from utilities.aria.bonds import get_pending_fragments
                 all_pending = get_pending_fragments(user_id, include_processing=True)
                 for p in all_pending:
                     tx_hash = p.get('my_fragment')
@@ -1080,7 +1080,7 @@ def get_dashboard_page_data(user_id, auth):
     # Get completed ARIA bonds for dashboard display
     completed_bonds = []
     try:
-        from utilities.aria_bond_utils import get_bonds_for_display
+        from utilities.aria.bonds import get_bonds_for_display
         completed_bonds = get_bonds_for_display(user_id)
     except Exception as e:
         logger.warning(f"Could not fetch completed bonds: {e}")
@@ -1408,7 +1408,7 @@ def get_colony_page_data(user_id, auth):
         pass
 
     # Get ARIA bond data (pending + completed)
-    from utilities.aria_bond_utils import get_user_bonds
+    from utilities.aria.bonds import get_user_bonds
     raw_bonds = get_user_bonds(user_id)
 
     # Bulk-fetch all partner names in one query (not per-bond)
@@ -1612,7 +1612,7 @@ def get_claimed_discoveries_data(user_id):
     # Get ARIA bonds for this user (special artifacts from shared discoveries)
     aria_bonds = []
     try:
-        from utilities.aria_bond_utils import get_user_bonds, _get_commander_name
+        from utilities.aria.bonds import get_user_bonds, _get_commander_name
         bonds = get_user_bonds(user_id)
         for b in bonds:
             if b['status'] == 'bonded':  # Only show completed bonds

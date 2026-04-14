@@ -1244,13 +1244,6 @@
       "start_background_snapshot_generation — Start daily snapshot generation in a background thread."
     ]
   },
-  "utilities/aria_bond_utils.py": {
-    "description": "utilities.aria_bond_utils — thin re-export shim."
-  },
-  "utilities/aria_utils.py": {
-    "description": "utilities.aria_utils — thin re-export shim.",
-    "keywords": "ARIA chat, colony snapshot, AI assistant, personality tier, relationship"
-  },
   "utilities/captains_log_utils.py": {
     "description": "Captain's Log Utilities - Chat with Your Captain",
     "exports": [
@@ -2777,7 +2770,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

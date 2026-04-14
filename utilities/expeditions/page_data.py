@@ -141,7 +141,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
     # ARIA bonds for Signal tab display
     signal_bonds = []
     try:
-        from utilities.aria_bond_utils import get_bonds_for_display
+        from utilities.aria.bonds import get_bonds_for_display
         signal_bonds = get_bonds_for_display(user_id)
     except Exception:
         pass

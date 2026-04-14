@@ -114,7 +114,7 @@ def _check_fragment_alert(user_id):
     if session.get('_afs'):
         return False
     try:
-        from utilities.aria_bond_utils import get_pending_fragments
+        from utilities.aria.bonds import get_pending_fragments
         pending = get_pending_fragments(user_id)
         unsubmitted = [p for p in pending if p.get('my_fragment') and not p.get('my_submitted')]
         if unsubmitted:
@@ -131,7 +131,7 @@ def _check_bond_greeting(user_id):
     if session.get('_abg'):
         return None
     try:
-        from utilities.aria_bond_utils import get_user_bonds, _get_commander_name
+        from utilities.aria.bonds import get_user_bonds, _get_commander_name
         bonded = [b for b in get_user_bonds(user_id) if b.get('status') == 'bonded']
         if not bonded:
             return None
@@ -200,7 +200,7 @@ def build_global_context(auth, static_v):
 
         origin_sites = _get_origin_sites(user_id)
 
-        from utilities.aria_utils import get_aria_greeting
+        from utilities.aria.greetings import get_aria_greeting
         aria_greeting = get_aria_greeting({
             'commander_name': commander_name or 'Commander',
             'balance': total_balance,
