@@ -20,45 +20,16 @@ logger = logging.getLogger(__name__)
 
 _robot_schema_ensured = False
 
-# Five canonical build stages. Order matters: visual_stage 1..5.
-ROBOT_STAGES = [
-    {'idx': 1, 'key': 'frame',   'label': 'Skeletal Frame',     'part': 'load-bearing chassis'},
-    {'idx': 2, 'key': 'plating', 'label': 'Hull Plating',       'part': 'pressure-rated panels'},
-    {'idx': 3, 'key': 'core',    'label': 'Power Core',         'part': 'crystalline reactor'},
-    {'idx': 4, 'key': 'optics',  'label': 'Optical Array',      'part': 'lens cluster'},
-    {'idx': 5, 'key': 'finish',  'label': 'Finishing Touches',  'part': 'paint, glyphs, signal antenna'},
-]
-
-# STUB timing — Step 4d ships a working visible loop with 60s/stage so Luke
-# can QA the full build cycle in 5 minutes. Step 4c will replace this with
-# real-clock days scaled by robotics_lab.robot_build_speed_mult.
-STAGE_DURATION_SECONDS = 60
-
-# Placeholder image used until robot_visuals.py (Step 4c) generates real
-# Kontext-chained art. Each stage advances using this same image — the UI
-# still shows the real "Forged from {item}" narrative from stage_sources.
-PLACEHOLDER_STAGE_IMAGE = (
-    "https://storage.googleapis.com/galactica-pilgrim-assets/"
-    "ui/robot_placeholder_stage.png"
+# Constants moved to utilities/postgres/config.py (shared DRY source). Re-exported
+# here so existing `from utilities.db_robot import ROBOT_STAGES` callers work.
+from utilities.postgres.config import (  # noqa: F401
+    ROBOT_STAGES,
+    STAGE_DURATION_SECONDS,
+    PLACEHOLDER_STAGE_IMAGE,
+    STAGE_PLACEHOLDER_IMAGES,
+    DEFAULT_DIAL,
+    DIAL_KEYS,
 )
-
-# Per-stage placeholder images (Mars-rock style, generated via Flux)
-STAGE_PLACEHOLDER_IMAGES = {
-    'frame':   'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_frame.png',
-    'plating': 'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_plating.png',
-    'core':    'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_core.png',
-    'optics':  'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_optics.png',
-    'finish':  'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_finish.png',
-}
-
-# Default dial split (must sum to 100). Captains can rebalance in 5% increments.
-DEFAULT_DIAL = {
-    'mining': 25,
-    'exploration': 25,
-    'science': 25,
-    'combat': 25,
-}
-DIAL_KEYS = ['mining', 'exploration', 'science', 'combat']
 
 
 def ensure_robot_tables():
