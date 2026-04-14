@@ -37,7 +37,7 @@ def get_nearest_mars_landmarks(latitude, longitude, limit=5):
             for lm in landmarks:
                 lm['distance_km'] = round(calculate_mars_distance(latitude, longitude, lm['latitude'], lm['longitude']), 2)
                 # Use DRY helper for travel estimate (assumes base rover 1.25x, avg logistics 50)
-                from utilities.expedition_utils import estimate_travel_days
+                from utilities.expeditions.terrain import estimate_travel_days
                 lm['travel_days'] = estimate_travel_days(lm['distance_km'], vehicle_speed_mult=1.25, logistics=50)
             return landmarks
     except Exception as e:

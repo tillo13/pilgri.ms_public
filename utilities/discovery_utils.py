@@ -264,8 +264,7 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
     cargo_capacity: Max discoveries the vehicle can carry back. If None, uses default of 5.
                    Excess discoveries are left behind (vehicle takes the most valuable).
     """
-    # Lazy import: is_item_geographically_valid stays in expedition_utils
-    from utilities.expedition_utils import is_item_geographically_valid
+    from utilities.expeditions.terrain import is_item_geographically_valid
 
     discoveries = []
 

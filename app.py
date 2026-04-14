@@ -47,12 +47,17 @@ from utilities.postgres.trails import (
     get_trail_progress,
 )
 from utilities.postgres.wallets import sync_all_wallet_balances
-from utilities.expedition_utils import (
-    complete_expedition_if_ready, get_expeditions_page_data, claim_all_discoveries,
-    get_discovery_progress_formatted, get_expedition_cost_preview_formatted, start_expedition_from_request,
-    analyze_discovery, shard_all_discoveries, recall_expedition, get_expedition_preview,
-    handle_trail_build_request, get_trail_consumables_data,
+from utilities.expeditions.lifecycle import (
+    complete_expedition_if_ready, claim_all_discoveries,
+    get_discovery_progress_formatted, start_expedition_from_request,
+    recall_expedition,
 )
+from utilities.expeditions.page_data import get_expeditions_page_data
+from utilities.expeditions.preview import (
+    get_expedition_cost_preview_formatted, get_expedition_preview,
+)
+from utilities.expeditions.trails import handle_trail_build_request, get_trail_consumables_data
+from utilities.discovery_utils import analyze_discovery, shard_all_discoveries
 from utilities.depot_utils import (
     purchase_stat_reroll, purchase_character_modification, get_command_page_data,
     process_asteroid_impact, generate_commander_stats, initialize_character_session,

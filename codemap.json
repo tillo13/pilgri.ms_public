@@ -1329,10 +1329,6 @@
       "generate_email_action_buttons — Generate HTML/text action buttons for email based on what's pending."
     ]
   },
-  "utilities/expedition_utils.py": {
-    "description": "Expedition System — thin re-export shim.",
-    "keywords": "expedition speed, vehicle, travel time, trail, distance, cost, discoveries"
-  },
   "utilities/flux_utils.py": {
     "exports": [
       "get_secret",
@@ -2712,7 +2708,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2790,7 +2786,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
