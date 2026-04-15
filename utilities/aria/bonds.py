@@ -660,87 +660,13 @@ def get_pending_fragments(user_id: int, include_processing: bool = False) -> lis
 def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
                                   landmark_name: str, captain_1: str, captain_2: str,
                                   bond_image_url: str = None):
-    """
-    Send individual bond notification emails to BOTH captains.
-    Each gets their own email (To: their email) — no email sharing between users.
-    Also BCC's andy.tillo@gmail.com for monitoring.
-    """
-    from utilities.gmail_utils import send_email
-    try:
-        # Get emails for both users
-        with db_cursor() as cur:
-            cur.execute("SELECT id, email, name FROM pilgrim.users WHERE id IN (%s, %s)", (user_id_1, user_id_2))
-            users = {row['id']: row for row in cur.fetchall()}
-
-        for uid in [user_id_1, user_id_2]:
-            user = users.get(uid)
-            if not user or not user.get('email'):
-                logger.warning(f"No email for user {uid}, skipping bond notification")
-                continue
-
-            partner_id = user_id_2 if uid == user_id_1 else user_id_1
-            my_name = _get_commander_name(uid) or f'Captain {uid}'
-            partner_name = _get_commander_name(partner_id) or f'Captain {partner_id}'
-
-            subject = f"ARIA Bond Detected at {landmark_name}"
-            img_block = f'<img src="{bond_image_url}" alt="Bond at {landmark_name}" style="width:100%;max-width:480px;border-radius:12px;margin:16px auto;display:block;">' if bond_image_url else ''
-
-            body = f"""
-<div style="max-width:520px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e8e8e8;background:#1a1a2e;padding:28px;border-radius:16px;">
-    <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:32px;margin-bottom:8px;">&#9830;</div>
-        <h1 style="color:#06b6d4;font-size:22px;margin:0;">ARIA Bond Detected</h1>
-        <p style="color:#94a3b8;font-size:13px;margin:6px 0 0;">Something extraordinary has happened on Mars</p>
-    </div>
-
-    {img_block}
-
-    <div style="background:#0f0f23;border-radius:12px;padding:20px;margin:16px 0;border:1px solid rgba(6,182,212,0.2);">
-        <p style="font-size:14px;line-height:1.7;margin:0 0 12px;">
-            Captain <strong style="color:#06b6d4;">{my_name}</strong> — your ARIA system has detected
-            a crystal resonance with Captain <strong style="color:#f59e0b;">{partner_name}</strong>.
-        </p>
-        <p style="font-size:14px;line-height:1.7;margin:0 0 12px;">
-            Both of your expeditions explored the same Mars landmark:
-            <strong style="color:#e2e8f0;">{landmark_name}</strong>.
-            This has never happened before in your colony's history.
-        </p>
-        <p style="font-size:14px;line-height:1.7;margin:0;">
-            ARIA created a permanent crystal fragment — a shared record of this moment
-            etched forever on the Sepolia network. You both share the same fragment code.
-        </p>
-    </div>
-
-    <div style="background:#0f0f23;border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(245,158,11,0.2);">
-        <h3 style="color:#f59e0b;font-size:14px;margin:0 0 10px;">What Happens Next</h3>
-        <ol style="font-size:13px;line-height:1.8;padding-left:20px;margin:0;color:#cbd5e1;">
-            <li>Visit your <strong>Colony page</strong> — you'll see a new <strong>ARIA Bonds</strong> section at the top</li>
-            <li>Click the bond card to see full details — location, partner, fragment code</li>
-            <li>Go to <strong>The Signal</strong> page and enter the fragment code to decode it</li>
-            <li>First captain to decode enters a <em>waiting</em> state. When the second captain decodes — <strong>the bond is revealed</strong></li>
-        </ol>
-    </div>
-
-    <div style="text-align:center;margin:20px 0;">
-        <a href="https://pilgri.ms/colony" style="display:inline-block;background:#06b6d4;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">View Your Bond</a>
-    </div>
-
-    <p style="font-size:11px;color:#64748b;text-align:center;margin:20px 0 0;line-height:1.5;">
-        This is a one-time notification. ARIA bonds are permanent and visible on your Colony page anytime.
-    </p>
-</div>"""
-
-            send_email(
-                subject=subject,
-                body=body,
-                to_emails=[user.get('email')],
-                bcc_emails=['andy.tillo@gmail.com'],
-                is_html=True
-            )
-            logger.info(f"Bond notification email sent to user {uid} ({user.get('email')})")
-
-    except Exception as e:
-        logger.error(f"Failed to send bond notification emails: {e}")
+    """Delegate to utilities.email.bonds.send_bond_notification (round 8 refactor)."""
+    from utilities.email.bonds import send_bond_notification
+    return send_bond_notification(
+        bond_id, user_id_1, user_id_2,
+        landmark_name, captain_1, captain_2,
+        bond_image_url=bond_image_url,
+    )
 
 
 def retry_stuck_bonds(max_age_minutes: int = 1440, max_retries: int = 3) -> dict:

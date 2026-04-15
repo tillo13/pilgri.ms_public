@@ -569,18 +569,14 @@ def _notify_mentions(bug_id, author, body):
                     continue
 
                 to_email = row['email']
-                user_name = row.get('name', mention)
-                link = f'https://pilgri.ms/admin/bugs?open={bug_id}'
-
-                subject = f'Bug #{bug_id}: {bug_name}'
-                html_body = f"""<div style="font-family:sans-serif;max-width:600px;">
-<p><strong>{author}</strong> mentioned you on <a href="{link}">Bug #{bug_id}: {bug_name}</a></p>
-<div style="background:#1e1e36;color:#e0e0e0;padding:16px;border-radius:8px;margin:12px 0;white-space:pre-wrap;">{body}</div>
-<p><a href="{link}" style="display:inline-block;padding:10px 20px;background:#f97316;color:white;text-decoration:none;border-radius:6px;font-weight:bold;">View Bug</a></p>
-</div>"""
-
-                from utilities.gmail_utils import send_simple_email
-                send_simple_email(subject, html_body, to_email, is_html=True)
+                from utilities.email.mentions import send_mention_notification
+                send_mention_notification(
+                    bug_id=bug_id,
+                    bug_name=bug_name,
+                    to_email=to_email,
+                    author=author,
+                    comment_body=body,
+                )
                 logger.info(f"Bug #{bug_id}: sent @mention email to {to_email} for mention @{mention}")
 
     except Exception as e:

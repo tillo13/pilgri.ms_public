@@ -440,33 +440,10 @@ def handle_cron_aria_test_email(is_cron_request, is_debug):
     if not is_cron_request and not is_debug:
         return {'error': 'Forbidden'}, 403
 
-    from utilities.gmail_utils import send_email
+    from utilities.email.admin import send_cron_aria_test
 
     fact = generate_aria_message()
-
-    html_body = f"""
-    <div style="font-family: 'Courier New', monospace; max-width: 600px; margin: 0 auto; background: #1a1a2e; padding: 30px; border-radius: 12px;">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/aria_orb_glow.png" alt="ARIA" style="width: 80px; height: 80px; border-radius: 50%;">
-        </div>
-        <h2 style="color: #00d4ff; text-align: center; margin-bottom: 16px;">\U0001f4e1 Transmission from ARIA</h2>
-        <div style="background: rgba(0, 212, 255, 0.1); border-left: 3px solid #00d4ff; padding: 16px; margin: 20px 0; color: #e0e0e0; font-style: italic;">
-            "{fact}"
-        </div>
-        <p style="color: #888; font-size: 12px; text-align: center; margin-top: 24px;">
-            This is a test cron email from pilgri.ms<br>
-            <a href="https://pilgri.ms" style="color: #00d4ff;">Visit your colony</a>
-        </p>
-    </div>
-    """
-
-    success = send_email(
-        subject="\U0001f4e1 ARIA Transmission - Mars Fact of the Hour",
-        body=html_body,
-        to_emails=["andy.tillo@gmail.com"],
-        is_html=True,
-        from_name="ARIA - Pilgrims"
-    )
+    success = send_cron_aria_test(fact)
 
     if success:
         logger.info("ARIA test cron email sent to andy.tillo@gmail.com")
@@ -477,7 +454,7 @@ def handle_cron_aria_test_email(is_cron_request, is_debug):
 
 def handle_admin_test_email(real_user_id, to_email=None):
     """Send a test ARIA email to specified address."""
-    from utilities.gmail_utils import send_email
+    from utilities.email.admin import send_admin_aria_test
 
     if not to_email:
         to_email = get_admin_email(real_user_id)
@@ -485,29 +462,7 @@ def handle_admin_test_email(real_user_id, to_email=None):
         return {'success': False, 'error': 'No email address'}, 400
 
     fact = generate_aria_message()
-
-    html_body = f"""
-    <div style="font-family: 'Courier New', monospace; max-width: 600px; margin: 0 auto; background: #1a1a2e; padding: 30px; border-radius: 12px;">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/aria_orb_glow.png" alt="ARIA" style="width: 80px; height: 80px; border-radius: 50%;">
-        </div>
-        <div style="color: #00d4ff; font-size: 14px; line-height: 1.6; text-align: center;">
-            "{fact}"
-        </div>
-        <p style="color: #888; font-size: 12px; text-align: center; margin-top: 24px;">
-            Admin test email from pilgri.ms<br>
-            <a href="https://pilgri.ms" style="color: #00d4ff;">Visit your colony</a>
-        </p>
-    </div>
-    """
-
-    success = send_email(
-        subject="\U0001f4e1 ARIA Test - Admin Triggered",
-        body=html_body,
-        to_emails=[to_email],
-        is_html=True,
-        from_name="ARIA - Pilgrims"
-    )
+    success = send_admin_aria_test(to_email, fact)
 
     if success:
         return {'success': True, 'message': f'Test email sent to {to_email}'}

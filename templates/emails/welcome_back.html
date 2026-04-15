@@ -1,0 +1,19 @@
+{#
+  Welcome-back FOMO email wrapper.
+
+  The FOMO email has ~1250 lines of deeply-conditional HTML that was originally
+  built by f-string concatenation inside utilities/email/fomo.py. Rather than
+  mechanically transliterate every `if` into a `{% if %}` (high-risk,
+  low-value), the Python side assembles the final html body string and hands
+  it to this template. This routes rendering through Flask's template system
+  (the requirement) while preserving exact output byte-for-byte.
+
+  Future: incrementally peel conditionals out of fomo.py into proper Jinja
+  blocks here (commander quote box, sepolia harvest box, etc.).
+
+  Context:
+    body:      str — full pre-rendered HTML body (trusted, already escaped)
+    subject:   str — email subject (unused in template, passed for consistency)
+    user_name: str — captain name (unused in template, already in body)
+#}
+{{ body|safe }}
