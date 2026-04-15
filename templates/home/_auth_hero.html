@@ -1,0 +1,14 @@
+<!-- Hero Section -->
+<div class="hero-section" style="position: relative; margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; border-radius: 12px; overflow: hidden; min-height: 140px; display: flex; flex-direction: column; justify-content: center;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/hero_base_hq_1767642994_hero.png" alt="Base HQ" fetchpriority="high" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; z-index: 0;">
+    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(26,26,46,0.4) 0%, rgba(26,26,46,0.75) 100%); z-index: 1;"></div>
+    <div style="position: relative; z-index: 2; text-align: center;">
+        <div class="hero-subtitle mb-6">Colony Command Center</div>
+        <h1 class="hero-title mb-0" style="font-size: 26px;">Base HQ</h1>
+    </div>
+</div>
+
+{% if active_expeditions and active_expeditions|length > 0 %}
+<div data-expedition-id="{{ active_expeditions[0].id }}" style="display: none;"></div>
+{% endif %}
+

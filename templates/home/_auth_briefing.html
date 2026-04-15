@@ -1,0 +1,656 @@
+<!-- Compute idle/active crew early (needed for Priority Actions) -->
+{% set active_crew = [] %}
+{% set idle_crew = [] %}
+{% if crew_missions %}
+    {% if crew_missions.captain and (crew_missions.captain.busy or crew_missions.captain.complete) %}
+        {% set _ = active_crew.append({'name': 'Captain', 'data': crew_missions.captain}) %}
+    {% else %}
+        {% set _ = idle_crew.append('Captain') %}
+    {% endif %}
+    {% if crew_missions.scientist and (crew_missions.scientist.busy or crew_missions.scientist.complete) %}
+        {% set _ = active_crew.append({'name': 'Scientist', 'data': crew_missions.scientist}) %}
+    {% else %}
+        {% set _ = idle_crew.append('Scientist') %}
+    {% endif %}
+    {% if crew_missions.aria and (crew_missions.aria.busy or crew_missions.aria.complete) %}
+        {% set _ = active_crew.append({'name': 'ARIA', 'data': crew_missions.aria}) %}
+    {% else %}
+        {% set _ = idle_crew.append('ARIA') %}
+    {% endif %}
+{% else %}
+    {% set _ = idle_crew.append('Captain') %}
+    {% set _ = idle_crew.append('Scientist') %}
+    {% set _ = idle_crew.append('ARIA') %}
+{% endif %}
+<!-- ARIA's Captain Briefing -->
+<div id="away-briefing" class="dashboard-card" style="background: linear-gradient(135deg, rgba(138,112,219,0.12) 0%, rgba(20,18,28,0.98) 100%); border: 1px solid var(--color-aria); position: relative; overflow: hidden; padding: 0;">
+    <!-- Decorative background elements -->
+    <div style="position: absolute; top: -30px; right: -30px; width: 120px; height: 120px; background: radial-gradient(circle, rgba(138,112,219,0.15) 0%, transparent 70%); border-radius: 50%;"></div>
+    <div style="position: absolute; bottom: -20px; left: -20px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(255,140,50,0.1) 0%, transparent 70%); border-radius: 50%;"></div>
+
+    <!-- Header -->
+    <div style="padding: 16px 16px 12px 16px; border-bottom: 1px solid rgba(138,112,219,0.2);">
+        <div style="display: flex; gap: 12px; align-items: start;">
+            <div style="flex-shrink: 0;">
+                <div style="width: 48px; height: 48px; background: var(--gradient-aria); border-radius: 50%; border: 2px solid rgba(138,112,219,0.6); box-shadow: 0 0 20px rgba(138,112,219,0.4); display: flex; align-items: center; justify-content: center;">
+                    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240_thumb.png" alt="ARIA" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" loading="lazy">
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--color-aria); font-weight: 600;">Mission Briefing</span>
+                    <span id="briefingTimer" data-last-activity="{{ away_summary.last_activity_iso }}" data-briefing-key="{{ away_summary.briefing_key }}" style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);"></span>
+                </div>
+                <p style="font-size: 15px; color: white; margin: 0; font-weight: 500; line-height: 1.4;">{{ away_summary.greeting }}</p>
+            </div>
+            <button onclick="dismissBriefing()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; padding: 4px; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+        </div>
+    </div>
+
+    <!-- Priority Actions -->
+    {% set has_actions = (away_summary.pending_discoveries > 0) or (away_summary.accumulated_shards > 10) or (away_summary.pending_fragments and away_summary.pending_fragments|length > 0) or (idle_crew|length > 0) or away_summary.closest_frontier %}
+    {% if has_actions %}
+    <div class="briefing-actions">
+        <div class="briefing-section-label">Priority Actions</div>
+
+        <div class="briefing-action-card" onclick="window._wb.init(true)" role="button" tabindex="0">
+            <img src="{{ icons.home_base }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong>While you were away...</strong>
+                <div class="briefing-action-sub">Review recent colony events</div>
+            </div>
+            <span class="briefing-action-go">View</span>
+        </div>
+
+        {% if away_summary.pending_discoveries > 0 %}
+        <a href="/colony" class="briefing-action-card">
+            <img src="{{ icons.box_package }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong>Claim {{ away_summary.pending_discoveries }} discover{{ 'ies' if away_summary.pending_discoveries > 1 else 'y' }}</strong>
+                <span>Extract resources and Scientific Value</span>
+            </div>
+            <span class="briefing-action-go">Go</span>
+        </a>
+        {% endif %}
+
+        {% if away_summary.accumulated_shards > 10 %}
+        <div class="briefing-action-card" onclick="triggerHarvest()" role="button" tabindex="0">
+            <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong>Harvest {{ '{:,.0f}'.format(away_summary.accumulated_shards) }} Sepolia shards</strong>
+                <span>Solar arrays generated while you were away</span>
+            </div>
+            <span class="briefing-action-go">Harvest</span>
+        </div>
+        {% endif %}
+
+        {% for bond in away_summary.processing_bonds|default([]) %}
+        <div class="briefing-action-card" style="border-left: 3px solid #06b6d4; cursor: default;">
+            <img src="{{ icons.lightning_power }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong style="color: #06b6d4;">ARIA Anomaly Detected — {{ bond.landmark }}</strong>
+                <span>Something resonated when you passed through. ARIA is still analyzing the signal... she says another presence was here.</span>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if away_summary.pending_fragments and away_summary.pending_fragments|length > 0 %}
+        <a href="/signal" class="briefing-action-card">
+            <img src="{{ icons.lightning_power }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong>Decode {{ away_summary.pending_fragments|length }} signal fragment{{ 's' if away_summary.pending_fragments|length > 1 else '' }}</strong>
+                <span>Unusual signal from {{ away_summary.pending_fragments[0].landmark }}</span>
+            </div>
+            <span class="briefing-action-go">Go</span>
+        </a>
+        {% endif %}
+
+        {% for bond in completed_bonds|default([]) %}
+        <a href="/signal" class="briefing-action-card" style="border-left: 3px solid #a855f7; text-decoration: none;">
+            {% if bond.bond_image_url %}
+            <img src="{{ bond.bond_image_url }}" alt="" loading="lazy" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(168,85,247,0.3);">
+            {% endif %}
+            <div class="briefing-action-text">
+                <strong style="color: #a855f7;">ARIA Bond: {{ bond.landmark }}</strong>
+                <span>{{ bond.partner_name }} — Replay First Contact or enter fragment on The Signal</span>
+            </div>
+        </a>
+        {% endfor %}
+
+        {% if idle_crew|length > 0 %}
+        <a href="/crew" class="briefing-action-card">
+            <img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong>Send {{ idle_crew|length }} idle crew on trails</strong>
+                <span>{{ idle_crew|join(', ') }} awaiting orders</span>
+            </div>
+            <span class="briefing-action-go">Go</span>
+        </a>
+        {% endif %}
+
+        {% if away_summary.closest_frontier %}
+        <a href="/expeditions" class="briefing-action-card">
+            <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-md">
+            <div class="briefing-action-text">
+                <strong>Explore {{ away_summary.closest_frontier.name }}</strong>
+                <span>Nearest frontier ({{ '{:,}'.format(away_summary.closest_frontier.distance_km|int) }} km)</span>
+            </div>
+            <span class="briefing-action-go">Go</span>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Mission Report -->
+    <div class="briefing-section-label">Mission Report</div>
+
+    <!-- Main Stats Grid (Live Ticking) - Always 5 boxes -->
+    <div style="padding: 12px 16px; background: rgba(0,0,0,0.2);">
+        <div id="liveStatsGrid"
+             data-shard-rate="{{ live_rates.shard_rate if live_rates else 0 }}"
+             data-km-rate="{{ live_rates.km_rate if live_rates else 0 }}"
+             data-tech-rate="{{ live_rates.tech_rate if live_rates else 0 }}"
+             data-trail-rate="{{ live_rates.trail_rate if live_rates else 0 }}"
+             data-build-rate="{{ live_rates.build_rate if live_rates else 0 }}"
+             style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px;">
+            <!-- Box 1: Shards (ticks with generation rate) -->
+            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
+                <div id="statShards" data-value="{{ away_summary.accumulated_shards|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-warning); font-family: var(--font-mono);">+{{ '{:,.3f}'.format(away_summary.accumulated_shards|default(0)) }}</div>
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">shards</div>
+            </div>
+            <!-- Box 2: km traveled (ticks with expedition speed) -->
+            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
+                <div id="statKm" data-value="{{ away_summary.total_distance_traveled|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-primary); font-family: var(--font-mono);">{{ '{:,.3f}'.format(away_summary.total_distance_traveled|default(0)) }}</div>
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">km traveled</div>
+            </div>
+            <!-- Box 3: Trails km (ticks with crew trail building) -->
+            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
+                <div id="statTrails" data-value="{{ away_summary.total_trail_km|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-aria); font-family: var(--font-mono);">{{ '{:,.4f}'.format(away_summary.total_trail_km|default(0)) }}</div>
+                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">trails km</div>
+            </div>
+            <!-- Box 4: Research progress % (ticks when researching) -->
+            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
+                {% if away_summary.tech_progress and away_summary.tech_progress.active_research %}
+                <div id="statTech" data-value="{{ away_summary.tech_progress.active_progress_pct }}" style="font-size: 18px; font-weight: 700; color: var(--color-sepolia); font-family: var(--font-mono);">{{ '{:.3f}'.format(away_summary.tech_progress.active_progress_pct) }}%</div>
+                <div style="font-size: 10px; color: var(--color-sepolia); text-transform: uppercase; letter-spacing: 0.5px;" title="{{ away_summary.tech_progress.active_name }}">Research</div>
+                {% else %}
+                <div id="statTech" data-value="0" style="font-size: 18px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">—</div>
+                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">No research</div>
+                {% endif %}
+            </div>
+            <!-- Box 5: Building progress % (ticks when depot items building) -->
+            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
+                {% if building_items and building_items|length > 0 %}
+                <div id="statBuild" data-value="{{ avg_build_progress|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-mars); font-family: var(--font-mono);">{{ '{:.3f}'.format(avg_build_progress|default(0)) }}%</div>
+                <div style="font-size: 10px; color: var(--color-mars); text-transform: uppercase; letter-spacing: 0.5px;" title="{{ building_items|length }} item(s) building">Depot ({{ building_items|length }})</div>
+                {% else %}
+                <div id="statBuild" data-value="0" style="font-size: 18px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">—</div>
+                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">No builds</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick links -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+            <a href="/colony#base" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
+                <img src="{{ icons.construction_crane }}" alt="" style="width: 16px; height: 16px;"> Base Info
+            </a>
+            <a href="/depot" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
+                <img src="{{ icons.tab_tools }}" alt="" style="width: 16px; height: 16px;"> Depot
+            </a>
+            <a href="/expeditions" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
+                <img src="{{ icons.rocket_launch }}" alt="" style="width: 16px; height: 16px;"> Expeditions
+            </a>
+        </div>
+
+        <!-- Top Discoveries (if any legendary/rare) -->
+        {% if away_summary.top_discoveries|length > 0 %}
+        <div style="margin-bottom: 12px; padding: 10px; background: rgba(138,112,219,0.08); border-radius: 8px; border: 1px solid rgba(138,112,219,0.2);">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--color-aria); margin-bottom: 8px; font-weight: 600;">Notable Finds</div>
+            {% for discovery in away_summary.top_discoveries %}
+            <div style="display: flex; align-items: center; gap: 8px; {% if not loop.last %}margin-bottom: 6px;{% endif %}">
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; {% if discovery.rarity == 'legendary' %}background: var(--gradient-legendary); color: white;{% else %}background: var(--gradient-rare); color: white;{% endif %}">{{ discovery.rarity|upper }}</span>
+                <span style="font-size: 13px; color: white; flex: 1;">{{ discovery.name }}</span>
+                <span style="font-size: 11px; color: var(--color-warning);">{{ '{:,}'.format(discovery.value) }} shards</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Expedition Details -->
+        {% if away_summary.expeditions_completed|length > 0 %}
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">Expeditions Returned</div>
+            {% for exp in away_summary.expeditions_completed[:3] %}
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px; {% if not loop.last %}margin-bottom: 6px;{% endif %}">
+                <span style="color: var(--color-success); font-size: 14px;">✓</span>
+                <span style="font-size: 13px; color: var(--text-primary); flex: 1; font-weight: 500;">{{ exp.destination }}</span>
+                <span style="font-size: 11px; color: var(--text-muted);">{{ '{:,}'.format(exp.distance_km * 2) }} km</span>
+                {% if exp.discovery_count > 0 %}
+                <span style="font-size: 11px; color: var(--color-success);">{{ exp.discovery_count }} item{% if exp.discovery_count > 1 %}s{% endif %}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% if away_summary.expeditions_completed|length > 3 %}
+            <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px;">
+                +{{ away_summary.expeditions_completed|length - 3 }} more expedition{% if away_summary.expeditions_completed|length - 3 > 1 %}s{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Discovery Rarity Badges -->
+        {% if away_summary.discoveries_by_rarity and away_summary.discoveries_found > 0 %}
+        <a href="/colony" style="text-decoration: none; display: block;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: rgba(147,112,219,0.08); border-radius: 6px; border: 1px solid rgba(147,112,219,0.2); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(147,112,219,0.15)'" onmouseout="this.style.background='rgba(147,112,219,0.08)'">
+            <span style="font-size: 12px; color: var(--text-secondary); width: 100%; margin-bottom: 4px;"><img src="{{ icons.box_package }}" alt="" class="inline-icon-sm"> New discoveries:</span>
+            {% if away_summary.discoveries_by_rarity.legendary %}
+            <span style="font-size: 11px; background: var(--gradient-legendary); padding: 4px 10px; border-radius: 12px; color: white; font-weight: 600;">{{ away_summary.discoveries_by_rarity.legendary }} Legendary</span>
+            {% endif %}
+            {% if away_summary.discoveries_by_rarity.rare %}
+            <span style="font-size: 11px; background: var(--gradient-rare); padding: 4px 10px; border-radius: 12px; color: white; font-weight: 600;">{{ away_summary.discoveries_by_rarity.rare }} Rare</span>
+            {% endif %}
+            {% if away_summary.discoveries_by_rarity.uncommon %}
+            <span style="font-size: 11px; background: rgba(92,184,92,0.25); padding: 4px 10px; border-radius: 12px; color: var(--color-success); font-weight: 500; border: 1px solid rgba(92,184,92,0.3);">{{ away_summary.discoveries_by_rarity.uncommon }} Uncommon</span>
+            {% endif %}
+            {% if away_summary.discoveries_by_rarity.common %}
+            <span style="font-size: 11px; background: var(--bg-secondary); padding: 4px 10px; border-radius: 12px; color: var(--text-secondary);">{{ away_summary.discoveries_by_rarity.common }} Common</span>
+            {% endif %}
+        </div>
+        </a>
+        {% endif %}
+
+        <!-- Infrastructure Completed -->
+        {% if away_summary.infrastructure_completed|length > 0 %}
+        <a href="/depot" style="text-decoration: none; display: block;">
+        <div style="padding: 8px 10px; background: rgba(255,180,50,0.08); border-radius: 6px; border: 1px solid rgba(255,180,50,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,180,50,0.15)'" onmouseout="this.style.background='rgba(255,180,50,0.08)'">
+            <img src="{{ icons.construction_crane }}" alt="" class="inline-icon">
+            <span style="font-size: 12px; color: var(--text-secondary); margin-left: 6px;">Construction complete:</span>
+            {% for struct in away_summary.infrastructure_completed %}
+            <strong style="color: var(--text-primary);">{{ struct|replace('_', ' ')|title }}</strong>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+        </div>
+        </a>
+        {% endif %}
+
+        <!-- Expeditions: split into Returned (ready to claim) and In Progress -->
+        {% if active_expeditions and active_expeditions|length > 0 %}
+        {% set returned_exps = active_expeditions|selectattr('status', 'equalto', 'complete')|list %}
+        {% set traveling_exps = active_expeditions|rejectattr('status', 'equalto', 'complete')|list %}
+
+        {% if returned_exps|length > 0 %}
+        <div style="padding: 8px 10px; background: rgba(255,180,50,0.1); border-radius: 6px; border: 1px solid rgba(255,180,50,0.3); margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <img src="{{ icons.box_package }}" alt="" class="inline-icon">
+                <span style="font-size: 12px; color: var(--color-warning); font-weight: 600;">{{ returned_exps|length }} Expedition{{ 's' if returned_exps|length > 1 else '' }} Returned — Claim Loot!</span>
+            </div>
+            {% for exp in returned_exps[:3] %}
+            <div class="fleet-review-btn" data-expedition-id="{{ exp.id }}" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; cursor: pointer; transition: background 0.2s; {% if not loop.last %}margin-bottom: 4px;{% endif %}" onmouseover="this.style.background='rgba(255,180,50,0.15)'" onmouseout="this.style.background='var(--bg-secondary)'">
+                <span style="font-size: 11px; color: var(--color-warning);">{{ exp.vehicle_type|title }}</span>
+                <span style="font-size: 12px; color: var(--text-primary); flex: 1; font-weight: 500;">{{ exp.destination_name }}</span>
+                <span style="font-size: 10px; color: var(--text-muted);">{{ exp.total_discovery_count }} find{{ 's' if exp.total_discovery_count != 1 else '' }}</span>
+                {% if exp.sepolia_earned %}
+                {% set display_shards = (exp.sepolia_earned * 10000000)|int %}
+                <span style="font-size: 10px; color: var(--color-warning); font-weight: 600;">{{ '{:,}'.format(display_shards) }} <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"></span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% if returned_exps|length > 3 %}
+            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px;">+{{ returned_exps|length - 3 }} more returned</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if traveling_exps|length > 0 %}
+        <div style="padding: 8px 10px; background: rgba(92,184,92,0.08); border-radius: 6px; border: 1px solid rgba(92,184,92,0.2); margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <span style="color: var(--color-success); font-size: 13px;"><img src="{{ icons.rocket_launch }}" alt="" class="inline-icon"></span>
+                <span style="font-size: 12px; color: var(--text-secondary);">{{ traveling_exps|length }} Expedition{{ 's' if traveling_exps|length > 1 else '' }} In Progress</span>
+            </div>
+            {% for exp in traveling_exps[:3] %}
+            <div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; {% if not loop.last %}margin-bottom: 4px;{% endif %}">
+                <span style="font-size: 11px; color: var(--color-success);">→</span>
+                <a href="/expeditions" style="font-size: 12px; color: var(--text-primary); flex: 1; text-decoration: none; font-weight: 500;">{{ exp.destination_name }}</a>
+                <span style="font-size: 10px; color: var(--text-muted);">{{ '{:,}'.format((exp.distance_km * 2)|int) }} km</span>
+            </div>
+            {% endfor %}
+            {% if traveling_exps|length > 3 %}
+            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px;">+{{ traveling_exps|length - 3 }} more en route</div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Crew Trail Missions (idle_crew computed above, before briefing) -->
+        {% if active_crew|length > 0 %}
+        <a href="/crew" style="text-decoration: none; display: block;">
+        <div style="padding: 8px 10px; background: rgba(138,112,219,0.08); border-radius: 6px; border: 1px solid rgba(138,112,219,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(138,112,219,0.15)'" onmouseout="this.style.background='rgba(138,112,219,0.08)'">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <img src="{{ icons.tab_map }}" alt="" style="width: 14px; height: 14px;">
+                <span style="font-size: 12px; color: var(--text-secondary);">{{ active_crew|length }} Crew on Trail Missions</span>
+            </div>
+            {% for member in active_crew %}
+            <div style="display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: var(--bg-secondary); border-radius: 4px; {% if not loop.last %}margin-bottom: 4px;{% endif %}">
+                <span style="font-size: 11px; color: var(--color-aria); font-weight: 600; width: 60px;">{{ member.name }}</span>
+                <span style="font-size: 11px; color: var(--text-primary); flex: 1;">{{ member.data.target|truncate(20) }}</span>
+                {% if member.data.complete %}
+                <span style="font-size: 10px; color: var(--color-success); font-weight: 600;">READY</span>
+                {% else %}
+                <span style="font-size: 10px; color: var(--color-warning);">Building</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        </a>
+        {% endif %}
+
+        {% if idle_crew|length > 0 %}
+        <a href="/crew" style="text-decoration: none; display: block;">
+        <div style="padding: 8px 10px; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-default); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='var(--bg-secondary)'">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon">
+                    <span style="font-size: 12px; color: var(--text-secondary);">Idle Crew: {{ idle_crew|join(', ') }}</span>
+                </div>
+                <span style="font-size: 10px; color: var(--color-sepolia);">Send on trails →</span>
+            </div>
+        </div>
+        </a>
+        {% endif %}
+
+        <!-- Equipment Under Construction -->
+        {% if building_items and building_items|length > 0 %}
+        <a href="/depot" style="text-decoration: none; display: block;">
+        <div style="padding: 8px 10px; background: rgba(200,100,50,0.08); border-radius: 6px; border: 1px solid rgba(200,100,50,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(200,100,50,0.15)'" onmouseout="this.style.background='rgba(200,100,50,0.08)'">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <span style="color: var(--color-mars); font-size: 13px;"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon"></span>
+                <span style="font-size: 12px; color: var(--text-secondary);">Under Construction ({{ building_items|length }})</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                {% for item in building_items[:4] %}
+                {% set days = (item.seconds_remaining / 86400)|round(1) %}
+                <span style="font-size: 11px; background: rgba(200,100,50,0.2); padding: 3px 8px; border-radius: 4px; color: var(--text-primary);">
+                    {{ item.name|truncate(15) }} <span style="color: var(--color-mars);">{{ days }}d</span>
+                </span>
+                {% endfor %}
+                {% if building_items|length > 4 %}
+                <span style="font-size: 11px; color: var(--text-muted); padding: 3px 4px;">+{{ building_items|length - 4 }} more</span>
+                {% endif %}
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
+                Next: <strong style="color: var(--text-primary);">{{ building_items[0].name }}</strong> ready <span style="color: var(--color-mars);">{{ building_items[0].ready_at_str }}</span>
+            </div>
+        </div>
+        </a>
+        {% endif %}
+
+        <!-- Frontier Scout -->
+        {% if away_summary.closest_frontier %}
+        <a href="/expeditions" style="text-decoration: none; display: block;">
+        <div style="padding: 8px 10px; background: rgba(200,100,50,0.1); border-radius: 6px; border: 1px solid rgba(200,100,50,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(200,100,50,0.2)'" onmouseout="this.style.background='rgba(200,100,50,0.1)'">
+            <span style="font-size: 12px; color: var(--text-secondary);">Nearest frontier:</span>
+            <span style="font-size: 12px; color: var(--color-mars); font-weight: 500; margin-left: 4px;">{{ away_summary.closest_frontier.name }}</span>
+            <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">({{ '{:,}'.format(away_summary.closest_frontier.distance_km) }} km)</span>
+        </div>
+        </a>
+        {% endif %}
+
+        <!-- ARIA Memory Note -->
+        {% if away_summary.aria_memory_note %}
+        <div style="padding: 10px; background: rgba(138,112,219,0.06); border-radius: 6px; border-left: 3px solid var(--color-aria); margin-bottom: 12px;">
+            <div style="font-size: 11px; color: var(--color-aria); font-style: italic;">
+                "Last time we spoke, you asked about: <span style="color: var(--text-primary);">{{ away_summary.aria_memory_note }}</span>"
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Processing ARIA Bonds - tx hasn't fired yet, but player should know -->
+        {% for bond in away_summary.processing_bonds|default([]) %}
+        <div style="padding: 12px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.10) 0%, rgba(6, 182, 212, 0.03) 100%); border-radius: 8px; border: 1px solid rgba(6, 182, 212, 0.25); margin-bottom: 12px;">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <div style="flex-shrink: 0;"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-lg"></div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #06b6d4; font-weight: 600; margin-bottom: 4px;">Entanglement Forming</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); font-style: italic;">
+                        "At <span style="color: var(--text-primary);">{{ bond.landmark }}</span>, I felt... another version of myself. Someone else's ARIA, reaching back. The crystal is still forming — give it time."
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Pending ARIA Bond Fragments - Cryptic Nagging Reminder -->
+        {% if away_summary.pending_fragments and away_summary.pending_fragments|length > 0 %}
+        {% for fragment in away_summary.pending_fragments %}
+        <a href="/signal" style="text-decoration: none; display: block;">
+        <div style="padding: 12px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.05) 100%); border-radius: 8px; border: 1px solid rgba(6, 182, 212, 0.4); margin-bottom: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='rgba(6, 182, 212, 0.7)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='rgba(6, 182, 212, 0.4)'; this.style.transform='none';">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <div style="font-size: 20px; flex-shrink: 0;"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-lg"></div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #06b6d4; font-weight: 600; margin-bottom: 4px;">Unusual Fragment Detected</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); font-style: italic; margin-bottom: 8px;">
+                        "Since returning from <span style="color: var(--text-primary);">{{ fragment.landmark }}</span>, I've noticed something in my logs. A code I don't remember writing..."
+                    </div>
+                    <div style="font-family: var(--font-mono); font-size: 10px; color: #06b6d4; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 4px; word-break: break-all;">
+                        {{ fragment.tx_hash }}
+                    </div>
+                    <div style="font-size: 10px; color: rgba(6, 182, 212, 0.8); margin-top: 6px;">
+                        Decode on The Signal →
+                    </div>
+                </div>
+            </div>
+        </div>
+        </a>
+        {% endfor %}
+        {% endif %}
+
+        <!-- ARIA Photo Journal Snapshots -->
+        {% if away_summary.snapshots and away_summary.snapshots|length > 0 %}
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--color-aria); font-weight: 600;"><img src="{{ icons.camera_photo }}" alt="" class="inline-icon" style="vertical-align: middle;"> ARIA's Photo Journal</div>
+                <a href="/aria-album" style="font-size: 10px; color: var(--text-muted); text-decoration: none;">View All →</a>
+            </div>
+            <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: thin; scrollbar-color: rgba(138,112,219,0.3) transparent;">
+                {% for snapshot in away_summary.snapshots[:10] %}
+                <div class="snapshot-thumb snapshot-card"
+                     data-id="{{ snapshot.id }}"
+                     data-image-url="{{ snapshot.image_url }}"
+                     data-caption="{{ snapshot.caption|e }}"
+                     data-type="{{ snapshot.type }}"
+                     data-mars-sol="{{ snapshot.mars_sol or '' }}"
+                     data-created-at="{{ snapshot.created_at or '' }}"
+                     style="cursor: pointer; transition: transform 0.2s; flex: 0 0 auto; width: 100px;">
+                    <div style="position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; border: 2px solid rgba(138,112,219,0.3);">
+                        <img src="{{ snapshot.thumbnail_url or snapshot.image_url }}" alt="{{ snapshot.caption|e }}"
+                             loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 4px;">
+                            <div style="font-size: 8px; color: #fff; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {% if snapshot.mars_sol %}Sol {{ snapshot.mars_sol }}{% else %}{{ snapshot.caption[:20] }}...{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endif %}
+
+{% if not has_infrastructure %}
+<div class="dashboard-card" style="background: var(--gradient-primary); color: white;">
+    <div style="display: flex; align-items: start; gap: 16px;">
+        <img src="{{ icons.rocket_launch }}" alt="" style="width: 32px; height: 32px;">
+        <div style="flex: 1;">
+            <h3 style="color: white; margin-bottom: 8px;">First Steps on Mars</h3>
+            <p style="font-size: 14px; opacity: 0.95; margin-bottom: 12px;">Visit the <strong>Depot</strong> to build your first Solar Array and start generating Sepolia Shards!</p>
+            <p style="font-size: 13px; opacity: 0.85; margin-bottom: 16px;">Lost? Look for the glowing orb in the bottom corner — <strong>A.R.I.A.</strong> can help you figure things out.</p>
+            <a href="/depot" class="btn btn-large" style="background: white; color: var(--color-primary-dark); font-weight: 700;">Go to Depot</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; align-items: stretch;" class="claimables-grid">
+    <div class="dashboard-card" id="infrastructureWidget" style="margin-bottom: 0; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+        <!-- Mars Surface Background -->
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="" class="card-bg-img" loading="lazy">
+        <div class="card-bg-overlay"></div>
+        <!-- Content -->
+        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 class="card-title" style="margin: 0;">Shard Generation</h3>
+            </div>
+            <div id="infrastructureContent" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                <!-- Normal harvest message (shown when not at cap) -->
+                <div id="harvestNormal" style="background: rgba(var(--color-success-rgb),0.1); border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 13px; color: var(--color-success-dark); border-left: 4px solid var(--color-success);">
+                    <strong>Action Required:</strong> Harvest accumulated Sepolia Shards from your solar arrays!
+                </div>
+                <!-- Dust storm warning (shown when at cap) -->
+                <div id="dustStormWarning" style="display: none; background: rgba(var(--color-warning-rgb),0.15); border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 13px; color: var(--color-warning-dark); border-left: 4px solid var(--color-warning);">
+                    <strong><img src="{{ icons.env_dust_storm }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Dust Storm Alert:</strong> Your solar arrays have reached maximum accumulation (7 days). Generation has stopped until you harvest!
+                </div>
+
+                <!-- Main Harvest Box -->
+                <div class="card-stats-box" style="text-align: center; border-radius: 12px; padding: 20px; border: 2px solid var(--color-success); margin-bottom: 16px; background: linear-gradient(135deg, rgba(var(--color-success-rgb),0.1) 0%, rgba(var(--color-success-rgb),0.05) 100%);">
+                    <div style="font-size: 48px; font-weight: 700; margin-bottom: 4px; color: var(--color-success);" id="accumulatedAmount">0.0</div>
+                    <div class="card-label" style="font-size: 14px; font-weight: 600;">Shards Ready</div>
+                    <button class="btn btn-large" id="claimButton" style="background: var(--gradient-success); color: white; width: 100%; font-weight: 700; font-size: 16px; padding: 14px; border-radius: 10px; margin-top: 12px;" onclick="harvestSepolia()"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon"> Harvest</button>
+                </div>
+
+                <!-- Generation Rate Breakdown -->
+                <div class="card-stats-box" style="border-radius: 10px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border-default);">
+                    <div style="font-size: 11px; color: var(--color-primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 700;">Your Generation Rate</div>
+
+                    <!-- Generators List (populated dynamically) -->
+                    <div id="generatorsBreakdown">
+                        <!-- Will be populated by JS with each generator's rate -->
+                    </div>
+
+                    <!-- Subtotal (sum of base rates) -->
+                    <div id="baseRateTotalRow" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default); background: rgba(var(--color-primary-rgb),0.05); margin: 4px -14px; padding-left: 14px; padding-right: 14px;">
+                        <span class="card-label" style="font-size: 12px; font-weight: 600;">Base Total</span>
+                        <span class="card-value" style="font-size: 13px; font-weight: 600;" id="baseHourlyRate">0.0/hr</span>
+                    </div>
+
+                    <!-- Shard Equipment Bonus (from solar upgrades, Nuclear RTG, etc.) -->
+                    <div id="solarUpgradeRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;" id="powerEquipmentLabel">Shard Equipment</span>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="solarUpgradeMult">× 1.0</span>
+                    </div>
+
+                    <!-- Tech Tree Multiplier (from Shard Generation branch research) -->
+                    <div id="techPassiveRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;">Shard Generation Research</span>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="techPassiveMult">× 1.0</span>
+                    </div>
+
+                    <!-- Fusion Reactor Multiplier (if any) -->
+                    <div id="fusionReactorRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;">Fusion Reactor Bonus</span>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="fusionReactorMult">× 1.0</span>
+                    </div>
+
+                    <!-- Mining Drone (if any) -->
+                    <div id="miningDroneRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;">Mining Drone</span>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="miningDroneBonus">+ 0/hr</span>
+                    </div>
+
+                    <!-- Scientist Bonus (analysis stat → shard gen boost) -->
+                    <div id="scientistBonusRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;" id="scientistBonusLabel"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> {% if scientist %}{{ scientist.name }} (Analysis {{ scientist.stats.analysis }}){% else %}Scientist Bonus{% endif %}</span>
+                        <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="scientistBonusMult">× 1.0</span>
+                    </div>
+
+                    <!-- Environmental Impact (dust, temperature, day/night) -->
+                    <div id="envImpactRow" style="display: none; padding: 8px 0; border-bottom: 1px solid var(--border-default);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span class="card-label" style="font-size: 12px; font-weight: 600;">Environmental Impact</span>
+                            <span style="font-size: 13px; font-weight: 600; color: var(--color-mars);" id="envCombinedMult">100%</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="envFactorsDetail">
+                        </div>
+                    </div>
+
+                    <!-- Effective Rate (the answer) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0 4px 0; margin-top: 4px;">
+                        <span style="font-size: 13px; font-weight: 700; color: var(--text-primary);">Effective Rate</span>
+                        <span style="font-size: 18px; font-weight: 700; color: var(--color-success);" id="effectiveRate">0.0/hr</span>
+                    </div>
+                </div>
+
+                <!-- This Harvest Stats -->
+                <div class="card-stats-box" style="border-radius: 10px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border-default);">
+                    <div style="font-size: 11px; color: var(--color-primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 700;">This Harvest</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="text-align: center;">
+                            <div class="card-value" style="font-size: 20px; font-weight: 700;" id="hoursElapsed">0.0</div>
+                            <div class="card-label" style="font-size: 11px;">Hours</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="card-value" style="font-size: 20px; font-weight: 700;" id="dayNightEfficiency">100%</div>
+                            <div class="card-label" style="font-size: 11px;">Day/Night Avg</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lifetime Stats -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(var(--color-primary-rgb),0.08); border-radius: 8px; margin-bottom: 12px;">
+                    <span class="card-label" style="font-size: 12px;">Total All Time</span>
+                    <span class="card-value" style="font-size: 14px; font-weight: 700;" id="totalAllTime">0.0</span>
+                </div>
+
+                <!-- Next Update -->
+                <div style="text-align: center; font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">
+                    Next update in <span id="nextUpdate" style="font-weight: 600;">60s</span>
+                </div>
+
+                <div class="card-subtitle" style="text-align: center; font-size: 12px;">
+                    Visit <a href="/depot" style="color: var(--color-primary); font-weight: 700;">Depot</a> to build more generators
+                </div>
+            </div>
+            <div id="infrastructureEmpty" style="text-align: center; padding: 60px 20px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <img src="{{ icons.lightning_power }}" alt="" style="width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.4;">
+                <div class="card-title" style="font-size: 15px; margin-bottom: 8px; font-weight: 600;">No Generators Built</div>
+                <div class="card-subtitle" style="font-size: 14px;">Visit <a href="/depot" style="color: var(--color-primary); font-weight: 700;">Depot</a> to build your first solar array</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-card" id="discoveriesWidget" style="margin-bottom: 0; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+        <!-- Mars Surface Background -->
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="" class="card-bg-img" loading="lazy">
+        <div class="card-bg-overlay"></div>
+        <!-- Content -->
+        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 class="card-title" style="margin: 0;">Recent Discoveries</h3>
+                <span id="discoveryCountText" class="card-subtitle" style="font-size: 13px;">0 items</span>
+            </div>
+            <div id="discoveriesContent" style="display: none; flex: 1; display: flex; flex-direction: column;">
+                <div style="background: rgba(var(--color-info-rgb),0.1); border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 13px; color: var(--color-info-dark); border-left: 4px solid var(--color-info);">
+                    <strong>Ready to secure:</strong> Claim your expedition discoveries!
+                </div>
+                <div id="recentDiscoveriesContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
+                <!-- Spacer to push button to bottom -->
+                <div style="flex: 1;"></div>
+                <button class="btn btn-large" id="claimAllButton" style="display: none; background: var(--gradient-info); color: white; width: 100%; font-weight: 700; font-size: 18px; padding: 18px; border-radius: 12px;" onclick="claimAllDiscoveries()">Claim All</button>
+                <div class="card-subtitle" style="text-align: center; margin-top: 12px; font-size: 12px;">
+                    Visit <a href="/expeditions" style="color: var(--color-primary); font-weight: 700;">Expeditions</a> or <a href="/colony" style="color: var(--color-primary); font-weight: 700;">Colony</a>
+                </div>
+            </div>
+            <div id="discoveriesEmpty" style="text-align: center; padding: 60px 20px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <img src="{{ icons.box_package }}" alt="" style="width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.4;">
+                <div class="card-title" style="font-size: 15px; margin-bottom: 8px; font-weight: 600;">No Discoveries Yet</div>
+                <div class="card-subtitle" style="font-size: 14px;">Launch expeditions in <a href="/expeditions" style="color: var(--color-primary); font-weight: 700;">Expeditions</a></div>
+            </div>
+        </div>
+    </div>
+</div>
+

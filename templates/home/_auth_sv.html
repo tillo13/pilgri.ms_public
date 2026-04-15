@@ -1,0 +1,22 @@
+<!-- Science Value Generation Card -->
+<div id="svGenerationCard" class="dashboard-card" style="display: none; position: relative; overflow: hidden;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="" class="card-bg-img" loading="lazy">
+    <div class="card-bg-overlay"></div>
+    <div style="position: relative; z-index: 2;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 class="card-title" style="margin: 0;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon"> Science Value</h3>
+            <a href="/colony" class="card-action">Research Station</a>
+        </div>
+        <div class="card-stats-box" style="text-align: center; border-radius: 12px; padding: 20px; border: 2px solid var(--color-aria); margin-bottom: 16px; background: linear-gradient(135deg, rgba(var(--color-aria-rgb),0.15) 0%, rgba(var(--color-aria-rgb),0.05) 100%);">
+            <div style="font-size: 42px; font-weight: 700; margin-bottom: 4px; color: var(--color-aria);" id="svAccumulated">0</div>
+            <div class="card-label" style="font-size: 14px; font-weight: 600;">SV Ready</div>
+            <div style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
+                Generating <span id="svRate" style="font-weight: 600; color: var(--color-aria);">0.0</span> SV/hr
+            </div>
+        </div>
+        <div id="svBreakdown" style="padding: 4px 8px 8px; margin: -8px auto 12px; max-width: 280px;"></div>
+        <div class="card-subtitle" style="text-align: center; font-size: 12px;">
+            Science Value is used for <a href="/crew?tab=scientist" style="color: var(--color-aria); font-weight: 700;">Scientist</a> upgrades
+        </div>
+    </div>
+</div>
