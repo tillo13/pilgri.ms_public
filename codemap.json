@@ -1538,21 +1538,7 @@
     "keywords": "player data queries, balance, upgrades, expeditions, research, crew, leaderboard, colony state"
   },
   "utilities/pilgrimbot_utils.py": {
-    "description": "PilgrimBot — Codebase Q&A bot that reads the local codebase on GCP.",
-    "exports": [
-      "ensure_pilgrimbot_table — Create the pilgrimbot conversations table + role column if they don't exist.",
-      "get_user_role — Get user's PilgrimBot persona role (dev/qa/captain).",
-      "set_user_role — Set user's PilgrimBot persona role. Returns True on success.",
-      "save_message — Save a message to the database.",
-      "get_chat_history — Load conversation history for a specific chat. Uses subquery to fetch only last N rows.",
-      "get_user_chats — List all chat threads for a user, most recent first.",
-      "hide_chat — Soft-delete a chat thread by marking all its messages as hidden.",
-      "generate_title — Generate a short title from the first user message.",
-      "log_pilgrimbot_call — Log a PilgrimBot API call for performance tracking.",
-      "read_local_file — Read a code file from the local codebase.",
-      "handle_pilgrimbot_chat_request — Validate + prep a PilgrimBot chat. Returns one of:",
-      "handle_chat_streaming — Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."
-    ],
+    "description": "Shim — real code in utilities/pilgrimbot/ package. Kept for caller compat.",
     "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
   },
   "utilities/reclaim_assets.py": {
@@ -1731,6 +1717,45 @@
     "exports": [
       "execute_speed_test — Run the full page-data speed test suite and persist results."
     ]
+  },
+  "utilities/pilgrimbot/__init__.py": {
+    "description": "PilgrimBot package — codebase Q&A bot split into focused modules."
+  },
+  "utilities/pilgrimbot/context.py": {
+    "description": "PilgrimBot context planner + surgical context loader."
+  },
+  "utilities/pilgrimbot/file_reader.py": {
+    "description": "Local codebase file reading for PilgrimBot — with safety filters + relevance scoring.",
+    "exports": [
+      "read_local_file — Read a code file from the local codebase."
+    ]
+  },
+  "utilities/pilgrimbot/personas.py": {
+    "description": "PilgrimBot persona prompts and tool schemas."
+  },
+  "utilities/pilgrimbot/storage.py": {
+    "description": "PilgrimBot database storage: conversations table, roles, message history, API call logging.",
+    "exports": [
+      "ensure_pilgrimbot_table — Create the pilgrimbot conversations table + role column if they don't exist.",
+      "get_user_role — Get user's PilgrimBot persona role (dev/qa/captain).",
+      "set_user_role — Set user's PilgrimBot persona role. Returns True on success.",
+      "save_message — Save a message to the database.",
+      "get_chat_history — Load conversation history for a specific chat. Uses subquery to fetch only last N rows.",
+      "get_user_chats — List all chat threads for a user, most recent first.",
+      "hide_chat — Soft-delete a chat thread by marking all its messages as hidden.",
+      "generate_title — Generate a short title from the first user message.",
+      "log_pilgrimbot_call — Log a PilgrimBot API call for performance tracking."
+    ]
+  },
+  "utilities/pilgrimbot/streaming.py": {
+    "description": "PilgrimBot SSE streaming: chat request entry points + two-phase streaming handler.",
+    "exports": [
+      "handle_pilgrimbot_chat_request — Validate + prep a PilgrimBot chat. Returns one of:",
+      "handle_chat_streaming — Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."
+    ]
+  },
+  "utilities/pilgrimbot/tool_loop.py": {
+    "description": "PilgrimBot tool-use loop: repeated Claude calls with read_file / query_player_data / create_bug / query_bugs."
   },
   "utilities/postgres/activity.py": {
     "description": "Unified activity event logging and retrieval.",
@@ -2873,7 +2898,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2886,7 +2911,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -2951,7 +2976,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
