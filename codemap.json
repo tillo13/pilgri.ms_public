@@ -1050,18 +1050,16 @@
   "docs/continuation_cleanup.md": {
     "description": "Continuation Cleanup — app.py Routing-Only Refactor",
     "exports": [
-      "⚠️ Kumori-philosophy guardrails (MUST READ BEFORE R4)",
+      "⚠️ Kumori-philosophy guardrails (MUST READ)",
       "Goal",
-      "Ground rules (keep these when resuming)",
-      "What shipped (3 rounds so far)",
-      "Pick up here — Round 9: Jinja-ify `welcome_back.html` (PLANNED, NOT STARTED)",
-      "✅ Completed — Round 8: email consolidation (2026-04-15)",
-      "✅ Completed — Round 7: `page_data_utils.py` → `utilities/views/` (2026-04-15)",
-      "✅ Completed — Round 6: `pilgrimbot_utils.py` → `utilities/pilgrimbot/` (2026-04-15)",
-      "✅ Completed — Round 5: `claude_utils.py` → `utilities/anthropic/` + feature files (2026-04-15)",
-      "Deferred — Round 10+ targets",
-      "Historical — Round 5 original plan (now COMPLETED, kept for context)",
-      "✅ Completed — Round 4: `signal_utils.py` split (2026-04-14)"
+      "Ground rules",
+      "Progress table",
+      "Pick up here — Round 11 options",
+      "Holes table (as of 2026-04-15 after R10b)",
+      "What lives where now",
+      "Refactor-session hygiene",
+      "Historical notes",
+      "Quick sanity checklist before resuming"
     ]
   },
   "docs/deployment.md": {
@@ -2301,8 +2299,6 @@
       "get_user_origin_site_eligibility — Check which Origin Sites a user can claim based on their expedition proximity.",
       "get_user_origin_site_discovery_count — Get count of Origin Sites user has discovered (has expedition within range).",
       "get_claimable_origin_sites_for_user — Get only the Origin Sites a user can currently claim.",
-      "handle_origin_site_claim — Full origin site claim handler - validates, claims, fires background tasks.",
-      "handle_origin_site_visit — Full origin site visit handler - validates, records visit, fires background tasks.",
       "decode_lost_signal_site — Attempt to decode a Lost Signal site with the correct 0x code.",
       "get_user_signal_claims — Get current user's site claims.",
       "decode_signal_puzzle — Attempt to decode a puzzle sequence - rewards legendary items.",
@@ -2314,6 +2310,13 @@
     "description": "Signal system constants and visitor-tier configuration.",
     "exports": [
       "get_visitor_tier — Get tier info for a visitor rank. Returns (tier_name, tier_color, item_rarity)"
+    ]
+  },
+  "utilities/signal/handlers.py": {
+    "description": "Origin site claim/visit route handlers.",
+    "exports": [
+      "handle_origin_site_claim — Full origin site claim handler - validates, claims, fires background tasks.",
+      "handle_origin_site_visit — Full origin site visit handler - validates, records visit, fires background tasks."
     ]
   },
   "utilities/signal/rewards.py": {
@@ -2996,7 +2999,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3009,7 +3012,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

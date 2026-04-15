@@ -36,21 +36,25 @@ from utilities.signal.sites import (
     get_closest_pilgrim_to_origin,
 )
 
-# Claim/visit/eligibility + route handlers + lost-signal + puzzle decoders
+# Claim/visit/eligibility + lost-signal + puzzle decoders
 from utilities.signal.claims import (
     claim_origin_site,
     visit_origin_site,
     get_user_origin_site_eligibility,
     get_user_origin_site_discovery_count,
     get_claimable_origin_sites_for_user,
-    _get_commander_name_for_user,
-    handle_origin_site_claim,
-    handle_origin_site_visit,
     decode_lost_signal_site,
     get_user_signal_claims,
     decode_signal_puzzle,
     get_puzzle_solvers,
     decode_signal_tx,
+)
+
+# Route handlers for claim/visit flows
+from utilities.signal.handlers import (
+    _get_commander_name_for_user,
+    handle_origin_site_claim,
+    handle_origin_site_visit,
 )
 
 # Legendary item + visitor reward Flux generators
