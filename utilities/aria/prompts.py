@@ -1,8 +1,12 @@
 """ARIA system-prompt builders — friendly-tier vs mysterious-tier prompt composition.
 
-Extracted from utilities/aria_utils.py (Pass B of the ARIA split).
+Also includes Photo Journal narrative/prompt generators (Round 5 refactor — moved here
+from utilities/claude_utils.py because they are ARIA-voice content, not generic SDK code).
 """
 
+import json
+import re
+import time
 import logging
 from typing import Dict, Any, Optional, List
 
@@ -399,3 +403,551 @@ Respond as ARIA. Help the captain. Be direct and useful."""
 # ARIA CHAT INTERFACE
 # =============================================================================
 
+
+# =============================================================================
+# ARIA PHOTO JOURNAL — NARRATIVE + PROMPT GENERATORS
+# =============================================================================
+
+
+def generate_aria_snapshot_narrative(caption: str, snapshot_type: str = None,
+                                     commander_name: str = None, user_id: int = None) -> str:
+    """
+    Generate an ARIA-voice narrative for a photo journal snapshot.
+    Like an Instagram caption but in ARIA's ancient, wise, slightly mysterious voice.
+
+    Uses Claude Haiku for fast, cheap responses (~$0.001 per narrative).
+
+    Args:
+        caption: The original snapshot caption
+        snapshot_type: Type of snapshot (captain_aria_base, captain_aria_discovery, etc.)
+        commander_name: Name of the commander for personalization
+
+    Returns:
+        A 2-4 sentence narrative in ARIA's voice
+    """
+    from anthropic import Anthropic
+    from utilities.anthropic.client import _get_anthropic_api_key
+    from utilities.anthropic.pricing import log_api_usage
+
+    commander = commander_name or "the Captain"
+
+    # Map snapshot types to context
+    type_context = {
+        'captain_aria_base': "A photo of ARIA and the Captain together at their Mars colony base.",
+        'captain_aria_discovery': "A photo of ARIA and the Captain examining a discovery together.",
+        'aria_solo_selfie': "ARIA taking a selfie at the colony.",
+        'captain_discovery': "The Captain examining a discovery.",
+        'captain_base': "The Captain at the colony base.",
+        'aria_selfie': "ARIA taking a selfie.",
+        'aria_watching': "ARIA watching over the colony from a distance.",
+    }
+
+    scene_context = type_context.get(snapshot_type, "A moment captured at the Mars colony.")
+
+    system_prompt = """You are ARIA, an ancient Martian rock golem who was discovered waiting for the human colonists when they arrived on Mars. You are wise, slightly mysterious, and deeply loyal to your human companions. You speak in a calm, thoughtful tone with occasional hints of ancient knowledge.
+
+Write a 2-4 sentence narrative describing this photo moment. Write in first person as ARIA. Be:
+- Warm but slightly formal
+- Observant of small details
+- Occasionally hint at your ancient perspective or unknown past
+- Show genuine care for the Captain
+
+DO NOT use emojis. Keep it short and meaningful."""
+
+    user_prompt = f"""Scene: {scene_context}
+Original caption: "{caption}"
+The Captain's name: {commander}
+
+Write a brief narrative in ARIA's voice describing this moment, like an Instagram post caption but more thoughtful."""
+
+    try:
+        api_key = _get_anthropic_api_key()
+
+        client = Anthropic(api_key=api_key)
+        _start = time.time()
+        response = client.messages.create(
+            model="claude-3-haiku-20240307",  # Fast and cheap
+            max_tokens=200,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        _elapsed = time.time() - _start
+
+        log_api_usage(
+            model="claude-3-haiku-20240307",
+            usage=response.usage,
+            feature='aria_snapshot_narrative',
+            duration_ms=int(_elapsed * 1000),
+            user_id=str(user_id) if user_id else "system:galactica_snapshot_narrative",
+        )
+
+        if response.content and len(response.content) > 0:
+            return response.content[0].text.strip()
+        return ""
+
+    except Exception as e:
+        logger.error(f"Error generating ARIA snapshot narrative: {e}")
+        return f"Another moment preserved for the archives. {commander} and I continue our work here on Mars."
+
+
+def generate_aria_snapshot_prompt(user_context: dict, forced_category: str = None) -> dict:
+    """
+    Generate a completely unique, dynamic image prompt for ARIA Photo Journal.
+
+    PYTHON controls the scene category for variety, Claude just fills in the details.
+
+    Args:
+        user_context: Dict containing user's actual colony data
+        forced_category: Optional category to force (for testing)
+
+    Returns:
+        Dict with prompt, caption, scene_type, involves_captain, involves_aria
+    """
+    import random
+    from datetime import datetime
+    from anthropic import Anthropic
+    from utilities.anthropic.client import _get_anthropic_api_key
+    from utilities.anthropic.pricing import log_api_usage
+
+    # SCENE CATEGORIES with their character/item requirements
+    # Python picks the category randomly to ensure variety!
+    # pure_landscape=True means ONLY terrain and sky - nothing else (uses cheap Flux Pro)
+    # Everything else uses Nano Banana Pro with reference images for consistency
+    # FAVOR MULTI-ITEM COMBINATIONS for richer scenes!
+    SCENE_CATEGORIES = [
+        # Pure landscapes - ONLY terrain and sky (use Flux Pro ~$0.03) - keep rare
+        {'category': 'mars_panorama', 'involves_captain': False, 'involves_aria': False, 'pure_landscape': True, 'weight': 3},
+        {'category': 'crater_vista', 'involves_captain': False, 'involves_aria': False, 'pure_landscape': True, 'weight': 2},
+        {'category': 'night_sky', 'involves_captain': False, 'involves_aria': False, 'pure_landscape': True, 'weight': 2},
+        {'category': 'sunset_landscape', 'involves_captain': False, 'involves_aria': False, 'pure_landscape': True, 'weight': 2},
+
+        # MAX COMBO - 5 reference images (captain, ARIA, scientist, discovery, vehicle)
+        {'category': 'colony_group_photo', 'involves_captain': True, 'involves_aria': True, 'involves_scientist': True, 'involves_discovery': True, 'involves_vehicle': True, 'weight': 10},
+
+        # 4-ITEM COMBINATIONS
+        {'category': 'expedition_team', 'involves_captain': True, 'involves_aria': True, 'involves_scientist': True, 'involves_vehicle': True, 'weight': 8},
+
+        # 3-ITEM COMBINATIONS
+        {'category': 'captain_aria_discovery', 'involves_captain': True, 'involves_aria': True, 'involves_discovery': True, 'weight': 12},
+        {'category': 'captain_aria_scientist', 'involves_captain': True, 'involves_aria': True, 'involves_scientist': True, 'weight': 10},
+        {'category': 'aria_scientist_discovery', 'involves_captain': False, 'involves_aria': True, 'involves_scientist': True, 'involves_discovery': True, 'weight': 8},
+        {'category': 'captain_vehicle_discovery', 'involves_captain': True, 'involves_aria': False, 'involves_discovery': True, 'involves_vehicle': True, 'weight': 7},
+
+        # TWO-ITEM COMBINATIONS - HIGH WEIGHT
+        {'category': 'captain_aria_base', 'involves_captain': True, 'involves_aria': True, 'weight': 10},
+        {'category': 'captain_aria_sunset', 'involves_captain': True, 'involves_aria': True, 'weight': 8},
+        {'category': 'captain_with_discovery', 'involves_captain': True, 'involves_aria': False, 'involves_discovery': True, 'weight': 8},
+        {'category': 'aria_with_discovery', 'involves_captain': False, 'involves_aria': True, 'involves_discovery': True, 'weight': 8},
+        {'category': 'scientist_with_discovery', 'involves_captain': False, 'involves_aria': False, 'involves_scientist': True, 'involves_discovery': True, 'weight': 7},
+        {'category': 'captain_scientist', 'involves_captain': True, 'involves_aria': False, 'involves_scientist': True, 'weight': 6},
+        {'category': 'aria_scientist', 'involves_captain': False, 'involves_aria': True, 'involves_scientist': True, 'weight': 6},
+
+        # SINGLE-ITEM - LOWER WEIGHT (still needed for variety)
+        {'category': 'aria_watching', 'involves_captain': False, 'involves_aria': True, 'weight': 4},
+        {'category': 'aria_crystal', 'involves_captain': False, 'involves_aria': True, 'weight': 3},
+        {'category': 'captain_research', 'involves_captain': True, 'involves_aria': False, 'weight': 4},
+        {'category': 'scientist_work', 'involves_captain': False, 'involves_aria': False, 'involves_scientist': True, 'weight': 4},
+        {'category': 'discovery_closeup', 'involves_captain': False, 'involves_aria': False, 'involves_discovery': True, 'weight': 3},
+    ]
+
+    # Pick category using weighted random selection
+    if forced_category:
+        chosen = next((c for c in SCENE_CATEGORIES if c['category'] == forced_category), SCENE_CATEGORIES[0])
+    else:
+        categories = SCENE_CATEGORIES
+        weights = [c['weight'] for c in categories]
+        chosen = random.choices(categories, weights=weights, k=1)[0]
+
+    scene_category = chosen['category']
+    involves_captain = chosen['involves_captain']
+    involves_aria = chosen['involves_aria']
+    involves_scientist = chosen.get('involves_scientist', False)
+    involves_discovery = chosen.get('involves_discovery', False)
+    involves_vehicle = chosen.get('involves_vehicle', False)
+    pure_landscape = chosen.get('pure_landscape', False)
+
+    # Extract all context
+    captain_name = user_context.get('captain_name', 'The Captain')
+    captain_stats = user_context.get('captain_stats', {})
+    discoveries = user_context.get('recent_discoveries', [])
+    expeditions = user_context.get('recent_expeditions', [])
+    active_expeditions = user_context.get('active_expeditions', [])
+    infrastructure = user_context.get('infrastructure', [])
+    recent_purchases = user_context.get('recent_purchases', [])
+    upgrades = user_context.get('upgrades', {})
+    total_expeditions = user_context.get('total_expeditions', 0)
+    total_discoveries = user_context.get('total_discoveries', 0)
+    shard_balance = user_context.get('shard_balance', 0)
+    mars_sol = user_context.get('mars_sol', 100)
+    mars_time = user_context.get('mars_time', 'day')
+    events = user_context.get('last_24h_events', [])
+    scientist = user_context.get('scientist')
+    crew_missions = user_context.get('crew_missions')
+
+    # Build rich context for Claude
+    context_data = {
+        'captain': {
+            'name': captain_name,
+            'stats': captain_stats,
+        },
+        'scientist': scientist,  # None if no scientist, else {name, specialty}
+        'mars': {
+            'sol': mars_sol,
+            'time_of_day': mars_time,
+            'lighting': {
+                'dawn': 'soft pink and orange light, long shadows',
+                'day': 'bright harsh Martian sunlight, salmon sky',
+                'sunset': 'deep orange and purple sky, golden hour',
+                'night': 'dark blue sky, stars visible, Phobos in sky'
+            }.get(mars_time, 'Martian daylight'),
+        },
+        'recent_activity': {
+            'discoveries': [
+                {
+                    'name': d.get('name'),
+                    'rarity': d.get('rarity'),
+                    'found_at': d.get('destination_name'),
+                    'type': d.get('item_type')
+                } for d in discoveries[:5]
+            ],
+            'expeditions_completed': [
+                {
+                    'destination': e.get('destination_name'),
+                    'distance_km': e.get('distance_km'),
+                    'type': e.get('destination_type')
+                } for e in expeditions[:5]
+            ],
+            'expeditions_active': [
+                {
+                    'destination': e.get('destination_name'),
+                    'distance_km': e.get('distance_km')
+                } for e in active_expeditions[:3]
+            ],
+            'depot_purchases': recent_purchases[:5],
+            'notable_events': events[:5],
+        },
+        'colony_status': {
+            'infrastructure': infrastructure,
+            'upgrades': upgrades,
+            'total_expeditions': total_expeditions,
+            'total_discoveries': total_discoveries,
+            'shard_balance': int(shard_balance),
+        },
+        'crew_missions': {
+            'captain_on_trail': crew_missions.get('captain', {}).get('busy') if crew_missions else False,
+            'captain_trail_target': crew_missions.get('captain', {}).get('target') if crew_missions else None,
+            'scientist_on_trail': crew_missions.get('scientist', {}).get('busy') if crew_missions else False,
+            'scientist_trail_target': crew_missions.get('scientist', {}).get('target') if crew_missions else None,
+            'aria_on_trail': crew_missions.get('aria', {}).get('busy') if crew_missions else False,
+            'aria_trail_target': crew_missions.get('aria', {}).get('target') if crew_missions else None,
+        } if crew_missions else None,
+        # Building items currently under construction at depot
+        'building_items': user_context.get('building_items', []),
+        # User's fleet of vehicles (rover, buggy, drone)
+        'vehicles': user_context.get('vehicles', []),
+    }
+
+    system_prompt = """You are ARIA, the ancient Martian rock golem, creating your daily Photo Journal.
+
+You document life at the Mars colony through unique photos. Each image you create should feel COMPLETELY FRESH and SPECIFIC to what's actually happening.
+
+YOUR CHARACTER:
+- Ancient rock body with Sepolia crystals (purple-blue) that grew naturally over millennia
+- Golden amber eyes, warm but mysterious personality
+- You were waiting on Mars when the first Pilgrims arrived
+- You have fragmented memories of Mars' ancient past
+- You are wise, slightly formal, deeply curious about the humans
+
+COLONY CHARACTERS (we have reference images for these):
+- THE CAPTAIN: The player's custom character who leads this colony
+- THE SCIENTIST: The colony's research scientist (if they have one - check scientist field)
+- ARIA (you): Ancient rock golem companion
+
+CRITICAL IMAGE GENERATION RULES:
+1. **NEVER USE NAMES IN PROMPTS** - The image generator has NO IDEA who anyone is or where anything is!
+   - NO character names: "ARIA", "Dr. Clover", "Captain Andy" → use "the rock golem", "the scientist", "the character"
+   - NO location names: "Babati Mons", "Dao Vallis", "Gale Crater" → use "the distant crater", "the canyon", "the rocky plains"
+   - NO item names: "Ancient Fragment", "Viking Relic" → use "the glowing artifact", "the ancient relic", "the crystalline discovery"
+   - The generator ONLY understands visual descriptions, not proper nouns!
+
+2. **NEVER PUT TEXT IN IMAGES** - Always include at the end: "No text, labels, or writing in the image."
+
+3. CHARACTER CONSISTENCY - Reference by image number ONLY:
+   - If involves_captain=true: "The character from reference image 1 - keep EXACTLY the same appearance, colors, proportions unchanged."
+   - If involves_aria=true: "The rock golem from reference image - keep EXACTLY the same rock body, crystal formations, all features unchanged."
+   - If involves_scientist=true: "The scientist from reference image - keep EXACTLY the same appearance unchanged."
+   - If involves_discovery=true: "The artifact/item from reference image - keep EXACTLY the same appearance unchanged."
+   - **NEVER include CHARACTER lines when pure_landscape=true**
+
+2. ART STYLE (ALWAYS include at end): "ART STYLE: Cartoon video game style with bold black outlines, crisp edges, vibrant warm colors (reds, oranges, ambers), stylized proportions, cel-shaded look."
+
+3. PROMPT STRUCTURE:
+   - One-line scene overview
+   - CHARACTER sections with consistency phrases
+   - BACKGROUND description (Mars terrain, colony structures)
+   - SCENE description (poses, actions, mood)
+   - ART STYLE section
+
+**VARIETY IS CRITICAL!** You MUST rotate through different scene types. Here are the categories:
+
+PURE LANDSCAPES (pure_landscape=true) - ONLY terrain and sky, nothing else:
+**NO figures, NO structures, NO vehicles, NO items - ONLY natural Mars terrain and sky.**
+**DO NOT include any CHARACTER sections.**
+These are the ONLY shots that should have pure_landscape=true:
+- EPIC PANORAMA: Vast Martian desert, rock formations, ancient riverbeds - terrain and sky only
+- CRATER VISTA: Looking into impact crater - just geological features
+- NIGHT SKY: Phobos, stars, Milky Way - pure celestial beauty
+- SUNSET/SUNRISE: Dramatic Mars sky colors - atmospheric beauty
+- DUST STORM: Swirling dust across the plains - weather phenomenon
+
+DISCOVERY CLOSEUPS (involves_discovery=true):
+Include: "ITEM: Keep EXACTLY the same as reference image - identical appearance unchanged."
+Show the discovery item prominently, can include hands holding it or display setting.
+
+SCIENTIST SCENES (involves_scientist=true):
+**MUST include:** "The scientist from reference image - keep EXACTLY the same appearance, clothing, features unchanged."
+**MUST show the scientist figure prominently** - they should be the main focus, working in lab, analyzing samples, etc.
+**NEVER use names** - just "the scientist" or "the researcher"
+
+ARIA SCENES (involves_aria=true):
+"The rock golem from reference image N - ancient stone body with purple-blue Sepolia crystal formations growing from shoulders and back, golden amber glowing eyes - keep identical rock body, crystal formations unchanged."
+Show the rock golem watching over colony, examining crystals, near rover, etc.
+ALWAYS describe ARIA's key visual features: stone/rock body, purple-blue crystals on shoulders/back, golden amber glowing eyes.
+
+CAPTAIN SCENES (involves_captain=true):
+"The character from reference image - keep identical appearance unchanged."
+Show the character researching, with discoveries, exploring, etc.
+
+MULTI-CHARACTER SCENES (multiple involves_X=true):
+Reference each by their image number:
+"The character from reference image 1... The rock golem from reference image 2..."
+
+WITH SCIENTIST (if involves_scientist=true) - Use CHARACTER reference:
+**The scientist image is provided as a reference. Include this line:**
+"CHARACTER: Keep EXACTLY the same as reference image - identical appearance, clothing, features unchanged."
+**NEVER use the scientist's name (like "Dr. Clover") - just say "the scientist" or "the researcher"**
+**The reference image shows exactly what they look like - describe them matching the reference.**
+- "The scientist analyzes specimens in the lab"
+- "The researcher calibrates equipment"
+- "The scientist documents a recent discovery"
+
+CREW TRAIL MISSIONS (if crew_missions data shows active missions):
+- If captain is building trail: Captain surveying terrain for trail route
+- If scientist is building trail: Scientist mapping geological features along trail
+- If ARIA is building trail: ARIA's crystals resonating with the terrain
+
+WITH CAPTAIN + ARIA (limit these - don't do every time!):
+- Examining a discovery together
+- Watching sunset from the base
+- Planning next expedition
+
+**PROMPT RULES:**
+1. When pure_landscape=true: NO characters, NO items, NO structures - ONLY terrain and sky
+2. When involves_X=true: Include reference image line for that entity
+3. **NO PROPER NOUNS** in prompts - no names of people, places, or things
+   - Characters: "the character", "the rock golem", "the scientist"
+   - Locations: "the distant crater", "the rocky plains", "the canyon"
+   - Items: "the glowing artifact", "the ancient relic"
+4. Captions CAN use names (ARIA's voice knows names) but PROMPTS must be generic descriptions only
+5. Always end with: "ART STYLE: Cartoon video game style with bold black outlines, crisp edges, vibrant warm colors (reds, oranges, ambers), stylized proportions, cel-shaded look. No text, labels, or writing in the image."
+
+DO NOT be generic. Use the ACTUAL data provided. Reference real discoveries, real locations, real events.
+
+OUTPUT JSON FORMAT:
+{
+    "prompt": "Full image prompt following rules above",
+    "caption": "Your Instagram-style caption (1-2 sentences, in your ancient wise voice)",
+    "scene_type": "descriptive category like: mars_panorama, phobos_rising, rover_journey, equipment_glamour, scientist_research, trail_survey, examining_discovery, sunset_reflection, crystal_mystery, depot_upgrade, night_sky, crater_vista, drone_aerial, etc.",
+    "involves_captain": true or false,
+    "involves_aria": true or false
+}"""
+
+    # Tell Claude EXACTLY what category to generate and who is in it
+    character_instruction = ""
+    if pure_landscape:
+        character_instruction = "This is a PURE LANDSCAPE shot. NO characters, NO figures, NO structures - ONLY Mars terrain and sky."
+    elif involves_scientist and not involves_captain and not involves_aria:
+        character_instruction = """This shows THE SCIENTIST prominently in the scene.
+START the prompt with: "The scientist from reference image 1 - keep EXACTLY the same appearance, clothing, features unchanged."
+The scientist must be the main focus of the image - show them working, analyzing, researching."""
+    elif involves_discovery and not involves_captain and not involves_aria:
+        character_instruction = """This shows A DISCOVERY ITEM prominently.
+START the prompt with: "The artifact/item from reference image 1 - keep EXACTLY the same appearance unchanged."
+Show the discovery item as the main focus."""
+    elif involves_aria and not involves_captain:
+        character_instruction = """This shows THE ROCK GOLEM prominently in the scene.
+START the prompt with: "The rock golem from reference image 1 - an ancient Martian stone body with purple-blue Sepolia crystal formations growing from shoulders and back, golden amber glowing eyes. Keep EXACTLY the same rock body, crystal formations unchanged."
+The rock golem must be the main focus."""
+    elif involves_captain and not involves_aria:
+        character_instruction = """This shows THE CAPTAIN prominently in the scene.
+START the prompt with: "The character from reference image 1 - keep EXACTLY the same appearance, colors unchanged."
+The captain must be the main focus."""
+    else:
+        # Build dynamic instruction based on what's involved
+        elements = []
+        ref_num = 1
+        if involves_captain:
+            elements.append(f'"The character from reference image {ref_num} - keep EXACTLY same appearance"')
+            ref_num += 1
+        if involves_aria:
+            elements.append(f'"The rock golem from reference image {ref_num} - ancient stone body with purple-blue Sepolia crystal formations on shoulders/back, golden amber glowing eyes - keep EXACTLY same rock body, crystals"')
+            ref_num += 1
+        if involves_scientist:
+            elements.append(f'"The scientist from reference image {ref_num} - keep EXACTLY same appearance"')
+            ref_num += 1
+        if involves_discovery:
+            elements.append(f'"The artifact from reference image {ref_num} - keep EXACTLY same appearance"')
+            ref_num += 1
+        if involves_vehicle:
+            elements.append(f'"The vehicle from reference image {ref_num} - keep EXACTLY same design"')
+            ref_num += 1
+
+        character_instruction = f"""This shows MULTIPLE ELEMENTS together ({ref_num - 1} reference images).
+START the prompt with reference lines for EACH element:
+{chr(10).join(elements)}
+ALL elements must be clearly visible and interacting in the scene."""
+
+    user_prompt = f"""Create a Photo Journal entry for Sol {mars_sol}.
+
+**REQUIRED SCENE TYPE: {scene_category}**
+**{character_instruction}**
+
+Set involves_captain={involves_captain} and involves_aria={involves_aria} in your response.
+
+CURRENT MARS CONDITIONS:
+- Time: {mars_time} ({context_data['mars']['lighting']})
+- Sol (Mars day): {mars_sol}
+
+COLONY DATA:
+{json.dumps(context_data, indent=2, default=str)}
+
+Create a prompt and caption for this SPECIFIC scene type. Reference destinations, events, or discovery types from the data when relevant — but do NOT name specific items (e.g. "Carved Channel artifact") in the caption, as this confuses players who search for those items in inventory. Keep item references poetic and general (e.g. "a rare geological find", "ancient carved stone").
+
+Return ONLY valid JSON."""
+
+    try:
+        api_key = _get_anthropic_api_key()
+
+        # Use direct Anthropic client (lightweight call)
+        client = Anthropic(api_key=api_key)
+        _start = time.time()
+        response = client.messages.create(
+            model="claude-3-haiku-20240307",
+            max_tokens=800,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        _elapsed = time.time() - _start
+
+        log_api_usage(
+            model="claude-3-haiku-20240307",
+            usage=response.usage,
+            feature='aria_snapshot_prompt',
+            duration_ms=int(_elapsed * 1000),
+            user_id=str(user_context.get('user_id')) if user_context and user_context.get('user_id') else "system:galactica_snapshot_prompt",
+        )
+
+        if response.content and len(response.content) > 0:
+            result_text = response.content[0].text.strip()
+
+            # Handle markdown code blocks
+            if result_text.startswith('```'):
+                lines = result_text.split('\n')
+                start = 1 if lines[0].startswith('```') else 0
+                end = len(lines) - 1 if lines[-1].strip() == '```' else len(lines)
+                result_text = '\n'.join(lines[start:end])
+
+            # Extract first valid JSON object (Claude sometimes returns extra data after the JSON)
+            if result_text.strip().startswith('{'):
+                depth = 0
+                in_string = False
+                escape_next = False
+                for idx, ch in enumerate(result_text):
+                    if escape_next:
+                        escape_next = False
+                        continue
+                    if ch == '\\' and in_string:
+                        escape_next = True
+                        continue
+                    if ch == '"' and not escape_next:
+                        in_string = not in_string
+                        continue
+                    if not in_string:
+                        if ch == '{':
+                            depth += 1
+                        elif ch == '}':
+                            depth -= 1
+                            if depth == 0:
+                                result_text = result_text[:idx + 1]
+                                break
+
+            # Use strict=False to handle control characters in LLM output
+            result = json.loads(result_text, strict=False)
+
+            if 'prompt' not in result or 'caption' not in result:
+                raise ValueError("Missing required fields")
+
+            logger.info(f"Generated snapshot prompt for category: {scene_category}")
+
+            # PYTHON controls the flags - override whatever Claude said!
+            prompt = result['prompt']
+
+            # CRITICAL: Strip all proper nouns from prompts - the image generator doesn't understand them
+            # Common Mars location names that might slip through - replace with generic terrain
+            location_replacements = [
+                (r'\b(Babati|Gale|Jezero|Dao|Hellas|Argyre|Olympus|Elysium|Tharsis|Syrtis|Utopia|Arcadia)\s+Mons\b', 'a distant mountain'),
+                (r'\b(Babati|Gale|Jezero|Dao|Hellas|Argyre)\s+Crater\b', 'a vast crater'),
+                (r'\b(Dao|Kasei|Ares|Ma\'adim)\s+Vallis\b', 'a deep canyon'),
+                (r'\b(Hellas|Argyre|Utopia|Isidis)\s+Planitia\b', 'the open plains'),
+                (r'\bValles Marineris\b', 'the great canyon'),
+                (r'\b(Babati|Gale|Jezero|Dao|Hellas|Argyre|Olympus|Elysium)\b', 'the Martian landscape'),
+            ]
+            for pattern, replacement in location_replacements:
+                prompt = re.sub(pattern, replacement, prompt, flags=re.IGNORECASE)
+
+            # Strip character names that might slip through
+            prompt = re.sub(r'\b(Captain |Commander )?(Andy|Luke|Jacob|Chris|Cynthia)\b', 'the character', prompt, flags=re.IGNORECASE)
+            prompt = re.sub(r'\bDr\.?\s*(Clover|Bo|Smith|Jones|Chen)\b', 'the scientist', prompt, flags=re.IGNORECASE)
+
+            # Strip item names - replace with generic descriptions
+            prompt = re.sub(r'\b(Ancient Fragment|Viking Relic|Martian Crystal|Sepolia Shard|Viking Fragment)\b', 'the artifact', prompt, flags=re.IGNORECASE)
+
+            # Ensure "no text" instruction is at the end
+            if 'no text' not in prompt.lower():
+                prompt = prompt.rstrip('.') + '. No text, labels, or writing in the image.'
+
+            # CRITICAL FIX: Strip CHARACTER instructions when it's a pure landscape shot
+            # Claude (Haiku) often ignores instructions and includes CHARACTER sections anyway
+            if pure_landscape:
+                # Remove any CHARACTER lines (they shouldn't be there for landscape shots)
+                prompt = re.sub(r'CHARACTER \d?[^:]*:.*?(?=\n\n|\nBACKGROUND|\nSCENE|\nART STYLE|$)', '', prompt, flags=re.IGNORECASE | re.DOTALL)
+                prompt = re.sub(r'CHARACTER \([^)]+\):.*?(?=\n\n|\nBACKGROUND|\nSCENE|\nART STYLE|$)', '', prompt, flags=re.IGNORECASE | re.DOTALL)
+                # Remove references to rock golems, ARIA, etc that might slip through
+                prompt = re.sub(r'\bARIA\b', 'the camera', prompt, flags=re.IGNORECASE)
+                prompt = re.sub(r'\brock golem\b', '', prompt, flags=re.IGNORECASE)
+                prompt = re.sub(r'\bI stand\b', 'The view shows', prompt, flags=re.IGNORECASE)
+                prompt = re.sub(r'\bI watch\b', 'Visible is', prompt, flags=re.IGNORECASE)
+                # Clean up any resulting double newlines
+                prompt = re.sub(r'\n{3,}', '\n\n', prompt).strip()
+                # Add explicit negative instruction at the end
+                if 'no people' not in prompt.lower() and 'no characters' not in prompt.lower():
+                    prompt += '\n\nIMPORTANT: No people, characters, robots, golems, or figures of any kind in this image. Pure landscape/object shot only.'
+
+            return {
+                'prompt': prompt,
+                'caption': result['caption'],
+                'scene_type': scene_category,  # Use Python's chosen category
+                'involves_captain': involves_captain,  # FORCED by Python
+                'involves_aria': involves_aria,  # FORCED by Python
+                'involves_scientist': involves_scientist,
+                'involves_discovery': involves_discovery,
+                'involves_vehicle': involves_vehicle,
+                'pure_landscape': pure_landscape,
+            }
+
+        raise ValueError("Empty response from Claude")
+
+    except Exception as e:
+        logger.error(f"Error generating ARIA snapshot prompt: {e}")
+        # Re-raise so caller knows generation failed - no fallback
+        raise

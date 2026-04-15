@@ -1054,7 +1054,9 @@
       "Goal",
       "Ground rules (keep these when resuming)",
       "What shipped (3 rounds so far)",
-      "Pick up here — Round 4 targets",
+      "Pick up here — Round 5: `claude_utils.py` split (PLANNED, NOT STARTED)",
+      "✅ Completed — Round 4: `signal_utils.py` split (2026-04-14)",
+      "Deferred — Round 6+ targets",
       "Stock of biggest holes (as of 2026-04-14 evening)",
       "Known follow-ups (deferred, not blocking the refactor)",
       "Refactor-session hygiene (do this every time)",
@@ -1256,6 +1258,12 @@
       "start_background_snapshot_generation — Start daily snapshot generation in a background thread."
     ]
   },
+  "utilities/brainstorm_chat.py": {
+    "description": "Generic brainstorm chat used by tech tree and trail brainstorm pages.",
+    "exports": [
+      "brainstorm_chat — Generic brainstorm chat with Claude. Used by tech tree and trail brainstorm pages."
+    ]
+  },
   "utilities/captains_log_utils.py": {
     "description": "Captain's Log Utilities - Chat with Your Captain",
     "exports": [
@@ -1268,24 +1276,20 @@
       "get_captain_greeting — Get an initial greeting from the captain to start a conversation."
     ]
   },
-  "utilities/claude_utils.py": {
-    "description": "Claude API Utilities - Production Optimized with Accurate Pricing",
+  "utilities/character_quotes.py": {
+    "description": "Scientist/Commander character quote generators — used in email notifications.",
     "exports": [
-      "log_api_usage — Log an API call to kumori_api_usage in a background thread.",
-      "get_model_pricing — Get accurate pricing per token for different Claude models",
-      "class ClaudeClient",
-      "create_client — Create a Claude client with sensible defaults.",
-      "stream_response — Stream a response from Claude for a simple prompt.",
-      "chat_with_history — Chat with Claude using conversation history.",
-      "get_available_models — Get information about available Claude models.",
-      "get_latest_model — Get the latest available Claude model from a specific family.",
-      "generate_text — Generate text response from Claude based on a prompt.",
-      "process_image — Process an image with Claude and generate a text response.",
-      "chat — Conduct a multi-turn chat conversation with Claude.",
-      "generate_conversation_summary — Generate a summary of the conversation using Claude",
       "generate_scientist_quote — Generate a personalized scientist quote for email notifications.",
-      "generate_commander_quote — Generate a personalized commander quote for email notifications.",
-      "get_claude_response_for_shared_chat — Get Claude response for shared chat with collaborative context"
+      "generate_commander_quote — Generate a personalized commander quote for email notifications."
+    ]
+  },
+  "utilities/claude_utils.py": {
+    "description": "Shim — real code lives in utilities/anthropic/ and feature-specific modules."
+  },
+  "utilities/conversation_summary.py": {
+    "description": "Conversation summary generator for shared-chat onboarding.",
+    "exports": [
+      "generate_conversation_summary — Generate a summary of the conversation using Claude"
     ]
   },
   "utilities/depot_utils.py": {
@@ -1367,6 +1371,12 @@
       "send_welcome_back_email — Backwards-compat wrapper - use fomo_email_utils.send_welcome_back_email directly."
     ],
     "description": "Email sending via Gmail API — HTML templates, FOMO emails, notification formatting"
+  },
+  "utilities/golem_names.py": {
+    "description": "Narog (golem) name suggestion generator.",
+    "exports": [
+      "suggest_golem_names — Generate 5 lore-appropriate Narog name suggestions using Haiku."
+    ]
   },
   "utilities/google_auth_utils.py": {
     "description": "Simple Google OAuth2 authentication utility",
@@ -1599,6 +1609,12 @@
       "update_session_balance — Update the cached balance in session after a known transaction."
     ],
     "keywords": "session cache, invalidate balance, invalidate nav, cache keys"
+  },
+  "utilities/shared_chat.py": {
+    "description": "Kumori collaborative shared-chat response generator.",
+    "exports": [
+      "get_claude_response_for_shared_chat — Get Claude response for shared chat with collaborative context"
+    ]
   },
   "utilities/shop_utils.py": {
     "description": "Shop Utilities — equipment effects, trail bonuses, commander stats.",
@@ -2104,7 +2120,9 @@
   "utilities/aria/prompts.py": {
     "description": "ARIA system-prompt builders — friendly-tier vs mysterious-tier prompt composition.",
     "exports": [
-      "get_aria_system_prompt — Generate ARIA's system prompt with optional user context."
+      "get_aria_system_prompt — Generate ARIA's system prompt with optional user context.",
+      "generate_aria_snapshot_narrative — Generate an ARIA-voice narrative for a photo journal snapshot.",
+      "generate_aria_snapshot_prompt — Generate a completely unique, dynamic image prompt for ARIA Photo Journal."
     ]
   },
   "utilities/aria/relationship.py": {
@@ -2182,6 +2200,35 @@
   },
   "utilities/static/feeds.py": {
     "description": "Sitemap, robots.txt, and Atom feed XML — crawler-facing static content."
+  },
+  "utilities/anthropic/__init__.py": {
+    "description": "Anthropic SDK wrapper package — pricing, client, convenience helpers."
+  },
+  "utilities/anthropic/client.py": {
+    "description": "ClaudeClient — Anthropic SDK wrapper with streaming, image, web search.",
+    "exports": [
+      "class ClaudeClient"
+    ]
+  },
+  "utilities/anthropic/convenience.py": {
+    "description": "Convenience functions around ClaudeClient — create_client, stream_response, etc.",
+    "exports": [
+      "create_client — Create a Claude client with sensible defaults.",
+      "stream_response — Stream a response from Claude for a simple prompt.",
+      "chat_with_history — Chat with Claude using conversation history.",
+      "get_available_models — Get information about available Claude models.",
+      "get_latest_model — Get the latest available Claude model from a specific family.",
+      "generate_text — Generate text response from Claude based on a prompt.",
+      "process_image — Process an image with Claude and generate a text response.",
+      "chat — Conduct a multi-turn chat conversation with Claude."
+    ]
+  },
+  "utilities/anthropic/pricing.py": {
+    "description": "Claude model catalog, pricing, and kumori_api_usage logging.",
+    "exports": [
+      "log_api_usage — Log an API call to kumori_api_usage in a background thread.",
+      "get_model_pricing — Get accurate pricing per token for different Claude models"
+    ]
   },
   "utilities/signal/__init__.py": {
     "description": "Signal package — split from utilities/signal_utils.py."
