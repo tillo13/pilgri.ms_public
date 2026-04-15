@@ -108,7 +108,7 @@ def get_user_fomo_data(user_id: int) -> Dict:
                     COUNT(*) as total_discoveries,
                     COUNT(*) FILTER (WHERE di.rarity = 'legendary') as legendary_count,
                     COUNT(*) FILTER (WHERE di.rarity = 'rare') as rare_count,
-                    COALESCE(SUM(ed.enhanced_value), 0) as total_value
+                    COALESCE(SUM(ed.enhanced_value * ed.quantity), 0) as total_value
                 FROM pilgrim.expedition_discoveries ed
                 JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
                 JOIN pilgrim.discovery_items di ON ed.discovery_item_id = di.id

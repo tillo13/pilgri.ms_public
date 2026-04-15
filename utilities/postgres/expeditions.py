@@ -145,8 +145,8 @@ def get_last_completed_buggy_expedition(user_id: int) -> Optional[Dict]:
                        SUM(CASE WHEN di.rarity = 'uncommon' THEN 1 ELSE 0 END) as uncommon_count,
                        SUM(CASE WHEN di.rarity = 'rare' THEN 1 ELSE 0 END) as rare_count,
                        SUM(CASE WHEN di.rarity = 'legendary' THEN 1 ELSE 0 END) as legendary_count,
-                       COALESCE(SUM(ed.enhanced_value), 0) as total_value,
-                       COALESCE(SUM(di.base_scientific_value), 0) as total_sv_from_items
+                       COALESCE(SUM(ed.enhanced_value * ed.quantity), 0) as total_value,
+                       COALESCE(SUM(di.base_scientific_value * ed.quantity), 0) as total_sv_from_items
                 FROM pilgrim.expeditions e
                 LEFT JOIN pilgrim.expedition_discoveries ed ON ed.expedition_id = e.id
                 LEFT JOIN pilgrim.discovery_items di ON ed.discovery_item_id = di.id
@@ -189,7 +189,7 @@ def get_user_expedition_history(user_id: int, limit: int = 50, offset: int = 0) 
                     mm.link as destination_link,
                     COUNT(ed.id) as discovery_count,
                     COUNT(CASE WHEN ed.claimed_by_user THEN 1 END) as claimed_count,
-                    SUM(CASE WHEN ed.claimed_by_user THEN ed.enhanced_value ELSE 0 END) as total_extracted,
+                    SUM(CASE WHEN ed.claimed_by_user THEN ed.enhanced_value * ed.quantity ELSE 0 END) as total_extracted,
                     EXTRACT(EPOCH FROM (e.completed_at - e.departed_at)) as duration_seconds,
                     -- Rarity breakdown
                     COUNT(CASE WHEN di.rarity = 'common' THEN 1 END) as common_count,
@@ -407,7 +407,7 @@ def claim_all_pending_discoveries(user_id: int, expedition_id: int = None) -> Di
 
             # First get the count and total value
             cur.execute(f"""
-                SELECT COUNT(*) as count, COALESCE(SUM(ed.enhanced_value), 0) as total_value
+                SELECT COUNT(*) as count, COALESCE(SUM(ed.enhanced_value * ed.quantity), 0) as total_value
                 FROM pilgrim.expedition_discoveries ed
                 JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
                 WHERE {where_clause}
