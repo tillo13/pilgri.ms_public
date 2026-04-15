@@ -66,7 +66,15 @@ MANUAL_DESCRIPTIONS = {
     "config_tech.py": "Tech tree config — 4 branches × 5 techs, SV costs, research times, branch effects",
     "config_shop.py": "Shop catalog — one-time depot items, trail duration calc, build time formula",
     # Utilities without good docstrings
-    "utilities/gmail_utils.py": "Email sending via Gmail API — HTML templates, FOMO emails, notification formatting",
+    "utilities/gmail_utils.py": "SHIM — real transport in utilities/email/transport.py. Email sending via Gmail API",
+    "utilities/email/transport.py": "Gmail API transport, HTML message assembly, send to recipient",
+    "utilities/email/fomo.py": "FOMO email context + send_welcome_back_email, generate_fomo_email_data, calculate_days_away",
+    "utilities/email/actions.py": "generate_action_url for email CTA links (claim discoveries, claim sepolia)",
+    "utilities/email/bonds.py": "ARIA bond email composition",
+    "utilities/email/admin.py": "admin-targeted notifications",
+    "utilities/email/mentions.py": "@-mention notifications",
+    "utilities/fomo_email_utils.py": "SHIM — real code in utilities/email/fomo.py + utilities/postgres/users + utilities/video_utils",
+    "utilities/video_utils.py": "MP4→GIF conversion, extract_thumbnail, get_user_video_data for FOMO emails",
     "utilities/replicate_utils.py": "All Replicate-backed generation + analysis — Flux image edits, Kontext progressive edits, Nano Banana Pro, Wan video, LLaVA vision. FluxGenerator + VisionAnalyzer classes.",
     "utilities/mars_math.py": "Mars math — haversine_distance(), Mars radius constant, coordinate calculations",
     "utilities/session_helpers.py": "Session cache invalidation — invalidate_balance_cache, invalidate_nav_cache, clear helpers",
@@ -79,21 +87,53 @@ MANUAL_DESCRIPTIONS = {
 
 # Extra keywords for key files (terms users search for but aren't in docstrings)
 EXTRA_KEYWORDS = {
-    "utilities/infrastructure_utils.py": "effective rate, mining drone, base total, income breakdown, shard generation rate, passive income, multiplier, bonus, accumulation cap, dust storm, solar, battery, nuclear",
+    "utilities/infrastructure_utils.py": "SHIM — real code in utilities/infrastructure/ package. effective rate, mining drone, base total, income breakdown",
+    "utilities/infrastructure/income.py": "calculate_accumulated_income, scientist shard multiplier, battery night multiplier, maintenance drone, shard generation rate, passive income, dust storm",
+    "utilities/infrastructure/environment.py": "MARS_SOL_HOURS, ACCUMULATION_CAP_HOURS, day-night cycle, dust factor, temperature factor, latitude factor",
+    "utilities/infrastructure/construction.py": "start_construction, build requirements, welcome bonus, check_construction_status",
+    "utilities/infrastructure/views.py": "get_infrastructure_page_data, build handler, infrastructure status",
+    "utilities/infrastructure/effects.py": "get_user_infrastructure_effects, infrastructure multipliers aggregation",
     "utilities/upgrades_utils.py": "upgrade cost, level, tier, build time, upgrade effects, passive income multiplier, power core",
-    "utilities/page_data_utils.py": "dashboard data, colony page, fleet status, activity feed",
+    "utilities/page_data_utils.py": "SHIM — real code in utilities/views/ package. dashboard data, colony page, fleet status",
+    "utilities/views/dashboard.py": "dashboard data, mission control, income display, effective rate",
+    "utilities/views/colony.py": "colony page data, discoveries, equipment, fog radius, activity feed",
+    "utilities/views/arrival.py": "arrival page, onboarding flow, new captain intro",
+    "utilities/views/while_you_were_away.py": "while-you-were-away greeting, offline summary, idle discoveries",
+    "utilities/views/depot.py": "depot page data, shop state, fog-of-war",
+    "utilities/views/misc.py": "misc page data helpers",
     "config_upgrades.py": "upgrade catalog, item config, level stats, cost multiplier, rover, shuttle, scanner, storage, power core, mining drone",
     "config_infrastructure.py": "building catalog, solar array, battery, habitat, xenobiology lab, nuclear plant, fusion reactor, greenhouse, build time, generation rate",
     "config_shop.py": "shop items, depot, purchase, buy, drone, equipment, one-time items, shop catalog",
     "config_tech.py": "tech tree, research branches, SV cost, research time, branch effects, exploration engineering xenobiology signal",
-    "utilities/expedition_utils.py": "expedition speed, vehicle, travel time, trail, distance, cost, discoveries",
+    "utilities/expedition_utils.py": "SHIM — real code in utilities/expeditions/ package. expedition speed, vehicle, travel time, trail, cost",
+    "utilities/expeditions/config.py": "BASE_SPEED_KM_PER_HOUR, BASE_COST_PER_KM, LIFE_SUPPORT_PER_DAY, EVA_HOURS_PER_DAY, TERRAIN_MODIFIERS",
+    "utilities/expeditions/cost.py": "calculate_expedition_cost, generate_expedition_narrative, sort_landmarks_by_cost",
+    "utilities/expeditions/preview.py": "get_expedition_cost_preview, get_expedition_cost_preview_formatted, charisma/logistics/experience discounts",
+    "utilities/expeditions/lifecycle.py": "launch_expedition, complete_expedition_if_ready, recall_expedition, fog_radius calculation, shard/SV reward",
+    "utilities/expeditions/travel.py": "calculate_segmented_travel_time, trail speed bonus, segment travel",
+    "utilities/expeditions/terrain.py": "calculate_speed_multiplier, calculate_travel_time, terrain info, geographic validity",
+    "utilities/expeditions/trails.py": "handle_trail_build_request, EVA suit trail bonus, consumables",
+    "utilities/expeditions/haul_data.py": "build_expedition_haul, discovery payload",
+    "utilities/expeditions/formatters.py": "expedition history payload, items payload",
+    "utilities/expeditions/page_data.py": "get_expeditions_page_data",
     "utilities/aria_utils.py": "ARIA chat, colony snapshot, AI assistant, personality tier, relationship",
     "utilities/shop_utils.py": "depot, shop items, purchase, mining drone, power equipment, availability",
     "utilities/discovery_utils.py": "discovery analysis, extraction, rarity, progressive weights, shard payout",
-    "utilities/signal_utils.py": "signal decoder, origin sites, echo messages, ARG, shard network, puzzle",
+    "utilities/signal_utils.py": "SHIM — real code in utilities/signal/ package. signal decoder, origin sites, echo, ARG",
+    "utilities/signal/claims.py": "claim_origin_site, visit_origin_site, decode_lost_signal_site, decode_signal_puzzle, decode_signal_tx, puzzle solvers",
+    "utilities/signal/sites.py": "origin sites CRUD, echo sites, network reconstruction percent (origin_progress + echo_progress), closest pilgrim",
+    "utilities/signal/handlers.py": "handle_origin_site_claim, handle_origin_site_visit, commander name lookup",
+    "utilities/signal/rewards.py": "legendary item generation for origin sites, visitor rewards, eligibility payload",
+    "utilities/signal/config.py": "visitor tiers, signal config",
     "utilities/db_bugs.py": "bug tracker, bugs, QA, priority, status, comments, history, screenshot, complete, reopen",
     "utilities/db_brainstorm.py": "brainstorm, comments, discussion, design decisions, team notes",
-    "utilities/pilgrimbot_utils.py": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state",
+    "utilities/pilgrimbot_utils.py": "SHIM — real code in utilities/pilgrimbot/ package. pilgrimbot entry, chat",
+    "utilities/pilgrimbot/personas.py": "PilgrimBot role personas and system prompts",
+    "utilities/pilgrimbot/storage.py": "conversation persistence, chat history",
+    "utilities/pilgrimbot/file_reader.py": "codebase file reader tool",
+    "utilities/pilgrimbot/tool_loop.py": "Anthropic tool-use loop, bug queries, player data lookups",
+    "utilities/pilgrimbot/context.py": "codemap loader, math_registry loader, system context builder",
+    "utilities/pilgrimbot/streaming.py": "SSE streaming response handler",
     "utilities/pilgrimbot_data.py": "player data queries, balance, upgrades, expeditions, research, crew, leaderboard, colony state",
     "utilities/db_map.py": "map, landmarks, discoveries, fog of war, frontier, exploration, coordinates",
     "utilities/crew_utils.py": "crew, captain, scientist, trails, missions, recovery",
@@ -102,7 +142,11 @@ EXTRA_KEYWORDS = {
     "utilities/mars_environment_utils.py": "mars conditions, sol cycle, solar efficiency, dust storm, atmospheric, fee multiplier",
     "utilities/idle_discovery_utils.py": "passive discovery, idle generation, background discoveries",
     "utilities/session_helpers.py": "session cache, invalidate balance, invalidate nav, cache keys",
-    "utilities/db_users.py": "user CRUD, auth, session hydration, login, register",
+    "utilities/db_users.py": "SHIM — real code in utilities/postgres/users.py",
+    "utilities/postgres/users.py": "user CRUD, auth, session hydration, get_user_by_id, get_user_by_email, get_all_users, calculate_reroll_cost, calculate_transmutation_cost",
+    "utilities/postgres/trails/segments.py": "trail km add, SV per km (2 SV/km), cron_drone_trail_build passive trail",
+    "utilities/postgres/trails/crew.py": "crew mission XP (5 per mission), captain/scientist/aria XP tracking",
+    "utilities/postgres/trails/aria_skills.py": "use_aria_resonance, resonance cooldown 24h, ARIA skill XP",
     "utilities/db_expeditions.py": "expedition CRUD, discovery items, expedition status",
     "utilities/db_wallets.py": "wallet operations, sepolia balance, primary wallet",
     "utilities/depot_utils.py": "balance helpers, wallet info, pricing, purchases, eth_to_display, display_to_eth",
@@ -129,7 +173,12 @@ SKIP_FILES = {"gcloud_deploy.py", "git_push.sh", "andy_check.py"}
 
 
 def extract_python_summary(filepath):
-    """Extract module docstring + public function signatures from a .py file."""
+    """Extract module docstring + public function signatures from a .py file.
+
+    If the file is a back-compat shim (docstring mentions "Back-compat shim"),
+    also record the real source modules it re-exports from so PilgrimBot can
+    direct readers to the real home instead of the shim.
+    """
     try:
         with open(filepath) as f:
             source = f.read()
@@ -142,7 +191,15 @@ def extract_python_summary(filepath):
     if docstring:
         info["description"] = docstring.strip().split("\n")[0]
 
+    is_shim = bool(docstring) and (
+        "Back-compat shim" in docstring
+        or docstring.startswith("Shim ")
+        or docstring.startswith("Shim —")
+        or docstring.startswith("Shim for")
+    )
+
     funcs = []
+    shim_of = set()
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.FunctionDef) and not node.name.startswith("_"):
             doc = ast.get_docstring(node)
@@ -156,8 +213,16 @@ def extract_python_summary(filepath):
             if doc:
                 entry += f" — {doc.strip().split(chr(10))[0]}"
             funcs.append(entry)
+        elif is_shim and isinstance(node, ast.ImportFrom) and node.module:
+            # Record real source modules this shim re-exports from
+            shim_of.add(node.module)
+
     if funcs:
         info["exports"] = funcs
+    if is_shim:
+        info["shim"] = True
+        if shim_of:
+            info["shim_of"] = sorted(shim_of)
 
     return info if info else None
 

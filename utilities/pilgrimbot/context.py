@@ -94,7 +94,7 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
     # Local imports to avoid cycles and keep module load cheap
     from utilities.pilgrimbot_context import (
         load_codemap, load_math_registry, load_endgame_registry,
-        find_relevant_math, load_dynamic_context,
+        find_relevant_math, load_dynamic_context, get_staleness_warning,
     )
     from utilities.pilgrimbot_data import query_player_data
 
@@ -208,5 +208,11 @@ def _load_surgical_context(plan, message, user_id, user_role, bug_mode):
                     loaded.append(f"brainstorm:{page_key}")
         except Exception as e:
             logger.warning(f"Brainstorm context failed: {e}")
+
+    # Prepend staleness warning if code/math context was loaded and registries are old
+    if extra and any(l.startswith(('code:', 'math:')) for l in loaded):
+        warning = get_staleness_warning()
+        if warning:
+            extra = f"\n\n{warning}" + extra
 
     return extra, loaded

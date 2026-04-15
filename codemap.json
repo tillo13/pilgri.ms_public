@@ -1285,7 +1285,19 @@
     ]
   },
   "utilities/claude_utils.py": {
-    "description": "Shim — real code lives in utilities/anthropic/ and feature-specific modules."
+    "description": "Shim — real code lives in utilities/anthropic/ and feature-specific modules.",
+    "shim": true,
+    "shim_of": [
+      "utilities.anthropic.client",
+      "utilities.anthropic.convenience",
+      "utilities.anthropic.pricing",
+      "utilities.aria.prompts",
+      "utilities.brainstorm_chat",
+      "utilities.character_quotes",
+      "utilities.conversation_summary",
+      "utilities.golem_names",
+      "utilities.shared_chat"
+    ]
   },
   "utilities/conversation_summary.py": {
     "description": "Conversation summary generator for shared-chat onboarding.",
@@ -1333,18 +1345,32 @@
     "keywords": "discovery analysis, extraction, rarity, progressive weights, shard payout"
   },
   "utilities/email_actions_utils.py": {
-    "description": "Back-compat shim — real code lives in utilities/email/actions.py."
+    "description": "Back-compat shim — real code lives in utilities/email/actions.py.",
+    "shim": true,
+    "shim_of": [
+      "utilities.email.actions"
+    ]
   },
   "utilities/fomo_email_utils.py": {
     "description": "Back-compat shim — real code lives in utilities/email/fomo.py and sibling utilities.",
     "exports": [
       "generate_action_links — Back-compat wrapper. New code: call generate_action_url directly from utilities.email.actions."
+    ],
+    "shim": true,
+    "shim_of": [
+      "utilities.email.fomo",
+      "utilities.postgres.users",
+      "utilities.video_utils"
     ]
   },
   "utilities/gmail_utils.py": {
     "description": "Back-compat shim — real code lives in utilities/email/transport.py.",
     "exports": [
       "send_welcome_back_email — Back-compat wrapper — delegates to utilities.email.fomo."
+    ],
+    "shim": true,
+    "shim_of": [
+      "utilities.email.transport"
     ]
   },
   "utilities/golem_names.py": {
@@ -1399,7 +1425,19 @@
   },
   "utilities/infrastructure_utils.py": {
     "description": "Shim for utilities.infrastructure_utils (R10a split).",
-    "keywords": "effective rate, mining drone, base total, income breakdown, shard generation rate, passive income, multiplier, bonus, accumulation cap, dust storm, solar, battery, nuclear"
+    "shim": true,
+    "shim_of": [
+      "config_infrastructure",
+      "utilities.infrastructure.construction",
+      "utilities.infrastructure.effects",
+      "utilities.infrastructure.environment",
+      "utilities.infrastructure.income",
+      "utilities.infrastructure.views",
+      "utilities.postgres.map",
+      "utilities.postgres.shop",
+      "utilities.xenobiology"
+    ],
+    "keywords": "SHIM — real code in utilities/infrastructure/ package. effective rate, mining drone, base total, income breakdown"
   },
   "utilities/legacy_migration.py": {
     "description": "Legacy Shop → Upgrade System Migration",
@@ -1451,7 +1489,16 @@
   },
   "utilities/page_data_utils.py": {
     "description": "Shim — real code in utilities/views/. Kept for caller compat.",
-    "keywords": "dashboard data, colony page, fleet status, activity feed"
+    "shim": true,
+    "shim_of": [
+      "utilities.views.arrival",
+      "utilities.views.colony",
+      "utilities.views.dashboard",
+      "utilities.views.depot",
+      "utilities.views.misc",
+      "utilities.views.while_you_were_away"
+    ],
+    "keywords": "SHIM — real code in utilities/views/ package. dashboard data, colony page, fleet status"
   },
   "utilities/pilgrimbot_bugs.py": {
     "description": "PilgrimBot bug creation and cross-linking utilities.",
@@ -1469,6 +1516,7 @@
     "description": "PilgrimBot context loading — registries, file search, and dynamic context.",
     "exports": [
       "build_prefill_context — Build the chat prefill context for the /pilgrimbot page based on",
+      "get_staleness_warning — Return a one-line system note if any registry is stale, else empty string.",
       "load_codemap — Load codemap.json from the local project. Cached after first load.",
       "load_math_registry — Load math_registry.json — authoritative formula reference for math questions.",
       "load_endgame_registry — Load endgame_registry.json — authoritative reference for Signal/Origin/Decoder endgame system.",
@@ -1486,7 +1534,18 @@
   },
   "utilities/pilgrimbot_utils.py": {
     "description": "Shim — real code in utilities/pilgrimbot/ package. Kept for caller compat.",
-    "keywords": "pilgrimbot, codebase chat, code search, AI assistant, bug analysis, player data, colony state"
+    "shim": true,
+    "shim_of": [
+      "utilities.pilgrimbot.context",
+      "utilities.pilgrimbot.file_reader",
+      "utilities.pilgrimbot.personas",
+      "utilities.pilgrimbot.storage",
+      "utilities.pilgrimbot.streaming",
+      "utilities.pilgrimbot.tool_loop",
+      "utilities.pilgrimbot_bugs",
+      "utilities.pilgrimbot_data"
+    ],
+    "keywords": "SHIM — real code in utilities/pilgrimbot/ package. pilgrimbot entry, chat"
   },
   "utilities/reclaim_assets.py": {
     "description": "Asset reclamation utility for inactive accounts.",
@@ -1563,7 +1622,15 @@
   },
   "utilities/signal_utils.py": {
     "description": "Shim — real code moved to utilities.signal package.",
-    "keywords": "signal decoder, origin sites, echo messages, ARG, shard network, puzzle"
+    "shim": true,
+    "shim_of": [
+      "utilities.signal.claims",
+      "utilities.signal.config",
+      "utilities.signal.handlers",
+      "utilities.signal.rewards",
+      "utilities.signal.sites"
+    ],
+    "keywords": "SHIM — real code in utilities/signal/ package. signal decoder, origin sites, echo, ARG"
   },
   "utilities/speedrun_expedition.py": {
     "description": "Expedition Speedrun / Replay Tool",
@@ -1678,16 +1745,19 @@
     "description": "PilgrimBot package — codebase Q&A bot split into focused modules."
   },
   "utilities/pilgrimbot/context.py": {
-    "description": "PilgrimBot context planner + surgical context loader."
+    "description": "PilgrimBot context planner + surgical context loader.",
+    "keywords": "codemap loader, math_registry loader, system context builder"
   },
   "utilities/pilgrimbot/file_reader.py": {
     "description": "Local codebase file reading for PilgrimBot — with safety filters + relevance scoring.",
     "exports": [
       "read_local_file — Read a code file from the local codebase."
-    ]
+    ],
+    "keywords": "codebase file reader tool"
   },
   "utilities/pilgrimbot/personas.py": {
-    "description": "PilgrimBot persona prompts and tool schemas."
+    "description": "PilgrimBot persona prompts and tool schemas.",
+    "keywords": "PilgrimBot role personas and system prompts"
   },
   "utilities/pilgrimbot/storage.py": {
     "description": "PilgrimBot database storage: conversations table, roles, message history, API call logging.",
@@ -1703,17 +1773,20 @@
       "hide_chat — Soft-delete a chat thread by marking all its messages as hidden.",
       "generate_title — Generate a short title from the first user message.",
       "log_pilgrimbot_call — Log a PilgrimBot API call for performance tracking."
-    ]
+    ],
+    "keywords": "conversation persistence, chat history"
   },
   "utilities/pilgrimbot/streaming.py": {
     "description": "PilgrimBot SSE streaming: chat request entry points + two-phase streaming handler.",
     "exports": [
       "handle_pilgrimbot_chat_request — Validate + prep a PilgrimBot chat. Returns one of:",
       "handle_chat_streaming — Stream a PilgrimBot response. Two-phase: fast response, then surgical deep dive."
-    ]
+    ],
+    "keywords": "SSE streaming response handler"
   },
   "utilities/pilgrimbot/tool_loop.py": {
-    "description": "PilgrimBot tool-use loop: repeated Claude calls with read_file / query_player_data / create_bug / query_bugs."
+    "description": "PilgrimBot tool-use loop: repeated Claude calls with read_file / query_player_data / create_bug / query_bugs.",
+    "keywords": "Anthropic tool-use loop, bug queries, player data lookups"
   },
   "utilities/postgres/activity.py": {
     "description": "Unified activity event logging and retrieval.",
@@ -1888,7 +1961,8 @@
       "get_user_by_google_id — Get user by Google ID",
       "update_user_activity — Update last_meaningful_activity_at for a user. Called on purchases, expeditions, claims, harvests, builds.",
       "get_user_email_info — Get user's email and name for notifications"
-    ]
+    ],
+    "keywords": "user CRUD, auth, session hydration, get_user_by_id, get_user_by_email, get_all_users, calculate_reroll_cost, calculate_transmutation_cost"
   },
   "utilities/postgres/wallets.py": {
     "description": "Wallet and Sepolia asset database operations.",
@@ -1913,7 +1987,8 @@
       "add_aria_skill_xp — Add XP to an ARIA skill. Levels up automatically.",
       "handle_resonance_request — Route-glue wrapper for POST /api/aria/resonance.",
       "use_aria_resonance — Use ARIA's daily resonance ability to boost a trail by +2"
-    ]
+    ],
+    "keywords": "use_aria_resonance, resonance cooldown 24h, ARIA skill XP"
   },
   "utilities/postgres/trails/config.py": {
     "description": "Trail system constants — level thresholds + speed multipliers."
@@ -1932,7 +2007,8 @@
       "get_visited_sites_for_trails — Get exactly 4 active trail destinations for trail construction.",
       "get_crew_mission_status_with_stats — Mission status enriched with per-crew stat multipliers — used by the",
       "get_crew_nearby_payload — Formatted trails + home base coords for the /api/crew/mission/nearby endpoint."
-    ]
+    ],
+    "keywords": "crew mission XP (5 per mission), captain/scientist/aria XP tracking"
   },
   "utilities/postgres/trails/segments.py": {
     "description": "Trail segments: CRUD + km-based progress + nearest origin + drone + spawn-next.",
@@ -1949,13 +2025,15 @@
       "find_nearest_trail_origin — Find the nearest connected node in the user's trail network to build FROM.",
       "spawn_next_trail — When a trail is completed, find the next closest landmark in that direction",
       "cron_drone_trail_build — Passive trail building for users with Automation Drone upgrades."
-    ]
+    ],
+    "keywords": "trail km add, SV per km (2 SV/km), cron_drone_trail_build passive trail"
   },
   "utilities/expeditions/__init__.py": {
     "description": "utilities.expeditions — expedition subsystem."
   },
   "utilities/expeditions/config.py": {
-    "description": "utilities.expeditions.config — data-only tuning values for the expedition subsystem."
+    "description": "utilities.expeditions.config — data-only tuning values for the expedition subsystem.",
+    "keywords": "BASE_SPEED_KM_PER_HOUR, BASE_COST_PER_KM, LIFE_SUPPORT_PER_DAY, EVA_HOURS_PER_DAY, TERRAIN_MODIFIERS"
   },
   "utilities/expeditions/cost.py": {
     "description": "Expedition pricing engine: cost calculation, narrative, and landmark sorting.",
@@ -1963,20 +2041,23 @@
       "calculate_expedition_cost — Expedition cost + travel time.",
       "generate_expedition_narrative — Narrative explanation of an expedition's cost/speed breakdown.",
       "sort_landmarks_by_cost — Enrich each landmark with its expedition pricing, sort cheapest-first."
-    ]
+    ],
+    "keywords": "calculate_expedition_cost, generate_expedition_narrative, sort_landmarks_by_cost"
   },
   "utilities/expeditions/formatters.py": {
     "description": "Expedition JSON formatters — Decimal/date → plain types for API responses.",
     "exports": [
       "get_expedition_history_payload — Full payload for /api/expeditions/history — fetch + format.",
       "get_expedition_items_payload — Full payload for /api/expeditions/<id>/items — fetch + format."
-    ]
+    ],
+    "keywords": "expedition history payload, items payload"
   },
   "utilities/expeditions/haul_data.py": {
     "description": "Expedition haul celebration modal — full discovery data for completed/recalled expeditions.",
     "exports": [
       "build_expedition_haul — Return full haul payload for the celebration modal, or an error dict."
-    ]
+    ],
+    "keywords": "build_expedition_haul, discovery payload"
   },
   "utilities/expeditions/lifecycle.py": {
     "description": "Expedition lifecycle: launch, recall, complete, claim, discovery progress.",
@@ -1989,13 +2070,15 @@
       "get_discovery_progress_formatted — Get expedition discovery progress with frontend formatting.",
       "start_expedition_from_request — Start expedition from request data.",
       "check_signal_events — Check for Shard Network events after expedition completion:"
-    ]
+    ],
+    "keywords": "launch_expedition, complete_expedition_if_ready, recall_expedition, fog_radius calculation, shard/SV reward"
   },
   "utilities/expeditions/page_data.py": {
     "description": "Expedition page data aggregator for the colony/expeditions page.",
     "exports": [
       "get_expeditions_page_data — Get all data needed for the colony/expeditions page."
-    ]
+    ],
+    "keywords": "get_expeditions_page_data"
   },
   "utilities/expeditions/preview.py": {
     "description": "Expedition pre-launch previews: cost modal, route modal, shard estimate.",
@@ -2004,7 +2087,8 @@
       "get_expedition_preview — Comprehensive pre-launch preview for the expedition modal.",
       "estimate_expedition_return — Pre-launch estimate of shard return range (display units). Same formula as calculate_expedition_discovery minus luck.",
       "get_expedition_cost_preview_formatted — Get expedition cost preview with UI formatting."
-    ]
+    ],
+    "keywords": "get_expedition_cost_preview, get_expedition_cost_preview_formatted, charisma/logistics/experience discounts"
   },
   "utilities/expeditions/terrain.py": {
     "description": "Terrain physics + travel-time math for expeditions.",
@@ -2014,20 +2098,23 @@
       "estimate_travel_days — Quick estimate of travel days. Used for rough display before full pricing.",
       "get_terrain_info — Resolve a destination type string to its terrain modifier dict.",
       "is_item_geographically_valid — Check if a discovery item can spawn on this expedition path."
-    ]
+    ],
+    "keywords": "calculate_speed_multiplier, calculate_travel_time, terrain info, geographic validity"
   },
   "utilities/expeditions/trails.py": {
     "description": "Trail-building crew mission orchestration.",
     "exports": [
       "handle_trail_build_request — Handle a trail build request. Returns result dict for jsonify.",
       "get_trail_consumables_data — Get available consumables and scanner bonus for trail building."
-    ]
+    ],
+    "keywords": "handle_trail_build_request, EVA suit trail bonus, consumables"
   },
   "utilities/expeditions/travel.py": {
     "description": "Multi-segment travel time for expeditions.",
     "exports": [
       "calculate_segmented_travel_time — Travel time using trail-segment compounding."
-    ]
+    ],
+    "keywords": "calculate_segmented_travel_time, trail speed bonus, segment travel"
   },
   "utilities/aria/__init__.py": {
     "description": "utilities.aria — ARIA orb chat, greetings, bonds, and first-contact cinematic."
@@ -2227,20 +2314,23 @@
       "start_construction — Begin building infrastructure - charge user if needed, set ready_at time",
       "check_construction_status — Check if construction is complete. Auto-activates when build timer elapses.",
       "send_completion_reward — Send first payout when construction completes (mostly legacy)."
-    ]
+    ],
+    "keywords": "start_construction, build requirements, welcome bonus, check_construction_status"
   },
   "utilities/infrastructure/effects.py": {
     "description": "Infrastructure effect aggregation for the user's active buildings.",
     "exports": [
       "get_user_infrastructure_effects — Calculate all effects from user's active infrastructure at their current levels."
-    ]
+    ],
+    "keywords": "get_user_infrastructure_effects, infrastructure multipliers aggregation"
   },
   "utilities/infrastructure/environment.py": {
     "description": "Mars environment + daylight + generation rate math.",
     "exports": [
       "calculate_daylight_fraction — Calculate what fraction of elapsed time was during Mars daylight vs night.",
       "calculate_generation_rate — Calculate resource generation rate based on structure type, location, and level."
-    ]
+    ],
+    "keywords": "MARS_SOL_HOURS, ACCUMULATION_CAP_HOURS, day-night cycle, dust factor, temperature factor, latitude factor"
   },
   "utilities/infrastructure/income.py": {
     "description": "Accumulated income: calculation, claim, science value recording.",
@@ -2249,7 +2339,8 @@
       "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
       "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet.",
       "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest."
-    ]
+    ],
+    "keywords": "calculate_accumulated_income, scientist shard multiplier, battery night multiplier, maintenance drone, shard generation rate, passive income, dust storm"
   },
   "utilities/infrastructure/views.py": {
     "description": "Infrastructure page data + route handler glue.",
@@ -2258,7 +2349,8 @@
       "handle_infrastructure_build — Handle infrastructure build request - check prereqs, start construction, update session.",
       "handle_infrastructure_status — Check construction status and send reward if complete.",
       "handle_accumulated_income — Get accumulated income with total_all_time calculated."
-    ]
+    ],
+    "keywords": "get_infrastructure_page_data, build handler, infrastructure status"
   },
   "utilities/views/__init__.py": {
     "description": "View-layer helpers: functions that assemble dicts consumed by Jinja2 render_template."
@@ -2268,27 +2360,31 @@
     "exports": [
       "get_crew_page_data_authenticated — Full data bundle for the authenticated crew page (reuses command page data).",
       "get_command_page_data — Get all data needed for the colony/command page."
-    ]
+    ],
+    "keywords": "arrival page, onboarding flow, new captain intro"
   },
   "utilities/views/colony.py": {
     "description": "Colony page view data (formerly Inventory).",
     "exports": [
       "get_colony_page_data — Get all data needed for the Colony page (formerly Inventory)."
-    ]
+    ],
+    "keywords": "colony page data, discoveries, equipment, fog radius, activity feed"
   },
   "utilities/views/dashboard.py": {
     "description": "Dashboard page view data + fleet status helper.",
     "exports": [
       "get_fleet_status — Get status of all 3 mobility slots (rover, drone, buggy) for Fleet Status bar.",
       "get_dashboard_page_data — Get all data needed for colony/dashboard page."
-    ]
+    ],
+    "keywords": "dashboard data, mission control, income display, effective rate"
   },
   "utilities/views/depot.py": {
     "description": "Depot page + claimed discoveries view data.",
     "exports": [
       "get_depot_page_data — Get all data needed for colony/depot page.",
       "get_claimed_discoveries_data — Get claimed discoveries with aggregated stats, plus ARIA bonds."
-    ]
+    ],
+    "keywords": "depot page data, shop state, fog-of-war"
   },
   "utilities/views/misc.py": {
     "description": "Miscellaneous view helpers: profile page, recent activity, discovery items.",
@@ -2296,13 +2392,15 @@
       "build_recent_activity — Build combined activity list from assets and transactions.",
       "get_profile_page_data — Get all data needed for colony/profile page - LEGACY, use get_colony_page_data instead.",
       "get_formatted_discovery_items — Get all discovery items formatted for API response."
-    ]
+    ],
+    "keywords": "misc page data helpers"
   },
   "utilities/views/while_you_were_away.py": {
     "description": "While-you-were-away captain's briefing summary.",
     "exports": [
       "get_while_you_were_away_summary — Generate a comprehensive captain's briefing of what happened since last login."
-    ]
+    ],
+    "keywords": "while-you-were-away greeting, offline summary, idle discoveries"
   },
   "utilities/signal/__init__.py": {
     "description": "Signal package — split from utilities/signal_utils.py."
@@ -2320,20 +2418,23 @@
       "decode_signal_puzzle — Attempt to decode a puzzle sequence - rewards legendary items.",
       "get_puzzle_solvers — Get list of puzzle solvers for display.",
       "decode_signal_tx — Decode a Sepolia transaction hash to extract hidden signal codes."
-    ]
+    ],
+    "keywords": "claim_origin_site, visit_origin_site, decode_lost_signal_site, decode_signal_puzzle, decode_signal_tx, puzzle solvers"
   },
   "utilities/signal/config.py": {
     "description": "Signal system constants and visitor-tier configuration.",
     "exports": [
       "get_visitor_tier — Get tier info for a visitor rank. Returns (tier_name, tier_color, item_rarity)"
-    ]
+    ],
+    "keywords": "visitor tiers, signal config"
   },
   "utilities/signal/handlers.py": {
     "description": "Origin site claim/visit route handlers.",
     "exports": [
       "handle_origin_site_claim — Full origin site claim handler - validates, claims, fires background tasks.",
       "handle_origin_site_visit — Full origin site visit handler - validates, records visit, fires background tasks."
-    ]
+    ],
+    "keywords": "handle_origin_site_claim, handle_origin_site_visit, commander name lookup"
   },
   "utilities/signal/rewards.py": {
     "description": "Legendary item + visitor reward image generation (Flux).",
@@ -2343,7 +2444,8 @@
       "get_legendary_item_payload — Build the API response payload for GET /api/signal/origin/<id>/legendary.",
       "get_origin_site_legendary_item — Get the legendary item details for an Origin Site.",
       "generate_visitor_reward_image — Generate a unique Flux image for a visitor's reward item."
-    ]
+    ],
+    "keywords": "legendary item generation for origin sites, visitor rewards, eligibility payload"
   },
   "utilities/signal/sites.py": {
     "description": "Origin Sites + Echo Sites + signal page data.",
@@ -2361,7 +2463,8 @@
       "generate_blockchain_message — Generate the blockchain message for a site claim",
       "get_signal_page_render_data — Full kwargs for rendering signal.html. Includes bonds lookup when user_id is given.",
       "get_closest_pilgrim_to_origin — Find the commander who got closest to any unclaimed Origin Site."
-    ]
+    ],
+    "keywords": "origin sites CRUD, echo sites, network reconstruction percent (origin_progress + echo_progress), closest pilgrim"
   },
   "utilities/email/__init__.py": {
     "description": "Consolidated email package for Pilgrims."
@@ -3012,7 +3115,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3090,7 +3193,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

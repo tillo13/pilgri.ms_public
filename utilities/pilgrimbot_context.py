@@ -72,12 +72,36 @@ def build_prefill_context(brainstorm_page, bug_id):
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+STALENESS_THRESHOLD_SECONDS = 7 * 24 * 3600  # 7 days
+
 
 # === Registry Loaders (cached) ===
 
 _codemap_cache = None
 _math_registry_cache = None
 _endgame_registry_cache = None
+_staleness_warnings = []
+
+
+def _check_staleness(registry_path, label):
+    """If registry is >7 days older than app.py, record a warning for PilgrimBot context."""
+    app_path = os.path.join(PROJECT_ROOT, "app.py")
+    try:
+        reg_mtime = os.path.getmtime(registry_path)
+        app_mtime = os.path.getmtime(app_path)
+        if app_mtime - reg_mtime > STALENESS_THRESHOLD_SECONDS:
+            days = int((app_mtime - reg_mtime) / 86400)
+            _staleness_warnings.append(f"{label} is {days}d older than app.py — line numbers may be stale")
+    except OSError:
+        pass
+
+
+def get_staleness_warning():
+    """Return a one-line system note if any registry is stale, else empty string.
+    Luke's QA flow quotes registry line numbers — this warns when metadata may have drifted."""
+    if _staleness_warnings:
+        return "⚠️ " + "; ".join(_staleness_warnings) + ". Verify with Grep before citing exact lines."
+    return ""
 
 
 def load_codemap():
@@ -87,6 +111,7 @@ def load_codemap():
         return _codemap_cache
     local_path = os.path.join(PROJECT_ROOT, "codemap.json")
     if os.path.exists(local_path):
+        _check_staleness(local_path, "codemap.json")
         with open(local_path) as f:
             _codemap_cache = json.load(f)
             return _codemap_cache
@@ -100,6 +125,7 @@ def load_math_registry():
         return _math_registry_cache
     local_path = os.path.join(PROJECT_ROOT, "math_registry.json")
     if os.path.exists(local_path):
+        _check_staleness(local_path, "math_registry.json")
         with open(local_path) as f:
             _math_registry_cache = json.load(f)
             return _math_registry_cache
