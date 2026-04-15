@@ -1,19 +1,653 @@
-{#
-  Welcome-back FOMO email wrapper.
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <meta name="supported-color-schemes" content="dark">
+    <style>
+        :root { color-scheme: dark; }
+        @media (prefers-color-scheme: dark) {
+            body, table, td, div, p, span, h1, h2, h3, a { color: inherit !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #ffffff;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0f; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); border-radius: 16px; overflow: hidden; border: 1px solid #333;">
 
-  The FOMO email has ~1250 lines of deeply-conditional HTML that was originally
-  built by f-string concatenation inside utilities/email/fomo.py. Rather than
-  mechanically transliterate every `if` into a `{% if %}` (high-risk,
-  low-value), the Python side assembles the final html body string and hands
-  it to this template. This routes rendering through Flask's template system
-  (the requirement) while preserving exact output byte-for-byte.
+                    <!-- Mars Banner Header -->
+                    <tr>
+                        <td style="padding: 0;">
+                            <img src="{{ mars_banner }}" alt="Mars Landscape" style="width: 100%; height: 120px; object-fit: cover; display: block;">
+                        </td>
+                    </tr>
+                    <!-- Header Text -->
+                    <tr>
+                        <td style="background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); padding: 30px 30px 25px 30px; text-align: center; margin-top: -20px;">
+                            <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 700;">
+                                Captain {{ user_name }}
+                            </h1>
+                            <p style="color: #ff9999; font-size: 15px; margin: 12px 0 0 0; line-height: 1.5;">
+                                {{ greeting_text|safe }}
+                            </p>
+                        </td>
+                    </tr>
 
-  Future: incrementally peel conditionals out of fomo.py into proper Jinja
-  blocks here (commander quote box, sepolia harvest box, etc.).
+                    <!-- While You Were Away Section -->
+                    <tr>
+                        <td style="padding: 30px;">
+                            <h2 style="color: #ff6b6b; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 20px 0; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                                &#9200; While You Were Away
+                            </h2>
+                            <table width="100%" cellpadding="0" cellspacing="0">
 
-  Context:
-    body:      str — full pre-rendered HTML body (trusted, already escaped)
-    subject:   str — email subject (unused in template, passed for consistency)
-    user_name: str — captain name (unused in template, already in body)
-#}
-{{ body|safe }}
+                                {# ===== Commander quote box ===== #}
+                                {% if commander %}
+                                <tr>
+                                    <td style="padding: 20px; background: linear-gradient(135deg, rgba(231, 76, 60, 0.15) 0%, rgba(192, 57, 43, 0.15) 100%); border-radius: 12px; border: 1px solid rgba(231, 76, 60, 0.3);">
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="width: 90px; vertical-align: top;">
+                                                    {% if commander.image_url %}
+                                                    <img src="{{ commander.image_url }}" alt="{{ commander.name }}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #e74c3c;">
+                                                    {% else %}
+                                                    <div style="width: 80px; height: 80px; border-radius: 50%; background: rgba(231, 76, 60, 0.3); display: flex; align-items: center; justify-content: center; font-size: 32px; border: 3px solid #e74c3c;">&#128104;&#8205;&#128640;</div>
+                                                    {% endif %}
+                                                </td>
+                                                <td style="padding-left: 16px; vertical-align: top;">
+                                                    <div style="font-size: 18px; color: #fff; font-weight: 700; margin-bottom: 4px;">Captain {{ commander.name }}</div>
+                                                    <div style="font-size: 12px; color: #c0c0c0; line-height: 1.5; font-style: italic;">
+                                                        "{{ commander.quote }}"
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <div style="text-align: center; margin-top: 16px;">
+                                            <a href="https://pilgri.ms/captains-log/{{ user_id }}" style="display: inline-block; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);">
+                                                &#128220; View Captain's Log
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 16px;"></td></tr>
+                                {% endif %}
+
+                                {# ===== Pending expeditions count ===== #}
+                                {% if pending_expeditions_count > 0 %}
+                                <tr>
+                                    <td style="padding: 12px 16px; background: rgba(255, 107, 107, 0.1); border-radius: 8px; margin-bottom: 8px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="width: 40px; font-size: 24px;">&#127919;</td>
+                                                <td style="color: #ffffff; font-size: 16px;">
+                                                    <strong style="color: #ff6b6b;">{{ pending_expeditions_count }}</strong> expedition(s) completed
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 8px;"></td></tr>
+                                {% endif %}
+
+                                {# ===== Sepolia harvest box ===== #}
+                                {% if sepolia %}
+                                <tr>
+                                    <td style="padding: 20px; background: linear-gradient(135deg, rgba(46, 204, 113, 0.15) 0%, rgba(39, 174, 96, 0.15) 100%); border-radius: 12px; border: 1px solid rgba(46, 204, 113, 0.3);">
+                                        <div style="font-size: 13px; color: #2ecc71; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+                                            &#9889; Infrastructure Output
+                                        </div>
+                                        <div style="text-align: center; padding: 12px 0;">
+                                            <div style="font-size: 42px; color: #2ecc71; font-weight: 700;">{{ sepolia.infra_generated_fmt }}</div>
+                                            <div style="font-size: 14px; color: #c0c0c0; margin-top: 4px;">Sepolia Shards ready to harvest</div>
+                                        </div>
+
+                                        {% if sepolia.has_breakdown %}
+                                        <div style="color: #b0b0b0; font-size: 12px; text-align: center; margin-bottom: 12px;">
+                                            &#9200; Last harvest: <strong style="color: #d0d0d0;">{{ sepolia.harvest_time_str }}</strong>
+                                        </div>
+                                        <p style="color: #c0c0c0; font-size: 11px; margin: 0 0 12px 0; text-align: center; line-height: 1.4;">
+                                            Your infrastructure generates Sepolia shards automatically while you're away:
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <tr>
+                                                <td style="padding: 14px 8px; text-align: center; width: 33%;">
+                                                    <div style="color: #2ecc71; font-size: 18px; font-weight: 700;">{{ sepolia.daily_rate_fmt }}</div>
+                                                    <div style="color: #b0b0b0; font-size: 10px;">shards/day</div>
+                                                </td>
+                                                <td style="padding: 14px 8px; text-align: center; width: 34%; border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1);">
+                                                    <div style="color: #2ecc71; font-size: 18px; font-weight: 700;">{{ sepolia.weekly_rate_fmt }}</div>
+                                                    <div style="color: #b0b0b0; font-size: 10px;">shards/week</div>
+                                                </td>
+                                                <td style="padding: 14px 8px; text-align: center; width: 33%;">
+                                                    <div style="color: #f1c40f; font-size: 18px; font-weight: 700;">{{ sepolia.lifetime_harvested_fmt }}</div>
+                                                    <div style="color: #b0b0b0; font-size: 10px;">total harvested</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        {% if sepolia.harvest_url %}
+                                        <div style="text-align: center; margin: 16px 0;">
+                                            <a href="{{ sepolia.harvest_url }}" style="display: inline-block; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);">
+                                                &#9889; Harvest {{ sepolia.infra_generated_fmt }} Sepolia Shards
+                                            </a>
+                                        </div>
+                                        {% endif %}
+
+                                        <hr style="border: none; border-top: 1px solid rgba(46, 204, 113, 0.2); margin: 16px 0;">
+                                        <div style="margin: 12px 0;">
+                                            <div style="color: #b0b0b0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Pending by Structure:</div>
+                                            {% for struct in sepolia.breakdown %}
+                                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                                <span style="color: #c0c0c0; font-size: 13px;">{{ struct.icon }} {{ struct.name }}</span>
+                                                <span style="color: #2ecc71; font-size: 13px; font-weight: 600;">+{{ struct.pending_fmt }} <span style="color: #a0a0a0; font-weight: 400; font-size: 11px;">({{ struct.hourly_fmt }}/hr)</span></span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+
+                                        {% if sepolia.owned_grid|length > 1 %}
+                                        <div style="margin-top: 16px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 12px;">
+                                            <div style="color: #2ecc71; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600;">&#127959;&#65039; Your Colony Infrastructure</div>
+                                            <p style="color: #b0b0b0; font-size: 10px; margin: 0 0 12px 0;">These structures work together to generate passive income:</p>
+                                            <table width="100%" cellpadding="0" cellspacing="0">
+                                                {% for row in sepolia.owned_grid_rows %}
+                                                <tr>
+                                                    {% for item in row %}
+                                                    {% if item %}
+                                                    <td style="width: 50%; text-align: center; vertical-align: top; padding: 8px;">
+                                                        {% if item.image %}
+                                                        <img src="{{ item.image }}" alt="{{ item.name }}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid #2ecc71;">
+                                                        {% else %}
+                                                        <div style="width: 60px; height: 60px; border-radius: 8px; background: rgba(46, 204, 113, 0.2); display: inline-flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid #2ecc71;">{{ item.icon }}</div>
+                                                        {% endif %}
+                                                        <div style="font-size: 12px; color: #fff; font-weight: 600; margin-top: 6px;">{{ item.name }}</div>
+                                                        <div style="font-size: 10px; color: {{ item.benefit_color }}; margin-top: 3px; font-weight: 500;">{{ item.benefit_label }}</div>
+                                                        <div style="font-size: 11px; color: #2ecc71; margin-top: 2px; font-weight: 600;">{{ item.benefit_text }}</div>
+                                                    </td>
+                                                    {% else %}
+                                                    <td style="width: 50%;"></td>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </tr>
+                                                {% endfor %}
+                                            </table>
+                                        </div>
+                                        {% endif %}
+
+                                        {% if sepolia.next_upgrade %}
+                                        {% set up = sepolia.next_upgrade %}
+                                        <div style="margin-top: 12px; padding: 14px; background: {{ up.bg_color }}; border-radius: 10px; border: 1px solid {{ up.border_color }};">
+                                            <table width="100%" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td style="width: 70px; text-align: center; vertical-align: top;">
+                                                        {% if up.image %}
+                                                        <img src="{{ up.image }}" alt="{{ up.name }}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 2px solid {{ up.border_color }};">
+                                                        {% else %}
+                                                        <div style="width: 60px; height: 60px; border-radius: 8px; background: rgba(255,255,255,0.1); display: inline-flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid {{ up.border_color }};">{{ up.icon }}</div>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td style="padding-left: 12px; vertical-align: top;">
+                                                        <div style="font-size: 14px; color: #fff; font-weight: 700;">{{ up.name }}</div>
+                                                        <div style="font-size: 11px; color: {{ up.benefit_color }}; margin-top: 3px; font-weight: 600;">{{ up.resource_label }}</div>
+                                                        <div style="font-size: 11px; color: #c0c0c0; margin-top: 2px;">{{ up.benefit_text }}</div>
+                                                        <div style="font-size: 10px; color: {{ up.status_color }}; margin-top: 4px; font-weight: 600;">{{ up.status_text }}</div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <div style="text-align: center; margin-top: 12px;">
+                                                <a href="https://pilgri.ms/colony/infrastructure" style="display: inline-block; background: {{ up.btn_bg }}; color: {{ up.btn_color }}; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; font-size: 13px;">
+                                                    {{ up.btn_label }}
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {% elif sepolia.maxed_out %}
+                                        <div style="margin-top: 12px; padding: 12px; background: rgba(46, 204, 113, 0.15); border-radius: 8px; text-align: center; border: 1px solid rgba(46, 204, 113, 0.3);">
+                                            <span style="color: #2ecc71; font-size: 13px; font-weight: 600;">&#127881; Colony Maxed Out!</span>
+                                            <div style="color: #b0b0b0; font-size: 11px; margin-top: 4px;">All infrastructure built. Your Sepolia Shards are generating around the clock!</div>
+                                        </div>
+                                        {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 16px;"></td></tr>
+                                {% endif %}
+
+                                {# ===== Discoveries box ===== #}
+                                {% if discoveries %}
+                                <tr>
+                                    <td style="padding: 20px; background: linear-gradient(135deg, rgba(155, 89, 182, 0.15) 0%, rgba(142, 68, 173, 0.15) 100%); border-radius: 12px; border: 1px solid rgba(155, 89, 182, 0.3);">
+                                        <div style="font-size: 13px; color: #9b59b6; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+                                            &#128142; {{ discoveries.count }} Unclaimed Discoveries
+                                        </div>
+                                        <div style="font-size: 12px; color: #c0c0c0; margin-bottom: 16px; line-height: 1.4;">
+                                            {{ discoveries.teaser }}
+                                        </div>
+
+                                        {% for disc in discoveries['items'] %}
+                                        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 12px;">
+                                            <tr>
+                                                <td style="width: 150px; vertical-align: top;">
+                                                    {% if disc.image_url %}
+                                                    <img src="{{ disc.image_url }}" alt="{{ disc.item_name }}" style="width: 140px; height: 140px; border-radius: 12px; object-fit: cover; border: 3px solid {{ disc.rarity_color }};">
+                                                    {% else %}
+                                                    <div style="width: 140px; height: 140px; border-radius: 12px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 48px; border: 3px solid {{ disc.rarity_color }};">&#128142;</div>
+                                                    {% endif %}
+                                                </td>
+                                                <td style="padding-left: 16px; vertical-align: top;">
+                                                    <div style="font-size: 18px; color: {{ disc.rarity_color }}; font-weight: 700;">{{ disc.item_name }}{{ disc.count_text }}</div>
+                                                    <div style="font-size: 12px; color: #b0b0b0; text-transform: capitalize; margin-top: 4px;">{{ disc.rarity }}</div>
+                                                    <div style="font-size: 12px; color: #c0c0c0; margin-top: 8px; line-height: 1.4;">{{ disc.description }}</div>
+                                                    <div style="margin-top: 8px; display: flex; gap: 12px;">
+                                                        <span style="font-size: 12px; color: #2ecc71; font-weight: 600;">&#128142; {{ disc.enhanced_value_fmt }} Shards</span>
+                                                        {% if disc.scientific_value > 0 %}
+                                                        <span style="font-size: 12px; color: #1abc9c; font-weight: 600;">&#128300; {{ disc.scientific_value_fmt }} Research</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        {% endfor %}
+
+                                        {% if discoveries.claim_url %}
+                                        <div style="text-align: center; margin-top: 16px;">
+                                            <a href="{{ discoveries.claim_url }}" style="display: inline-block; background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);">
+                                                &#128142; Claim {{ discoveries.count }} Discoveries
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 16px;"></td></tr>
+                                {% endif %}
+
+                                {# ===== Scientist / research lab box ===== #}
+                                {% if scientist %}
+                                <tr>
+                                    <td style="padding: 20px; background: linear-gradient(135deg, rgba(26, 188, 156, 0.15) 0%, rgba(22, 160, 133, 0.15) 100%); border-radius: 12px; border: 1px solid rgba(26, 188, 156, 0.3);">
+                                        <div style="font-size: 13px; color: #1abc9c; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+                                            &#128300; Colony Research Lab
+                                        </div>
+                                        <div style="font-size: 12px; color: #c0c0c0; margin-bottom: 16px; line-height: 1.4;">
+                                            {{ scientist.teaser }}
+                                        </div>
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="width: 80px; vertical-align: top;">
+                                                    {% if scientist.image_url %}
+                                                    <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #1abc9c;">
+                                                    {% else %}
+                                                    <div style="width: 70px; height: 70px; border-radius: 50%; background: rgba(26, 188, 156, 0.3); display: flex; align-items: center; justify-content: center; font-size: 28px; border: 3px solid #1abc9c;">&#128300;</div>
+                                                    {% endif %}
+                                                </td>
+                                                <td style="padding-left: 16px; vertical-align: top;">
+                                                    <div style="font-size: 18px; color: #fff; font-weight: 700; margin-bottom: 4px;">{{ scientist.name }}</div>
+                                                    <div style="font-size: 13px; color: #1abc9c; margin-bottom: 8px;">Specialty: {{ scientist.specialty }}</div>
+                                                    <div style="font-size: 12px; color: #c0c0c0; line-height: 1.4; font-style: italic;">
+                                                        "{{ scientist.quote }}"
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        {% if scientist.show_stats %}
+                                        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(26, 188, 156, 0.2);">
+                                            <table width="100%" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td style="text-align: center; width: 50%;">
+                                                        <div style="font-size: 24px; color: #1abc9c; font-weight: 700;">{{ scientist.total_scientific_value_fmt }}</div>
+                                                        <div style="font-size: 11px; color: #b0b0b0; margin-top: 2px;">Scientific Value</div>
+                                                    </td>
+                                                    <td style="text-align: center; width: 50%; border-left: 1px solid rgba(255,255,255,0.1);">
+                                                        <div style="font-size: 24px; color: #e74c3c; font-weight: 700;">{{ scientist.research_points }}</div>
+                                                        <div style="font-size: 11px; color: #b0b0b0; margin-top: 2px;">Research Points</div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        {% endif %}
+
+                                        {% if scientist.research_points > 0 %}
+                                        <div style="margin-top: 12px; padding: 12px; background: rgba(231, 76, 60, 0.15); border-radius: 8px; text-align: center; border: 1px solid rgba(231, 76, 60, 0.3);">
+                                            <span style="color: #e74c3c; font-size: 13px;">&#129516; Research points can upgrade your captain's stats!</span>
+                                            <div style="margin-top: 8px;">
+                                                <a href="https://pilgri.ms/colony/crew" style="color: #e74c3c; font-size: 12px; text-decoration: underline;">Visit Xenobiology Lab &rarr;</a>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 16px;"></td></tr>
+                                {% endif %}
+
+                                {# ===== Active expeditions ===== #}
+                                {% if active_expeditions %}
+                                <tr>
+                                    <td style="padding: 20px; background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.15) 100%); border-radius: 12px; border: 1px solid rgba(52, 152, 219, 0.3);">
+                                        <div style="font-size: 13px; color: #3498db; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-weight: 600;">
+                                            &#128640; Active Expeditions
+                                        </div>
+                                        {% for exp in active_expeditions %}
+                                            {% if exp.dest_image_url %}
+                                            <div style="background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; margin-bottom: 16px;">
+                                                <img src="{{ exp.dest_image_url }}" alt="{{ exp.dest_name }}" style="width: 100%; height: 120px; object-fit: cover;">
+                                                <div style="padding: 16px;">
+                                                    <div style="color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 8px;">&#128205; {{ exp.dest_name_html|safe }}</div>
+                                                    <div style="color: #3498db; font-size: 13px; text-transform: capitalize; margin-bottom: 8px;">{{ exp.dest_type }}</div>
+                                                    <div style="color: #b0b0b0; font-size: 12px; margin-bottom: 8px;">&#128640; {{ exp.distance_str }}{% if exp.coords_str %} &bull; &#128205; {{ exp.coords_str }}{% endif %}</div>
+                                                    <div style="background: rgba(0,0,0,0.3); border-radius: 6px; height: 10px; overflow: hidden; margin-bottom: 10px;">
+                                                        <div style="background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%); height: 100%; width: {{ exp.progress_pct }}%; border-radius: 6px;"></div>
+                                                    </div>
+                                                    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                                                        <tr>
+                                                            <td style="color: #2ecc71; font-size: 15px; font-weight: 600; text-align: left;">&#9201; {{ exp.time_str }}</td>
+                                                            <td style="color: #b0b0b0; font-size: 12px; text-align: right;">{{ exp.progress_pct }}% complete</td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
+                                                <div style="color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 8px;">&#128205; {{ exp.dest_name_html|safe }}</div>
+                                                <div style="color: #3498db; font-size: 13px; text-transform: capitalize; margin-bottom: 8px;">{{ exp.dest_type }}</div>
+                                                <div style="color: #b0b0b0; font-size: 12px; margin-bottom: 10px;">&#128640; {{ exp.distance_str }}{% if exp.coords_str %} &bull; &#128205; {{ exp.coords_str }}{% endif %}</div>
+                                                <div style="background: rgba(0,0,0,0.3); border-radius: 6px; height: 10px; overflow: hidden; margin-bottom: 10px;">
+                                                    <div style="background: linear-gradient(90deg, #3498db 0%, #2ecc71 100%); height: 100%; width: {{ exp.progress_pct }}%; border-radius: 6px;"></div>
+                                                </div>
+                                                <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+                                                    <tr>
+                                                        <td style="color: #2ecc71; font-size: 15px; font-weight: 600; text-align: left;">&#9201; {{ exp.time_str }}</td>
+                                                        <td style="color: #b0b0b0; font-size: 12px; text-align: right;">{{ exp.progress_pct }}% complete</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <div style="text-align: center; margin-top: 12px;">
+                                            <a href="https://pilgri.ms/colony/expeditions" style="color: #3498db; font-size: 14px; text-decoration: none;">View expedition details &rarr;</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 16px;"></td></tr>
+
+                                {# ===== Suggested destinations ===== #}
+                                {% elif suggested_destinations %}
+                                <tr>
+                                    <td style="padding: 20px; background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.15) 100%); border-radius: 12px; border: 1px solid rgba(52, 152, 219, 0.3);">
+                                        <div style="font-size: 13px; color: #3498db; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+                                            &#128506;&#65039; Unexplored Destinations
+                                        </div>
+                                        <div style="color: #b0b0b0; font-size: 12px; margin-bottom: 12px; font-family: monospace;">
+                                            &#127968; Your base: {{ base_coords_str }}
+                                        </div>
+                                        <div style="color: #f39c12; font-size: 13px; margin-bottom: 16px; line-height: 1.4; padding: 10px; background: rgba(243, 156, 18, 0.1); border-radius: 8px; border-left: 3px solid #f39c12;">
+                                            {{ expedition_teaser|safe }}
+                                        </div>
+                                        {% for dest in suggested_destinations %}
+                                            {% if dest.image_url %}
+                                            <div style="background: rgba(0,0,0,0.2); border-radius: 12px; padding: 0; margin-bottom: 16px; overflow: hidden;">
+                                                <a href="{{ dest.image_url }}" target="_blank" style="display: block; text-decoration: none;">
+                                                    <img src="{{ dest.image_url }}" alt="{{ dest.name }}" style="width: 100%; height: 140px; object-fit: cover; cursor: pointer;">
+                                                </a>
+                                                <div style="padding: 16px;">
+                                                    <div style="color: #fff; font-weight: 700; font-size: 18px; margin-bottom: 4px;">&#128205; {{ dest.name_html|safe }}</div>
+                                                    <div style="color: {{ dest.badge_color }}; font-size: 11px; margin-bottom: 8px; font-weight: 600;">{{ dest.competition_badge }}</div>
+                                                    <div style="color: #b0b0b0; font-size: 11px; font-style: italic; margin-bottom: 8px; line-height: 1.3;">{{ dest.origin }}</div>
+                                                    <div style="color: #3498db; font-size: 13px; text-transform: capitalize; margin-bottom: 10px;">{{ dest.type }}</div>
+                                                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                                        <div style="color: #2ecc71; font-size: 14px; font-weight: 600;">&#128640; {{ dest.distance_str }}</div>
+                                                        <div style="color: #b0b0b0; font-size: 12px; font-family: monospace;">&#128204; {{ dest.coords_str }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% else %}
+                                            <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 16px; margin-bottom: 12px;">
+                                                <div style="color: #fff; font-weight: 600; font-size: 16px; margin-bottom: 4px;">&#128205; {{ dest.name_html|safe }}</div>
+                                                <div style="color: {{ dest.badge_color }}; font-size: 11px; margin-bottom: 8px; font-weight: 600;">{{ dest.competition_badge }}</div>
+                                                <div style="color: #b0b0b0; font-size: 11px; font-style: italic; margin-bottom: 8px; line-height: 1.3;">{{ dest.origin }}</div>
+                                                <div style="color: #3498db; font-size: 13px; text-transform: capitalize; margin-bottom: 10px;">{{ dest.type }}</div>
+                                                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                                    <div style="color: #2ecc71; font-size: 13px; font-weight: 600;">&#128640; {{ dest.distance_str }}</div>
+                                                    <div style="color: #b0b0b0; font-size: 11px; font-family: monospace;">&#128204; {{ dest.coords_str }}</div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                        <div style="text-align: center; margin-top: 16px;">
+                                            <a href="https://pilgri.ms/colony/expeditions" style="display: inline-block; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);">
+                                                &#128640; Launch Expedition
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr><td style="height: 16px;"></td></tr>
+                                {% endif %}
+
+                            </table>
+                        </td>
+                    </tr>
+
+                    {# ===== Depot upgrades mini-catalog ===== #}
+                    {% if upgrades_to_show %}
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <div style="background: linear-gradient(135deg, rgba(241, 196, 15, 0.1) 0%, rgba(243, 156, 18, 0.1) 100%); border-radius: 12px; padding: 24px; border: 1px solid rgba(241, 196, 15, 0.3);">
+                                <h2 style="color: #f1c40f; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 20px 0; text-align: center;">
+                                    &#128722; Depot Upgrades Available
+                                </h2>
+                                <div style="color: #b0b0b0; font-size: 12px; text-align: center; margin-bottom: 20px;">
+                                    Your balance: <strong style="color: #fff;">{{ balance_fmt }}</strong> Sepolia Shards
+                                </div>
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        {% for up in upgrades_to_show %}
+                                        <td style="width: {{ upgrade_col_width }}; vertical-align: top; padding: 8px;">
+                                            <div style="background: {{ up.bg_color }}; border-radius: 10px; padding: 12px; border: 1px solid {{ up.border_color }}; text-align: center; height: 100%;">
+                                                <div style="font-size: 10px; color: {{ up.category_color }}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600;">
+                                                    {{ up.category_label }}
+                                                </div>
+                                                {% if up.image_url %}
+                                                <img src="{{ up.image_url }}" alt="{{ up.name }}" style="width: 70px; height: 70px; border-radius: 8px; object-fit: cover; border: 2px solid {{ up.border_color }}; margin-bottom: 8px;">
+                                                {% else %}
+                                                <div style="width: 70px; height: 70px; border-radius: 8px; background: rgba(255,255,255,0.1); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; border: 2px solid {{ up.border_color }}; margin-bottom: 8px;">{{ up.icon }}</div>
+                                                {% endif %}
+                                                <div style="font-size: 13px; color: #fff; font-weight: 600; margin-bottom: 4px;">{{ up.name }}</div>
+                                                <div style="font-size: 10px; color: #c0c0c0; margin-bottom: 8px; line-height: 1.3;">{{ up.benefit }}</div>
+                                                <div style="font-size: 11px; color: {{ up.status_color }}; font-weight: 600;">{{ up.status_text }}</div>
+                                            </div>
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                </table>
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <a href="https://pilgri.ms/colony/depot" style="display: inline-block; background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%); color: #000000; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 15px rgba(241, 196, 15, 0.4);">
+                                        &#128722; Browse All Upgrades
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {# ===== Meanwhile on Mars (global stats) ===== #}
+                    {% if global_block %}
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <h2 style="color: #e74c3c; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 16px 0; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                                Meanwhile on Mars...
+                            </h2>
+                            <div style="background: rgba(255,255,255,0.03); border: 1px solid #333; border-radius: 12px; padding: 16px;">
+                                <table width="100%" cellpadding="0" cellspacing="0">
+                                    {% if global_block.legendary_this_week > 0 %}
+                                    <tr>
+                                        <td style="padding: 10px 0; vertical-align: middle;">
+                                            <table cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td style="width: 40px; vertical-align: middle;">
+                                                        <img src="{{ icons.legendary }}" alt="" style="width: 32px; height: 32px; display: block;">
+                                                    </td>
+                                                    <td style="vertical-align: middle; padding-left: 12px;">
+                                                        <span style="color: #fff; font-size: 15px;">
+                                                            <strong style="color: #f1c40f;">{{ global_block.legendary_this_week }}</strong> LEGENDARY artifacts discovered this week
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if global_block.rare_this_week > 0 %}
+                                    <tr>
+                                        <td style="padding: 10px 0; vertical-align: middle;">
+                                            <table cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td style="width: 40px; vertical-align: middle;">
+                                                        <img src="{{ icons.rare }}" alt="" style="width: 32px; height: 32px; display: block;">
+                                                    </td>
+                                                    <td style="vertical-align: middle; padding-left: 12px;">
+                                                        <span style="color: #fff; font-size: 15px;">
+                                                            <strong style="color: #9b59b6;">{{ global_block.rare_this_week }}</strong> rare finds claimed by other captains
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <td style="padding: 10px 0; vertical-align: middle;">
+                                            <table cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td style="width: 40px; vertical-align: middle;">
+                                                        <img src="{{ icons.explorers }}" alt="" style="width: 32px; height: 32px; display: block;">
+                                                    </td>
+                                                    <td style="vertical-align: middle; padding-left: 12px;">
+                                                        <span style="color: #fff; font-size: 15px;">
+                                                            <strong style="color: #3498db;">{{ global_block.active_commanders }}</strong> captains actively exploring
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    {% if global_block.show_legendary_tease %}
+                                    <tr>
+                                        <td style="padding: 16px 0 0 0;">
+                                            <p style="color: #e74c3c; font-size: 14px; font-style: italic; margin: 0; background: rgba(231, 76, 60, 0.15); padding: 12px; border-radius: 8px; text-align: center;">
+                                                You haven't found a legendary artifact yet. Your turn?
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {# ===== Legacy stats (2x2 grid) ===== #}
+                    {% if legacy %}
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <h2 style="color: #3498db; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px 0; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                                &#128220; Your Martian Legacy
+                            </h2>
+                            <p style="color: #b0b0b0; font-size: 12px; margin: 0 0 16px 0;">
+                                Every artifact you've collected contributes to humanity's understanding of Mars.
+                            </p>
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="width: 50%; padding: 6px;">
+                                        <div style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.1) 100%); border: 1px solid rgba(52, 152, 219, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
+                                            <img src="{{ icons.discovery }}" alt="" style="width: 48px; height: 48px; display: block; margin: 0 auto 10px auto;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #3498db; margin-bottom: 4px;">{{ legacy.total_fmt }}</div>
+                                            <div style="font-size: 12px; color: #fff; font-weight: 600; margin-bottom: 4px;">Discoveries</div>
+                                            <div style="font-size: 10px; color: #b0b0b0; line-height: 1.3;">Artifacts catalogued in your collection</div>
+                                        </div>
+                                    </td>
+                                    <td style="width: 50%; padding: 6px;">
+                                        <div style="background: linear-gradient(135deg, rgba(155, 89, 182, 0.15) 0%, rgba(142, 68, 173, 0.1) 100%); border: 1px solid rgba(155, 89, 182, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
+                                            <img src="{{ icons.rare }}" alt="" style="width: 48px; height: 48px; display: block; margin: 0 auto 10px auto;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #9b59b6; margin-bottom: 4px;">{{ legacy.rare_fmt }}</div>
+                                            <div style="font-size: 12px; color: #fff; font-weight: 600; margin-bottom: 4px;">Rare Finds</div>
+                                            <div style="font-size: 10px; color: #b0b0b0; line-height: 1.3;">Uncommon specimens worth extra shards</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 50%; padding: 6px;">
+                                        <div style="background: linear-gradient(135deg, rgba(241, 196, 15, 0.15) 0%, rgba(243, 156, 18, 0.1) 100%); border: 1px solid rgba(241, 196, 15, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
+                                            <img src="{{ icons.legendary }}" alt="" style="width: 48px; height: 48px; display: block; margin: 0 auto 10px auto;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #f1c40f; margin-bottom: 4px;">{{ legacy.legendary_fmt }}</div>
+                                            <div style="font-size: 12px; color: #fff; font-weight: 600; margin-bottom: 4px;">Legendary</div>
+                                            <div style="font-size: 10px; color: #b0b0b0; line-height: 1.3;">Ancient relics &mdash; extremely valuable</div>
+                                        </div>
+                                    </td>
+                                    <td style="width: 50%; padding: 6px;">
+                                        <div style="background: linear-gradient(135deg, rgba(46, 204, 113, 0.15) 0%, rgba(39, 174, 96, 0.1) 100%); border: 1px solid rgba(46, 204, 113, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
+                                            <img src="{{ icons.shards }}" alt="" style="width: 48px; height: 48px; display: block; margin: 0 auto 10px auto;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #2ecc71; margin-bottom: 4px;">{{ legacy.total_value_fmt }}</div>
+                                            <div style="font-size: 12px; color: #fff; font-weight: 600; margin-bottom: 4px;">Shards Earned</div>
+                                            <div style="font-size: 10px; color: #b0b0b0; line-height: 1.3;">Total from extracted discoveries</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    {# ===== Captain's journey video ===== #}
+                    {% if video %}
+                    <tr>
+                        <td style="padding: 0 30px 30px 30px;">
+                            <div style="border-top: 1px solid #333; padding-top: 24px;">
+                                <p style="color: #9b59b6; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px 0; text-align: center;">
+                                    {{ video.closing_header }}
+                                </p>
+                                <p style="color: #c0c0c0; font-size: 13px; margin: 0 0 20px 0; line-height: 1.5; text-align: center;">
+                                    {{ video.closing_desc }}
+                                </p>
+                                <div style="text-align: center;">
+                                    <a href="{{ video.video_url }}" target="_blank" style="display: block; text-decoration: none;">
+                                        <img src="{{ video.thumbnail_url }}"
+                                             alt="Click to watch {{ video.captain_name }}'s journey"
+                                             style="width: 100%; max-width: 480px; display: inline-block; border-radius: 16px; border: 2px solid rgba(155, 89, 182, 0.5);">
+                                        <p style="color: #9b59b6; font-size: 12px; text-align: center; margin: 8px 0 0 0;">
+                                            &#9654; Watch {{ video.captain_name }} in action
+                                        </p>
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Main CTA -->
+                    <tr>
+                        <td style="padding: 0 30px 40px 30px; text-align: center;">
+                            <a href="https://pilgri.ms" style="display: inline-block; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: #ffffff; text-decoration: none; padding: 18px 48px; border-radius: 10px; font-weight: 700; font-size: 18px; box-shadow: 0 4px 20px rgba(231, 76, 60, 0.5); text-transform: uppercase; letter-spacing: 1px;">
+                                &#128640; Return to Your Colony
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background: rgba(0,0,0,0.3); padding: 20px 30px; text-align: center; border-top: 1px solid #333;">
+                            <p style="color: #a0a0a0; font-size: 12px; margin: 0;">
+                                Mission Control &bull; Pilgrims Mars Colony
+                            </p>
+                            <p style="color: #444; font-size: 11px; margin: 8px 0 0 0;">
+                                <a href="https://pilgri.ms" style="color: #b0b0b0; text-decoration: none;">pilgri.ms</a>
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
