@@ -1393,24 +1393,7 @@
     "keywords": "passive discovery, idle generation, background discoveries"
   },
   "utilities/infrastructure_utils.py": {
-    "description": "Infrastructure utilities - Solar arrays, battery storage, and shard generation",
-    "exports": [
-      "calculate_daylight_fraction — Calculate what fraction of elapsed time was during Mars daylight vs night.",
-      "calculate_generation_rate — Calculate resource generation rate based on structure type, location, and level.",
-      "get_build_requirements — Check if user meets requirements to build this structure.",
-      "start_construction — Begin building infrastructure - charge user if needed, set ready_at time",
-      "check_construction_status — Check if construction is complete",
-      "send_completion_reward — Send first payout when construction completes",
-      "user_has_maintenance_drone — Check if user has dust immunity from automation upgrade (level 3+ = Dust Guard)",
-      "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
-      "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet.",
-      "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest.",
-      "get_infrastructure_page_data — Get all data needed for the colony/infrastructure page.",
-      "handle_infrastructure_build — Handle infrastructure build request - check prereqs, start construction, update session.",
-      "handle_infrastructure_status — Check construction status and send reward if complete.",
-      "handle_accumulated_income — Get accumulated income with total_all_time calculated.",
-      "get_user_infrastructure_effects — Calculate all effects from user's active infrastructure at their current levels."
-    ],
+    "description": "Shim for utilities.infrastructure_utils (R10a split).",
     "keywords": "effective rate, mining drone, base total, income breakdown, shard generation rate, passive income, multiplier, bonus, accumulation cap, dust storm, solar, battery, nuclear"
   },
   "utilities/legacy_migration.py": {
@@ -1659,6 +1642,14 @@
       "extract_thumbnail — Extract a single frame from an MP4 as a JPEG thumbnail, optionally with a centered play button overlay.",
       "upload_video_to_gcs — Upload an MP4 video to GCS and return the public URL.",
       "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL."
+    ]
+  },
+  "utilities/xenobiology.py": {
+    "description": "Xenobiology Lab - research point experiments + stat upgrades.",
+    "exports": [
+      "get_xenobiology_status — Get research status for Xenobiology Lab modal",
+      "run_xenobiology_experiment — Run an experiment to gain research points",
+      "upgrade_xenobiology_stat — Spend research points to upgrade a stat"
     ]
   },
   "utilities/admin/__init__.py": {
@@ -2211,6 +2202,49 @@
     "exports": [
       "log_api_usage — Log an API call to kumori_api_usage in a background thread.",
       "get_model_pricing — Get accurate pricing per token for different Claude models"
+    ]
+  },
+  "utilities/infrastructure/__init__.py": {
+    "description": "Infrastructure package - split from utilities/infrastructure_utils.py (R10a)."
+  },
+  "utilities/infrastructure/construction.py": {
+    "description": "Infrastructure construction flow: start, check status, completion reward.",
+    "exports": [
+      "get_build_requirements — Check if user meets requirements to build this structure.",
+      "start_construction — Begin building infrastructure - charge user if needed, set ready_at time",
+      "check_construction_status — Check if construction is complete. Auto-activates when build timer elapses.",
+      "send_completion_reward — Send first payout when construction completes (mostly legacy)."
+    ]
+  },
+  "utilities/infrastructure/effects.py": {
+    "description": "Infrastructure effect aggregation for the user's active buildings.",
+    "exports": [
+      "get_user_infrastructure_effects — Calculate all effects from user's active infrastructure at their current levels."
+    ]
+  },
+  "utilities/infrastructure/environment.py": {
+    "description": "Mars environment + daylight + generation rate math.",
+    "exports": [
+      "calculate_daylight_fraction — Calculate what fraction of elapsed time was during Mars daylight vs night.",
+      "calculate_generation_rate — Calculate resource generation rate based on structure type, location, and level."
+    ]
+  },
+  "utilities/infrastructure/income.py": {
+    "description": "Accumulated income: calculation, claim, science value recording.",
+    "exports": [
+      "user_has_maintenance_drone — Check if user has dust immunity from automation upgrade (level 3+ = Dust Guard)",
+      "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
+      "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet.",
+      "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest."
+    ]
+  },
+  "utilities/infrastructure/views.py": {
+    "description": "Infrastructure page data + route handler glue.",
+    "exports": [
+      "get_infrastructure_page_data — Get all data needed for the colony/infrastructure page.",
+      "handle_infrastructure_build — Handle infrastructure build request - check prereqs, start construction, update session.",
+      "handle_infrastructure_status — Check construction status and send reward if complete.",
+      "handle_accumulated_income — Get accumulated income with total_all_time calculated."
     ]
   },
   "utilities/views/__init__.py": {
@@ -2962,7 +2996,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
