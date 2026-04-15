@@ -5,6 +5,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_crew_page_data_authenticated(user_id):
+    """Full data bundle for the authenticated crew page (reuses command page data)."""
+    from utilities.depot_utils import get_pricing_info
+    from utilities.postgres.robot import get_robot_page_data
+    data = get_command_page_data(user_id)
+    data['pricing'] = get_pricing_info(user_id)
+    data['robot_data'] = get_robot_page_data(user_id)
+    return data
+
+
 def get_command_page_data(user_id):
     """
     Get all data needed for the colony/command page.

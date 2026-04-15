@@ -210,6 +210,26 @@ def start_crew_mission(user_id: int, crew_member: str, destination_name: str,
         return {'success': False, 'error': str(e)}
 
 
+def handle_trail_complete_request(user_id: int, data: dict) -> dict:
+    """Route-glue wrapper for POST /api/trail/complete.
+
+    Validates worker_type and mission state before calling complete_crew_mission().
+    """
+    worker_type = (data.get('worker_type') or '').lower()
+    if worker_type not in ('captain', 'scientist', 'aria'):
+        return {'success': False, 'error': 'Invalid worker type'}
+
+    status = get_crew_mission_status(user_id)
+    member_status = status.get(worker_type) or {}
+
+    if member_status.get('busy'):
+        return {'success': False, 'error': f'{worker_type.title()} is still on mission'}
+    if not member_status.get('complete') and not member_status.get('target'):
+        return {'success': False, 'error': f'No mission to complete for {worker_type.title()}'}
+
+    return complete_crew_mission(user_id, worker_type)
+
+
 def complete_crew_mission(user_id: int, crew_member: str) -> dict:
     """Complete a trail building mission and award XP + km built"""
     from datetime import datetime

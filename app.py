@@ -12,7 +12,7 @@ import time
 import os
 import threading
 
-from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes, UI_ICONS
+from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes
 
 # Cache-bust static files on each deploy (timestamp at startup)
 STATIC_V = str(int(time.time()))
@@ -28,21 +28,16 @@ from utilities.postgres.expeditions import (
     get_recent_discoveries,
     get_discovery_item_details,
     claim_expedition_discovery,
-    get_total_unclaimed_discoveries_count,
 )
 from utilities.expeditions.formatters import (
     get_expedition_history_payload,
     get_expedition_items_payload,
 )
 from utilities.postgres.shop import get_unified_activity
-from utilities.postgres.notifications import get_commander_quotes, get_commander_quote_count, get_user_fomo_data
-from utilities.postgres.users import get_user_scientist, hydrate_user_session, get_user_by_id
+from utilities.postgres.users import get_user_scientist, get_user_by_id
 from utilities.postgres.trails import (
-    get_crew_mission_status,
     get_aria_skills,
-    start_crew_mission,
     complete_crew_mission,
-    use_aria_resonance,
     get_trail_progress,
 )
 from utilities.postgres.wallets import sync_all_wallet_balances
@@ -56,13 +51,13 @@ from utilities.expeditions.preview import (
     get_expedition_cost_preview_formatted, get_expedition_preview,
 )
 from utilities.expeditions.trails import handle_trail_build_request, get_trail_consumables_data
-from utilities.discovery_utils import analyze_discovery, shard_all_discoveries
+from utilities.discovery_utils import shard_all_discoveries
 from utilities.depot_utils import (
-    purchase_stat_reroll, purchase_character_modification, get_command_page_data,
+    purchase_stat_reroll, purchase_character_modification,
     process_asteroid_impact, generate_commander_stats, initialize_character_session,
     clear_character_session, get_arrival_mining_data, get_arrival_commander_data,
     get_arrival_deploy_data, handle_auth_callback, get_mars_conditions,
-    get_dashboard_page_data, get_profile_page_data, get_depot_page_data, get_claimed_discoveries_data,
+    get_dashboard_page_data, get_depot_page_data, get_claimed_discoveries_data,
     start_video_generation, get_formatted_discovery_items, build_recent_activity,
     start_deploy_video_generation, handle_leader_selection, get_mars_location_data,
     handle_custom_commander_upload,
@@ -74,10 +69,10 @@ from utilities.infrastructure_utils import (
     get_xenobiology_status, run_xenobiology_experiment, upgrade_xenobiology_stat,
 )
 from utilities.signal_utils import (
-    get_signal_page_data, get_closest_pilgrim_to_origin, get_signal_page_render_data,
+    get_signal_page_data, get_signal_page_render_data,
     handle_origin_site_claim, handle_origin_site_visit,
-    claim_echo_site, get_user_origin_site_eligibility,
-    decode_lost_signal_site, get_origin_site_legendary_item,
+    claim_echo_site,
+    decode_lost_signal_site,
     get_user_signal_claims, get_puzzle_solvers, decode_signal_tx,
 )
 from utilities.tech_utils import (
@@ -85,15 +80,12 @@ from utilities.tech_utils import (
     get_research_progress, cancel_research,
 )
 from utilities.shop_utils import get_user_equipment_data
-from utilities.upgrades_utils import perform_upgrade, get_upgrade_catalog_for_user, get_vehicle_for_expedition
+from utilities.upgrades_utils import get_upgrade_catalog_for_user, get_vehicle_for_expedition
 from utilities.claude_utils import brainstorm_chat
 from utilities.aria.handlers import get_aria_album_data, handle_aria_chat_request
 from utilities.aria.animations import get_contextual_hint
-from utilities.aria.conversation import get_aria_conversation_history
-from utilities.aria.greetings import get_aria_greeting
-from utilities.captains_log_utils import chat_with_captain
 from utilities.admin_utils import (
-    is_admin, get_admin_email, generate_aria_message,
+    is_admin,
     get_admin_dashboard_data, handle_mimic_action, get_mimic_page_data,
     handle_cron_aria_test_email, start_background_snapshot_generation,
     handle_admin_generate_snapshots, handle_admin_sync_balances, handle_admin_test_email,
@@ -285,21 +277,13 @@ def about():
 def crew():
     """Crew page - works for both anonymous and authenticated users"""
     if auth.is_authenticated():
-        # Authenticated user - show their commander profile (same data as command page)
-        data = get_command_page_data(session.get('user_id'))
-        # Captain services pricing (Shard Infusion, Modify Appearance, Video Briefing)
-        from utilities.depot_utils import get_pricing_info
-        data['pricing'] = get_pricing_info(session.get('user_id'))
-        # Robot tab data — auto-advances any ready stages on every render
-        from utilities.postgres.robot import get_robot_page_data
-        data['robot_data'] = get_robot_page_data(session.get('user_id'))
+        from utilities.views.arrival import get_crew_page_data_authenticated
+        data = get_crew_page_data_authenticated(session.get('user_id'))
         return render_template('crew.html', active_tab='crew', user=auth.get_current_user(), **data)
-    else:
-        # Anonymous user - show commander selection (onboarding step 2)
-        data = get_arrival_commander_data(session, None)
-        if 'redirect' in data:
-            return redirect(url_for(data['redirect']))
-        return render_template('crew.html', active_tab='crew', user=None, **data)
+    data = get_arrival_commander_data(session, None)
+    if 'redirect' in data:
+        return redirect(url_for(data['redirect']))
+    return render_template('crew.html', active_tab='crew', user=None, **data)
 
 
 # ============================================================================
@@ -789,20 +773,8 @@ def colony_infrastructure():
 @login_required
 def api_recent_discoveries():
     """Get recent unlocked but unclaimed discoveries"""
-    try:
-        discoveries = get_recent_discoveries(g.user_id, limit=3)
-        total_unclaimed = get_total_unclaimed_discoveries_count(g.user_id)
-
-        return jsonify({
-            'success': True,
-            'discoveries': discoveries,
-            'count': len(discoveries),
-            'total_unclaimed': total_unclaimed
-        })
-        
-    except Exception as e:
-        logger.error(f"Failed to get recent discoveries: {e}")
-        return jsonify({'success': False, 'error': str(e)})
+    from utilities.postgres.expeditions import get_recent_discoveries_payload
+    return jsonify(get_recent_discoveries_payload(g.user_id))
 
 @app.route('/api/user/balance', methods=['GET'])
 @login_required
@@ -900,56 +872,16 @@ def email_action(token):
 
 @app.route('/captains-log/<int:user_id>')
 def captains_log(user_id):
-    """
-    Public page showing a commander's quote history (Captain's Log).
-    Anyone can view this - it's meant to be shareable.
-    """
-    fomo_data = get_user_fomo_data(user_id)
-    commander = fomo_data.get('commander') if fomo_data else None
-    quotes = get_commander_quotes(user_id, limit=100)
-    quote_count = get_commander_quote_count(user_id)
-
-    if not commander:
-        return render_template('captains_log.html',
-            commander=None,
-            quotes=[],
-            quote_count=0,
-            user_id=user_id
-        )
-
-    return render_template('captains_log.html',
-        commander=commander,
-        quotes=quotes,
-        quote_count=quote_count,
-        user_id=user_id,
-        expedition_stats=fomo_data.get('expedition_stats', {}),
-        discovery_stats=fomo_data.get('discovery_stats', {})
-    )
+    """Public page showing a commander's quote history (shareable)."""
+    from utilities.captains_log_utils import get_captains_log_page_data
+    return render_template('captains_log.html', **get_captains_log_page_data(user_id))
 
 
 @app.route('/api/captains-log/chat', methods=['POST'])
 def api_captains_log_chat():
-    """
-    Chat with a captain using Haiku.
-    Public endpoint - no login required (anyone viewing the log can chat).
-    """
-    data = request.get_json() or {}
-    user_id = data.get('user_id')
-    message = data.get('message', '').strip()
-    conversation_history = data.get('conversation_history', [])
-
-    if not user_id:
-        return jsonify({'success': False, 'error': 'No user_id provided'})
-    if not message:
-        return jsonify({'success': False, 'error': 'No message provided'})
-
-    result = chat_with_captain(
-        user_id=user_id,
-        message=message,
-        conversation_history=conversation_history
-    )
-
-    return jsonify(result)
+    """Chat with a captain using Haiku (public — no login required)."""
+    from utilities.captains_log_utils import handle_captains_log_chat
+    return jsonify(handle_captains_log_chat(request.get_json() or {}))
 
 
 @app.route('/api/aria/snapshot-narrative', methods=['POST'])
@@ -973,51 +905,17 @@ def api_aria_snapshot_narrative():
 @handle_api_error
 def api_aria_snapshot_delete():
     """Delete (soft) a snapshot from user's photo gallery"""
-    if not auth.is_authenticated():
-        return jsonify({'success': False, 'error': 'Not logged in'})
-
-    user_id = session.get('user_id')
+    from utilities.aria.photos import delete_snapshot_with_auth
+    user_id = session.get('user_id') if auth.is_authenticated() else None
     data = request.get_json() or {}
-    snapshot_id = data.get('snapshot_id')
-
-    if not snapshot_id:
-        return jsonify({'success': False, 'error': 'Missing snapshot_id'})
-
-    with db_cursor(commit=True) as cur:
-        cur.execute("""
-            UPDATE pilgrim.generated_images
-            SET is_active = false
-            WHERE id = %s AND user_id = %s AND category = 'aria_snapshot'
-            RETURNING id
-        """, (snapshot_id, user_id))
-        result = cur.fetchone()
-
-    if result:
-        return jsonify({'success': True, 'deleted_id': snapshot_id})
-    else:
-        return jsonify({'success': False, 'error': 'Snapshot not found'})
+    return jsonify(delete_snapshot_with_auth(user_id, data.get('snapshot_id')))
 
 
 @app.route('/api/aria/history', methods=['GET'])
 def api_aria_history():
-    """
-    Get ARIA conversation history for the authenticated user.
-    Returns the last 20 messages from the database.
-    """
-    if not auth.is_authenticated():
-        return jsonify({'success': True, 'history': [], 'authenticated': False})
-
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'success': True, 'history': [], 'authenticated': False})
-
-    history = get_aria_conversation_history(user_id, limit=20)
-
-    return jsonify({
-        'success': True,
-        'history': history,
-        'authenticated': True
-    })
+    """Get ARIA conversation history for the authenticated user."""
+    from utilities.aria.conversation import get_history_payload
+    return jsonify(get_history_payload(session.get('user_id'), auth.is_authenticated()))
 
 
 @app.route('/api/aria/chat', methods=['POST'])
@@ -1121,24 +1019,8 @@ def api_discovery_item_details(discovery_item_id):
 @handle_api_error
 def api_analyze_discovery():
     """Analyze a discovery to extract Sepolia shards"""
-    data = request.get_json()
-    discovery_item_id = data.get('discovery_item_id')
-    extract_all = data.get('extract_all', True)
-    quantity_to_extract = data.get('quantity_to_extract')  # Bug #1125: optional N for "Shard Some"
-
-    if not discovery_item_id:
-        return jsonify({'success': False, 'error': 'Missing discovery_item_id'})
-
-    if quantity_to_extract is not None:
-        try:
-            quantity_to_extract = int(quantity_to_extract)
-        except (TypeError, ValueError):
-            return jsonify({'success': False, 'error': 'quantity_to_extract must be an integer'})
-        if quantity_to_extract < 1:
-            return jsonify({'success': False, 'error': 'quantity_to_extract must be at least 1'})
-
-    result = analyze_discovery(g.user_id, discovery_item_id, session, extract_all=extract_all, quantity_to_extract=quantity_to_extract)
-    return jsonify(result)
+    from utilities.discovery_utils import handle_analyze_request
+    return jsonify(handle_analyze_request(g.user_id, request.get_json() or {}, session))
 
 @app.route('/api/discovery/shard_all', methods=['POST'])
 @login_required
@@ -1236,21 +1118,8 @@ def api_crew_mission_complete():
 @login_required
 def api_aria_resonance():
     """Use ARIA's daily resonance to boost a trail"""
-    data = request.json or {}
-    destination = data.get('destination_name', '')
-
-    if not destination:
-        return jsonify({'success': False, 'error': 'No destination specified'})
-
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT 1 FROM pilgrim.landmark_discoveries WHERE user_id = %s AND landmark_name = %s
-        """, (g.user_id, destination))
-        if not cur.fetchone():
-            return jsonify({'success': False, 'error': 'Destination not discovered yet'})
-
-    result = use_aria_resonance(g.user_id, destination)
-    return jsonify(result)
+    from utilities.postgres.trails.aria_skills import handle_resonance_request
+    return jsonify(handle_resonance_request(g.user_id, request.json or {}))
 
 
 # ============================================================================
@@ -1274,28 +1143,9 @@ def api_trail_build():
 @app.route('/api/trail/complete', methods=['POST'])
 @login_required
 def api_trail_complete():
-    """
-    Complete a trail building session and claim rewards (km built + XP).
-
-    Request body:
-    - worker_type: 'captain', 'scientist', or 'aria'
-    """
-    data = request.json or {}
-    worker_type = data.get('worker_type', '').lower()
-
-    if worker_type not in ('captain', 'scientist', 'aria'):
-        return jsonify({'success': False, 'error': 'Invalid worker type'})
-
-    status = get_crew_mission_status(g.user_id)
-    member_status = status.get(worker_type) or {}
-
-    if member_status.get('busy'):
-        return jsonify({'success': False, 'error': f'{worker_type.title()} is still on mission'})
-    if not member_status.get('complete') and not member_status.get('target'):
-        return jsonify({'success': False, 'error': f'No mission to complete for {worker_type.title()}'})
-
-    result = complete_crew_mission(g.user_id, worker_type)
-    return jsonify(result)
+    """Complete a trail building session and claim rewards (km built + XP)."""
+    from utilities.postgres.trails.crew import handle_trail_complete_request
+    return jsonify(handle_trail_complete_request(g.user_id, request.json or {}))
 
 
 @app.route('/api/trail/consumables', methods=['GET'])
@@ -1433,20 +1283,9 @@ def api_signal_status():
 @login_required
 @handle_api_error
 def api_origin_site_eligibility():
-    """
-    Get user's Origin Site eligibility - which sites can they claim based on expedition proximity.
-    Returns all 14 sites with distance info and can_claim flag.
-    """
-    sites = get_user_origin_site_eligibility(g.user_id)
-
-    claimable = [s for s in sites if s['can_claim']]
-
-    return jsonify({
-        'success': True,
-        'sites': sites,
-        'claimable_count': len(claimable),
-        'claimable_sites': claimable
-    })
+    """Get user's Origin Site eligibility — which sites can they claim."""
+    from utilities.signal.rewards import get_user_origin_eligibility_payload
+    return jsonify(get_user_origin_eligibility_payload(g.user_id))
 
 
 @app.route('/api/signal/lost/decode', methods=['POST'])
@@ -1461,25 +1300,9 @@ def api_decode_lost_site():
 @app.route('/api/signal/origin/<int:site_id>/legendary', methods=['GET'])
 @handle_api_error
 def api_get_legendary_item(site_id):
-    """
-    Get legendary item status for an Origin Site.
-    Can be polled to check when Flux generation is complete.
-    """
-    item = get_origin_site_legendary_item(site_id)
-    if not item:
-        return jsonify({'success': False, 'error': 'Origin Site not found'})
-
-    return jsonify({
-        'success': True,
-        'site_code': item['site_code'],
-        'mission_name': item['mission_name'],
-        'item_name': item['item_name'],
-        'item_description': item['item_description'],
-        'image_url': item['image_url'],
-        'has_image': item['has_image'],
-        'founder_name': item['founder_name'],
-        'founder_wallet_prefix': item['founder_wallet_prefix']
-    })
+    """Get legendary item status for an Origin Site (poll endpoint)."""
+    from utilities.signal.rewards import get_legendary_item_payload
+    return jsonify(get_legendary_item_payload(site_id))
 
 
 @app.route('/api/signal/user/claims', methods=['GET'])
@@ -1656,29 +1479,9 @@ def api_upgrade_stat():
 @app.route('/api/upgrade', methods=['POST'])
 @handle_api_error
 def api_upgrade():
-    """
-    Universal upgrade endpoint for all upgradeable items.
-    Body: {"category": "vehicles", "item_key": "rover"}
-    """
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'success': False, 'error': 'Not logged in'})
-
-    data = request.get_json()
-    category = data.get('category')
-    item_key = data.get('item_key')
-
-    if not category or not item_key:
-        return jsonify({'success': False, 'error': 'Missing category or item_key'})
-
-    result = perform_upgrade(user_id, category, item_key)
-
-    if result.get('success'):
-        # Invalidate balance cache after purchase
-        session.pop('_bal', None)
-        session.modified = True
-
-    return jsonify(result)
+    """Universal upgrade endpoint for all upgradeable items."""
+    from utilities.upgrades_utils import handle_upgrade_request
+    return jsonify(handle_upgrade_request(session.get('user_id'), request.get_json() or {}, session))
 
 
 @app.route('/api/upgrades/catalog')
@@ -1918,19 +1721,9 @@ def admin_speed():
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return redirect(url_for('home'))
-    from utilities.postgres.core import db_cursor, get_pool_health, get_db_connection_stats
-    import json
-    with db_cursor() as cur:
-        cur.execute("SELECT id, tested_by, results, slowest_page, slowest_time, all_ok, tested_at FROM speed_test_runs ORDER BY tested_at DESC LIMIT 30")
-        history = cur.fetchall()
-    for run in history:
-        if isinstance(run['results'], str):
-            run['results'] = json.loads(run['results'])
-    latest = history[0] if history else None
-    pool = get_pool_health()
-    db_stats = get_db_connection_stats()
-    return render_template('admin_speed.html', active_tab=None, user=auth.get_current_user(),
-                          latest=latest, history=history, pool=pool, db_stats=db_stats)
+    from utilities.admin_utils import get_speed_page_data
+    return render_template('admin_speed.html', active_tab=None,
+                           user=auth.get_current_user(), **get_speed_page_data())
 
 
 @app.route('/api/admin/speed_test', methods=['POST'])
@@ -2065,20 +1858,8 @@ def api_admin_bugs_screenshot(bug_id):
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
-    from utilities.postgres.bugs import upload_bug_screenshot, get_bug_by_id
-    f = request.files.get('file')
-    if not f:
-        return jsonify({'success': False, 'error': 'No file provided'})
-    # Fill first empty screenshot slot (supports up to 3)
-    bug = get_bug_by_id(bug_id)
-    if not bug or not bug.get('screenshot_url'):
-        field = 'screenshot_url'
-    elif not bug.get('screenshot_2_url'):
-        field = 'screenshot_2_url'
-    else:
-        field = 'screenshot_3_url'
-    url = upload_bug_screenshot(bug_id, f.read(), f.filename, f.content_type, field)
-    return jsonify({'success': bool(url), 'url': url})
+    from utilities.postgres.bugs import handle_bug_screenshot_upload
+    return jsonify(handle_bug_screenshot_upload(bug_id, request.files.get('file')))
 
 
 @app.route('/api/admin/bugs/<int:bug_id>/screenshot/<field>', methods=['DELETE'])
@@ -2158,23 +1939,13 @@ def pilgrimbot():
     """PilgrimBot chat interface — codebase Q&A."""
     if not session.get('_adm'):
         return redirect(url_for('home'))
+    from utilities.pilgrimbot.storage import get_pilgrimbot_page_data
     real_user_id = session.get('_real_uid') or session.get('user_id')
-    from utilities.pilgrimbot_utils import get_user_chats, get_user_role
-    from utilities.pilgrimbot_context import build_prefill_context
-
-    chats = get_user_chats(real_user_id) if real_user_id else []
-    pb_role = session.get('_pb_role')
-    if not pb_role:
-        pb_role = get_user_role(real_user_id) if real_user_id else 'captain'
-        session['_pb_role'] = pb_role
-
-    brainstorm_page = request.args.get('brainstorm')
-    bug_id = request.args.get('bug')
-    combined_context, display_name, _bug, _bp = build_prefill_context(brainstorm_page, bug_id)
-
-    return render_template('pilgrimbot.html', user=auth.get_current_user(),
-        chats=chats, bug_context=combined_context, bug_id=bug_id, bug_name=display_name,
-        pb_role=pb_role, brainstorm_page=brainstorm_page)
+    page_data = get_pilgrimbot_page_data(
+        real_user_id, session,
+        request.args.get('brainstorm'), request.args.get('bug'),
+    )
+    return render_template('pilgrimbot.html', user=auth.get_current_user(), **page_data)
 
 
 @app.route('/api/pilgrimbot/chat', methods=['POST'])
@@ -2213,54 +1984,22 @@ def api_pilgrimbot_report():
 @app.route('/api/pilgrimbot/create_bug', methods=['POST'])
 def api_pilgrimbot_create_bug():
     """Create a bug from PilgrimBot conversation — Claude parses context into title + description."""
-    real_user_id = session.get('_real_uid') or session.get('user_id')
     if not session.get('_adm'):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-    data = request.get_json() or {}
-    response_text = data.get('response_text', '').strip()
-    chat_id = data.get('chat_id', '')
-    if not response_text and not chat_id:
-        return jsonify({'success': False, 'error': 'No response text or chat_id'})
-    from utilities.pilgrimbot_utils import create_bug_from_conversation, create_bug_from_response
-    # If response_text provided, create bug from just that response (not full conversation)
-    if response_text:
-        return jsonify(create_bug_from_response(
-            response_text, real_user_id, chat_id=chat_id,
-            title_override=data.get('title', '').strip() or None,
-            priority_override=data.get('priority', '').strip() or None
-        ))
-    return jsonify(create_bug_from_conversation(
-        chat_id, real_user_id,
-        title_override=data.get('title', '').strip() or None,
-        priority_override=data.get('priority', '').strip() or None
-    ))
+    from utilities.pilgrimbot_bugs import handle_create_bug_request
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    return jsonify(handle_create_bug_request(real_user_id, request.get_json() or {}))
 
 
 @app.route('/api/pilgrimbot/upload', methods=['POST'])
 def api_pilgrimbot_upload():
     """Upload a pasted screenshot for PilgrimBot chat. Returns GCS URL."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
+    from utilities.pilgrimbot.storage import upload_pilgrimbot_screenshot
+    result = upload_pilgrimbot_screenshot(real_user_id, request.files.get('image'))
     if not real_user_id:
-        return jsonify({'success': False, 'error': 'Not logged in'}), 403
-    f = request.files.get('image')
-    if not f:
-        return jsonify({'success': False, 'error': 'No image provided'})
-    from google.cloud import storage as gcs_storage
-    import time as _time
-    try:
-        ext = f.filename.rsplit('.', 1)[-1] if f.filename and '.' in f.filename else 'png'
-        ts = int(_time.time())
-        blob_name = f"pilgrimbot/chat_{real_user_id}_{ts}.{ext}"
-        client = gcs_storage.Client(project="galactica-character-game")
-        bucket = client.bucket("galactica-pilgrim-assets")
-        blob = bucket.blob(blob_name)
-        blob.cache_control = 'public, max-age=604800'
-        blob.upload_from_string(f.read(), content_type=f.content_type or 'image/png', timeout=60)
-        url = f"https://storage.googleapis.com/galactica-pilgrim-assets/{blob_name}"
-        return jsonify({'success': True, 'url': url})
-    except Exception as e:
-        logger.error(f"PilgrimBot image upload failed: {e}")
-        return jsonify({'success': False, 'error': 'Upload failed'})
+        return jsonify(result), 403
+    return jsonify(result)
 
 
 @app.route('/api/pilgrimbot/role', methods=['POST'])
@@ -2304,15 +2043,14 @@ def api_pilgrimbot_chats():
 @app.route('/api/pilgrimbot/history', methods=['GET'])
 def api_pilgrimbot_history():
     """Load message history for a specific PilgrimBot chat."""
-    real_user_id = session.get('_real_uid') or session.get('user_id')
     if not session.get('_adm'):
         return jsonify({'success': False}), 403
     chat_id = request.args.get('chat_id', '')
     if not chat_id:
         return jsonify({'success': False, 'error': 'No chat_id'})
-    from utilities.pilgrimbot_utils import get_chat_history
-    messages = get_chat_history(real_user_id, chat_id, limit=100)
-    return jsonify({'success': True, 'messages': messages})
+    from utilities.pilgrimbot.storage import get_chat_history
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    return jsonify({'success': True, 'messages': get_chat_history(real_user_id, chat_id, limit=100)})
 
 
 if __name__ == '__main__':

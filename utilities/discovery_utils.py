@@ -448,6 +448,34 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
 # ============================================================================
 EXTRACTION_SV_BONUS_RATE = 0.50  # 50% of shard payout awarded as bonus SV (was 15%, bumped per Luke's sign-off)
 
+
+def handle_analyze_request(user_id, data: dict, flask_session) -> Dict[str, Any]:
+    """Route-glue wrapper for POST /api/discovery/analyze.
+
+    Parses + validates the request body, then calls analyze_discovery().
+    Returns a response dict ready to hand to jsonify().
+    """
+    discovery_item_id = data.get('discovery_item_id')
+    extract_all = data.get('extract_all', True)
+    quantity_to_extract = data.get('quantity_to_extract')
+
+    if not discovery_item_id:
+        return {'success': False, 'error': 'Missing discovery_item_id'}
+
+    if quantity_to_extract is not None:
+        try:
+            quantity_to_extract = int(quantity_to_extract)
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'quantity_to_extract must be an integer'}
+        if quantity_to_extract < 1:
+            return {'success': False, 'error': 'quantity_to_extract must be at least 1'}
+
+    return analyze_discovery(
+        user_id, discovery_item_id, flask_session,
+        extract_all=extract_all, quantity_to_extract=quantity_to_extract,
+    )
+
+
 def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extract_all: bool = True, quantity_to_extract: Optional[int] = None) -> Dict[str, Any]:
     """
     Analyze a discovery to extract embedded Sepolia shards.

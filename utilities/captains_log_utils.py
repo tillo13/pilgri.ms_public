@@ -256,6 +256,59 @@ def get_anthropic_api_key() -> Optional[str]:
     return None
 
 
+def get_captains_log_page_data(user_id: int) -> dict:
+    """Render context for GET /captains-log/<user_id>.
+
+    Returns a dict ready to splat into render_template for captains_log.html.
+    """
+    from utilities.postgres.notifications import (
+        get_commander_quotes, get_commander_quote_count, get_user_fomo_data,
+    )
+    fomo_data = get_user_fomo_data(user_id)
+    commander = fomo_data.get('commander') if fomo_data else None
+    quotes = get_commander_quotes(user_id, limit=100)
+    quote_count = get_commander_quote_count(user_id)
+
+    if not commander:
+        return {
+            'commander': None,
+            'quotes': [],
+            'quote_count': 0,
+            'user_id': user_id,
+        }
+
+    return {
+        'commander': commander,
+        'quotes': quotes,
+        'quote_count': quote_count,
+        'user_id': user_id,
+        'expedition_stats': fomo_data.get('expedition_stats', {}),
+        'discovery_stats': fomo_data.get('discovery_stats', {}),
+    }
+
+
+def handle_captains_log_chat(data: dict) -> dict:
+    """Route-glue wrapper for /api/captains-log/chat.
+
+    Validates the request payload and dispatches to chat_with_captain().
+    Returns a dict ready to hand to jsonify().
+    """
+    user_id = data.get('user_id')
+    message = (data.get('message') or '').strip()
+    conversation_history = data.get('conversation_history', [])
+
+    if not user_id:
+        return {'success': False, 'error': 'No user_id provided'}
+    if not message:
+        return {'success': False, 'error': 'No message provided'}
+
+    return chat_with_captain(
+        user_id=user_id,
+        message=message,
+        conversation_history=conversation_history,
+    )
+
+
 def chat_with_captain(user_id: int, message: str,
                       conversation_history: List[Dict[str, str]] = None,
                       api_key: str = None) -> Dict[str, Any]:

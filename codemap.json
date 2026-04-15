@@ -1245,6 +1245,7 @@
       "is_admin — Check if user has admin privileges (from is_admin column in users table).",
       "get_admin_email — Get admin's email address.",
       "get_admin_dashboard_data — Fetch all data needed for the admin dashboard page.",
+      "get_speed_page_data — Fetch data for the /admin/speed page — recent runs + pool health.",
       "get_mimic_page_data — Fetch data for the mimic page.",
       "handle_mimic_action — Process a mimic start/stop action.",
       "handle_apikey_auth — Check for ?apikey=SECRET&user_id=X and set up session if valid.",
@@ -1270,6 +1271,8 @@
       "get_captain_context — Gather all relevant captain context for chat.",
       "build_captain_system_prompt — Build a system prompt that captures the captain's personality based on stats.",
       "get_anthropic_api_key — Get Anthropic API key from environment or Google Secret Manager.",
+      "get_captains_log_page_data — Render context for GET /captains-log/<user_id>.",
+      "handle_captains_log_chat — Route-glue wrapper for /api/captains-log/chat.",
       "chat_with_captain — Chat with the captain using Claude Haiku.",
       "get_captain_greeting — Get an initial greeting from the captain to start a conversation."
     ]
@@ -1322,6 +1325,7 @@
       "get_distance_value_multiplier — Items found further from base are worth more - rewards long expeditions.",
       "calculate_enhanced_item_value — Calculate enhanced value with captain exploration + scientist analysis + distance bonuses",
       "generate_expedition_discoveries — Generate discoveries with GEOGRAPHIC FILTERING and CARGO LIMITS.",
+      "handle_analyze_request — Route-glue wrapper for POST /api/discovery/analyze.",
       "analyze_discovery — Analyze a discovery to extract embedded Sepolia shards.",
       "shard_all_discoveries — Bulk extract all common and uncommon discoveries (Shard It All).",
       "calculate_expedition_discovery — Roll what the captain discovered at destination (reward + narrative)."
@@ -1452,6 +1456,7 @@
       "execute_query_bugs_tool — Execute query_bugs tool call. Returns formatted result string.",
       "execute_create_bug_tool — Execute the create_bug tool call. Returns formatted result string.",
       "create_bug_from_question — Save a bug/feature report via the unified bug tracker.",
+      "handle_create_bug_request — Route-glue wrapper for POST /api/pilgrimbot/create_bug.",
       "create_bug_from_conversation — Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.",
       "create_bug_from_response — Create a bug from a SINGLE PilgrimBot response (not the full conversation).",
       "get_reports — Get PilgrimBot-submitted reports from the bug tracker."
@@ -1626,7 +1631,7 @@
       "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
       "get_upgrade_stats — Get stats for an item at a given level - handles both upgrades and infrastructure",
       "get_next_upgrade_cost — Get cost to upgrade from current_level to next level. Returns None if max.",
-      "perform_upgrade — Upgrade an item to the next level."
+      "handle_upgrade_request — Route-glue wrapper for POST /api/upgrade."
     ],
     "keywords": "upgrade cost, level, tier, build time, upgrade effects, passive income multiplier, power core"
   },
@@ -1683,6 +1688,8 @@
   "utilities/pilgrimbot/storage.py": {
     "description": "PilgrimBot database storage: conversations table, roles, message history, API call logging.",
     "exports": [
+      "get_pilgrimbot_page_data — Build the render context for the /pilgrimbot page.",
+      "upload_pilgrimbot_screenshot — Upload a pasted screenshot for PilgrimBot chat to GCS. Returns response dict.",
       "ensure_pilgrimbot_table — Create the pilgrimbot conversations table + role column if they don't exist.",
       "get_user_role — Get user's PilgrimBot persona role (dev/qa/captain).",
       "set_user_role — Set user's PilgrimBot persona role. Returns True on success.",
@@ -1754,9 +1761,9 @@
       "search_bugs — Search across ALL bugs (active + completed) by name or description.",
       "get_bug_history — Get full audit trail for a bug.",
       "get_bug_stats — Get counts and velocity metrics for dashboard.",
+      "handle_bug_screenshot_upload — Route-glue wrapper for POST /api/admin/bugs/<bug_id>/screenshot.",
       "upload_bug_screenshot — Upload screenshot to GCS and save URL to bug record.",
-      "get_ideas — Get all parking lot ideas (bugs with status='Parking Lot').",
-      "create_idea — Create a new idea in the parking lot (stored as a bug with status='Parking Lot')."
+      "get_ideas — Get all parking lot ideas (bugs with status='Parking Lot')."
     ]
   },
   "utilities/postgres/config.py": {
@@ -1900,6 +1907,7 @@
     "exports": [
       "get_aria_skills — Get ARIA skills for a user, creating default record if needed",
       "add_aria_skill_xp — Add XP to an ARIA skill. Levels up automatically.",
+      "handle_resonance_request — Route-glue wrapper for POST /api/aria/resonance.",
       "use_aria_resonance — Use ARIA's daily resonance ability to boost a trail by +2"
     ]
   },
@@ -1912,6 +1920,7 @@
       "ensure_crew_missions_schema — Add crew mission columns to users table and create missions log table",
       "get_crew_mission_status — Get current mission status for captain, scientist, and ARIA",
       "start_crew_mission — Start a trail building mission for captain, scientist, or ARIA.",
+      "handle_trail_complete_request — Route-glue wrapper for POST /api/trail/complete.",
       "complete_crew_mission — Complete a trail building mission and award XP + km built",
       "get_trail_consumable_discoveries — Get claimed discoveries that can be consumed for trail building bonuses.",
       "consume_discovery_for_trail — Consume a discovery item for trail building bonus.",
@@ -2055,6 +2064,7 @@
   "utilities/aria/conversation.py": {
     "description": "ARIA conversation persistence — save/retrieve/summarize/clear chat history.",
     "exports": [
+      "get_history_payload — Build the ARIA history response payload for the /api/aria/history route.",
       "save_aria_message — Save a single ARIA conversation message to the database.",
       "get_aria_conversation_history — Retrieve recent ARIA conversation history for a user.",
       "get_aria_memory_summary — Generate a brief summary of past conversations for ARIA's context.",
@@ -2114,7 +2124,8 @@
   "utilities/aria/photos/__init__.py": {
     "description": "ARIA photo/snapshot generation — Instagram-style images of colony life.",
     "exports": [
-      "get_snapshot_narrative_for_user — Claude-powered narrative for a snapshot — looks up the captain name"
+      "get_snapshot_narrative_for_user — Claude-powered narrative for a snapshot — looks up the captain name",
+      "delete_snapshot_with_auth — Soft-delete a snapshot from the user's photo gallery."
     ]
   },
   "utilities/aria/photos/data.py": {
@@ -2251,6 +2262,7 @@
   "utilities/views/arrival.py": {
     "description": "Arrival / command page view data.",
     "exports": [
+      "get_crew_page_data_authenticated — Full data bundle for the authenticated crew page (reuses command page data).",
       "get_command_page_data — Get all data needed for the colony/command page."
     ]
   },
@@ -2323,6 +2335,8 @@
     "description": "Legendary item + visitor reward image generation (Flux).",
     "exports": [
       "generate_legendary_item_for_origin — Generate the legendary item image for an Origin Site after it's claimed.",
+      "get_user_origin_eligibility_payload — Build the API response payload for GET /api/signal/user/origin_eligibility.",
+      "get_legendary_item_payload — Build the API response payload for GET /api/signal/origin/<id>/legendary.",
       "get_origin_site_legendary_item — Get the legendary item details for an Origin Site.",
       "generate_visitor_reward_image — Generate a unique Flux image for a visitor's reward item."
     ]
@@ -2999,7 +3013,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

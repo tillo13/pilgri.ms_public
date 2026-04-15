@@ -86,6 +86,28 @@ def add_aria_skill_xp(user_id: int, skill: str, xp_amount: int) -> dict:
         return {'xp': 0, 'level': 1, 'leveled_up': False}
 
 
+def handle_resonance_request(user_id: int, data: dict) -> dict:
+    """Route-glue wrapper for POST /api/aria/resonance.
+
+    Validates that a destination was provided and is a known discovery, then
+    delegates to use_aria_resonance().
+    """
+    destination = (data.get('destination_name') or '').strip()
+    if not destination:
+        return {'success': False, 'error': 'No destination specified'}
+
+    from utilities.postgres.core import db_cursor
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT 1 FROM pilgrim.landmark_discoveries
+            WHERE user_id = %s AND landmark_name = %s
+        """, (user_id, destination))
+        if not cur.fetchone():
+            return {'success': False, 'error': 'Destination not discovered yet'}
+
+    return use_aria_resonance(user_id, destination)
+
+
 def use_aria_resonance(user_id: int, destination_name: str) -> dict:
     """Use ARIA's daily resonance ability to boost a trail by +2"""
     from datetime import datetime

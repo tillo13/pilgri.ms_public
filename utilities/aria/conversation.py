@@ -8,6 +8,21 @@ from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
+def get_history_payload(user_id, authenticated: bool) -> dict:
+    """Build the ARIA history response payload for the /api/aria/history route.
+
+    Returns the last 20 messages if the user is authenticated, otherwise an
+    empty-history unauthenticated payload.
+    """
+    if not authenticated or not user_id:
+        return {'success': True, 'history': [], 'authenticated': False}
+    return {
+        'success': True,
+        'history': get_aria_conversation_history(user_id, limit=20),
+        'authenticated': True,
+    }
+
+
 def save_aria_message(user_id: int, role: str, content: str) -> bool:
     """
     Save a single ARIA conversation message to the database.

@@ -374,6 +374,28 @@ def get_bug_stats():
 # SCREENSHOTS — GCS upload
 # =============================================================================
 
+def handle_bug_screenshot_upload(bug_id, file_storage):
+    """Route-glue wrapper for POST /api/admin/bugs/<bug_id>/screenshot.
+
+    Picks the first empty screenshot slot (up to 3) and uploads there.
+    Returns a response dict: {'success': bool, 'url': str|None, 'error'?: str}.
+    """
+    if not file_storage:
+        return {'success': False, 'error': 'No file provided'}
+    bug = get_bug_by_id(bug_id)
+    if not bug or not bug.get('screenshot_url'):
+        field = 'screenshot_url'
+    elif not bug.get('screenshot_2_url'):
+        field = 'screenshot_2_url'
+    else:
+        field = 'screenshot_3_url'
+    url = upload_bug_screenshot(
+        bug_id, file_storage.read(), file_storage.filename,
+        file_storage.content_type, field,
+    )
+    return {'success': bool(url), 'url': url}
+
+
 def upload_bug_screenshot(bug_id, file_data, filename, content_type='image/png',
                           field='screenshot_url'):
     """Upload screenshot to GCS and save URL to bug record.

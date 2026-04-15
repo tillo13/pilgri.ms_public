@@ -209,6 +209,27 @@ def get_admin_dashboard_data(real_user_id):
     }
 
 
+def get_speed_page_data():
+    """Fetch data for the /admin/speed page — recent runs + pool health."""
+    import json
+    from utilities.postgres.core import get_pool_health, get_db_connection_stats
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT id, tested_by, results, slowest_page, slowest_time, all_ok, tested_at
+            FROM speed_test_runs ORDER BY tested_at DESC LIMIT 30
+        """)
+        history = cur.fetchall()
+    for run in history:
+        if isinstance(run['results'], str):
+            run['results'] = json.loads(run['results'])
+    return {
+        'latest': history[0] if history else None,
+        'history': history,
+        'pool': get_pool_health(),
+        'db_stats': get_db_connection_stats(),
+    }
+
+
 def get_mimic_page_data(real_user_id, session):
     """Fetch data for the mimic page."""
     with db_cursor() as cur:

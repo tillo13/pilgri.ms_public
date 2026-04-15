@@ -439,6 +439,23 @@ def claim_all_pending_discoveries(user_id: int, expedition_id: int = None) -> Di
         logger.error(f"❌ Failed to claim all discoveries: {e}")
         return {'claimed_count': 0, 'total_value': 0}
 
+def get_recent_discoveries_payload(user_id: int) -> Dict:
+    """Build the API response for GET /api/expeditions/recent_discoveries."""
+    try:
+        discoveries = get_recent_discoveries(user_id, limit=3)
+        total_unclaimed = get_total_unclaimed_discoveries_count(user_id)
+        return {
+            'success': True,
+            'discoveries': discoveries,
+            'count': len(discoveries),
+            'total_unclaimed': total_unclaimed,
+        }
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger(__name__).error(f"Failed to get recent discoveries: {e}")
+        return {'success': False, 'error': str(e)}
+
+
 def get_recent_discoveries(user_id: int, limit: int = 5) -> List[Dict]:
     """Get recent unlocked but unclaimed discoveries"""
     try:

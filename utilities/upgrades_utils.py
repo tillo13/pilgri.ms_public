@@ -506,6 +506,29 @@ def get_next_upgrade_cost(category: str, item_key: str, current_level: int) -> O
 # WRITE OPERATIONS
 # ============================================================================
 
+def handle_upgrade_request(user_id, data: dict, flask_session) -> Dict[str, Any]:
+    """Route-glue wrapper for POST /api/upgrade.
+
+    Validates login + payload, calls perform_upgrade, and invalidates the
+    cached balance on success so the next nav tick shows the new value.
+    """
+    if not user_id:
+        return {'success': False, 'error': 'Not logged in'}
+
+    category = (data or {}).get('category')
+    item_key = (data or {}).get('item_key')
+    if not category or not item_key:
+        return {'success': False, 'error': 'Missing category or item_key'}
+
+    result = perform_upgrade(user_id, category, item_key)
+
+    if result.get('success'):
+        flask_session.pop('_bal', None)
+        flask_session.modified = True
+
+    return result
+
+
 def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any]:
     """
     Upgrade an item to the next level.

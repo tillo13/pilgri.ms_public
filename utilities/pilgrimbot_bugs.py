@@ -286,6 +286,29 @@ Return empty array [] if none are truly related."""}]
         return candidates[:5]
 
 
+def handle_create_bug_request(user_id, data: dict) -> dict:
+    """Route-glue wrapper for POST /api/pilgrimbot/create_bug.
+
+    Dispatches to create_bug_from_response (if response_text provided) or
+    create_bug_from_conversation (otherwise).
+    """
+    response_text = (data.get('response_text') or '').strip()
+    chat_id = data.get('chat_id', '')
+    if not response_text and not chat_id:
+        return {'success': False, 'error': 'No response text or chat_id'}
+    title_override = (data.get('title') or '').strip() or None
+    priority_override = (data.get('priority') or '').strip() or None
+    if response_text:
+        return create_bug_from_response(
+            response_text, user_id, chat_id=chat_id,
+            title_override=title_override, priority_override=priority_override,
+        )
+    return create_bug_from_conversation(
+        chat_id, user_id,
+        title_override=title_override, priority_override=priority_override,
+    )
+
+
 def create_bug_from_conversation(chat_id, user_id, title_override=None, priority_override=None):
     """Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.
     Includes evidence trail: key data points, source references, and DB lookup info.

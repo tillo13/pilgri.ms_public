@@ -162,6 +162,37 @@ def generate_legendary_item_for_origin(
         return None
 
 
+def get_user_origin_eligibility_payload(user_id) -> Dict:
+    """Build the API response payload for GET /api/signal/user/origin_eligibility."""
+    from utilities.signal.claims import get_user_origin_site_eligibility
+    sites = get_user_origin_site_eligibility(user_id)
+    claimable = [s for s in sites if s['can_claim']]
+    return {
+        'success': True,
+        'sites': sites,
+        'claimable_count': len(claimable),
+        'claimable_sites': claimable,
+    }
+
+
+def get_legendary_item_payload(site_id: int) -> Dict:
+    """Build the API response payload for GET /api/signal/origin/<id>/legendary."""
+    item = get_origin_site_legendary_item(site_id)
+    if not item:
+        return {'success': False, 'error': 'Origin Site not found'}
+    return {
+        'success': True,
+        'site_code': item['site_code'],
+        'mission_name': item['mission_name'],
+        'item_name': item['item_name'],
+        'item_description': item['item_description'],
+        'image_url': item['image_url'],
+        'has_image': item['has_image'],
+        'founder_name': item['founder_name'],
+        'founder_wallet_prefix': item['founder_wallet_prefix'],
+    }
+
+
 def get_origin_site_legendary_item(site_id: int) -> Optional[Dict]:
     """
     Get the legendary item details for an Origin Site.

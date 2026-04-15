@@ -10,6 +10,64 @@ logger = logging.getLogger("pilgrimbot")
 MAX_HISTORY = 20  # messages (10 exchanges)
 
 
+def get_pilgrimbot_page_data(user_id, flask_session, brainstorm_page, bug_id):
+    """Build the render context for the /pilgrimbot page.
+
+    Resolves chats, persisted role (cached in session), and optional
+    bug/brainstorm prefill context.
+    """
+    chats = get_user_chats(user_id) if user_id else []
+    pb_role = flask_session.get('_pb_role')
+    if not pb_role:
+        pb_role = get_user_role(user_id) if user_id else 'captain'
+        flask_session['_pb_role'] = pb_role
+    from utilities.pilgrimbot_context import build_prefill_context
+    combined_context, display_name, _bug, _bp = build_prefill_context(brainstorm_page, bug_id)
+    return {
+        'chats': chats,
+        'pb_role': pb_role,
+        'bug_context': combined_context,
+        'bug_id': bug_id,
+        'bug_name': display_name,
+        'brainstorm_page': brainstorm_page,
+    }
+
+
+def upload_pilgrimbot_screenshot(user_id, file_storage):
+    """Upload a pasted screenshot for PilgrimBot chat to GCS. Returns response dict.
+
+    Used by POST /api/pilgrimbot/upload. Shape:
+      success path: {'success': True, 'url': <https url>}
+      failure path: {'success': False, 'error': <str>}
+    """
+    if not user_id:
+        return {'success': False, 'error': 'Not logged in'}
+    if not file_storage:
+        return {'success': False, 'error': 'No image provided'}
+    try:
+        import time as _time
+        from google.cloud import storage as gcs_storage
+        ext = (file_storage.filename.rsplit('.', 1)[-1]
+               if file_storage.filename and '.' in file_storage.filename else 'png')
+        blob_name = f"pilgrimbot/chat_{user_id}_{int(_time.time())}.{ext}"
+        client = gcs_storage.Client(project="galactica-character-game")
+        bucket = client.bucket("galactica-pilgrim-assets")
+        blob = bucket.blob(blob_name)
+        blob.cache_control = 'public, max-age=604800'
+        blob.upload_from_string(
+            file_storage.read(),
+            content_type=file_storage.content_type or 'image/png',
+            timeout=60,
+        )
+        return {
+            'success': True,
+            'url': f"https://storage.googleapis.com/galactica-pilgrim-assets/{blob_name}",
+        }
+    except Exception as e:
+        logger.error(f"PilgrimBot image upload failed: {e}")
+        return {'success': False, 'error': 'Upload failed'}
+
+
 def _strip_markdown_json(text):
     """Strip markdown code fence from Claude's JSON responses."""
     text = text.strip()
