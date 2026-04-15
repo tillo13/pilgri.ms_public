@@ -1336,7 +1336,10 @@
     "description": "Back-compat shim — real code lives in utilities/email/actions.py."
   },
   "utilities/fomo_email_utils.py": {
-    "description": "Back-compat shim — real code lives in utilities/email/fomo.py."
+    "description": "Back-compat shim — real code lives in utilities/email/fomo.py and sibling utilities.",
+    "exports": [
+      "generate_action_links — Back-compat wrapper. New code: call generate_action_url directly from utilities.email.actions."
+    ]
   },
   "utilities/gmail_utils.py": {
     "description": "Back-compat shim — real code lives in utilities/email/transport.py.",
@@ -1644,7 +1647,8 @@
       "process_video_for_email — Process a video URL for email use:",
       "extract_thumbnail — Extract a single frame from an MP4 as a JPEG thumbnail, optionally with a centered play button overlay.",
       "upload_video_to_gcs — Upload an MP4 video to GCS and return the public URL.",
-      "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL."
+      "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL.",
+      "get_user_video_data — Get video data for a user's FOMO email."
     ]
   },
   "utilities/xenobiology.py": {
@@ -1879,11 +1883,11 @@
       "get_user_scientist — Get the scientist assigned to a user",
       "upsert_user — Create or update user record from Google OAuth data",
       "get_user_by_id — Get basic user info by ID.",
+      "get_user_by_email — Get basic user info by email.",
+      "get_all_users — Get all users from database (id, email, given_name, name).",
       "get_user_by_google_id — Get user by Google ID",
       "update_user_activity — Update last_meaningful_activity_at for a user. Called on purchases, expeditions, claims, harvests, builds.",
-      "get_user_email_info — Get user's email and name for notifications",
-      "hydrate_user_session — SINGLE QUERY HYDRATION: Fetch ALL user data needed for session in ONE query.",
-      "ensure_research_columns — Ensure research_points and stat_bonuses columns exist in users table"
+      "get_user_email_info — Get user's email and name for notifications"
     ]
   },
   "utilities/postgres/wallets.py": {
@@ -2396,12 +2400,7 @@
     "exports": [
       "get_fomo_greeting — Get a rotating greeting phrase based on user_id for consistency.",
       "get_fomo_closing — Get a rotating closing phrase (header, description) based on user_id.",
-      "get_user_video_data — Get video data for a user's FOMO email.",
-      "get_user_by_id — Get basic user info by ID.",
-      "get_user_by_email — Get basic user info by email.",
-      "get_all_users — Get all users from database.",
       "calculate_days_away — Calculate days since last login.",
-      "generate_action_links — Generate one-click action URLs for email buttons.",
       "send_welcome_back_email — Nudge inactive users to return with compelling FOMO hooks.",
       "generate_fomo_email_data — Generate all data needed for a FOMO email.",
       "send_fomo_email_to_user — Generate and send a FOMO email to a user (or test recipient)."

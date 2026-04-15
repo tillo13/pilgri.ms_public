@@ -18,8 +18,6 @@ Usage:
     result = send_fomo_email_to_user(user_id=45, test_mode=False)
 """
 
-import os
-import tempfile
 import logging
 import random
 from typing import Dict, List, Optional
@@ -27,7 +25,10 @@ from datetime import datetime, timezone
 
 from utilities.postgres.core import db_cursor
 from utilities.postgres.notifications import get_user_fomo_data
+from utilities.postgres.users import get_user_by_id, get_user_by_email, get_all_users
 from utilities.email.transport import send_simple_email
+from utilities.email.actions import generate_action_url
+from utilities.video_utils import get_user_video_data
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,7 @@ __all__ = [
     'send_welcome_back_email',
     'generate_fomo_email_data',
     'send_fomo_email_to_user',
-    'get_user_video_data',
-    'get_user_by_id',
-    'get_user_by_email',
-    'get_all_users',
     'calculate_days_away',
-    'generate_action_links',
     'get_fomo_greeting',
     'get_fomo_closing',
     'EMAIL_ASSETS',
@@ -108,149 +104,6 @@ def get_fomo_closing(user_id: int) -> tuple:
     random.seed()
     return header, desc
 
-# ==============================================================================
-# VIDEO THUMBNAIL GENERATION
-# ==============================================================================
-
-def get_user_video_data(user_id: int, commander_name: str = None) -> Optional[Dict]:
-    """
-    Get video data for a user's FOMO email.
-
-    AUTO-GENERATES a video if user doesn't have one - video is REQUIRED for all FOMO emails.
-
-    Returns dict with:
-        - thumbnail_url: GCS URL to thumbnail with play button overlay
-        - video_url: GCS URL to the MP4 video
-        - captain_name: Name to display in the email
-
-    Returns None only if video generation fails.
-    """
-    from utilities.video_utils import extract_thumbnail, upload_thumbnail_to_gcs, download_video
-    from utilities.depot_utils import get_latest_character_image
-    from utilities.replicate_utils import FluxGenerator, animate_character_video
-
-    # Get user's latest character_video
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT gcs_url, commander_name
-            FROM pilgrim.replicate_assets
-            WHERE user_id = %s AND asset_type = 'character_video' AND is_deleted = false
-            ORDER BY created_at DESC
-            LIMIT 1
-        """, (user_id,))
-        row = cur.fetchone()
-
-    if not row or not row.get('gcs_url'):
-        logger.info(f"No video found for user {user_id} - auto-generating...")
-
-        # AUTO-GENERATE VIDEO: Get user's commander image and create a video
-        try:
-            character_url, asset_id = get_latest_character_image(user_id)
-            logger.info(f"Found commander image for user {user_id}: {character_url}")
-
-            # Initialize Flux and generate video
-            flux = FluxGenerator()
-            video_url = animate_character_video(character_url, flux, user_id=user_id, asset_id=asset_id)
-
-            if not video_url:
-                logger.error(f"Failed to auto-generate video for user {user_id}")
-                return None
-
-            logger.info(f"Auto-generated video for user {user_id}: {video_url}")
-
-            # Get commander name from the image asset
-            with db_cursor() as cur:
-                cur.execute("""
-                    SELECT commander_name FROM pilgrim.replicate_assets
-                    WHERE id = %s
-                """, (asset_id,))
-                img_row = cur.fetchone()
-
-            row = {
-                'gcs_url': video_url,
-                'commander_name': img_row.get('commander_name') if img_row else None
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to auto-generate video for user {user_id}: {e}")
-            return None
-
-    video_url = row['gcs_url']
-    captain_name = commander_name or row.get('commander_name') or 'Captain'
-
-    try:
-        # Download video to temp file
-        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp_video:
-            tmp_video_path = tmp_video.name
-
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_thumb:
-            tmp_thumb_path = tmp_thumb.name
-
-        if not download_video(video_url, tmp_video_path):
-            logger.warning(f"Failed to download video for user {user_id}")
-            return None
-
-        # Extract thumbnail with play button at 2 seconds in
-        if not extract_thumbnail(tmp_video_path, tmp_thumb_path, timestamp="00:00:02", width=480, add_play_button=True):
-            logger.warning(f"Failed to extract thumbnail for user {user_id}")
-            return None
-
-        # Upload thumbnail to GCS
-        thumbnail_url = upload_thumbnail_to_gcs(tmp_thumb_path, user_id, video_type="fomo")
-
-        # Clean up temp files
-        if os.path.exists(tmp_video_path):
-            os.unlink(tmp_video_path)
-        if os.path.exists(tmp_thumb_path):
-            os.unlink(tmp_thumb_path)
-
-        if not thumbnail_url:
-            logger.warning(f"Failed to upload thumbnail for user {user_id}")
-            return None
-
-        logger.info(f"Generated video thumbnail for user {user_id}: {thumbnail_url}")
-
-        return {
-            'thumbnail_url': thumbnail_url,
-            'video_url': video_url,
-            'captain_name': captain_name
-        }
-
-    except Exception as e:
-        logger.error(f"Error generating video data for user {user_id}: {e}")
-        return None
-
-# ==============================================================================
-# USER DATA HELPERS
-# ==============================================================================
-
-def get_user_by_id(user_id: int) -> Optional[Dict]:
-    """Get basic user info by ID."""
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT id, email, given_name, name
-            FROM pilgrim.users
-            WHERE id = %s
-        """, (user_id,))
-        return cur.fetchone()
-
-
-def get_user_by_email(email: str) -> Optional[Dict]:
-    """Get basic user info by email."""
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT id, email, given_name, name
-            FROM pilgrim.users
-            WHERE email = %s
-        """, (email,))
-        return cur.fetchone()
-
-
-def get_all_users() -> List[Dict]:
-    """Get all users from database."""
-    with db_cursor() as cur:
-        cur.execute("SELECT id, email, given_name, name FROM pilgrim.users ORDER BY id")
-        return cur.fetchall() or []
 
 
 def calculate_days_away(last_login) -> int:
@@ -266,15 +119,6 @@ def calculate_days_away(last_login) -> int:
     now = datetime.now(timezone.utc)
     return (now - last_login).days
 
-
-def generate_action_links(user_id: int, secret_key: str) -> Dict[str, str]:
-    """Generate one-click action URLs for email buttons."""
-    from utilities.email.actions import generate_action_url
-
-    return {
-        'claim_discoveries': generate_action_url(user_id, 'claim_discoveries', secret_key),
-        'claim_sepolia': generate_action_url(user_id, 'claim_sepolia', secret_key),
-    }
 
 # ==============================================================================
 # FOMO EMAIL HTML GENERATION
@@ -996,7 +840,10 @@ def generate_fomo_email_data(user_id: int, secret_key: str = None) -> Dict:
     # Generate action links if secret key provided
     action_links = None
     if secret_key:
-        action_links = generate_action_links(user_id, secret_key)
+        action_links = {
+            'claim_discoveries': generate_action_url(user_id, 'claim_discoveries', secret_key),
+            'claim_sepolia': generate_action_url(user_id, 'claim_sepolia', secret_key),
+        }
 
     # Calculate days away
     days_away = calculate_days_away(fomo_data.get('last_login'))

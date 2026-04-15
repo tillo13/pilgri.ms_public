@@ -237,6 +237,24 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
     return _get_one('users', 'id = %s', (user_id,), 'user')
 
 
+def get_user_by_email(email: str) -> Optional[Dict]:
+    """Get basic user info by email."""
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT id, email, given_name, name
+            FROM pilgrim.users
+            WHERE email = %s
+        """, (email,))
+        return cur.fetchone()
+
+
+def get_all_users() -> List[Dict]:
+    """Get all users from database (id, email, given_name, name)."""
+    with db_cursor() as cur:
+        cur.execute("SELECT id, email, given_name, name FROM pilgrim.users ORDER BY id")
+        return cur.fetchall() or []
+
+
 def get_user_by_google_id(google_id: str) -> Optional[Dict]:
     """Get user by Google ID"""
     return _get_one('users', 'google_id = %s', (google_id,), 'user')

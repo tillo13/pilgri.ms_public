@@ -321,3 +321,99 @@ def upload_thumbnail_to_gcs(jpg_path: str, user_id: int, video_type: str = "disc
     except Exception as e:
         logger.error(f"GCS thumbnail upload failed: {e}")
         return None
+
+
+def get_user_video_data(user_id: int, commander_name: str = None):
+    """
+    Get video data for a user's FOMO email.
+
+    AUTO-GENERATES a video if user doesn't have one - video is REQUIRED for all FOMO emails.
+
+    Returns dict with thumbnail_url, video_url, captain_name — or None on failure.
+    """
+    from typing import Optional, Dict
+    from utilities.postgres.core import db_cursor
+    from utilities.depot_utils import get_latest_character_image
+    from utilities.replicate_utils import FluxGenerator, animate_character_video
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT gcs_url, commander_name
+            FROM pilgrim.replicate_assets
+            WHERE user_id = %s AND asset_type = 'character_video' AND is_deleted = false
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (user_id,))
+        row = cur.fetchone()
+
+    if not row or not row.get('gcs_url'):
+        logger.info(f"No video found for user {user_id} - auto-generating...")
+        try:
+            character_url, asset_id = get_latest_character_image(user_id)
+            logger.info(f"Found commander image for user {user_id}: {character_url}")
+
+            flux = FluxGenerator()
+            video_url = animate_character_video(character_url, flux, user_id=user_id, asset_id=asset_id)
+
+            if not video_url:
+                logger.error(f"Failed to auto-generate video for user {user_id}")
+                return None
+
+            logger.info(f"Auto-generated video for user {user_id}: {video_url}")
+
+            with db_cursor() as cur:
+                cur.execute("""
+                    SELECT commander_name FROM pilgrim.replicate_assets
+                    WHERE id = %s
+                """, (asset_id,))
+                img_row = cur.fetchone()
+
+            row = {
+                'gcs_url': video_url,
+                'commander_name': img_row.get('commander_name') if img_row else None
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to auto-generate video for user {user_id}: {e}")
+            return None
+
+    video_url = row['gcs_url']
+    captain_name = commander_name or row.get('commander_name') or 'Captain'
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp_video:
+            tmp_video_path = tmp_video.name
+
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_thumb:
+            tmp_thumb_path = tmp_thumb.name
+
+        if not download_video(video_url, tmp_video_path):
+            logger.warning(f"Failed to download video for user {user_id}")
+            return None
+
+        if not extract_thumbnail(tmp_video_path, tmp_thumb_path, timestamp="00:00:02", width=480, add_play_button=True):
+            logger.warning(f"Failed to extract thumbnail for user {user_id}")
+            return None
+
+        thumbnail_url = upload_thumbnail_to_gcs(tmp_thumb_path, user_id, video_type="fomo")
+
+        if os.path.exists(tmp_video_path):
+            os.unlink(tmp_video_path)
+        if os.path.exists(tmp_thumb_path):
+            os.unlink(tmp_thumb_path)
+
+        if not thumbnail_url:
+            logger.warning(f"Failed to upload thumbnail for user {user_id}")
+            return None
+
+        logger.info(f"Generated video thumbnail for user {user_id}: {thumbnail_url}")
+
+        return {
+            'thumbnail_url': thumbnail_url,
+            'video_url': video_url,
+            'captain_name': captain_name
+        }
+
+    except Exception as e:
+        logger.error(f"Error generating video data for user {user_id}: {e}")
+        return None
