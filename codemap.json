@@ -1685,23 +1685,14 @@
     ]
   },
   "utilities/upgrades_utils.py": {
-    "description": "Generic Upgrade System for Pilgrims",
-    "exports": [
-      "get_item_config — Get config for any upgradeable item - checks both upgrade and infrastructure catalogs.",
-      "get_level_stats — Get stats for an item at a specific level - handles infrastructure too.",
-      "get_all_infrastructure_levels — Bulk-fetch all infrastructure levels in ONE query. Returns {building_key: level}.",
-      "get_infrastructure_level — Get the current level of an infrastructure building.",
-      "ensure_upgrades_table — Ensure the player_upgrades table exists with build timer columns.",
-      "get_user_upgrade_level — Get user's current USABLE level for an upgradeable item.",
-      "get_all_upgrade_build_statuses — Bulk-fetch build statuses for ALL items in a category in ONE query.",
-      "get_upgrade_build_status — Get the build status for an upgrade.",
-      "count_concurrent_upgrades — Count how many builds are in progress (equipment upgrades + infrastructure construction).",
-      "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
-      "get_active_builds — Get list of active builds with name, category, target level, and seconds remaining.",
-      "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
-      "get_upgrade_stats — Get stats for an item at a given level - handles both upgrades and infrastructure",
-      "get_next_upgrade_cost — Get cost to upgrade from current_level to next level. Returns None if max.",
-      "handle_upgrade_request — Route-glue wrapper for POST /api/upgrade."
+    "description": "Back-compat shim — real code lives in utilities/upgrades/. R14 split (2026-04-15).",
+    "shim": true,
+    "shim_of": [
+      "utilities.upgrades.catalog",
+      "utilities.upgrades.effects",
+      "utilities.upgrades.flow",
+      "utilities.upgrades.state",
+      "utilities.upgrades.vehicles"
     ],
     "keywords": "upgrade cost, level, tier, build time, upgrade effects, passive income multiplier, power core"
   },
@@ -2274,6 +2265,55 @@
   },
   "utilities/static/feeds.py": {
     "description": "Sitemap, robots.txt, and Atom feed XML — crawler-facing static content."
+  },
+  "utilities/upgrades/__init__.py": {
+    "description": "utilities.upgrades — R14 split of utilities/upgrades_utils.py (2026-04-15)."
+  },
+  "utilities/upgrades/catalog.py": {
+    "description": "Upgrade catalog & cost lookups.",
+    "exports": [
+      "get_item_config — Get config for any upgradeable item - checks both upgrade and infrastructure catalogs.",
+      "get_level_stats — Get stats for an item at a specific level - handles infrastructure too.",
+      "get_all_infrastructure_levels — Bulk-fetch all infrastructure levels in ONE query. Returns {building_key: level}.",
+      "get_infrastructure_level — Get the current level of an infrastructure building.",
+      "get_next_upgrade_cost — Get cost to upgrade from current_level to next level. Returns None if max.",
+      "get_upgrade_catalog_for_user — Get the full upgrade catalog enriched with user's current levels and affordability."
+    ]
+  },
+  "utilities/upgrades/effects.py": {
+    "description": "Cumulative upgrade effects aggregator.",
+    "exports": [
+      "get_user_upgrade_effects — Calculate all cumulative effects from user's upgrades AND infrastructure."
+    ]
+  },
+  "utilities/upgrades/flow.py": {
+    "description": "Purchase / upgrade action flow (write paths).",
+    "exports": [
+      "handle_upgrade_request — Route-glue wrapper for POST /api/upgrade.",
+      "perform_upgrade — Upgrade an item to the next level."
+    ]
+  },
+  "utilities/upgrades/state.py": {
+    "description": "User-state DB reads: what a given user owns / is building.",
+    "exports": [
+      "ensure_upgrades_table — Ensure the player_upgrades table exists with build timer columns.",
+      "get_user_upgrade_level — Get user's current USABLE level for an upgradeable item.",
+      "get_all_upgrade_build_statuses — Bulk-fetch build statuses for ALL items in a category in ONE query.",
+      "get_upgrade_build_status — Get the build status for an upgrade.",
+      "count_concurrent_upgrades — Count how many builds are in progress (equipment upgrades + infrastructure construction).",
+      "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
+      "get_active_builds — Get list of active builds with name, category, target level, and seconds remaining.",
+      "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
+      "get_upgrade_stats — Get stats for an item at a given level - handles both upgrades and infrastructure"
+    ]
+  },
+  "utilities/upgrades/vehicles.py": {
+    "description": "Vehicle-specific helpers.",
+    "exports": [
+      "get_vehicle_for_expedition — Get vehicle stats for expedition calculations.",
+      "get_user_owned_vehicles — Get list of all vehicles owned by user (level >= 1).",
+      "count_user_vehicles — Count total vehicles owned by user."
+    ]
   },
   "utilities/anthropic/__init__.py": {
     "description": "Anthropic SDK wrapper package — pricing, client, convenience helpers."
@@ -3128,7 +3168,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3193,7 +3233,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
