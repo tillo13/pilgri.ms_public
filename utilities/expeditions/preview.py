@@ -210,6 +210,14 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     logistics = commander_stats.get('logistics', 50)
     logistics_speed_bonus = 1.0 + (logistics / 100.0)
 
+    # Bug #1310: tech research bonuses (e.g. 10.39× speed) were missing from preview's
+    # per-vehicle speed display, even though launch (lifecycle.py:158) applies them.
+    # Pull tech-only multiplier here so each vehicle row shows the real launch speed.
+    from utilities.tech_utils import get_tech_effects
+    tech_effects = get_tech_effects(user_id)
+    tech_speed_mult = tech_effects.get('expedition_speed_mult', 1.0)
+    tech_cargo_mult = tech_effects.get('cargo_capacity_mult', 1.0)
+
     # Terrain
     terrain_info = TERRAIN_MODIFIERS.get('default')
     for terrain_type, info in TERRAIN_MODIFIERS.items():
@@ -232,7 +240,10 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     # Calculate estimates per vehicle (with segment compounding)
     vehicle_estimates = []
     for v in vehicles:
-        speed_mult = v['speed_mult']
+        vehicle_speed_mult = v['speed_mult']
+        # Bug #1310: combine vehicle × tech for the actual travel-time calculation.
+        # speed_mult kept raw for display; effective_speed_kmh below reflects the truth.
+        speed_mult = vehicle_speed_mult * tech_speed_mult
         # Drones fly — terrain doesn't slow them
         v_terrain_mult = 1.0 if v['vehicle_type'] == 'drone' else terrain_speed_mult
         # Base speed without trail (trail is calculated per-segment)
@@ -264,8 +275,9 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         unavailable_reason = f'Out of range ({max_range} km max)' if out_of_range else ('In use' if not v['available'] else '')
 
         # Engineering cargo bonus: +1 per 10 stat points (max +5 at ENG 50)
+        # Bug #1310: also apply tech cargo_capacity_mult — matches lifecycle.py:225-226.
         eng_stat = scientist_stats.get('engineering', 0)
-        effective_cargo = v['cargo'] + eng_stat // 10
+        effective_cargo = int(v['cargo'] * tech_cargo_mult) + eng_stat // 10
 
         vehicle_estimates.append({
             'vehicle_type': v['vehicle_type'],
@@ -276,7 +288,7 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
             'unavailable_reason': unavailable_reason,
             'max_range_km': max_range,
             'image_url': v.get('image_url', ''),
-            'speed_mult': round(speed_mult, 2),
+            'speed_mult': round(vehicle_speed_mult, 2),
             'total_speed_mult': round(total_speed, 2),
             'effective_speed_kmh': round(effective_speed, 2),
             'travel_hours': round(travel_hours, 1),
