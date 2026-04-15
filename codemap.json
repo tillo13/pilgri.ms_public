@@ -1492,19 +1492,7 @@
     ]
   },
   "utilities/page_data_utils.py": {
-    "description": "Page data loading utilities for template rendering.",
-    "exports": [
-      "get_command_page_data — Get all data needed for the colony/command page.",
-      "build_recent_activity — Build combined activity list from assets and transactions.",
-      "get_while_you_were_away_summary — Generate a comprehensive captain's briefing of what happened since last login.",
-      "get_fleet_status — Get status of all 3 mobility slots (rover, drone, buggy) for Fleet Status bar.",
-      "get_dashboard_page_data — Get all data needed for colony/dashboard page.",
-      "get_profile_page_data — Get all data needed for colony/profile page - LEGACY, use get_colony_page_data instead.",
-      "get_colony_page_data — Get all data needed for the Colony page (formerly Inventory).",
-      "get_depot_page_data — Get all data needed for colony/depot page.",
-      "get_claimed_discoveries_data — Get claimed discoveries with aggregated stats, plus ARIA bonds.",
-      "get_formatted_discovery_items — Get all discovery items formatted for API response."
-    ],
+    "description": "Shim — real code in utilities/views/. Kept for caller compat.",
     "keywords": "dashboard data, colony page, fleet status, activity feed"
   },
   "utilities/pilgrimbot_bugs.py": {
@@ -2255,6 +2243,49 @@
       "get_model_pricing — Get accurate pricing per token for different Claude models"
     ]
   },
+  "utilities/views/__init__.py": {
+    "description": "View-layer helpers: functions that assemble dicts consumed by Jinja2 render_template."
+  },
+  "utilities/views/arrival.py": {
+    "description": "Arrival / command page view data.",
+    "exports": [
+      "get_command_page_data — Get all data needed for the colony/command page."
+    ]
+  },
+  "utilities/views/colony.py": {
+    "description": "Colony page view data (formerly Inventory).",
+    "exports": [
+      "get_colony_page_data — Get all data needed for the Colony page (formerly Inventory)."
+    ]
+  },
+  "utilities/views/dashboard.py": {
+    "description": "Dashboard page view data + fleet status helper.",
+    "exports": [
+      "get_fleet_status — Get status of all 3 mobility slots (rover, drone, buggy) for Fleet Status bar.",
+      "get_dashboard_page_data — Get all data needed for colony/dashboard page."
+    ]
+  },
+  "utilities/views/depot.py": {
+    "description": "Depot page + claimed discoveries view data.",
+    "exports": [
+      "get_depot_page_data — Get all data needed for colony/depot page.",
+      "get_claimed_discoveries_data — Get claimed discoveries with aggregated stats, plus ARIA bonds."
+    ]
+  },
+  "utilities/views/misc.py": {
+    "description": "Miscellaneous view helpers: profile page, recent activity, discovery items.",
+    "exports": [
+      "build_recent_activity — Build combined activity list from assets and transactions.",
+      "get_profile_page_data — Get all data needed for colony/profile page - LEGACY, use get_colony_page_data instead.",
+      "get_formatted_discovery_items — Get all discovery items formatted for API response."
+    ]
+  },
+  "utilities/views/while_you_were_away.py": {
+    "description": "While-you-were-away captain's briefing summary.",
+    "exports": [
+      "get_while_you_were_away_summary — Generate a comprehensive captain's briefing of what happened since last login."
+    ]
+  },
   "utilities/signal/__init__.py": {
     "description": "Signal package — split from utilities/signal_utils.py."
   },
@@ -2898,7 +2929,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -2911,7 +2942,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -2976,7 +3007,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
