@@ -1,0 +1,249 @@
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 4. PER-EXPEDITION PATH DETECTION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Per-Expedition Path Detection — The Math</div>
+
+        <p>The single biggest improvement: switch from destination-only to <strong>path-proximity checking</strong>. The function already exists.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Current vs Proposed Detection</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Current</span>
+                    <span class="mockup-value"><code>check_origin_site_proximity(dest_lat, dest_lon)</code> — checks ONE point</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Proposed</span>
+                    <span class="mockup-value"><code>point_to_path_distance(site, base, dest)</code> — checks ENTIRE route</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Function location</span>
+                    <span class="mockup-value"><code>mars_math.py:point_to_path_distance()</code> — already exists, used for mission artifact filtering</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <strong>How It Works:</strong>
+            <p style="margin: 8px 0 0 0;">When an expedition completes, instead of just checking <code>distance(destination, origin_site)</code>, we check <code>min_distance(expedition_path, origin_site)</code>. A 500km expedition creates a 500km-long detection corridor. If the path passes within 42km of a site at any point, that's a detection — even if the destination is 300km away.</p>
+            <p style="margin: 8px 0 0 0;"><strong>Performance:</strong> 14 sites x 1 path calc per expedition = 14 calls. Negligible cost.</p>
+        </div>
+
+        <p><strong>Concrete example:</strong> Luke's expedition #47 went to Hyblaeus Dorsa (destination 599km from InSight). But the path from his base may have passed within 200km of InSight. With path detection, that expedition would have triggered a "Strange Readings" hint instead of nothing.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should we retroactively calculate path proximity for all historical expeditions? That would instantly populate "closest approach" data — Luke might discover he was close and didn't know.</li>
+                <li>If your path passes within 42km but your destination is 300km away, should you still be able to claim? Or must you send a follow-up expedition TO the site?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 5. EXPEDITION HINTS & ARTIFACTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">Expedition Hints and Artifacts</div>
+
+        <p>As expeditions get closer, they should bring back <strong>tangible evidence</strong>. Not just text hints — actual items and data that accumulate in your colony.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Distance</th>
+                    <th>Artifact Type</th>
+                    <th>What It Contains</th>
+                    <th>Rarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>500-2000km</td>
+                    <td>Anomalous Frequency Log</td>
+                    <td>Text-only note in expedition report</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td>200-500km</td>
+                    <td>Signal Fragment</td>
+                    <td>Collectible item with partial coordinates</td>
+                    <td>Common</td>
+                </tr>
+                <tr>
+                    <td>100-200km</td>
+                    <td>Resonance Crystal</td>
+                    <td>Discovery item with hints at mission name</td>
+                    <td>Uncommon</td>
+                </tr>
+                <tr>
+                    <td>50-100km</td>
+                    <td>Memory Shard</td>
+                    <td>Rare discovery with partial mission log (from mars_mission_messages)</td>
+                    <td>Rare</td>
+                </tr>
+                <tr>
+                    <td>&lt;42km</td>
+                    <td>Origin Site Discovery</td>
+                    <td>Full claiming sequence triggers</td>
+                    <td>Legendary</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <strong>Signal Fragment Collection Mechanic:</strong>
+            <p style="margin: 8px 0 0 0;">Signal Fragments could work like puzzle pieces. Finding 3 fragments from the same origin site gives you a rough coordinate range. Finding 5 narrows it to a specific region. This creates a collection mechanic that rewards persistent exploration near a site — even if you haven't found it yet, you're building toward it.</p>
+        </div>
+
+        <p><strong>ARIA integration:</strong> ARIA should comment on signal artifacts when found. <em>"That frequency... I've heard it before. In the old records."</em> Signal artifacts need to be added to <code>load_colony_snapshot()</code> so ARIA knows about them.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Do signal fragments feel too gamey? Should hints be atmospheric only (ARIA whispers) or collectible items?</li>
+                <li>Should signal artifacts be tradeable between captains?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6. THE DISCOVERY MOMENT -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">The Discovery Moment — When Someone Hits 42km</div>
+
+        <div class="quote-box">
+            "This should be the biggest moment in the game. Bigger than ARIA bond reveals. Bigger than first expedition. You've spent weeks, maybe months, exploring Mars. And then your instruments go wild. ARIA goes silent. Then she speaks a name she hasn't said in a thousand years."
+            <div class="attribution">— Design Session, March 2026</div>
+        </div>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">Expedition completes within 42km</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box">SIGNAL DETECTED full-screen takeover</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box">ARIA delivers the site's memory_text</div>
+            </div>
+            <div class="flow-row" style="margin-top: 12px;">
+                <div class="flow-box">"You are the First Founder"</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box">Blockchain tx fires with mission message</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-success);">Legendary item generated. Name in the eternal ledger.</div>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Discovery Sequence — UI Concept</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Screen</span><span class="mockup-value">Full dark takeover, signal pulse animation</span></div>
+                <div class="mockup-row"><span class="mockup-label">Audio/Visual</span><span class="mockup-value">Pulsing rings expand from center, text fades in</span></div>
+                <div class="mockup-row"><span class="mockup-label">ARIA's voice</span><span class="mockup-value">Delivers the real mission's story in her words</span></div>
+                <div class="mockup-row"><span class="mockup-label">The reveal</span><span class="mockup-value">Real Mars mission name fades in: "VIKING 1 — 1976"</span></div>
+                <div class="mockup-row"><span class="mockup-label">The claim</span><span class="mockup-value">Captain's name "written" alongside the mission</span></div>
+                <div class="mockup-row"><span class="mockup-label">After claim</span><span class="mockup-value">Legendary item appears. Blockchain tx confirms. Signal page updates globally.</span></div>
+            </div>
+        </div>
+
+        <p><strong>Reference:</strong> ARIA bond reveals (<code>feedback_aria_bonds_realtime.md</code>) are the closest existing pattern. Bond reveals are cinematic, real-time events — the origin discovery should match or exceed that.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Full-page takeover (like ARIA bonds) or enhanced expedition results page?</li>
+                <li>When a site is claimed, should OTHER players get notified? Creates urgency for remaining sites.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 6.5. VISITOR TIER REWARD SYSTEM (IMPLEMENTED) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Visitor Tier Rewards — What You Get For Finding a Site</div>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-success);">
+            <strong>IMPLEMENTED (March 2026)</strong> — Full 5-tier visitor reward system live in <code>signal_utils.py</code>. Every visitor to an Origin Site receives a unique Flux-generated item based on their arrival rank.
+        </div>
+
+        <p>The Founder gets the legendary item, but <strong>every visitor after gets something too</strong> — scaled by how early they arrived. This creates ongoing incentive to visit claimed sites, not just hunt unclaimed ones.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Tier</th>
+                    <th>Item Awarded</th>
+                    <th>Rarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>1st</strong></td>
+                    <td style="color: #fbbf24;">Founder</td>
+                    <td>Custom legendary artifact with captain name engraved on-chain</td>
+                    <td style="color: #fbbf24;">Legendary</td>
+                </tr>
+                <tr>
+                    <td><strong>2nd-3rd</strong></td>
+                    <td style="color: #10b981;">Early Witness</td>
+                    <td>Witness Shard: {mission}</td>
+                    <td style="color: #10b981;">Rare</td>
+                </tr>
+                <tr>
+                    <td><strong>4th-10th</strong></td>
+                    <td style="color: #3b82f6;">Pioneer</td>
+                    <td>Pioneer Fragment: {mission}</td>
+                    <td style="color: #3b82f6;">Uncommon</td>
+                </tr>
+                <tr>
+                    <td><strong>11th-42nd</strong></td>
+                    <td style="color: #8b5cf6;">Pilgrim</td>
+                    <td>Pilgrim Stone: {mission}</td>
+                    <td style="color: #8b5cf6;">Common</td>
+                </tr>
+                <tr>
+                    <td><strong>43rd+</strong></td>
+                    <td style="color: #6b7280;">Wanderer</td>
+                    <td>Wanderer's Mark: {mission}</td>
+                    <td style="color: #6b7280;">Common</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin: 16px 0 8px;">How It Works</h4>
+        <ul>
+            <li><strong>Every visitor</strong> gets a unique Flux-generated image with their captain name + wallet engraved</li>
+            <li><strong>Every visit</strong> writes a Sepolia blockchain transaction: <code>ORIGIN_VISIT #N | {mission} | {captain} | {wallet}</code></li>
+            <li><strong>Rank 42</strong> gets a special blockchain message: <em>"You found the answer"</em> (Hitchhiker's Guide easter egg)</li>
+            <li><strong>No visitor cap</strong> — rank 43+ continues as Wanderer tier indefinitely</li>
+            <li>Items stored in GCS (<code>origin_visitor_rewards/</code>) and linked to player inventory via <code>replicate_assets</code></li>
+        </ul>
+
+        <h4 style="margin: 16px 0 8px;">Per-Tier Flux Prompts</h4>
+        <div class="mockup-box">
+            <div class="mockup-header">Each tier has a distinct visual style</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label" style="color: #10b981;">Early Witness</span><span class="mockup-value">Glowing amber crystal shard with etched circuit patterns, holographic inscription, golden edges, rare quality</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #3b82f6;">Pioneer</span><span class="mockup-value">Rough-hewn crystal fragment, blue-purple Sepolia veins, weathered pilgrim memento</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #8b5cf6;">Pilgrim</span><span class="mockup-value">Small polished Mars stone with single Sepolia crystal chip, simple but meaningful keepsake</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #6b7280;">Wanderer</span><span class="mockup-value">Worn pebble of compressed Martian dust, tiny crystal fleck, humble traveler token</span></div>
+            </div>
+        </div>
+
+        <p><strong>Code:</strong> <code>VISITOR_TIERS</code> + <code>VISITOR_ITEM_CONFIG</code> in <code>signal_utils.py:263-298</code>, visitor logic in <code>visit_origin_site()</code> lines 308-445, image generation in lines 1554-1649.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Are 5 tiers right, or should there be fewer? (e.g., collapse Pilgrim + Wanderer into one)</li>
+                <li>Should the Founder get ongoing benefits from visitors? (e.g., small shard cut per visit, "royalties")</li>
+                <li>Is rank 42 special enough? Should that player get a unique item instead of a regular Pilgrim Stone?</li>
+                <li>Should visitors see their rank prominently? "You are the 7th Pioneer of Curiosity" — does that create FOMO or pride?</li>
+            </ul>
+        </div>
+    </div>
+

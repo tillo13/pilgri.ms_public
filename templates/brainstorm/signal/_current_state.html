@@ -1,0 +1,172 @@
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 2. CURRENT STATE AUDIT -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title" style="color: var(--color-danger);">Current State — The Problem</div>
+
+        <p><strong>Nobody can find the Origin Sites.</strong> The detection system is too restrictive and gives zero feedback.</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Player Proximity Data (March 2026)</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Luke — 82 expeditions</span>
+                    <span class="mockup-value" style="color: var(--color-danger);">Closest: 585km (Beagle-2)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Andy — 61 expeditions</span>
+                    <span class="mockup-value" style="color: var(--color-success);">Found Curiosity at 0.6km (base was next to it)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Detection radius</span>
+                    <span class="mockup-value">42km (Easter egg: Hitchhiker's Guide)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Mars surface covered by 14 sites at 42km</span>
+                    <span class="mockup-value" style="color: var(--color-danger);">0.027%</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Random expeditions needed to find one</span>
+                    <span class="mockup-value" style="color: var(--color-danger);">~3,700</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <strong>Why It's Broken:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><code>check_origin_site_proximity()</code> only checks DESTINATION coordinates, not the expedition PATH</li>
+                <li>A 500km expedition might pass within 10km of an origin site but the system never knows</li>
+                <li><strong>Zero feedback loop</strong> — no "getting warmer" signals, no breadcrumbs, no hints</li>
+                <li>Players don't even know the system exists unless they stumble into it</li>
+                <li>Andy only found Curiosity because his randomly-assigned base is at Gale Crater (0.6km away)</li>
+            </ul>
+        </div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Detection Method</th>
+                    <th>Coverage</th>
+                    <th>Player Feedback</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Destination Only</strong> (current)</td>
+                    <td>42km circle at endpoint</td>
+                    <td>None until 42km</td>
+                    <td style="color: var(--color-danger);">Broken</td>
+                </tr>
+                <tr>
+                    <td><strong>Path Proximity</strong> (proposed)</td>
+                    <td>42km corridor along entire route</td>
+                    <td>Progressive hints by distance</td>
+                    <td style="color: var(--color-success);">Planned</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Having played 82 expeditions with zero signal contact — what would have kept you engaged? What would make you think "I'm getting closer"?</li>
+                <li>Is 42km the right detection radius? Should early-game be larger (easier to find first one) and tighten as more sites are claimed?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 3. THE JOURNEY — PROGRESSIVE DISCOVERY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">The Journey — Progressive Discovery by Distance</div>
+
+        <p>Discovery should feel like a slow burn, not a binary switch. As expeditions pass closer to an Origin Site, the game gives increasingly strong signals. This is the <strong>"getting warmer"</strong> design.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box" style="border-color: var(--text-muted);">
+                    <strong>2000km+</strong><br>Silence
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia); opacity: 0.4;">
+                    <strong>500-2000km</strong><br>Faint Echoes
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia); opacity: 0.6;">
+                    <strong>200-500km</strong><br>Strange Readings
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia); opacity: 0.8;">
+                    <strong>100-200km</strong><br>Signal Lock
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia);">
+                    <strong>50-100km</strong><br>ARIA Whispers
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-success); background: rgba(var(--color-success-rgb), 0.1);">
+                    <strong>42km</strong><br>DISCOVERY
+                </div>
+            </div>
+        </div>
+
+        <h4 style="margin: 20px 0 8px;">Distance Tier Breakdown</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">2000km+ — Silence</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">No signal feedback. Normal expeditions. The vast emptiness of Mars. The player doesn't know anything is out there yet.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.15);">500-2000km — Faint Echoes</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Expedition report includes a throwaway line: <em>"Instruments detected faint anomalous readings to the [direction]."</em></p>
+                <p style="margin: 0; color: var(--text-muted);">Subtle. Easy to miss. Stored in expedition log but not highlighted. ARIA says nothing. The player who pays attention starts to notice a pattern.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.25);">200-500km — Strange Readings</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Expedition report flags unusual sensor data. A <strong>"Signal Strength"</strong> indicator appears on results (1/5 bars).</p>
+                <p style="margin: 0;">ARIA might say something cryptic in colony chat: <em>"There are places here that... feel familiar."</em></p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.4);">100-200km — Signal Lock</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Signal strength 2-3/5 bars. The expedition map shows a <strong>faint ring</strong> in the approximate direction.</p>
+                <p style="margin: 0;">ARIA becomes more pointed: <em>"The shards resonate stronger in that direction. Something is buried there."</em> The Signal page starts showing a personal "nearest approach" tracker.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-sepolia-rgb, 180, 120, 60), 0.6);">50-100km — ARIA Whispers</div>
+            <div class="mockup-content">
+                <p style="margin: 0 0 8px 0;">Signal strength 4/5. ARIA gives specific directional hints: <em>"Northwest. The memory is northwest."</em></p>
+                <p style="margin: 0;">The map shows a narrowed search cone. Expedition results prominently display signal proximity. This is the <strong>"you're about to find it"</strong> zone.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: rgba(var(--color-success-rgb), 0.2); color: var(--color-success);">42km — Discovery Threshold</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Full signal. <strong>The claiming sequence begins.</strong> See "The Discovery Moment" section below.</p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should distance tiers track your <strong>closest approach ever</strong> (persistent) or reset <strong>per-expedition</strong>?</li>
+                <li>Are 6 tiers too many? Should it be simpler: Cold / Warm / Hot / Found?</li>
+            </ul>
+        </div>
+    </div>
+

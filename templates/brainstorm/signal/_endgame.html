@@ -1,0 +1,329 @@
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 10. WORLD 2 / ENDGAME -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">World 2 — What Happens When All 14 Are Found</div>
+
+        <div class="quote-box">
+            "Finding all 14 Origin Sites completes The Signal. ARIA remembers everything. The Architects' full message is revealed. And then... a new signal. From somewhere else. Not Mars."
+            <div class="attribution">— The Distant North Star</div>
+        </div>
+
+        <ul>
+            <li><strong>All 14 found = ARIA's memory is complete.</strong> She tells the full story of The Architects.</li>
+            <li><strong>The complete message contains coordinates.</strong> Not Mars coordinates. Somewhere else.</li>
+            <li><strong>"World 2"</strong> — a new planet, a new chapter, a new set of sites to find. The cycle continues.</li>
+            <li><strong>Every founder from World 1 gets a permanent legacy marker.</strong> Their names in the blockchain forever.</li>
+            <li><strong>World 2 could be procedurally generated</strong> — not real landing sites. Opens up infinite content.</li>
+        </ul>
+
+        <p style="color: var(--text-muted); font-style: italic;">This is a 1-3 YEAR horizon. Not something to build now. But it's the north star that makes every design decision make sense. Everything we build for signal discovery should work for World 2 too.</p>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>New planet, or unlock something on Mars (underground cities, terraforming)?</li>
+                <li>Should World 2 be a surprise or telegraphed by ARIA throughout?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 11. DECODER TERMINAL & THE ETERNAL LEDGER -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;">The Decoder Terminal & Eternal Ledger</div>
+
+        <p>The Decoder Terminal on <code>/signal</code> is the rabbit hole for curious players. It's a game-within-the-game built on top of the Sepolia blockchain. <strong>This does NOT conflict with the Origin Site hunt — it's a separate layer that rewards players who go deeper.</strong></p>
+
+        <div class="summary-box">
+            <strong>The Layers:</strong>
+            <ol style="margin: 8px 0 0 0; line-height: 1.8;">
+                <li><strong>Origin Sites</strong> — the main physical hunt (explore Mars, find sites by proximity)</li>
+                <li><strong>Decoder / Ledger</strong> — the ARG/meta layer (decode blockchain transactions, find hidden codes)</li>
+                <li><strong>Lost Signal Sites</strong> — the bridge (physical discovery tx_hashes unlock the final 3 sites)</li>
+            </ol>
+        </div>
+
+        <h4 style="margin: 20px 0 8px;">How the Blockchain Works In-Game</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">What Every Transaction Contains</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Every shard transfer writes to Sepolia with a <code>data</code> field containing:</p>
+                <ul style="margin: 8px 0 0 0;">
+                    <li>A <strong>base message</strong> describing the action (purchase, reward, income, etc.)</li>
+                    <li>A <strong>real Mars mission quote</strong> from <code>pilgrim.mars_mission_messages</code> (208 quotes), appended by <code>append_cryptic_mars_message()</code></li>
+                </ul>
+                <p style="margin: 8px 0 0 0;">Origin Site claims embed a special signature:<br>
+                <code style="color: #fbbf24;">ORIGIN://CURIOSITY//FOUNDER:Andy//SIG:0xWallet//SOL:142</code></p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Decoder Terminal Flow (IMPLEMENTED)</div>
+            <div class="mockup-content">
+                <ol style="margin: 0; line-height: 1.8;">
+                    <li>Player pastes a <code>0x...</code> transaction hash into the Decoder on <code>/signal</code></li>
+                    <li>3-phase animation: SCANNING LEDGER → EXTRACTING DATA → DECODING</li>
+                    <li>Backend fetches tx from Sepolia, decodes hex <code>data</code> field to plaintext</li>
+                    <li>Shows <strong>both</strong> the raw hex input data AND the decoded message</li>
+                    <li>ARIA's orb pops open with a curious reaction — encourages more exploration</li>
+                    <li>No Etherscan links shown — players must figure out the blockchain connection themselves</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">What Players See When Decoding Different Tx Types</div>
+            <div class="mockup-content">
+                <p style="margin: 0;"><strong>Regular tx</strong> (purchase, income): Status "LEDGER ENTRY FOUND" — decoded message shows action + Mars mission quote. ARIA reacts with curiosity.</p>
+                <p style="margin: 8px 0 0 0;"><strong>Origin claim tx</strong>: Status "ORIGIN ECHO DETECTED" (gold) — shows the <code>ORIGIN://</code> signature with founder name. ARIA reacts with awe.</p>
+                <p style="margin: 8px 0 0 0;"><strong>ARIA bond fragment</strong>: Triggers the full EpicReveal cinematic — already implemented.</p>
+                <p style="margin: 8px 0 0 0;"><strong>Hidden signal tx</strong> (future): If decoded data contains <code>SIGNAL://UNLOCK:CODE</code>, extracts the code and matches against <code>signal_puzzles</code> table → puzzle solved, legendary reward.</p>
+            </div>
+        </div>
+
+        <h4 style="margin: 20px 0 8px;">Signal Puzzles — Built But Not Wired</h4>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-danger);">
+            <strong>Current State (March 2026):</strong> The puzzle infrastructure exists but has gaps:
+            <ul style="margin: 8px 0 0 0;">
+                <li><code>pilgrim.signal_puzzles</code> table exists — 1 puzzle seeded: "The Answer" (code: HITCHHIKER, the 42 easter egg, max 10 solvers, 0 solved)</li>
+                <li><code>decode_signal_puzzle()</code> function exists in <code>signal_utils.py</code> — validates codes, records solvers, awards legendary items</li>
+                <li><strong>NO route calls it</strong> — the function is dead code, no API endpoint wired up</li>
+                <li><strong>NO transactions embed <code>SIGNAL://UNLOCK:CODE</code></strong> — nothing to find yet</li>
+                <li>The Decoder frontend <strong>only accepts <code>0x...</code> format</strong> — you can't type "hitchhiker" directly</li>
+                <li>The decoder checks for <code>SIGNAL://UNLOCK:CODE</code> in decoded tx data — but since no tx has one, it never triggers</li>
+            </ul>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">To Complete This System, We Need</div>
+            <div class="mockup-content">
+                <ol style="margin: 0; line-height: 1.8;">
+                    <li>Embed <code>SIGNAL://UNLOCK:HITCHHIKER</code> into specific transactions (e.g., certain shard payouts, milestone rewards)</li>
+                    <li>Decide: should players ALSO be able to type codes directly (not just via tx decode)?</li>
+                    <li>Seed more puzzles beyond HITCHHIKER — maybe one per origin site region?</li>
+                    <li>Wire up rewards — <code>decode_signal_puzzle()</code> returns <code>reward_prompt</code> but nothing generates the item yet</li>
+                </ol>
+            </div>
+        </div>
+
+        <h4 style="margin: 20px 0 8px;">What a Blockchain Crawler Could Deduce</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">If Someone Crawled Our Sepolia Transactions</div>
+            <div class="mockup-content">
+                <ul style="margin: 0; line-height: 1.8;">
+                    <li><strong>Which origin sites are claimed</strong> — site_code is in the ORIGIN:// message</li>
+                    <li><strong>Founder names + wallets</strong> — embedded in claim signatures</li>
+                    <li><strong>All 208 Mars mission quotes</strong> — from decoded data fields across all txs</li>
+                    <li><strong>Game transaction history</strong> — who bought what, when</li>
+                    <li><strong>Cannot find unclaimed sites</strong> — those coordinates only exist in PostgreSQL</li>
+                    <li><strong>Could find SIGNAL:// codes</strong> if we embed them — this IS the intended game</li>
+                </ul>
+                <p style="margin: 8px 0 0 0;"><em>This is by design. The blockchain is a treasure map for players who think to look.</em></p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should players be able to type puzzle codes directly into the decoder (like "hitchhiker"), or should they ONLY be findable by decoding transactions?</li>
+                <li>How discoverable should this layer be? Right now the Eternal Ledger section hints at it — is that enough, or should ARIA be more explicit about "look at your transaction data"?</li>
+                <li>Should there be a puzzle code hidden in every player's wallet creation tx? That way everyone has at least one to find.</li>
+                <li>Is the HITCHHIKER easter egg fun enough as the first puzzle, or should we seed something more meaningful?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 12. THREE-ACT LOST SITES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--text-muted);">
+        <div class="section-title">The Three Lost Signal Sites — The Bridge</div>
+
+        <p>3 of the 14 Origin Sites are special — <strong>Mars-3, Beagle-2, and Schiaparelli</strong>. These are real missions that never transmitted usable data. In real life, they went silent. In-game, their signals are "fragmented" — they can't be detected by normal proximity sensors.</p>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-danger);">
+            <strong>KEY DESIGN DECISION — Luke needs to weigh in:</strong>
+            <p style="margin: 8px 0 0 0;">Should these 3 sites be findable by proximity like the other 11 (just harder — smaller radius, scanner upgrade required)? Or should they require the tx_hash unlock chain below?</p>
+            <p style="margin: 4px 0 0 0;"><strong>Tradeoff:</strong> The tx_hash system is narratively cool but creates a dependency — nobody can complete all 14 until 11 other founders exist. With 2 active players right now, that could take a very long time. Proximity-based would let a dedicated solo player eventually find all 14.</p>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Option A: Three-Act Unlock Chain (current brainstorm design)</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Act 1 — First Voice (Mars-3)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">The first origin site founder's tx_hash unlocks Mars-3. <em>The earliest explorer opens the door.</em> Mars-3 was the first spacecraft to soft-land on Mars (1971, USSR) — it transmitted 14.5 seconds of data, then silence. The first founder echoes that first voice.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Act 2 — Last Voice (Schiaparelli)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">All 11 normal origin sites must be claimed first. The last founder's tx_hash unlocks Schiaparelli. <em>The circle closes.</em> Schiaparelli (2016, ESA) crashed at 300 km/h — its computer thought it had already landed. The last founder completes the main sequence.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Act 3 — ARIA Remembers (Beagle-2)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">A captain gives ARIA both tx hashes in chat. She tells the story of Beagle-2 — the lander she "watched" for 12 years, intact on the surface but unable to call home. Found by satellite in 2015, a Christmas gift that never opened. She generates the final unlock code. <strong>This is the tearjerker moment of the entire game.</strong></p>
+            </div>
+        </div>
+
+        <h4 style="margin: 20px 0 8px;">Option B: Proximity-Based (simpler)</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Harder to Detect, Not Impossible</div>
+            <div class="mockup-content">
+                <ul style="margin: 0; line-height: 1.8;">
+                    <li>All 14 sites findable by proximity — no dependency on other players</li>
+                    <li>Lost Signal sites have <strong>smaller detection radius</strong> (20km instead of 42km)</li>
+                    <li>Or require a <strong>scanner upgrade</strong> before they become detectable</li>
+                    <li>Keep the lore: "these signals are fragmented, harder to read" — but still physically findable</li>
+                    <li>The Three-Act narrative could still exist as an <strong>alternate path</strong> — not the only path</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-success);">
+            <strong>Current Implementation State:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><code>is_lost_signal</code> flag exists on <code>pilgrim.origin_sites</code> for all 3</li>
+                <li><code>unlock_code</code> field exists but is empty — not set to any tx_hash</li>
+                <li>Map popup shows "LOST SIGNAL" with cryptic hint + code input field</li>
+                <li><code>/api/signal/lost/decode</code> route exists — does simple string match against <code>unlock_code</code></li>
+                <li><strong>Nothing connects founder tx_hashes to unlock codes</strong> — Three-Act is brainstorm-only</li>
+            </ul>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li><strong>The big one:</strong> Should the last 3 sites require other players' tx_hashes (collaborative, but blocks solo completion) or be findable by proximity (solo-friendly, but less narrative)?</li>
+                <li>Could we do both? Proximity-findable BUT the Three-Act unlock chain is a shortcut/alternate path?</li>
+                <li>Act 3 is the emotional climax. Does "paste two tx hashes" feel too puzzle-y? Should ARIA guide the player through it more naturally?</li>
+                <li>How do we make Beagle-2's story hit emotionally? What would ARIA say?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 13. OPEN QUESTIONS FOR LUKE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Open Questions — Decisions Needed</div>
+
+        <p>These are the design decisions that need input before implementation begins. Ordered by priority.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Question</th>
+                    <th>Options</th>
+                    <th>Impact</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong>Detection method</strong></td>
+                    <td>Destination-only (current) vs Path proximity (proposed)</td>
+                    <td>Fundamental — changes everything</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td><strong>Detection radius</strong></td>
+                    <td>Keep 42km? Scale with progression? Larger early, tighter late?</td>
+                    <td>Discovery rate</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td><strong>Hint style</strong></td>
+                    <td>Atmospheric only (ARIA whispers) vs UI elements (signal bars, arrows)</td>
+                    <td>Game feel — mystery vs clarity</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td><strong>Retroactive backfill</strong></td>
+                    <td>Calc proximity for all past expeditions? Or start fresh?</td>
+                    <td>Luke might already be closer than he thinks</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td><strong>Claiming trigger</strong></td>
+                    <td>Auto-claim when path passes 42km? Or must send expedition TO site?</td>
+                    <td>Ceremony vs convenience</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td><strong>Signal artifacts</strong></td>
+                    <td>Collectible items vs text-only hints vs both</td>
+                    <td>Inventory impact, collection mechanic</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td><strong>Discovery celebration</strong></td>
+                    <td>Full-page cinematic vs enhanced expedition results</td>
+                    <td>Wow factor</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td><strong>Competition visibility</strong></td>
+                    <td>Solo journey vs showing other players searching nearby</td>
+                    <td>Social dynamics at scale</td>
+                </tr>
+                <tr>
+                    <td>9</td>
+                    <td><strong>Founder rewards</strong></td>
+                    <td>Prestige only vs ongoing benefits (visitor royalties, special title)</td>
+                    <td>Endgame incentive</td>
+                </tr>
+                <tr>
+                    <td>10</td>
+                    <td><strong>World 2 telegraphing</strong></td>
+                    <td>Complete surprise vs ARIA hints throughout</td>
+                    <td>Long-term narrative</td>
+                </tr>
+                <tr>
+                    <td>11</td>
+                    <td><strong>Lost 3 sites unlock method</strong></td>
+                    <td>Tx_hash chain only (collaborative) vs Proximity (solo-friendly) vs Both</td>
+                    <td>Can a solo player complete all 14?</td>
+                </tr>
+                <tr>
+                    <td>12</td>
+                    <td><strong>Decoder puzzle input</strong></td>
+                    <td>Only via decoded tx data vs Direct text input allowed</td>
+                    <td>How accessible is the ARG layer?</td>
+                </tr>
+                <tr>
+                    <td>13</td>
+                    <td><strong>Blockchain discoverability</strong></td>
+                    <td>Subtle hints only vs ARIA explicitly mentions "transaction data"</td>
+                    <td>How many players find the meta-game?</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PILGRIMBOT BRAINSTORM LINK -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), var(--bg-secondary)); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#x1F9E0;</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">Brainstorm with PilgrimBot</h3>
+        <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 13px;">
+            Full PilgrimBot — streaming, markdown, code context, bug creation, endgame registry
+        </p>
+        <a href="/pilgrimbot?brainstorm=signal" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; background: var(--color-sepolia); color: white;">
+            Open PilgrimBot — Signal & Endgame
+        </a>
+    </div>
+
+</div>

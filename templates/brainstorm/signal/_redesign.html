@@ -1,0 +1,178 @@
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 7. SIGNAL PAGE REDESIGN -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">The Signal Page — What /signal Should Show</div>
+
+        <p>Currently <code>/signal</code> shows claimed/unclaimed nodes with cryptic IDs, echo sites, and a decoder. It's atmospheric but gives zero sense of <strong>personal progress</strong>. The page is identical for everyone.</p>
+
+        <div class="summary-box">
+            <strong>What's Missing:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>No personal proximity tracker ("Your closest approach to any origin site")</li>
+                <li>No signal strength per site (even vague Cold / Warm / Hot)</li>
+                <li>No expedition history showing signal-relevant trips</li>
+                <li>No directional hints for where to explore next</li>
+                <li>No sense that exploration is leading somewhere</li>
+            </ul>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Proposed Additions</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Personal Signal Dashboard</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">A new section at the top of /signal showing YOUR progress: closest approach per active site (if within 2000km), number of signal artifacts collected, ARIA's current hint. Each player sees their own version.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Signal Strength Bars</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Each unclaimed node shows 0-5 signal bars based on your closest approach ever. Creates a visual "I'm getting warmer on 3 sites" feeling. Bars fill as you explore closer.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Expedition Compass</div>
+            <div class="mockup-content">
+                <p style="margin: 0;"><em>"Your last 5 expeditions were all south. The strongest signal readings came from the northwest."</em> Guides exploration without spoiling exact location.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Global Activity Feed (at scale)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;"><em>"Captain [X] detected a signal echo near [region]"</em> — shows other players are searching too. At scale, this creates competition dynamics.</p>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Keep /signal cryptic/mysterious, or add a personal progress dashboard?</li>
+                <li>Signal strength bars: exact numbers or fuzzy (Cold/Warm/Hot)?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 8. MAP VISUALIZATION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Map Visualization — What Shows on Expeditions</div>
+
+        <div class="summary-box" style="border-left: 3px solid var(--color-success);">
+            <strong>IMPLEMENTED (March 2026):</strong> All 14 origin dots are now <strong>always visible</strong> on the expedition map as pulsing gold markers. Clicking an unclaimed node shows mysterious Signal-page-matching language instead of revealing mission details.
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Current Map Popup Tiers</h4>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Unclaimed Node — No Proximity (default)</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Shows <code>NODE-XXXXXX</code> (matching Signal page), signal strength (Strong/Faint/Fragmented from mission_status), and <em>"Dormant. Awaiting contact."</em> — no mission name, no distance, no hints.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Unclaimed Node — Within 1000km</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Same as above plus a cryptic ARIA hint: <em>"A distant echo. Too far to read, but... it's there."</em></p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Unclaimed Node — Within 500km</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Stronger hint: <em>"Something stirred during a recent journey... a faint resonance, ~XXX clicks out."</em> Distance rounded to nearest 50km — close enough to guide, vague enough to not pinpoint.</p>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Claimable — Within 42km</div>
+            <div class="mockup-content">
+                <p style="margin: 0;">Mission name revealed for the first time. "Origin Site" label. Claim button. This is the moment.</p>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Future Visual Layers (not yet built)</h4>
+        <ul>
+            <li><strong>Signal Rings:</strong> Faint concentric circles that brighten as you approach. Never shows exact center until 42km.</li>
+            <li><strong>Path Heat Map:</strong> Expedition paths colored by signal proximity — warmer = closer. Visual "treasure map."</li>
+            <li><strong>Directional Indicators:</strong> After 200km tier, subtle arrow pointing toward signal source. Think BotW shrine sensor.</li>
+        </ul>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Signal rings vs heat map vs directional arrows — which feels most like "I'm hunting for something" and least like "the game is telling me where to go"?</li>
+                <li>Do the cryptic proximity hints feel right? Too much info, or not enough?</li>
+                <li>Should ARIA ever whisper about nearby nodes unprompted (e.g., after an expedition returns)?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 9. SCALE DESIGN -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Scale Design — 10 Players vs 560,000</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Now (2-5 players)</th>
+                    <th>Growth (50-500)</th>
+                    <th>Scale (10,000+)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Discovery rate</strong></td>
+                    <td>Months per site</td>
+                    <td>Weeks per site</td>
+                    <td>Days per site</td>
+                </tr>
+                <tr>
+                    <td><strong>Competition</strong></td>
+                    <td>None (co-op feel)</td>
+                    <td>Regional rivalry</td>
+                    <td>Intense racing</td>
+                </tr>
+                <tr>
+                    <td><strong>Site scarcity</strong></td>
+                    <td>14 unclaimed</td>
+                    <td>Mix claimed/unclaimed</td>
+                    <td>Last few = ultra-competitive</td>
+                </tr>
+                <tr>
+                    <td><strong>Social dynamics</strong></td>
+                    <td>Share hints freely</td>
+                    <td>Strategic sharing</td>
+                    <td>Guilds? Alliances?</td>
+                </tr>
+                <tr>
+                    <td><strong>Signal page</strong></td>
+                    <td>Personal journey</td>
+                    <td>Leaderboard emerges</td>
+                    <td>Real-time race tracking</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <strong>The "Last Site" Scenario:</strong>
+            <p style="margin: 8px 0 0 0;">When 13 of 14 are found, every player on Mars is hunting for the final one. This should be the game's biggest event. Global countdown? ARIA going haywire? Live race tracking on the Signal page? The person who finds the 14th site completes The Signal and unlocks what comes next.</p>
+        </div>
+
+        <div class="question-box">
+            <h4>Questions for Luke</h4>
+            <ul>
+                <li>Should players see others converging nearby? <em>"Signal interference detected."</em></li>
+                <li>Should founders get ongoing benefits or purely prestige?</li>
+            </ul>
+        </div>
+    </div>
+
