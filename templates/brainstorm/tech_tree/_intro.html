@@ -1,0 +1,148 @@
+    <!-- Header -->
+    <div class="section"
+        style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-review">Draft for Review</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Technology Tree System</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Brainstorm Document - January 2026</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">Andy + PilgrimBot's thinking based on
+            Luke's feature request</p>
+    </div>
+
+    <!-- Luke's Original Request -->
+    <div class="section">
+        <div class="section-title">Luke's Original Request</div>
+
+        <div class="quote-box">
+            "This gives Dr Bo something to do. He can research things based on items found and/or their science value.
+            Maybe Wind Readings makes drone 25% faster or lets you unlock Level 3 of the drone. Technology tree can have
+            multiple branches that affect Rovers, resource generation. Do we need to collect 30 geometric shapes to
+            start technology? Shard it All gives you science value AND sepolia shards. The more advanced the technology,
+            the more it costs."
+            <div class="attribution">— Luke, Bug Tracker P1</div>
+        </div>
+
+        <p><strong>Additional feedback from Luke:</strong></p>
+        <ul>
+            <li>Daily HQ briefing should include scientist reporting on what they discovered/are working on</li>
+            <li>Scientists have specialties (botanist, xeno, etc.) - can we use that for tech tree bonuses?</li>
+            <li>Wants ability to swap out Dr. Bo for a different scientist</li>
+        </ul>
+    </div>
+
+    <!-- The Core Insight -->
+    <div class="section">
+        <div class="section-title">The Core Insight</div>
+
+        <div class="summary-box">
+            <strong>Luke's idea:</strong> "Shard it All" should give you <strong>BOTH</strong> sepolia shards AND
+            science value. Yea, but maybe less of Shards, and something more for science?
+        </div>
+
+        <p>You don't have to choose between sharding or researching. <strong>Sharding IS
+                research contribution.</strong></p>
+
+        <!-- Clean Flow Diagram -->
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">Expeditions</div>
+                    <div class="flow-box-sub">Explore Mars</div>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box">
+                    <div class="flow-box-title">Discoveries</div>
+                    <div class="flow-box-sub">Find items</div>
+                </div>
+                <span class="flow-arrow">→</span>
+                <div class="flow-box highlight">
+                    <div class="flow-box-title">"Shard It All"</div>
+                    <div class="flow-box-sub">Extract value</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <div class="flow-row">
+                <div class="flow-box success" style="min-width: 280px;">
+                    <div class="flow-box-title">You Get BOTH:</div>
+                    <div class="flow-box-sub">Sepolia Shards + Science Points</div>
+                </div>
+            </div>
+
+            <div class="flow-arrow-down">↓</div>
+
+            <div class="flow-row">
+                <div class="flow-box">
+                    <div class="flow-box-title">Buy Equipment</div>
+                    <div class="flow-box-sub">Depot (shards)</div>
+                </div>
+                <div class="flow-box">
+                    <div class="flow-box-title">Unlock Techs</div>
+                    <div class="flow-box-sub">Scientist (SP)</div>
+                </div>
+                <div class="flow-box">
+                    <div class="flow-box-title">Build Infra</div>
+                    <div class="flow-box-sub">Depot (shards)</div>
+                </div>
+            </div>
+        </div>
+
+        <p><strong>Science Points</strong> become a second resource displayed alongside Sepolia shards. Technologies
+            cost science points (+ sometimes specific items) to unlock.</p>
+    </div>
+
+    <!-- How The Scientist Works -->
+    <div class="section">
+        <div class="section-title">Dr. Bo Finally Has a Job</div>
+
+        <p>The Colony Scientist aligns to what he was brought along for anyway...</p>
+
+        <ul>
+            <li><strong>Researches technologies</strong> - you pick what to research, they work on it</li>
+            <li><strong>Progress tracking</strong> - "Dr. Bo is 3/5 Wind Readings toward Atmospheric Analysis"</li>
+            <li><strong>Specialty bonuses</strong> - matching specialty = 25% faster + 20% cheaper</li>
+            <li><strong>Daily briefings</strong> - reports on progress in HQ/emails</li>
+        </ul>
+
+        <!-- Mockup UI -->
+        <div class="mockup-box">
+            <div class="mockup-header">Crew Page - Research Tab</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Scientist</span>
+                    <span class="mockup-value">Dr. Bo Chen</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Specialty</span>
+                    <span class="mockup-value highlight">Atmospheric Science</span>
+                </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                    <div class="mockup-row">
+                        <span class="mockup-label">Current Research</span>
+                        <span class="mockup-value">Wind Analysis</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 60%;"></div>
+                    </div>
+                    <div class="mockup-row">
+                        <span class="mockup-label">Progress</span>
+                        <span class="mockup-value">3/5 Wind Readings</span>
+                    </div>
+                    <div class="mockup-row">
+                        <span class="mockup-label">Science Cost</span>
+                        <span class="mockup-value">5,000 SP <span style="color: var(--color-success);">(4,000 with
+                                specialty!)</span></span>
+                    </div>
+                    <div class="mockup-row">
+                        <span class="mockup-label">Effect</span>
+                        <span class="mockup-value highlight">Drone speed +25%</span>
+                    </div>
+                </div>
+                <div class="mockup-buttons">
+                    <span class="mockup-btn primary">View Full Tech Tree</span>
+                    <span class="mockup-btn">Change Research</span>
+                </div>
+            </div>
+        </div>
+    </div>
+

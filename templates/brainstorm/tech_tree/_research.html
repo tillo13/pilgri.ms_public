@@ -1,0 +1,96 @@
+    <!-- Research & Inspiration -->
+    <div class="section">
+        <div class="section-title">Research: How the Big Games Do It</div>
+
+        <div class="quote-box"
+            style="border-color: var(--color-primary); background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.1), rgba(var(--color-success-rgb), 0.1));">
+            <strong>Luke's Top Games (by hours):</strong><br>
+            XCOM 2 (1,523 hrs) • Civ VI (1,225 hrs) • BattleTech (1,004 hrs) • Factorio (643 hrs) • Space Haven (516
+            hrs) • Surviving Mars (314 hrs)<br><br>
+            <strong>Andy's Games:</strong><br>
+            Card games (Poker/Spades) • Chess • LoL (ARAM) • Clash of Clans • Zelda • Baseball Stars<br><br>
+            <strong>Shared Values:</strong> Start small → grow big, meaningful choices, stats tracking, progressive
+            unlocks, resource optimization
+            <div class="attribution" style="color: var(--color-primary);">— Full breakdown in <a
+                    href="https://github.com/tillo13/pilgri.ms/blob/main/docs/game_logic.md" target="_blank"
+                    style="color: var(--color-primary);">docs/game_logic.md</a></div>
+        </div>
+
+        <p>We looked at how major strategy games structure their tech trees to inform our approach:</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Game</th>
+                    <th>Total Techs</th>
+                    <th>Structure</th>
+                    <th>Key Mechanic</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Civilization 6</strong></td>
+                    <td>~118 (67 tech + 50 civics)</td>
+                    <td>2 trees, 9 eras</td>
+                    <td>"Eureka" - mini-quests give 50% boost</td>
+                </tr>
+                <tr>
+                    <td><strong>Stellaris</strong></td>
+                    <td>~400</td>
+                    <td>3 areas, 13 subcategories, 6 tiers</td>
+                    <td>Card shuffle randomizes available research</td>
+                </tr>
+                <tr>
+                    <td><strong>Factorio</strong></td>
+                    <td>~200</td>
+                    <td>Multiple paths, progressive</td>
+                    <td>Science packs as currency, infinite late-game</td>
+                </tr>
+                <tr>
+                    <td><strong>Age of Empires IV</strong></td>
+                    <td>~50-70 per civ</td>
+                    <td>By building type, 4 ages</td>
+                    <td>Civilization-specific trees</td>
+                </tr>
+                <tr>
+                    <td><strong>Dawn of Man</strong></td>
+                    <td>~30-40</td>
+                    <td>Adaptive unlock</td>
+                    <td>Knowledge from actions (hunt, build, craft)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box" style="margin-top: 16px;">
+            <strong>Key Design Principles We Found:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Branching factor ~1.5</strong> - Civ V uses 1.49. Too many branches = decision paralysis.
+                </li>
+                <li><strong>"One choice = no choice"</strong> - Every tech should feel useful, not just a prerequisite.
+                </li>
+                <li><strong>Thematic pillars</strong> - Organize around 3-5 themes (for us: Exploration, Vehicles,
+                    Power, Extraction).</li>
+                <li><strong>Dawn of Man insight</strong> - "You get knowledge for doing things" = Luke's idea of science
+                    points from extraction!</li>
+            </ul>
+        </div>
+
+        <p style="margin-top: 16px;"><strong>Our scale recommendation:</strong> For an indie game our size,
+            <strong>20-30 techs</strong> is manageable. Civ's 118 or Stellaris's 400 would be overkill.
+        </p>
+
+        <p style="font-size: 12px; color: var(--text-secondary);">
+            Sources:
+            <a href="https://civilization.fandom.com/wiki/Technology_(Civ6)" target="_blank"
+                style="color: var(--color-primary);">Civ Wiki</a> •
+            <a href="https://stellaris.paradoxwikis.com/Technology" target="_blank"
+                style="color: var(--color-primary);">Stellaris Wiki</a> •
+            <a href="https://wiki.factorio.com/Technologies" target="_blank"
+                style="color: var(--color-primary);">Factorio Wiki</a> •
+            <a href="https://www.gamedeveloper.com/design/game-design-deep-dive-creating-an-adaptive-tech-tree-in-i-dawn-of-man-i-"
+                target="_blank" style="color: var(--color-primary);">Dawn of Man GDC</a> •
+            <a href="https://forums.civfanatics.com/threads/how-to-design-a-tech-tree.274045/" target="_blank"
+                style="color: var(--color-primary);">CivFanatics Design Guide</a>
+        </p>
+    </div>
+
