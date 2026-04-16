@@ -46,7 +46,6 @@
             btn.disabled = true;
 
             apiPost('/api/brainstorm/comments/' + PAGE_KEY, {section_idx: idx, text: text})
-            .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.success) {
                     input.value = '';

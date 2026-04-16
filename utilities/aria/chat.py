@@ -4,6 +4,7 @@ Extracted from utilities/aria_utils.py (Pass B of the ARIA split).
 """
 
 import logging
+import os
 from typing import Dict, Any, Optional, List
 
 from utilities.claude_utils import create_client, CLAUDE_MODELS, log_api_usage

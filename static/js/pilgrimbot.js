@@ -136,7 +136,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creating...';
 
-            apiPost('/api/pilgrimbot/create_bug', {response_text: responseText, chat_id: currentChatId, title: title, priority: priority}).then(function(r) { return r.json(); }).then(function(data) {
+            apiPost('/api/pilgrimbot/create_bug', {response_text: responseText, chat_id: currentChatId, title: title, priority: priority}).then(function(data) {
                 if (data.success) {
                     overlay.remove();
                     showToast('Bug #' + data.bug_id + ' created!', 'success');
@@ -452,8 +452,12 @@
             }
         }
 
-        // === SSE fetch ===
-        apiPost('/api/pilgrimbot/chat', {message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined}).then(response => {
+        // === SSE fetch === (must use raw fetch — apiPost auto-parses JSON which breaks streaming)
+        fetch('/api/pilgrimbot/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: text, chat_id: currentChatId, stream: true, bug_mode: !!BUG_ID, image_url: imageUrl || undefined})
+        }).then(response => {
             if (!response.ok) throw new Error('Server error: ' + response.status);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -768,7 +772,7 @@
     var roleSelect = document.getElementById('pbRoleSelect');
     if (roleSelect) {
         roleSelect.addEventListener('change', function() {
-            apiPost('/api/pilgrimbot/role', {role: this.value}).then(function(r) { return r.json(); }).then(function(data) {
+            apiPost('/api/pilgrimbot/role', {role: this.value}).then(function(data) {
                 if (data.success) {
                     roleSelect.style.outline = '2px solid #4a4';
                     setTimeout(function() { roleSelect.style.outline = ''; }, 1000);

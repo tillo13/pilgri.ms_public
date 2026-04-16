@@ -227,13 +227,13 @@ function runAnonDemoAnimations() {
 // Mining functions for anonymous users
 async function triggerMining(e) {
     const btn = e.target; showProcessing('Claiming Shard cache...'); btn.disabled = true;
-    try { const r = await apiPost('/api/asteroid_impact'); const data = await r.json(); if (data.success) location.reload(); else { hideProcessing(); showError(data.error || 'Mining failed'); btn.disabled = false; } }
+    try { const data = await apiPost('/api/asteroid_impact'); if (data.success) location.reload(); else { hideProcessing(); showError(data.error || 'Mining failed'); btn.disabled = false; } }
     catch (err) { hideProcessing(); showError('Network error: ' + err.message); btn.disabled = false; }
 }
 
 async function claimAdditionalCache(e) {
     const btn = e.target; btn.disabled = true; showProcessing('Searching for additional deposits...');
-    try { await apiPost('/api/clear_session_wallet'); const r = await apiPost('/api/asteroid_impact'); const data = await r.json(); if (data.success) { showToast('Found more Shards!', 'success', 'Additional Cache!'); setTimeout(() => location.reload(), 1500); } else { hideProcessing(); showError(data.error || 'No caches available'); btn.disabled = false; } }
+    try { await apiPost('/api/clear_session_wallet'); const data = await apiPost('/api/asteroid_impact'); if (data.success) { showToast('Found more Shards!', 'success', 'Additional Cache!'); setTimeout(() => location.reload(), 1500); } else { hideProcessing(); showError(data.error || 'No caches available'); btn.disabled = false; } }
     catch (err) { hideProcessing(); showError('Network error: ' + err.message); btn.disabled = false; }
 }
 
@@ -457,7 +457,7 @@ async function claimAllDiscoveries() {
     if (btn) btn.disabled = true; if (content) content.style.opacity = '0.5';
     showToast('Claiming discoveries...', 'success', '🎉 Secured', 4000);
     setTimeout(() => { if (content) content.style.display = 'none'; $('discoveriesEmpty').style.display = 'block'; }, 1000);
-    try { const r = await apiPost('/api/expeditions/claim_all_discoveries'); const data = await r.json();
+    try { const data = await apiPost('/api/expeditions/claim_all_discoveries');
         if (data.success) showToast(`${data.claimed_count} discoveries secured (Value: ${data.total_value})`, 'info', '', 3000);
         else { showToast(`Error: ${data.error}`, 'error'); setTimeout(() => location.reload(), 2000); }
     } catch { showToast('Network error.', 'error'); setTimeout(() => location.reload(), 2000); }
@@ -642,7 +642,6 @@ function _snapshotBody(snap) {
 
 function _fetchNarrative(snap) {
     apiPost('/api/aria/snapshot-narrative', { snapshot_id: snap.id, caption: snap.caption, type: snap.type, image_url: snap.imageUrl })
-    .then(r => r.json())
     .then(data => {
         const el = document.getElementById('snapshot-narrative');
         if (el) { if (data.narrative) el.innerHTML = data.narrative; else el.style.display = 'none'; }

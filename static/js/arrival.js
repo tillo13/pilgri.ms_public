@@ -56,13 +56,13 @@ function displayStats(stats) {
 // Mining
 async function triggerMining(e) {
     const btn = e.target; showProcessing('Mining asteroid for Shards...'); btn.disabled = true;
-    try { const r = await apiPost('/api/asteroid_impact'); const data = await r.json(); if (data.success) location.reload(); else { hideProcessing(); showError(data.error || 'Mining failed'); btn.disabled = false; } }
+    try { const data = await apiPost('/api/asteroid_impact'); if (data.success) location.reload(); else { hideProcessing(); showError(data.error || 'Mining failed'); btn.disabled = false; } }
     catch (err) { hideProcessing(); showError('Network error: ' + err.message); btn.disabled = false; }
 }
 
 async function claimAdditionalCache(e) {
     const btn = e.target; btn.disabled = true; showProcessing('Searching for additional deposits...');
-    try { await apiPost('/api/clear_session_wallet'); const r = await apiPost('/api/asteroid_impact'); const data = await r.json(); if (data.success) { showToast('Found more Shards!', 'success', 'Additional Cache!'); setTimeout(() => location.reload(), 1500); } else { hideProcessing(); showError(data.error || 'No caches available'); btn.disabled = false; } }
+    try { await apiPost('/api/clear_session_wallet'); const data = await apiPost('/api/asteroid_impact'); if (data.success) { showToast('Found more Shards!', 'success', 'Additional Cache!'); setTimeout(() => location.reload(), 1500); } else { hideProcessing(); showError(data.error || 'No caches available'); btn.disabled = false; } }
     catch (err) { hideProcessing(); showError('Network error: ' + err.message); btn.disabled = false; }
 }
 
