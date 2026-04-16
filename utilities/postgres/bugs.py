@@ -591,6 +591,9 @@ def _notify_mentions(bug_id, author, body):
                     continue
 
                 to_email = row['email']
+                if to_email.lower().endswith(('.test', '.invalid', '.local', '.example')):
+                    logger.info(f"Bug #{bug_id}: skipping @mention email to reserved-TLD address {to_email}")
+                    continue
                 from utilities.email.mentions import send_mention_notification
                 send_mention_notification(
                     bug_id=bug_id,
