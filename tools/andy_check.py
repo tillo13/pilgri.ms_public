@@ -592,7 +592,10 @@ def check_infrastructure_income():
         log.info(f"  ✓ SV accumulated: {sv_amount:.1f} (below threshold)")
 
 
-AUTHED_PAGES = ['/', '/colony', '/crew', '/depot', '/expeditions', '/research']
+AUTHED_PAGES = [
+    '/', '/colony', '/colony/profile', '/crew', '/depot', '/expeditions',
+    '/research', '/inventory', '/lore', '/signal', '/admin/bugs',
+]
 
 
 def check_authed_page_renders():
