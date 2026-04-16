@@ -653,26 +653,6 @@
       "generate_unlock_codes — Helper to generate hex codes for Lost Sites (for reference)"
     ]
   },
-  "tools/smoke_test.py": {
-    "description": "Pilgrims Smoke Test - Tiered, Feature-Aware Testing System",
-    "exports": [
-      "class TestTimeoutError",
-      "test — Register a test with name, tier level, and feature tags.",
-      "requires_web3 — Skip if web3 not available (venv not activated).",
-      "requires_import — Skip if any of the listed modules can't be imported.",
-      "requires_flask — Skip if Flask context not available.",
-      "test_db_connection",
-      "test_users_table",
-      "test_upgrades_schema",
-      "test_infrastructure_table",
-      "test_techs_table",
-      "test_config_loads",
-      "test_config_upgrades",
-      "test_config_infrastructure",
-      "test_config_tech",
-      "test_upgrade_build_times"
-    ]
-  },
   "tools/smoke_test_new_user.py": {
     "description": "New User Smoke Test - Tests the complete new user onboarding flow",
     "exports": [
@@ -3159,7 +3139,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3237,7 +3217,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
