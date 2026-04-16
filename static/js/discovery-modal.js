@@ -83,7 +83,7 @@ window.showDiscoveryDetails = function(id) {
                 className: 'btn-warning',
                 onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'rare', true, svBonusAll),
                 secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'rare', false, svBonusOne) } : null,
-                tertiaryAction: qty > 1 ? { label: `Shard Some…`, onClick: () => promptCustomExtractQty(id, qty, i.item_name, 'rare', shardPayoutOne, Math.floor(shardPayoutOne * 0.50)) } : null
+                tertiaryAction: qty > 1 ? { label: `Extract Some…`, onClick: () => promptCustomExtractQty(id, qty, i.item_name, 'rare', shardPayoutOne, Math.floor(shardPayoutOne * 0.50)) } : null
             };
         } else if (rarity === 'uncommon') {
             // Uncommon: 0.75x payout with flavor text + SV warning
@@ -104,7 +104,7 @@ window.showDiscoveryDetails = function(id) {
                 className: 'btn-success',
                 onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'uncommon', true, svBonusAll),
                 secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'uncommon', false, svBonusOne) } : null,
-                tertiaryAction: qty > 1 ? { label: `Shard Some…`, onClick: () => promptCustomExtractQty(id, qty, i.item_name, 'uncommon', shardPayoutOne, Math.floor(shardPayoutOne * 0.50)) } : null
+                tertiaryAction: qty > 1 ? { label: `Extract Some…`, onClick: () => promptCustomExtractQty(id, qty, i.item_name, 'uncommon', shardPayoutOne, Math.floor(shardPayoutOne * 0.50)) } : null
             };
         } else {
             // Common: 0.5x payout with flavor text + SV warning
@@ -125,7 +125,7 @@ window.showDiscoveryDetails = function(id) {
                 className: 'btn-success',
                 onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'common', true, svBonusAll),
                 secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'common', false, svBonusOne) } : null,
-                tertiaryAction: qty > 1 ? { label: `Shard Some…`, onClick: () => promptCustomExtractQty(id, qty, i.item_name, 'common', shardPayoutOne, Math.floor(shardPayoutOne * 0.50)) } : null
+                tertiaryAction: qty > 1 ? { label: `Extract Some…`, onClick: () => promptCustomExtractQty(id, qty, i.item_name, 'common', shardPayoutOne, Math.floor(shardPayoutOne * 0.50)) } : null
             };
         }
 
@@ -147,7 +147,7 @@ window.showDiscoveryDetails = function(id) {
     }).catch(() => { showToast('Error loading discovery', 'error'); });
 };
 
-// Bug #1125: "Shard Some" — let captain pick a custom quantity to extract.
+// Bug #1125: "Extract Some" — let captain pick a custom quantity to extract.
 // Opens a small modal asking for N, validates against the available stack qty,
 // then re-uses confirmExtraction with the chosen N.
 function promptCustomExtractQty(discoveryItemId, maxQty, itemName, rarity, perItemShards, perItemSv) {
@@ -243,7 +243,7 @@ window.confirmExtraction = confirmExtraction;
 // Analyze discovery - extract shards
 //   extractAll: true     → all discoveries
 //   extractAll: false    → 1 discovery (legacy "Extract 1×")
-//   quantityToExtract: N → exactly N (Bug #1125 "Shard Some")
+//   quantityToExtract: N → exactly N (Bug #1125 "Extract Some")
 async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = true, quantityToExtract = null) {
     const btn = document.getElementById('mmActionBtn');
     if (btn) { btn.disabled = true; btn.textContent = '🔬 Analyzing...'; }

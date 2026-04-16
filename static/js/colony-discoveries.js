@@ -13,7 +13,7 @@ function showDiscoveryDetails(discoveryItemId) {
     stats.push({ label: '\u2500\u2500\u2500 VALUE \u2500\u2500\u2500', value: '' });
     const baseValue = discovery.base_scientific_value || discovery.enhanced_value;
     stats.push({ label: 'Base Value', value: Math.round(baseValue).toLocaleString() + ' shards' });
-    stats.push({ label: 'Shard Value', value: Math.round(discovery.enhanced_value).toLocaleString() + ' shards' });
+    stats.push({ label: 'Extract Value', value: Math.round(discovery.enhanced_value).toLocaleString() + ' shards' });
     if (discovery.base_scientific_value) {
         const svTotal = discovery.base_scientific_value * (discovery.quantity || 1);
         stats.push({ label: 'Science Value', value: svTotal.toLocaleString() + ' SV' });
@@ -73,7 +73,7 @@ function showDiscoveryDetails(discoveryItemId) {
             className: 'btn-warning',
             onClick: () => confirmColonyExtraction(discovery, extractValueAll, true),
             secondaryAction: qty > 1 ? { label: `Extract 1× (${extractValueOne.toLocaleString()} Shards${svLabelOne})`, onClick: () => confirmColonyExtraction(discovery, extractValueOne, false) } : null,
-            tertiaryAction: qty > 1 ? { label: `Shard Some…`, onClick: () => promptColonyCustomExtract(discovery, qty, extractValueOne) } : null
+            tertiaryAction: qty > 1 ? { label: `Extract Some…`, onClick: () => promptColonyCustomExtract(discovery, qty, extractValueOne) } : null
         };
     }
     ItemDetailModal.show({
@@ -118,7 +118,7 @@ function confirmColonyExtraction(discovery, shardPayout, extractAll = true, quan
     });
 }
 
-// Bug #1125: "Shard Some" — pick a custom quantity to extract from colony discoveries
+// Bug #1125: "Extract Some" — pick a custom quantity to extract from colony discoveries
 function promptColonyCustomExtract(discovery, maxQty, perItemShards) {
     if (maxQty < 2) return;
     const raw = window.prompt(

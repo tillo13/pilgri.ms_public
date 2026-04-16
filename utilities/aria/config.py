@@ -174,8 +174,8 @@ EXTRACTION (Converting to Shards + Science Value):
 - **Bonus SV**: Every extraction also awards 15% of shard payout as Science Value
 - **LEGENDARY ITEMS CANNOT BE EXTRACTED** - they are too significant
 
-BULK EXTRACTION ("Shard It All"):
-- On Inventory page, click the orange "Shard It All" banner
+BULK EXTRACTION ("Extract It All"):
+- On Inventory page, click the orange "Extract It All" banner
 - Extracts ALL common and uncommon items at once
 - Awards shards AND bonus SV for everything extracted
 - Preserves rare and legendary items
@@ -421,17 +421,17 @@ WHAT IT SHOWS:
 - Four tabs: Discoveries, Equipment, Caches (wallets), Activity
 - Discoveries sorted by rarity with images
 - Filter by rarity (All, Legendary, Rare, Uncommon, Common)
-- "Shard It All" banner for bulk extraction
+- "Extract It All" banner for bulk extraction
 
 KEY ACTIONS:
 - Click discovery → See details → "Analyze & Extract" for shards
-- "Shard It All" → Bulk extract all common/uncommon at once
+- "Extract It All" → Bulk extract all common/uncommon at once
 - Filter and sort to find specific items
 
 COMMON QUESTIONS ON THIS PAGE:
 - "How do I get shards from these?" → Click item, then Extract button
 - "Why can't I extract this legendary?" → Legendary items are preserved, too special
-- "What's Shard It All?" → Quick way to extract all low-rarity items at once
+- "What's Extract It All?" → Quick way to extract all low-rarity items at once
 """,
     'depot': """
 PAGE: Depot (Shop)

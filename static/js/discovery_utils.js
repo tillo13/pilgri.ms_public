@@ -292,7 +292,7 @@ function showShardItAllModal() {
     // Get shardable items for confirmation
     const shardable = allDiscoveries.filter(d => d.rarity === 'common' || d.rarity === 'uncommon');
     if (shardable.length === 0) {
-        showToast('No common or uncommon discoveries to shard', 'info');
+        showToast('No common or uncommon discoveries to extract', 'info');
         return;
     }
 
@@ -320,7 +320,7 @@ function showShardItAllModal() {
     ItemDetailModal.show({
         name: 'Bulk Extraction',
         image: null,
-        category: `<img src="${UI_ICONS.shard_gem}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Shard It All`,
+        category: `<img src="${UI_ICONS.shard_gem}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Extract It All`,
         description: `Extract shards from all ${totalCount} common and uncommon discoveries in your inventory.`,
         stats: [
             { label: 'Discoveries', value: totalCount },

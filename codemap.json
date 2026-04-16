@@ -1320,7 +1320,7 @@
       "generate_expedition_discoveries — Generate discoveries with GEOGRAPHIC FILTERING and CARGO LIMITS.",
       "handle_analyze_request — Route-glue wrapper for POST /api/discovery/analyze.",
       "analyze_discovery — Analyze a discovery to extract embedded Sepolia shards.",
-      "shard_all_discoveries — Bulk extract all common and uncommon discoveries (Shard It All).",
+      "shard_all_discoveries — Bulk extract all common and uncommon discoveries (Extract It All).",
       "calculate_expedition_discovery — Roll what the captain discovered at destination (reward + narrative)."
     ],
     "keywords": "discovery analysis, extraction, rarity, progressive weights, shard payout"
@@ -3152,7 +3152,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3217,7 +3217,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

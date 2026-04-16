@@ -521,7 +521,7 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
             rarity = all_discoveries[0]['rarity']
             item_type = all_discoveries[0]['item_type']
 
-            # Bug #1125: support extracting an arbitrary quantity ("Shard Some" — pick a number).
+            # Bug #1125: support extracting an arbitrary quantity ("Extract Some" — pick a number).
             # extract_all=True → all available
             # quantity_to_extract=N (with extract_all=False) → exactly N items, walking the stacks oldest-first
             # extract_all=False, quantity_to_extract=None → 1 (legacy "Extract 1×" behavior)
@@ -735,7 +735,7 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
 
 def shard_all_discoveries(user_id: int, session=None) -> Dict[str, Any]:
     """
-    Bulk extract all common and uncommon discoveries (Shard It All).
+    Bulk extract all common and uncommon discoveries (Extract It All).
     Skips legendary and rare items - those require individual extraction.
 
     Returns: { success, shards_received, quantity_analyzed, items_processed, tx_hash, error }

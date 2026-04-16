@@ -1026,7 +1026,7 @@ def api_analyze_discovery():
 @login_required
 @handle_api_error
 def api_shard_all_discoveries():
-    """Bulk extract all common and uncommon discoveries (Shard It All)"""
+    """Bulk extract all common and uncommon discoveries (Extract It All)"""
     result = shard_all_discoveries(g.user_id, session)
     return jsonify(result)
 
