@@ -48,7 +48,7 @@
     </div>
 
     <!-- Priority Actions -->
-    {% set has_actions = (away_summary.pending_discoveries > 0) or (away_summary.accumulated_shards > 10) or (away_summary.pending_fragments and away_summary.pending_fragments|length > 0) or (idle_crew|length > 0) or away_summary.closest_frontier %}
+    {% set has_actions = (away_summary.pending_discoveries > 0) or (away_summary.pending_fragments and away_summary.pending_fragments|length > 0) or (idle_crew|length > 0) %}
     {% if has_actions %}
     <div class="briefing-actions">
         <div class="briefing-section-label">Priority Actions</div>
@@ -71,17 +71,6 @@
             </div>
             <span class="briefing-action-go">Go</span>
         </a>
-        {% endif %}
-
-        {% if away_summary.accumulated_shards > 10 %}
-        <div class="briefing-action-card" onclick="triggerHarvest()" role="button" tabindex="0">
-            <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-md">
-            <div class="briefing-action-text">
-                <strong>Harvest {{ '{:,.0f}'.format(away_summary.accumulated_shards) }} Sepolia shards</strong>
-                <span>Solar arrays generated while you were away</span>
-            </div>
-            <span class="briefing-action-go">Harvest</span>
-        </div>
         {% endif %}
 
         {% for bond in away_summary.processing_bonds|default([]) %}
@@ -128,68 +117,10 @@
         </a>
         {% endif %}
 
-        {% if away_summary.closest_frontier %}
-        <a href="/expeditions" class="briefing-action-card">
-            <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-md">
-            <div class="briefing-action-text">
-                <strong>Explore {{ away_summary.closest_frontier.name }}</strong>
-                <span>Nearest frontier ({{ '{:,}'.format(away_summary.closest_frontier.distance_km|int) }} km)</span>
-            </div>
-            <span class="briefing-action-go">Go</span>
-        </a>
-        {% endif %}
     </div>
     {% endif %}
 
-    <!-- Mission Report -->
-    <div class="briefing-section-label">Mission Report</div>
-
-    <!-- Main Stats Grid (Live Ticking) - Always 5 boxes -->
     <div style="padding: 12px 16px; background: rgba(0,0,0,0.2);">
-        <div id="liveStatsGrid"
-             data-shard-rate="{{ live_rates.shard_rate if live_rates else 0 }}"
-             data-km-rate="{{ live_rates.km_rate if live_rates else 0 }}"
-             data-tech-rate="{{ live_rates.tech_rate if live_rates else 0 }}"
-             data-trail-rate="{{ live_rates.trail_rate if live_rates else 0 }}"
-             data-build-rate="{{ live_rates.build_rate if live_rates else 0 }}"
-             style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px;">
-            <!-- Box 1: Shards (ticks with generation rate) -->
-            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
-                <div id="statShards" data-value="{{ away_summary.accumulated_shards|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-warning); font-family: var(--font-mono);">+{{ '{:,.3f}'.format(away_summary.accumulated_shards|default(0)) }}</div>
-                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">shards</div>
-            </div>
-            <!-- Box 2: km traveled (ticks with expedition speed) -->
-            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
-                <div id="statKm" data-value="{{ away_summary.total_distance_traveled|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-primary); font-family: var(--font-mono);">{{ '{:,.3f}'.format(away_summary.total_distance_traveled|default(0)) }}</div>
-                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">km traveled</div>
-            </div>
-            <!-- Box 3: Trails km (ticks with crew trail building) -->
-            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
-                <div id="statTrails" data-value="{{ away_summary.total_trail_km|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-aria); font-family: var(--font-mono);">{{ '{:,.4f}'.format(away_summary.total_trail_km|default(0)) }}</div>
-                <div style="font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">trails km</div>
-            </div>
-            <!-- Box 4: Research progress % (ticks when researching) -->
-            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
-                {% if away_summary.tech_progress and away_summary.tech_progress.active_research %}
-                <div id="statTech" data-value="{{ away_summary.tech_progress.active_progress_pct }}" style="font-size: 18px; font-weight: 700; color: var(--color-sepolia); font-family: var(--font-mono);">{{ '{:.3f}'.format(away_summary.tech_progress.active_progress_pct) }}%</div>
-                <div style="font-size: 10px; color: var(--color-sepolia); text-transform: uppercase; letter-spacing: 0.5px;" title="{{ away_summary.tech_progress.active_name }}">Research</div>
-                {% else %}
-                <div id="statTech" data-value="0" style="font-size: 18px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">—</div>
-                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">No research</div>
-                {% endif %}
-            </div>
-            <!-- Box 5: Building progress % (ticks when depot items building) -->
-            <div style="text-align: center; padding: 10px 6px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default);">
-                {% if building_items and building_items|length > 0 %}
-                <div id="statBuild" data-value="{{ avg_build_progress|default(0) }}" style="font-size: 18px; font-weight: 700; color: var(--color-mars); font-family: var(--font-mono);">{{ '{:.3f}'.format(avg_build_progress|default(0)) }}%</div>
-                <div style="font-size: 10px; color: var(--color-mars); text-transform: uppercase; letter-spacing: 0.5px;" title="{{ building_items|length }} item(s) building">Depot ({{ building_items|length }})</div>
-                {% else %}
-                <div id="statBuild" data-value="0" style="font-size: 18px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">—</div>
-                <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">No builds</div>
-                {% endif %}
-            </div>
-        </div>
-
         <!-- Quick links -->
         <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
             <a href="/colony#base" style="flex: 1; min-width: 120px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-default); color: var(--text-primary); text-decoration: none; font-size: 13px; font-weight: 600;">
@@ -384,17 +315,6 @@
         </a>
         {% endif %}
 
-        <!-- Frontier Scout -->
-        {% if away_summary.closest_frontier %}
-        <a href="/expeditions" style="text-decoration: none; display: block;">
-        <div style="padding: 8px 10px; background: rgba(200,100,50,0.1); border-radius: 6px; border: 1px solid rgba(200,100,50,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(200,100,50,0.2)'" onmouseout="this.style.background='rgba(200,100,50,0.1)'">
-            <span style="font-size: 12px; color: var(--text-secondary);">Nearest frontier:</span>
-            <span style="font-size: 12px; color: var(--color-mars); font-weight: 500; margin-left: 4px;">{{ away_summary.closest_frontier.name }}</span>
-            <span style="font-size: 11px; color: var(--text-muted); margin-left: 4px;">({{ '{:,}'.format(away_summary.closest_frontier.distance_km) }} km)</span>
-        </div>
-        </a>
-        {% endif %}
-
         <!-- ARIA Memory Note -->
         {% if away_summary.aria_memory_note %}
         <div style="padding: 10px; background: rgba(138,112,219,0.06); border-radius: 6px; border-left: 3px solid var(--color-aria); margin-bottom: 12px;">
@@ -494,7 +414,7 @@
 {% endif %}
 
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; align-items: stretch;" class="claimables-grid">
+<div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px; align-items: stretch;" class="claimables-grid">
     <div class="dashboard-card" id="infrastructureWidget" style="margin-bottom: 0; position: relative; overflow: hidden; display: flex; flex-direction: column;">
         <!-- Mars Surface Background -->
         <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="" class="card-bg-img" loading="lazy">
@@ -621,34 +541,5 @@
         </div>
     </div>
 
-    <div class="dashboard-card" id="discoveriesWidget" style="margin-bottom: 0; position: relative; overflow: hidden; display: flex; flex-direction: column;">
-        <!-- Mars Surface Background -->
-        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="" class="card-bg-img" loading="lazy">
-        <div class="card-bg-overlay"></div>
-        <!-- Content -->
-        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 class="card-title" style="margin: 0;">Recent Discoveries</h3>
-                <span id="discoveryCountText" class="card-subtitle" style="font-size: 13px;">0 items</span>
-            </div>
-            <div id="discoveriesContent" style="display: none; flex: 1; display: flex; flex-direction: column;">
-                <div style="background: rgba(var(--color-info-rgb),0.1); border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 13px; color: var(--color-info-dark); border-left: 4px solid var(--color-info);">
-                    <strong>Ready to secure:</strong> Claim your expedition discoveries!
-                </div>
-                <div id="recentDiscoveriesContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
-                <!-- Spacer to push button to bottom -->
-                <div style="flex: 1;"></div>
-                <button class="btn btn-large" id="claimAllButton" style="display: none; background: var(--gradient-info); color: white; width: 100%; font-weight: 700; font-size: 18px; padding: 18px; border-radius: 12px;" onclick="claimAllDiscoveries()">Claim All</button>
-                <div class="card-subtitle" style="text-align: center; margin-top: 12px; font-size: 12px;">
-                    Visit <a href="/expeditions" style="color: var(--color-primary); font-weight: 700;">Expeditions</a> or <a href="/colony" style="color: var(--color-primary); font-weight: 700;">Colony</a>
-                </div>
-            </div>
-            <div id="discoveriesEmpty" style="text-align: center; padding: 60px 20px; flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                <img src="{{ icons.box_package }}" alt="" style="width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.4;">
-                <div class="card-title" style="font-size: 15px; margin-bottom: 8px; font-weight: 600;">No Discoveries Yet</div>
-                <div class="card-subtitle" style="font-size: 14px;">Launch expeditions in <a href="/expeditions" style="color: var(--color-primary); font-weight: 700;">Expeditions</a></div>
-            </div>
-        </div>
-    </div>
 </div>
 

@@ -422,6 +422,9 @@ def get_dashboard_page_data(user_id, auth):
                     now = datetime.now(timezone.utc) if lbe['completed_at'].tzinfo else datetime.now()
                     idle_hours = (now - lbe['completed_at']).total_seconds() / 3600
                     lbe['buggy_idle_hours'] = round(idle_hours, 1)
+            # Bug #1317 item 1: hide the card if idle and last expedition returned >7 days ago
+            if lbe.get('buggy_status') == 'idle' and lbe.get('buggy_idle_hours', 0) > 24 * 7:
+                lbe = None
             last_buggy_expedition = lbe
     except Exception as e:
         logger.warning(f"Could not fetch last buggy expedition: {e}")
