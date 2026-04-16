@@ -251,12 +251,11 @@ async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = 
     if (secondaryBtn) secondaryBtn.disabled = true;
 
     try {
-        const response = await apiPost('/api/discovery/analyze', {
+        const data = await apiPost('/api/discovery/analyze', {
                 discovery_item_id: discoveryItemId,
                 extract_all: extractAll,
                 ...(quantityToExtract ? { quantity_to_extract: quantityToExtract } : {})
         });
-        const data = await response.json();
 
         if (data.success) {
             ItemDetailModal.hide();

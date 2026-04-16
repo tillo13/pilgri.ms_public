@@ -284,9 +284,7 @@ async function attemptLostSiteDecode(siteId, code) {
     }
 
     try {
-        const response = await apiPost('/api/signal/lost/decode', { site_id: parseInt(siteId), code: code });
-
-        const data = await response.json();
+        const data = await apiPost('/api/signal/lost/decode', { site_id: parseInt(siteId), code: code });
 
         if (data.success) {
             showToast(data.message || 'Signal decoded! The site is now unlocked.', 'success');
