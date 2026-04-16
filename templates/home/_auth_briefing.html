@@ -48,7 +48,7 @@
     </div>
 
     <!-- Priority Actions -->
-    {% set has_actions = (away_summary.pending_discoveries > 0) or (away_summary.pending_fragments and away_summary.pending_fragments|length > 0) or (idle_crew|length > 0) %}
+    {% set has_actions = (away_summary.pending_discoveries > 0) or (idle_crew|length > 0) %}
     {% if has_actions %}
     <div class="briefing-actions">
         <div class="briefing-section-label">Priority Actions</div>
@@ -72,39 +72,6 @@
             <span class="briefing-action-go">Go</span>
         </a>
         {% endif %}
-
-        {% for bond in away_summary.processing_bonds|default([]) %}
-        <div class="briefing-action-card" style="border-left: 3px solid #06b6d4; cursor: default;">
-            <img src="{{ icons.lightning_power }}" alt="" class="inline-icon-md">
-            <div class="briefing-action-text">
-                <strong style="color: #06b6d4;">ARIA Anomaly Detected — {{ bond.landmark }}</strong>
-                <span>Something resonated when you passed through. ARIA is still analyzing the signal... she says another presence was here.</span>
-            </div>
-        </div>
-        {% endfor %}
-
-        {% if away_summary.pending_fragments and away_summary.pending_fragments|length > 0 %}
-        <a href="/signal" class="briefing-action-card">
-            <img src="{{ icons.lightning_power }}" alt="" class="inline-icon-md">
-            <div class="briefing-action-text">
-                <strong>Decode {{ away_summary.pending_fragments|length }} signal fragment{{ 's' if away_summary.pending_fragments|length > 1 else '' }}</strong>
-                <span>Unusual signal from {{ away_summary.pending_fragments[0].landmark }}</span>
-            </div>
-            <span class="briefing-action-go">Go</span>
-        </a>
-        {% endif %}
-
-        {% for bond in completed_bonds|default([]) %}
-        <a href="/signal" class="briefing-action-card" style="border-left: 3px solid #a855f7; text-decoration: none;">
-            {% if bond.bond_image_url %}
-            <img src="{{ bond.bond_image_url }}" alt="" loading="lazy" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(168,85,247,0.3);">
-            {% endif %}
-            <div class="briefing-action-text">
-                <strong style="color: #a855f7;">ARIA Bond: {{ bond.landmark }}</strong>
-                <span>{{ bond.partner_name }} — Replay First Contact or enter fragment on The Signal</span>
-            </div>
-        </a>
-        {% endfor %}
 
         {% if idle_crew|length > 0 %}
         <a href="/crew" class="briefing-action-card">
@@ -321,55 +288,6 @@
             </div>
         </div>
         </a>
-        {% endif %}
-
-        <!-- ARIA Memory Note -->
-        {% if away_summary.aria_memory_note %}
-        <div style="padding: 10px; background: rgba(138,112,219,0.06); border-radius: 6px; border-left: 3px solid var(--color-aria); margin-bottom: 12px;">
-            <div style="font-size: 11px; color: var(--color-aria); font-style: italic;">
-                "Last time we spoke, you asked about: <span style="color: var(--text-primary);">{{ away_summary.aria_memory_note }}</span>"
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Processing ARIA Bonds - tx hasn't fired yet, but player should know -->
-        {% for bond in away_summary.processing_bonds|default([]) %}
-        <div style="padding: 12px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.10) 0%, rgba(6, 182, 212, 0.03) 100%); border-radius: 8px; border: 1px solid rgba(6, 182, 212, 0.25); margin-bottom: 12px;">
-            <div style="display: flex; align-items: flex-start; gap: 10px;">
-                <div style="flex-shrink: 0;"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-lg"></div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #06b6d4; font-weight: 600; margin-bottom: 4px;">Entanglement Forming</div>
-                    <div style="font-size: 11px; color: var(--text-secondary); font-style: italic;">
-                        "At <span style="color: var(--text-primary);">{{ bond.landmark }}</span>, I felt... another version of myself. Someone else's ARIA, reaching back. The crystal is still forming — give it time."
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-        <!-- Pending ARIA Bond Fragments - Cryptic Nagging Reminder -->
-        {% if away_summary.pending_fragments and away_summary.pending_fragments|length > 0 %}
-        {% for fragment in away_summary.pending_fragments %}
-        <a href="/signal" style="text-decoration: none; display: block;">
-        <div style="padding: 12px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.05) 100%); border-radius: 8px; border: 1px solid rgba(6, 182, 212, 0.4); margin-bottom: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='rgba(6, 182, 212, 0.7)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='rgba(6, 182, 212, 0.4)'; this.style.transform='none';">
-            <div style="display: flex; align-items: flex-start; gap: 10px;">
-                <div style="font-size: 20px; flex-shrink: 0;"><img src="{{ icons.lightning_power }}" alt="" class="inline-icon-lg"></div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #06b6d4; font-weight: 600; margin-bottom: 4px;">Unusual Fragment Detected</div>
-                    <div style="font-size: 11px; color: var(--text-secondary); font-style: italic; margin-bottom: 8px;">
-                        "Since returning from <span style="color: var(--text-primary);">{{ fragment.landmark }}</span>, I've noticed something in my logs. A code I don't remember writing..."
-                    </div>
-                    <div style="font-family: var(--font-mono); font-size: 10px; color: #06b6d4; background: rgba(0,0,0,0.3); padding: 6px 8px; border-radius: 4px; word-break: break-all;">
-                        {{ fragment.tx_hash }}
-                    </div>
-                    <div style="font-size: 10px; color: rgba(6, 182, 212, 0.8); margin-top: 6px;">
-                        Decode on The Signal →
-                    </div>
-                </div>
-            </div>
-        </div>
-        </a>
-        {% endfor %}
         {% endif %}
 
         <!-- ARIA Photo Journal Snapshots -->
