@@ -931,6 +931,7 @@
       "test_upgrades_schema",
       "test_infrastructure_table",
       "test_techs_table",
+      "test_all_templates_parse",
       "test_config_loads",
       "test_config_upgrades",
       "test_config_infrastructure",
@@ -939,8 +940,7 @@
       "test_upgrade_build_times",
       "test_sanitize_error",
       "test_currency_conversion",
-      "test_get_upgrade_level",
-      "test_get_effects"
+      "test_get_upgrade_level"
     ]
   },
   "docs/2026apr10plan.md": {

@@ -592,6 +592,48 @@ def check_infrastructure_income():
         log.info(f"  ✓ SV accumulated: {sv_amount:.1f} (below threshold)")
 
 
+AUTHED_PAGES = ['/', '/colony', '/crew', '/depot', '/expeditions', '/research']
+
+
+def check_authed_page_renders():
+    """Render every player-facing page as Andy via Flask test_client.
+    Catches Jinja runtime errors + view-handler exceptions that anonymous
+    health pings miss (anon hits the unauthenticated branch of `/`)."""
+    from app import app
+    from utilities.postgres.users import get_user_by_id
+    user = get_user_by_id(ANDY_USER_ID)
+    if not user:
+        raise RuntimeError(f"Andy user #{ANDY_USER_ID} not found in DB")
+
+    failures = []
+    with app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess['user_id'] = ANDY_USER_ID
+            sess['user'] = {
+                'email': user.get('email'),
+                'name': user.get('name') or user.get('email', 'Andy'),
+                'picture': user.get('picture_url'),
+                'google_id': user.get('google_id'),
+            }
+        for path in AUTHED_PAGES:
+            try:
+                resp = client.get(path, follow_redirects=False)
+                code = resp.status_code
+                if code >= 500:
+                    body = resp.get_data(as_text=True)[:400]
+                    failures.append(f"{path} → {code}\n      {body}")
+                    log.info(f"  ❌ {path} → {code}")
+                else:
+                    log.info(f"  ✅ {path} → {code}")
+            except Exception as e:
+                failures.append(f"{path} → exception: {e}")
+                log.info(f"  ❌ {path} → exception: {e}")
+    if failures:
+        raise RuntimeError(
+            f"{len(failures)} authed page(s) returned 5xx:\n  " + "\n  ".join(failures)
+        )
+
+
 def main():
     log.info("\n🤖 Andy Check — Colony Auto-Management")
     log.info(f"   User: Andy Tillo (#{ANDY_USER_ID})")
@@ -614,8 +656,11 @@ def main():
         ("Depot Upgrades", check_depot_upgrades),
         ("Lab Research", check_lab_research),
         ("New Infrastructure", check_new_infrastructure),
+        # --- VERIFY AUTHED PAGE RENDERS (catches Jinja/view 500s) ---
+        ("Authed Page Renders", check_authed_page_renders),
     ]
 
+    failures = []
     for name, fn in checks:
         log.info(f"  [{name}]")
         try:
@@ -624,8 +669,13 @@ def main():
             log.info(f"  ⚠️  Skipped locally (needs {e.name} — works on GCP)")
         except Exception as e:
             log.info(f"  ❌ {name} error: {e}")
+            if name == "Authed Page Renders":
+                failures.append(str(e))
         log.info("")
 
+    if failures:
+        log.info("❌ Andy Check FAILED — page render errors detected\n")
+        sys.exit(1)
     log.info("✅ Andy Check complete\n")
 
 

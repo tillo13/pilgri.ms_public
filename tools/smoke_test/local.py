@@ -65,6 +65,26 @@ def test_techs_table():
     return True
 
 
+@test("All Jinja2 templates parse", tier=1, features=['templates'], mode='local')
+def test_all_templates_parse():
+    import os
+    from jinja2 import Environment, FileSystemLoader
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'templates'))
+    env = Environment(loader=FileSystemLoader(root))
+    broken = []
+    for dirpath, _, files in os.walk(root):
+        for f in files:
+            if not f.endswith('.html'):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, f), root)
+            try:
+                env.get_template(rel)
+            except Exception as e:
+                broken.append(f"{rel}:{getattr(e, 'lineno', '?')} {e}")
+    assert not broken, "Template parse errors:\n  " + "\n  ".join(broken)
+    return True
+
+
 @test("config.py loads", tier=1, features=['config'], mode='local')
 def test_config_loads():
     import config
