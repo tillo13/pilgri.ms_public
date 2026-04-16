@@ -110,7 +110,6 @@ window.welcomeBack = {{ (welcome_back or {}) | tojson }};
 {% include "home/_auth_buggy.html" %}
 {% if away_summary and away_summary.show_briefing %}
 {% include "home/_auth_briefing.html" %}
-{% include "home/_auth_sv.html" %}
 {% endif %}
 {% endif %}
 {% endblock %}

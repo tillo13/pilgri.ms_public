@@ -268,6 +268,24 @@ def get_dashboard_page_data(user_id, auth):
 
     crew_missions = get_crew_mission_status(user_id)
 
+    # Bug #1317 items 7+8: enrich with seconds_remaining so briefing can show time-left
+    _now = datetime.now(timezone.utc)
+    for _exp in active_expeditions:
+        _end = _exp.get('return_arrives_at') or _exp.get('arrives_at')
+        if _end and _exp.get('status') not in ('complete',):
+            _end_aware = _end if getattr(_end, 'tzinfo', None) else _end.replace(tzinfo=timezone.utc)
+            _exp['seconds_until_arrival'] = max(0, int((_end_aware - _now).total_seconds()))
+    for _member in ('captain', 'scientist', 'aria'):
+        _m = crew_missions.get(_member) if crew_missions else None
+        if _m and _m.get('ends_at'):
+            try:
+                _ends = datetime.fromisoformat(_m['ends_at'].replace('Z', '+00:00'))
+                if not _ends.tzinfo:
+                    _ends = _ends.replace(tzinfo=timezone.utc)
+                _m['seconds_remaining'] = max(0, int((_ends - _now).total_seconds()))
+            except Exception:
+                _m['seconds_remaining'] = 0
+
     # ========================================================================
     # LIVE RATES: Calculate rates for ticking briefing panel stats
     # All rates are per SECOND for smooth JS animation

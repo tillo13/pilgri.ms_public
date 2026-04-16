@@ -1,8 +1,8 @@
-<!-- Science Value Generation Card -->
-<div id="svGenerationCard" class="dashboard-card" style="display: none; position: relative; overflow: hidden;">
+<!-- Science Value Generation Card (Bug #1317 item 15: sits beside Shard Gen, shows active research) -->
+<div id="svGenerationCard" class="dashboard-card" style="display: none; margin-bottom: 0; position: relative; overflow: hidden;">
     <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="" class="card-bg-img" loading="lazy">
     <div class="card-bg-overlay"></div>
-    <div style="position: relative; z-index: 2;">
+    <div style="position: relative; z-index: 2; display: flex; flex-direction: column; flex: 1;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h3 class="card-title" style="margin: 0;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon"> Science Value</h3>
             <a href="/colony" class="card-action">Research Station</a>
@@ -15,6 +15,30 @@
             </div>
         </div>
         <div id="svBreakdown" style="padding: 4px 8px 8px; margin: -8px auto 12px; max-width: 280px;"></div>
+
+        {% if away_summary and away_summary.tech_progress and away_summary.tech_progress.active_research %}
+        {% set tp = away_summary.tech_progress %}
+        {% set rsecs = tp.active_remaining_secs|default(0) %}
+        <a href="/research" style="text-decoration: none; display: block;">
+        <div class="card-stats-box" style="border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--color-aria); background: rgba(var(--color-aria-rgb), 0.08);">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--color-aria); font-weight: 700; margin-bottom: 6px;">Now Researching</div>
+            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px;">{{ tp.active_name }}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary);">
+                <span style="font-family: var(--font-mono);">{{ '{:.1f}'.format(tp.active_progress_pct|default(0)) }}%</span>
+                <span style="font-family: var(--font-mono); color: var(--color-aria);">
+                    {%- if rsecs <= 0 -%}Complete
+                    {%- elif rsecs >= 86400 -%}{{ (rsecs // 86400) }}d {{ ((rsecs % 86400) // 3600) }}h left
+                    {%- elif rsecs >= 3600 -%}{{ (rsecs // 3600) }}h {{ ((rsecs % 3600) // 60) }}m left
+                    {%- else -%}{{ (rsecs // 60) }}m left{%- endif -%}
+                </span>
+            </div>
+            <div style="height: 4px; background: rgba(var(--color-aria-rgb), 0.15); border-radius: 2px; margin-top: 6px; overflow: hidden;">
+                <div style="height: 100%; width: {{ tp.active_progress_pct|default(0) }}%; background: var(--color-aria);"></div>
+            </div>
+        </div>
+        </a>
+        {% endif %}
+
         <div class="card-subtitle" style="text-align: center; font-size: 12px;">
             Science Value is used for <a href="/crew?tab=scientist" style="color: var(--color-aria); font-weight: 700;">Scientist</a> upgrades
         </div>
