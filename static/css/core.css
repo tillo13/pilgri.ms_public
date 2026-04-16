@@ -197,20 +197,20 @@
     --red-400: #ef4444;
 
     /* White/black overlays - extracted from 150+ hardcoded rgba() calls */
-    --overlay-white-05: var(--overlay-white-05);
-    --overlay-white-06: var(--overlay-white-06);
-    --overlay-white-08: var(--overlay-white-08);
-    --overlay-white-10: var(--overlay-white-10);
-    --overlay-white-12: var(--overlay-white-12);
-    --overlay-white-15: var(--overlay-white-15);
+    --overlay-white-05: rgba(255,255,255,0.05);
+    --overlay-white-06: rgba(255,255,255,0.06);
+    --overlay-white-08: rgba(255,255,255,0.08);
+    --overlay-white-10: rgba(255,255,255,0.10);
+    --overlay-white-12: rgba(255,255,255,0.12);
+    --overlay-white-15: rgba(255,255,255,0.15);
     --overlay-white-20: rgba(255,255,255,0.20);
-    --overlay-white-25: var(--overlay-white-25);
+    --overlay-white-25: rgba(255,255,255,0.25);
     --overlay-white-30: rgba(255,255,255,0.30);
     --overlay-white-40: rgba(255,255,255,0.40);
     --overlay-white-50: rgba(255,255,255,0.50);
     --overlay-white-70: rgba(255,255,255,0.70);
     --overlay-white-80: rgba(255,255,255,0.80);
-    --overlay-black-08: var(--overlay-black-08);
+    --overlay-black-08: rgba(0,0,0,0.08);
     --overlay-black-30: rgba(0,0,0,0.30);
     --overlay-black-40: rgba(0,0,0,0.40);
     --overlay-black-50: rgba(0,0,0,0.50);
