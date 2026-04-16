@@ -655,8 +655,17 @@
     }
 
     function doUpload(bugId, file) {
+        // App Engine load balancer caps requests at ~32MB and times out around 60s.
+        // Oversized files surface as ERR_SSL_BAD_RECORD_MAC_ALERT — guard client-side first.
+        var MAX_BYTES = 30 * 1024 * 1024;
+        if (file.size > MAX_BYTES) {
+            var sizeMb = (file.size / 1024 / 1024).toFixed(1);
+            showToast('File too big (' + sizeMb + ' MB). Max 30 MB — compress or trim the video first.', 'error');
+            return;
+        }
         var fd = new FormData();
         fd.append('file', file);
+        showToast('Uploading ' + (file.size / 1024 / 1024).toFixed(1) + ' MB...', 'info');
         fetch('/api/admin/bugs/' + bugId + '/screenshot', {method: 'POST', body: fd})
             .then(function(r) { return r.json(); })
             .then(function(data) {
@@ -668,7 +677,7 @@
                 }
             })
             .catch(function(e) {
-                showToast('Upload failed: ' + e.message, 'error');
+                showToast('Upload failed (likely too large or slow): ' + e.message, 'error');
             });
     }
 

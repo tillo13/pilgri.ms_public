@@ -723,6 +723,10 @@
             if (items[i].type.indexOf('image') !== -1) {
                 e.preventDefault();
                 var file = items[i].getAsFile();
+                if (file.size > 30 * 1024 * 1024) {
+                    showToast('Pasted image too large (' + (file.size / 1024 / 1024).toFixed(1) + ' MB). Max 30 MB.', 'error');
+                    break;
+                }
                 var formData = new FormData();
                 formData.append('image', file, 'screenshot.png');
                 showToast('Uploading screenshot...', 'info');
