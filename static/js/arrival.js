@@ -12,6 +12,7 @@ function handleFile(file) {
 }
 
 async function processImage(file) {
+    if (file.size > 30 * 1024 * 1024) { showError(`Image too large (${(file.size/1024/1024).toFixed(1)} MB). Max 30 MB.`); return; }
     try { showProcessing('Preparing your captain...'); const fd = new FormData(); fd.append('image', file); const r = await apiCall('/upload', { method: 'POST', body: fd }); hideProcessing(); handleImageResult(r); }
     catch (e) { hideProcessing(); showError(e.message); }
 }

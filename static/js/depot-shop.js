@@ -622,6 +622,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const cost = depot.transmutationCost;
         const bal = getBalance();
 
+        if (file.size > 30 * 1024 * 1024) {
+            showToast(`Image too large (${(file.size/1024/1024).toFixed(1)} MB). Max 30 MB.`, 'error');
+            return;
+        }
         if (bal < cost) {
             showToast(`Need ${cost.toLocaleString()} Sepolia Shards, have ${bal.toFixed(0)}`, 'warning', 'Insufficient');
             return;
