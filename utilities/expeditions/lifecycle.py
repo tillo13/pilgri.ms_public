@@ -634,12 +634,17 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     # ========================================================================
     # SHARD NETWORK: Check for Origin Site proximity and roll for Echo Site
     # ========================================================================
+    # Fetch Base coords so signal detection can evaluate the full path, not just destination
+    from utilities.postgres.map import get_or_set_user_mars_home
+    _base = get_or_set_user_mars_home(user_id)
     signal_events = check_signal_events(
         user_id=user_id,
         expedition_id=expedition_id,
         lat=expedition['destination_lat'],
         lon=expedition['destination_lon'],
-        landmark_name=expedition['destination_name']
+        landmark_name=expedition['destination_name'],
+        base_lat=float(_base['latitude']),
+        base_lon=float(_base['longitude'])
     )
 
     # ========================================================================
@@ -806,11 +811,14 @@ def check_signal_events(
     expedition_id: int,
     lat: float,
     lon: float,
-    landmark_name: str = None
+    landmark_name: str = None,
+    base_lat: float = None,
+    base_lon: float = None
 ) -> Dict[str, Any]:
     """
     Check for Shard Network events after expedition completion:
-    1. Check proximity to unclaimed Origin Sites (14 real Mars landing locations)
+    1. Check proximity to unclaimed Origin Sites — Phase 2: path-based closest-approach
+       along the full Base → Destination route, using per-site unlock_radius_km
     2. Roll for Echo Site spawn (2% base + pity timer)
 
     Returns dict with any discovered/spawned sites.
@@ -825,9 +833,16 @@ def check_signal_events(
         'echo_site_spawned': None
     }
 
+    # Fetch base coords if caller didn't supply them (backward compat)
+    if base_lat is None or base_lon is None:
+        from utilities.postgres.map import get_or_set_user_mars_home
+        base_coords = get_or_set_user_mars_home(user_id)
+        base_lat = float(base_coords['latitude'])
+        base_lon = float(base_coords['longitude'])
+
     try:
-        # 1. Check for Origin Site proximity (within 50km of real Mars landing sites)
-        origin_site = check_origin_site_proximity(lat, lon)
+        # 1. Check for Origin Site proximity along the entire expedition path
+        origin_site = check_origin_site_proximity(base_lat, base_lon, lat, lon)
         if origin_site:
             events['origin_site_nearby'] = {
                 'id': origin_site['id'],

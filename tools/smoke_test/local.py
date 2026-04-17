@@ -299,6 +299,45 @@ def test_aria_bonds_table():
     return True
 
 
+@test("point_to_path_distance correctness", tier=1, features=['math', 'signal'], mode='local')
+def test_point_to_path_distance():
+    """Phase 2.1: closest-approach math for path-based Signal detection."""
+    from utilities.mars_math import point_to_path_distance, haversine_distance
+
+    # 1. Point exactly on the path should be near zero.
+    d_on = point_to_path_distance(0.0, 5.0, 0.0, 0.0, 0.0, 10.0)
+    assert d_on < 1.0, f"On-path distance should be ~0, got {d_on}"
+
+    # 2. Point perpendicular to the midpoint: path-distance < endpoint-distance.
+    d_perp = point_to_path_distance(1.0, 5.0, 0.0, 0.0, 0.0, 10.0)
+    d_end = min(haversine_distance(1.0, 5.0, 0.0, 0.0), haversine_distance(1.0, 5.0, 0.0, 10.0))
+    assert d_perp < d_end, f"Perp distance {d_perp} should be < endpoint distance {d_end}"
+
+    # 3. Point past the endpoint clamps to the endpoint distance.
+    d_past = point_to_path_distance(0.0, 20.0, 0.0, 0.0, 0.0, 10.0)
+    d_clamp = haversine_distance(0.0, 20.0, 0.0, 10.0)
+    assert abs(d_past - d_clamp) < 1.0, f"Past-endpoint should clamp: {d_past} vs {d_clamp}"
+    return True
+
+
+@test("origin_sites.unlock_radius_km column", tier=2, features=['db', 'signal'], mode='local')
+def test_origin_sites_radius_column():
+    """Phase 2.1: per-site variable radii column must exist and be populated."""
+    from utilities.postgres.core import db_cursor
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema='pilgrim' AND table_name='origin_sites'
+              AND column_name='unlock_radius_km'
+        """)
+        assert cur.fetchone() is not None, "unlock_radius_km column missing"
+        cur.execute("SELECT COUNT(*) FROM pilgrim.origin_sites WHERE unlock_radius_km IS NOT NULL")
+        row = cur.fetchone()
+        count = row['count'] if isinstance(row, dict) else row[0]
+        assert count > 0, "No origin sites have unlock_radius_km populated"
+    return True
+
+
 @test("trail_segments table exists", tier=2, features=['db', 'expeditions'], mode='local')
 def test_trails_table():
     from utilities.postgres.core import db_cursor

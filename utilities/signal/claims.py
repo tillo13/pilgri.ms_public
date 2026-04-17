@@ -4,7 +4,7 @@ import logging
 from typing import Dict, Any, List, Optional
 
 from utilities.postgres.core import db_cursor
-from utilities.mars_math import haversine_distance
+from utilities.mars_math import haversine_distance, point_to_path_distance
 
 from utilities.signal.config import (
     VISITOR_ITEM_CONFIG,
@@ -293,6 +293,13 @@ def get_user_origin_site_eligibility(user_id: int) -> List[Dict]:
     try:
         sites = get_all_origin_sites()
 
+        # Phase 2 closest-approach: fetch Base coords once so we can evaluate the
+        # FULL expedition path (Base → Destination), not just the destination.
+        from utilities.postgres.map import get_or_set_user_mars_home
+        base_coords = get_or_set_user_mars_home(user_id)
+        base_lat = float(base_coords['latitude'])
+        base_lon = float(base_coords['longitude'])
+
         # Get user's completed expeditions with their coordinates
         with db_cursor() as cur:
             cur.execute("""
@@ -354,14 +361,15 @@ def get_user_origin_site_eligibility(user_id: int) -> List[Dict]:
                 'distance_km': None
             }
 
-            # Find closest expedition to this site
+            # Find closest expedition path to this site (Phase 2: full path, not endpoint)
             min_distance = float('inf')
             closest_exp = None
 
             for exp in expeditions:
-                dist = haversine_distance(
-                    float(exp['latitude']), float(exp['longitude']),
-                    site['latitude'], site['longitude']
+                dist = point_to_path_distance(
+                    site['latitude'], site['longitude'],
+                    base_lat, base_lon,
+                    float(exp['latitude']), float(exp['longitude'])
                 )
                 if dist < min_distance:
                     min_distance = dist

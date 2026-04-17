@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
 from utilities.postgres.core import db_cursor
-from utilities.mars_math import haversine_distance, offset_coordinates
+from utilities.mars_math import haversine_distance, offset_coordinates, point_to_path_distance
 
 from utilities.signal.config import (
     ECHO_SPAWN_CHANCE,
@@ -117,20 +117,33 @@ def get_origin_site_by_code(site_code: str) -> Optional[Dict]:
         logger.error(f"Failed to get origin site {site_code}: {e}")
         return None
 
-def check_origin_site_proximity(lat: float, lon: float) -> Optional[Dict]:
-    """Check if coordinates are near any unclaimed Origin Site"""
+def check_origin_site_proximity(base_lat: float, base_lon: float,
+                                  dest_lat: float, dest_lon: float) -> Optional[Dict]:
+    """Check if an expedition path (base → destination) passes near any unclaimed Origin Site.
+
+    Phase 2 closest-approach: evaluates the full great-circle path, not just the
+    destination endpoint. Returns the CLOSEST unclaimed site whose path distance
+    is within its own per-site unlock_radius_km, or None if no site is in range.
+    """
     sites = get_all_origin_sites()
+    closest = None
+    closest_distance = float('inf')
 
     for site in sites:
         if site['is_claimed']:
             continue
 
-        distance = haversine_distance(lat, lon, site['latitude'], site['longitude'])
-        if distance <= ORIGIN_DETECTION_RADIUS_KM:
-            site['distance_km'] = distance
-            return site
+        distance = point_to_path_distance(
+            site['latitude'], site['longitude'],
+            base_lat, base_lon,
+            dest_lat, dest_lon
+        )
+        if distance <= site['unlock_radius_km'] and distance < closest_distance:
+            closest_distance = distance
+            closest = dict(site)
+            closest['distance_km'] = distance
 
-    return None
+    return closest
 
 
 # ============================================================================

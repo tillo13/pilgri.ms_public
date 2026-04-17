@@ -604,6 +604,19 @@
       "main"
     ]
   },
+  "tools/retroactive_signal_detection.py": {
+    "description": "Retroactive Signal detection — Signal Phase 2.1.",
+    "exports": [
+      "run",
+      "main"
+    ]
+  },
+  "tools/seed_signal_radii.py": {
+    "description": "Seed variable unlock_radius_km per Origin Site — Signal Phase 2.1.",
+    "exports": [
+      "main"
+    ]
+  },
   "tools/send.py": {
     "description": "Send Sepolia from Pilgrim Hub to specific address",
     "exports": [
@@ -2485,7 +2498,7 @@
     "exports": [
       "get_all_origin_sites — Get all Origin Sites with their status",
       "get_origin_site_by_code — Get a specific Origin Site by its code",
-      "check_origin_site_proximity — Check if coordinates are near any unclaimed Origin Site",
+      "check_origin_site_proximity — Check if an expedition path (base → destination) passes near any unclaimed Origin Site.",
       "get_active_echo_sites — Get all active Echo Sites",
       "get_recent_echo_claims — Get recent Echo Site claims for the /signal page",
       "get_origin_site_visitors — Get visitors for a single Origin Site — prefer _bulk_get_origin_visitors() for multiple sites",

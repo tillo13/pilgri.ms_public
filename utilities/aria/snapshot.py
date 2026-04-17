@@ -166,6 +166,7 @@ def load_colony_snapshot(user_id: int) -> dict:
         },
         'signal': {
             'origin_claims': [],
+            'detected_sites': [],
             'bonds': []
         },
         'chat_history': {
@@ -548,6 +549,26 @@ def load_colony_snapshot(user_id: int) -> dict:
                 for row in cur.fetchall()
             ]
 
+            # Detected (unclaimed) Origin Sites — Phase 2.1 path-based closest approach
+            try:
+                from utilities.signal.claims import get_user_origin_site_eligibility
+                eligibility = get_user_origin_site_eligibility(user_id) or []
+                snapshot['signal']['detected_sites'] = [
+                    {
+                        'site': e.get('site_code'),
+                        'mission': e.get('mission_name'),
+                        'closest_approach_km': e.get('distance_km'),
+                        'radius_km': e.get('unlock_radius_km'),
+                        'claimable': bool(e.get('can_claim')),
+                    }
+                    for e in eligibility
+                    if e.get('distance_km') is not None
+                    and e.get('distance_km') <= (e.get('unlock_radius_km') or 0)
+                    and not e.get('is_claimed')
+                ]
+            except Exception:
+                snapshot['signal']['detected_sites'] = []
+
             # ARIA Bonds
             cur.execute("""
                 SELECT ab.landmark_name, ab.status, ab.bonded_at,
@@ -885,6 +906,15 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
             f"{c['site']} ({c['tier']})" for c in snapshot['signal']['origin_claims']
         )
         parts.append(f"ORIGIN SITE CLAIMS: {claims}")
+
+    if snapshot['signal'].get('detected_sites'):
+        detected = ", ".join(
+            f"{d['site']} ({d['closest_approach_km']}km/{d['radius_km']}km"
+            + (", CLAIMABLE" if d['claimable'] else "")
+            + ")"
+            for d in snapshot['signal']['detected_sites']
+        )
+        parts.append(f"DETECTED SIGNALS (unclaimed, within radius on some expedition path): {detected}")
 
     if snapshot['signal']['bonds']:
         parts.append(f"ARIA BONDS: {len(snapshot['signal']['bonds'])} active")
