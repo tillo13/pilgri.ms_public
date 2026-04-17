@@ -312,7 +312,7 @@
         var infoBlock;
         if (!existingName && markPlayed) {
             infoBlock = {
-                html: '<div class="er-info-label">NAME YOUR GOLEM</div>'
+                html: '<div class="er-info-label">NAME YOUR NAROG</div>'
                     + '<div id="er-name-pills" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0;">'
                     + '<span style="color:rgba(255,255,255,0.3);font-size:12px;">Loading suggestions...</span></div>'
                     + '<div style="display:flex;gap:8px;margin-top:8px;justify-content:center;">'
@@ -332,12 +332,12 @@
         }
 
         EpicReveal.show({
-            title: 'GOLEM AWAKENED',
+            title: 'NAROG AWAKENED',
             lines: [
                 { text: '*stone shifts... crystals pulse*', cls: 'static-crackle', sound: 'stoneGrind' },
                 { text: 'Five fragments. Five sites.', sound: 'deepRumble' },
                 { text: 'Five hands that recovered them — yours.', sound: 'crystalChime' },
-                { text: 'A new crew member stirs to life.', cls: 'emphasis', sound: 'golemAwaken' },
+                { text: 'Your Narog stirs to life.', cls: 'emphasis', sound: 'golemAwaken' },
             ],
             revealSound: 'playGolemAwaken',
             image: robotImage,
