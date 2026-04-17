@@ -159,8 +159,8 @@ function renderLedger(expeditions, container) {
                     <div class="exp-card-type">${exp.type.split(',')[0]} · ${date}</div>
                 </div>
                 <div class="exp-card-cost">
-                    <div class="exp-card-cost-value">${exp.total_extracted.toFixed(0)}</div>
-                    <div class="exp-card-cost-label">Extracted</div>
+                    <div class="exp-card-cost-value">${(exp.sepolia_earned || 0).toFixed(0)}</div>
+                    <div class="exp-card-cost-label">Earned</div>
                 </div>
             </div>
             <div class="exp-card-metrics">
@@ -186,9 +186,10 @@ function renderLedger(expeditions, container) {
                 <summary style="cursor: pointer; font-size: 11px; color: var(--text-muted);">Expedition details</summary>
                 <div style="margin-top: 8px; font-size: 11px; color: var(--text-secondary); display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
                     <div>Cost: <span style="color: var(--color-mars);">${exp.cost.toFixed(0)}</span> shards</div>
+                    <div>Earned: <span style="color: var(--color-success);">${(exp.sepolia_earned || 0).toFixed(0)}</span> shards</div>
                     <div>Science: <span style="color: var(--color-purple);">${exp.scientific_value || 0}</span></div>
+                    <div>Extracted: <span style="color: var(--text-muted);">${exp.total_extracted.toFixed(0)}</span> / ${(exp.sepolia_earned || 0).toFixed(0)}</div>
                     <div>Travel: ${exp.duration_hours}h</div>
-                    <div>Extracted: <span style="color: var(--color-success);">${exp.total_extracted.toFixed(0)}</span></div>
                 </div>
             </details>
         </div>`;
@@ -297,17 +298,21 @@ async function showLedgerDetail(exp) {
                 <strong>${date}</strong> · ${exp.distance_km} km · ${exp.duration_hours}h travel
                 ${visitIndicator}
             </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; margin-bottom: 16px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
                 <div>
                     <div style="font-size: 22px; font-weight: 700; color: var(--color-mars);">${exp.cost.toFixed(0)}</div>
                     <div style="font-size: 10px; color: var(--text-muted);">Cost (shards)</div>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 700; color: var(--color-success);">${(exp.sepolia_earned || 0).toFixed(0)}</div>
+                    <div style="font-size: 10px; color: var(--text-muted);">Earned (shards)</div>
                 </div>
                 <div>
                     <div style="font-size: 22px; font-weight: 700; color: var(--color-purple);">${exp.scientific_value || 0}</div>
                     <div style="font-size: 10px; color: var(--text-muted);">Science</div>
                 </div>
                 <div>
-                    <div style="font-size: 22px; font-weight: 700; color: var(--color-success);">${exp.claimed_count || 0}/${exp.discovery_count || 0}</div>
+                    <div style="font-size: 22px; font-weight: 700; color: var(--text-secondary);">${exp.claimed_count || 0}/${exp.discovery_count || 0}</div>
                     <div style="font-size: 10px; color: var(--text-muted);">Sold</div>
                 </div>
             </div>

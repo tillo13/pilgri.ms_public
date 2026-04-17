@@ -27,6 +27,7 @@ def get_expedition_history_payload(user_id: int, limit: int = 50, offset: int = 
             'completed_at': (exp['completed_at'].isoformat() + 'Z') if exp['completed_at'] else None,
             'duration_hours': round(duration_hours, 1),
             'cost': round(float(exp['sepolia_cost'] or 0) * 10000000, 1),
+            'sepolia_earned': round(float(exp['sepolia_earned'] or 0) * 10000000, 1),
             'discovery_count': exp['discovery_count'] or 0,
             'claimed_count': exp['claimed_count'] or 0,
             'total_extracted': round(float(exp['total_extracted'] or 0), 1),
