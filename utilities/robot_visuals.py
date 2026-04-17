@@ -207,37 +207,48 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
     Returns the log_stage result on success, None on failure. Failure
     is logged; caller falls back to stub.
     """
+    tag = f"[robot user={user_id} stage={stage_idx}]"
     try:
         from utilities.replicate_utils import FluxGenerator
         from utilities.google_cloud_storage_utils import upload_blob_from_url
     except ImportError as e:
-        logger.error(f"_run_stage: missing dependency, cannot run Kontext: {e}")
+        logger.exception(f"{tag} imports failed — cannot run Kontext: {e}")
         return None
 
     stage = ROBOT_STAGES[stage_idx - 1]
     seed_url = _get_seed_image_url(user_id, stage_idx)
     prompt = _build_stage_prompt(user_id, stage_idx, source)
-    logger.info(f"🤖 robot stage {stage_idx}/{5} user={user_id} key={stage['key']}")
+    logger.info(f"{tag} 🤖 begin key={stage['key']} seed={seed_url[:80]}")
 
     # 1) Flux Kontext edit
     try:
         flux = FluxGenerator()
+    except Exception as e:
+        logger.exception(f"{tag} FluxGenerator init failed: {e}")
+        return None
+    try:
         replicate_url = flux.kontext_edit(seed_url, prompt)
         if not replicate_url:
-            logger.error(f"robot stage user={user_id}: Kontext returned empty URL")
+            logger.error(f"{tag} Kontext returned empty URL")
             return None
+        logger.info(f"{tag} Kontext ok -> {str(replicate_url)[:80]}")
     except Exception as e:
-        logger.error(f"robot stage user={user_id} Kontext failed: {e}")
+        logger.exception(f"{tag} Kontext call raised: {e}")
         return None
 
     # 2) GCS upload (permanent) — timestamped path keeps assets unique even
     #    if a future recovery rerun ever overwrites (we don't, today).
     ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     blob_name = f"robots/{user_id}/stage_{stage_idx}_{ts}.png"
-    gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
-    if not gcs_url:
-        logger.error(f"robot stage user={user_id}: GCS upload failed")
+    try:
+        gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
+    except Exception as e:
+        logger.exception(f"{tag} GCS upload raised blob={blob_name}: {e}")
         return None
+    if not gcs_url:
+        logger.error(f"{tag} GCS upload returned None blob={blob_name} src={str(replicate_url)[:80]}")
+        return None
+    logger.info(f"{tag} GCS ok blob={blob_name}")
 
     # 3) Build manifest — same shape as stub, ready for Sepolia tx when that
     #    layer lands. Kind field signals this row came from the real pipeline
@@ -265,7 +276,7 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
     fake_tx = f"0xkontext{user_id:08x}{stage_idx:02d}"
     fake_data_hex = f"0xkontext_pending_sepolia_{stage['key']}"
     try:
-        return log_stage(
+        result = log_stage(
             user_id=user_id,
             stage_idx=stage_idx,
             source_manifest=manifest,
@@ -273,23 +284,26 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
             data_hex=fake_data_hex,
             tx_hash=fake_tx,
         )
+        logger.info(f"{tag} log_stage ok — stage complete")
+        return result
     except Exception as e:
-        logger.error(f"robot stage user={user_id} log_stage failed: {e}")
+        logger.exception(f"{tag} log_stage failed: {e}")
         return None
 
 
 def _worker(user_id: int, stage_idx: int, source: Dict[str, Any]) -> None:
     """Background worker — runs real stage, falls back to stub on failure."""
+    tag = f"[robot user={user_id} stage={stage_idx}]"
     try:
         result = _run_stage(user_id, stage_idx, source)
         if result is None:
-            logger.warning(
-                f"robot stage user={user_id} stage={stage_idx} "
-                f"fell back to stub (Kontext/GCS failed)"
+            logger.error(
+                f"{tag} FELL BACK TO STUB — Kontext/GCS/log_stage returned None. "
+                f"Stage image will be the shared placeholder."
             )
             _stub_advance_one_stage(user_id, stage_idx, source)
     except Exception as e:
-        logger.exception(f"robot worker crash user={user_id} stage={stage_idx}: {e}")
+        logger.exception(f"{tag} worker crash: {e}")
     finally:
         _release(user_id, stage_idx)
 

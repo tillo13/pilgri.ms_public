@@ -440,7 +440,10 @@
     function maybeFireRobotCinematic() {
         if (!BRIDGE || !BRIDGE.show_cinematic) return;
         if (typeof window.EpicReveal === 'undefined') {
-            fetch('/api/robot/cinematic_played', { method: 'POST' }).catch(() => {});
+            // Do NOT auto-POST cinematic_played here — that permanently loses
+            // the reveal if epic-reveal.js hasn't parsed yet. Leave
+            // show_cinematic=true so the next page load retries.
+            console.error('[crew-robot] EpicReveal missing at fire time; skipping (will retry next load)');
             return;
         }
         fireGolemCinematic(true);

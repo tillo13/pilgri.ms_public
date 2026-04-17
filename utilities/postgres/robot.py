@@ -467,7 +467,7 @@ def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
             if names:
                 save_name_suggestions(user_id, names)
         except Exception as e:
-            logger.warning(f"Background golem name gen failed: {e}")
+            logger.exception(f"Background golem name gen failed user={user_id}: {e}")
 
     threading.Thread(target=_gen_names, daemon=True).start()
 
