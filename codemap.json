@@ -13,6 +13,15 @@
       "Icons - NO DEFAULT EMOJIS"
     ]
   },
+  "NAROG_HANDOFF.md": {
+    "description": "Narog Restoration — Why Andy Is Pissed (Handoff)",
+    "exports": [
+      "Why Andy is pissed (in his words and mine)",
+      "What is actually deployed and working",
+      "What is NOT done yet — pick up here",
+      "Claude's apology summary"
+    ]
+  },
   "PUBLIC_README.md": {
     "description": "Pilgrims",
     "exports": [
@@ -3176,7 +3185,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3189,7 +3198,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

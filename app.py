@@ -307,7 +307,7 @@ def api_robot_status():
 def api_robot_build():
     """Start a new robot build."""
     from utilities.postgres.robot import start_build_with_name_prefetch
-    cmd_name = session.get('_cmd', {}).get('name') if session.get('_cmd') else None
+    cmd_name = session.get('_cmd') or None
     sci_name = session.get('scientist_name')
     payload, status = start_build_with_name_prefetch(g.user_id, cmd_name, sci_name)
     return jsonify(payload), status
@@ -377,7 +377,7 @@ def api_robot_suggest_names():
     from utilities.postgres.robot import get_robot_page_data
     data = get_robot_page_data(g.user_id)
     robot = data.get('robot') or {}
-    commander_name = session.get('_cmd', {}).get('name') if session.get('_cmd') else None
+    commander_name = session.get('_cmd') or None
     scientist_name = session.get('scientist_name')
     names = suggest_golem_names(
         user_id=g.user_id,
