@@ -13,14 +13,20 @@ function showDiscoveryDetails(discoveryItemId) {
     stats.push({ label: '\u2500\u2500\u2500 VALUE \u2500\u2500\u2500', value: '' });
     const baseValue = discovery.base_scientific_value || discovery.enhanced_value;
     stats.push({ label: 'Base Value', value: Math.round(baseValue).toLocaleString() + ' shards' });
-    stats.push({ label: 'Extract Value', value: Math.round(discovery.enhanced_value).toLocaleString() + ' shards' });
+    stats.push({ label: 'Enhanced Value', value: Math.round(discovery.enhanced_value).toLocaleString() + ' shards' });
     if (discovery.base_scientific_value) {
         const svTotal = discovery.base_scientific_value * (discovery.quantity || 1);
         stats.push({ label: 'Science Value', value: svTotal.toLocaleString() + ' SV' });
     }
     if (discovery.enhanced_value > baseValue) {
         const bonusPct = ((discovery.enhanced_value / baseValue - 1) * 100).toFixed(0);
-        stats.push({ label: 'Research Bonus', value: '+' + bonusPct + '% (Research Lab)' });
+        stats.push({ label: 'Exploration Boost', value: '+' + bonusPct + '%' });
+    }
+    if (typeof discoveryValueMult !== 'undefined' && discoveryValueMult > 1.0) {
+        stats.push({ label: 'Research Lab', value: '+' + ((discoveryValueMult - 1) * 100).toFixed(0) + '%' });
+    }
+    if (discovery.item_type === 'biological' && typeof bioDiscoveryValueMult !== 'undefined' && bioDiscoveryValueMult > 1.0) {
+        stats.push({ label: 'Cryo Storage', value: '+' + ((bioDiscoveryValueMult - 1) * 100).toFixed(0) + '%' });
     }
     if ((discovery.quantity || 1) > 1) {
         const totalValue = discovery.enhanced_value * (discovery.quantity || 1);

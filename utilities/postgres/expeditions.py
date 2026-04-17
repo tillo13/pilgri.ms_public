@@ -525,8 +525,9 @@ def get_claimed_discoveries(user_id: int) -> List[Dict]:
             cur.execute("""
                 SELECT di.id as discovery_item_id, di.item_name, di.item_type, di.rarity, di.description,
                        di.image_url, di.weight_kg, di.stackable, di.base_scientific_value,
-                       COUNT(ed.id) as quantity,
-                       ROUND(AVG(ed.enhanced_value)) as enhanced_value, MAX(ed.claimed_at) as claimed_at,
+                       SUM(ed.quantity) as quantity,
+                       (SUM(ed.enhanced_value * ed.quantity)::numeric / NULLIF(SUM(ed.quantity), 0)) as enhanced_value,
+                       MAX(ed.claimed_at) as claimed_at,
                        MAX(e.destination_name) as destination_name, MAX(ed.found_at_km) as found_at_km
                 FROM pilgrim.expedition_discoveries ed
                 JOIN pilgrim.discovery_items di ON ed.discovery_item_id = di.id

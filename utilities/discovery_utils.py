@@ -552,9 +552,12 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
                         })
                     remaining -= take
 
-            # Calculate totals for selected discoveries
-            base_value = sum(d['enhanced_value'] * d['quantity'] for d in discoveries)
+            # Payout uses AVG enhanced_value × qty extracted (not the specific oldest rows' values)
+            # so partial extracts match the UI preview. For extract_all AVG×N == SUM, so totals are unchanged.
             total_quantity = sum(d['quantity'] for d in discoveries)
+            all_sum = sum(d['enhanced_value'] * d['quantity'] for d in all_discoveries)
+            all_qty = sum(d['quantity'] for d in all_discoveries) or 1
+            base_value = (all_sum / all_qty) * total_quantity
 
     except Exception as e:
         logger.error(f"Failed to get discoveries for analysis: {e}")
@@ -594,16 +597,12 @@ def analyze_discovery(user_id: int, discovery_item_id: int, session=None, extrac
         discovery_value_mult = 1.0
         bio_discovery_value_mult = 1.0
 
-    # Apply rarity multiplier to payout
-    total_value = base_value * multiplier
-
-    # Apply discovery_value_mult from research equipment
+    # Floor at each step to match frontend Math.floor preview (modal/button ↔ toast/log consistency)
+    total_value = math.floor(base_value * multiplier)
     if discovery_value_mult > 1.0:
-        total_value *= discovery_value_mult
-
-    # Apply bio_discovery_value_mult for biological discoveries (Cryo Storage Unit)
+        total_value = math.floor(total_value * discovery_value_mult)
     if item_type == 'biological' and bio_discovery_value_mult > 1.0:
-        total_value *= bio_discovery_value_mult
+        total_value = math.floor(total_value * bio_discovery_value_mult)
 
     # STEP 1: Mark discoveries as analyzed IMMEDIATELY (UI updates fast)
     try:

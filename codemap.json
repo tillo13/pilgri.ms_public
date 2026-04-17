@@ -653,6 +653,18 @@
       "generate_unlock_codes — Helper to generate hex codes for Lost Sites (for reference)"
     ]
   },
+  "tools/simulate_captain_stats.py": {
+    "description": "Bug #21 — Retroactive captain stat simulation.",
+    "exports": [
+      "fetch_all_captains",
+      "fetch_activity",
+      "simulate",
+      "fmt_num",
+      "build_markdown_report",
+      "post_to_brainstorm",
+      "main"
+    ]
+  },
   "tools/smoke_test_new_user.py": {
     "description": "New User Smoke Test - Tests the complete new user onboarding flow",
     "exports": [
@@ -3139,7 +3151,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
