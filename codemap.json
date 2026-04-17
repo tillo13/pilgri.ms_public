@@ -2204,6 +2204,15 @@
       "get_spatial_hints — Calculate nearby interesting things for ARIA to hint about mysteriously."
     ]
   },
+  "utilities/aria/signal_hints.py": {
+    "description": "ARIA signal progression hints — ordered, one-shot narrative beats delivered",
+    "exports": [
+      "ensure_hint_log_table — Create pilgrim.aria_hint_log if it doesn't exist. Idempotent.",
+      "get_shown_hint_ids — Return the set of hint_ids already shown to this user.",
+      "mark_hint_shown — Record a hint as shown. Idempotent via unique constraint.",
+      "get_next_unshown_hint — Return the first unshown hint whose threshold the user has crossed."
+    ]
+  },
   "utilities/aria/snapshot.py": {
     "description": "ARIA colony snapshot — analyze_playstyle, load_colony_snapshot, _build_snapshot_prompt.",
     "exports": [
@@ -3180,7 +3189,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

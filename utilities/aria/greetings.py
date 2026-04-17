@@ -10,12 +10,13 @@ from utilities.aria.config import ARIA_NAME, ARIA_IMAGE_URL
 
 logger = logging.getLogger(__name__)
 
-def get_aria_greeting(user_context: Optional[Dict[str, Any]] = None) -> str:
+def get_aria_greeting(user_context: Optional[Dict[str, Any]] = None, user_id: Optional[int] = None) -> str:
     """
     Get ARIA's initial greeting when the chat opens.
 
     Args:
         user_context: Optional user context dict
+        user_id: Optional user id — enables signal progression hint priority tier (Phase 2.3)
 
     Returns:
         A contextual greeting from ARIA
@@ -50,6 +51,17 @@ def get_aria_greeting(user_context: Optional[Dict[str, Any]] = None) -> str:
             f"Your solar arrays are coated.\n\n"
             f"Harvest shards on the **Base** page to clean panels and resume generation."
         )
+
+    # Signal progression hint (one-shot, ordered by SIGNAL_HINTS) — Phase 2.3
+    if user_id:
+        try:
+            from utilities.aria.signal_hints import get_next_unshown_hint, mark_hint_shown
+            hint = get_next_unshown_hint(user_id)
+            if hint:
+                mark_hint_shown(user_id, hint['id'])
+                return hint['text']
+        except Exception as e:
+            logger.warning(f"Signal hint check failed for user {user_id}: {e}")
 
     # Returning after long absence
     if days_away and days_away >= 7:

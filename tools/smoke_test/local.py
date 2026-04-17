@@ -347,6 +347,37 @@ def test_signal_income_bonuses():
     return True
 
 
+@test("ARIA signal hints table + helper", tier=2, features=['aria', 'signal'], mode='local')
+def test_aria_signal_hints():
+    """Phase 2.3a: ensure_hint_log_table + SIGNAL_HINTS + get_next_unshown_hint shape."""
+    from utilities.aria.signal_hints import (
+        ensure_hint_log_table, SIGNAL_HINTS, get_next_unshown_hint
+    )
+    from utilities.postgres.core import db_cursor
+
+    ensure_hint_log_table()
+
+    assert isinstance(SIGNAL_HINTS, list) and len(SIGNAL_HINTS) >= 4
+    for h in SIGNAL_HINTS:
+        for key in ('id', 'trigger', 'threshold', 'text'):
+            assert key in h, f"hint missing key: {key}"
+        assert h['trigger'] in ('sol', 'expeditions', 'claims', 'detections_any')
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema='pilgrim' AND table_name='aria_hint_log'
+        """)
+        assert cur.fetchone() is not None, "aria_hint_log table not created"
+
+        cur.execute("SELECT id FROM pilgrim.users LIMIT 1")
+        row = cur.fetchone()
+    if row:
+        result = get_next_unshown_hint(row['id'])
+        assert result is None or ('id' in result and 'text' in result)
+    return True
+
+
 @test("origin_sites.unlock_radius_km column", tier=2, features=['db', 'signal'], mode='local')
 def test_origin_sites_radius_column():
     """Phase 2.1: per-site variable radii column must exist and be populated."""

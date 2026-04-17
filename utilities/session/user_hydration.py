@@ -206,7 +206,7 @@ def build_global_context(auth, static_v):
             'balance': total_balance,
             'dust_storm_alert': dust_storm_alert,
             'aria_fragment_alert': aria_fragment_alert,
-        })
+        }, user_id=user_id)
         if aria_bond_greeting:
             aria_greeting = aria_bond_greeting
 
