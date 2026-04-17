@@ -1470,7 +1470,9 @@
     "exports": [
       "haversine_distance — Calculate great circle distance between two points on Mars in km.",
       "offset_coordinates — Offset coordinates by distance in a given direction on Mars.",
-      "point_to_path_distance — Calculate minimum distance from a point to a great circle path (A->B) on Mars."
+      "point_to_path_distance — Calculate minimum distance from a point to a great circle path (A->B) on Mars.",
+      "bearing_deg — Initial bearing from one point to another on Mars, in degrees [0, 360).",
+      "bearing_to_cardinal — Return (arrow_char, cardinal_label) for a bearing in degrees."
     ]
   },
   "utilities/onboarding_utils.py": {
@@ -2485,6 +2487,7 @@
   "utilities/signal/rewards.py": {
     "description": "Legendary item + visitor reward image generation (Flux).",
     "exports": [
+      "get_user_signal_income_bonuses — Sum per-site hourly income bonuses across every Origin Site claim the",
       "generate_legendary_item_for_origin — Generate the legendary item image for an Origin Site after it's claimed.",
       "get_user_origin_eligibility_payload — Build the API response payload for GET /api/signal/user/origin_eligibility.",
       "get_legendary_item_payload — Build the API response payload for GET /api/signal/origin/<id>/legendary.",
@@ -3074,6 +3077,7 @@
     "exports": [
       "getCSSColor",
       "initializeMap",
+      "applyDeepLinkFocus",
       "initializeMapResizeHandlers",
       "addExpeditionMarkers",
       "setVehicleRange",
@@ -3085,8 +3089,7 @@
       "updateCostDisplay",
       "discount",
       "initializeSolarConditions",
-      "updateSolarConditions",
-      "searchMapLandmark"
+      "updateSolarConditions"
     ],
     "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
   },
@@ -3177,7 +3180,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

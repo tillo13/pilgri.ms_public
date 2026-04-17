@@ -75,3 +75,28 @@ def point_to_path_distance(point_lat: float, point_lon: float,
         return min(d_ap, d_bp)
 
     return cross_track
+
+
+def bearing_deg(from_lat: float, from_lon: float, to_lat: float, to_lon: float) -> float:
+    """Initial bearing from one point to another on Mars, in degrees [0, 360)."""
+    a_lat, a_lon = math.radians(from_lat), math.radians(from_lon)
+    b_lat, b_lon = math.radians(to_lat), math.radians(to_lon)
+    y = math.sin(b_lon - a_lon) * math.cos(b_lat)
+    x = math.cos(a_lat) * math.sin(b_lat) - math.sin(a_lat) * math.cos(b_lat) * math.cos(b_lon - a_lon)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def bearing_to_cardinal(bearing: float) -> tuple:
+    """Return (arrow_char, cardinal_label) for a bearing in degrees."""
+    dirs = [
+        (0,   '↑', 'N'),
+        (45,  '↗', 'NE'),
+        (90,  '→', 'E'),
+        (135, '↘', 'SE'),
+        (180, '↓', 'S'),
+        (225, '↙', 'SW'),
+        (270, '←', 'W'),
+        (315, '↖', 'NW'),
+    ]
+    idx = int(((bearing + 22.5) % 360) // 45)
+    return dirs[idx][1], dirs[idx][2]

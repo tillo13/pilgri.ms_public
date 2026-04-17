@@ -8,6 +8,76 @@ from utilities.postgres.core import db_cursor
 logger = logging.getLogger(__name__)
 
 
+def _tier_for_rank(rank: int) -> str:
+    """Map claim_rank to the tier key used in VISITOR_TIER_INCOME_BONUSES."""
+    if rank == 1:
+        return 'Founder'
+    if 2 <= rank <= 3:
+        return 'Early Witness'
+    if 4 <= rank <= 10:
+        return 'Pioneer'
+    if 11 <= rank <= 42:
+        return 'Pilgrim'
+    return 'Wanderer'
+
+
+def get_user_signal_income_bonuses(user_id: int) -> Dict[str, Any]:
+    """Sum per-site hourly income bonuses across every Origin Site claim the
+    captain holds — Founder (rank 1) or Visitor (rank 2+).
+
+    Returns::
+
+        {
+          'shards_per_hour': float,
+          'sv_per_hour': float,
+          'sites_count': int,
+          'per_tier': {tier_name: {'count': int, 'shards_per_hour': float,
+                                    'sv_per_hour': float}, ...}
+        }
+
+    Used by utilities.infrastructure.income.calculate_accumulated_income to
+    reflect the captain's Signal Network contribution on the Base homepage
+    (Signal Phase 2 spec — Luke's hard requirement).
+    """
+    from utilities.signal.config import VISITOR_TIER_INCOME_BONUSES
+
+    per_tier: Dict[str, Dict[str, Any]] = {}
+    total_shards_per_hour = 0.0
+    total_sv_per_hour = 0.0
+    sites_count = 0
+
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT claim_rank
+                FROM pilgrim.site_claims
+                WHERE user_id = %s AND site_type = 'origin'
+            """, (user_id,))
+            rows = cur.fetchall()
+
+        for row in rows:
+            rank = int(row['claim_rank'] or 99999)
+            tier = _tier_for_rank(rank)
+            bonus = VISITOR_TIER_INCOME_BONUSES.get(tier, {'shards_per_hour': 0, 'sv_per_hour': 0})
+            total_shards_per_hour += bonus['shards_per_hour']
+            total_sv_per_hour += bonus['sv_per_hour']
+            sites_count += 1
+            if tier not in per_tier:
+                per_tier[tier] = {'count': 0, 'shards_per_hour': 0.0, 'sv_per_hour': 0.0}
+            per_tier[tier]['count'] += 1
+            per_tier[tier]['shards_per_hour'] += bonus['shards_per_hour']
+            per_tier[tier]['sv_per_hour'] += bonus['sv_per_hour']
+    except Exception as e:
+        logger.warning(f"get_user_signal_income_bonuses({user_id}) failed: {e}")
+
+    return {
+        'shards_per_hour': round(total_shards_per_hour, 2),
+        'sv_per_hour': round(total_sv_per_hour, 2),
+        'sites_count': sites_count,
+        'per_tier': per_tier,
+    }
+
+
 # ============================================================================
 # LEGENDARY ITEM GENERATION
 # ============================================================================

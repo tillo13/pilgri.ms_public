@@ -46,6 +46,47 @@ function initializeMap() {
     addExpeditionMarkers();
     addOriginSiteMarkers();
     initializeMapResizeHandlers();
+    applyDeepLinkFocus();
+}
+
+// Signal → Map deep link (Bug #1275):
+// ?lat=X&lon=Y&zoom=N&marker=LABEL pans the map and drops a pulsing highlight
+// so captains clicking a coord on the Signal page land on that exact spot.
+function applyDeepLinkFocus() {
+    if (!map) return;
+    const params = new URLSearchParams(window.location.search);
+    const lat = parseFloat(params.get('lat'));
+    const lon = parseFloat(params.get('lon'));
+    if (!isFinite(lat) || !isFinite(lon)) return;
+    const zoom = Math.max(1, Math.min(6, parseInt(params.get('zoom') || '6', 10)));
+    const label = params.get('marker') || '';
+
+    // Switch to map tab if we're not already on it
+    if (typeof switchMainTab === 'function') {
+        switchMainTab('map');
+    }
+
+    map.setView([lat, lon], zoom);
+
+    const highlight = L.circleMarker([lat, lon], {
+        radius: 18,
+        fillColor: '#facc15',
+        color: '#f97316',
+        weight: 4,
+        opacity: 1,
+        fillOpacity: 0.4,
+        className: 'deep-link-pulse'
+    }).addTo(map);
+
+    if (label) {
+        highlight.bindPopup(
+            `<div class="map-popup"><div class="map-popup-title">${label}</div>` +
+            `<div class="map-popup-coords">${lat.toFixed(4)}°, ${lon.toFixed(4)}°</div></div>`
+        ).openPopup();
+    }
+
+    // Fade the highlight out after 20s so it doesn't stick forever.
+    setTimeout(() => { if (map.hasLayer(highlight)) map.removeLayer(highlight); }, 20000);
 }
 
 // Handle map resize on window resize and orientation change

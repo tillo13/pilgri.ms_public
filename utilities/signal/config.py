@@ -56,3 +56,24 @@ def get_visitor_tier(rank: int) -> tuple:
         if min_rank <= rank <= max_rank:
             return tier_info
     return ('Wanderer', '#6b7280', 'common')  # Default for overflow
+
+
+# ============================================================================
+# PASSIVE INCOME BONUSES — Signal Phase 2.2
+# ============================================================================
+# Per-site hourly bonuses that stack across every Origin Site a captain has
+# claimed (rank 1) or visited (rank 2+). Surfaced on the Base homepage so
+# captains see their Signal Network contributing to shard/SV income — Luke's
+# explicit hard requirement (Signal Phase 2 spec, section: "Homepage must
+# reflect income").
+#
+# Keys mirror the VISITOR_TIERS tier names plus 'Founder' for rank 1.
+# Values in shards/hour and SV/hour respectively.
+
+VISITOR_TIER_INCOME_BONUSES = {
+    'Founder':        {'shards_per_hour': 5.0, 'sv_per_hour': 25.0},  # Rank 1 — First Captain
+    'Early Witness':  {'shards_per_hour': 3.0, 'sv_per_hour': 15.0},  # Ranks 2-3
+    'Pioneer':        {'shards_per_hour': 1.5, 'sv_per_hour': 7.5},   # Ranks 4-10
+    'Pilgrim':        {'shards_per_hour': 1.0, 'sv_per_hour': 5.0},   # Ranks 11-42
+    'Wanderer':       {'shards_per_hour': 0.5, 'sv_per_hour': 2.5},   # Ranks 43+
+}

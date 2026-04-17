@@ -569,6 +569,15 @@ def load_colony_snapshot(user_id: int) -> dict:
             except Exception:
                 snapshot['signal']['detected_sites'] = []
 
+            # Phase 2.2 — Signal Network passive income bonus from claimed origin sites
+            try:
+                from utilities.signal.rewards import get_user_signal_income_bonuses
+                snapshot['signal']['income_bonus'] = get_user_signal_income_bonuses(user_id)
+            except Exception:
+                snapshot['signal']['income_bonus'] = {
+                    'shards_per_hour': 0, 'sv_per_hour': 0, 'sites_count': 0, 'per_tier': {}
+                }
+
             # ARIA Bonds
             cur.execute("""
                 SELECT ab.landmark_name, ab.status, ab.bonded_at,
@@ -918,6 +927,12 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
 
     if snapshot['signal']['bonds']:
         parts.append(f"ARIA BONDS: {len(snapshot['signal']['bonds'])} active")
+
+    signal_bonus = snapshot['signal'].get('income_bonus') or {}
+    if signal_bonus.get('sites_count', 0) > 0:
+        parts.append(
+            f"SIGNAL NETWORK INCOME: +{signal_bonus['shards_per_hour']:.1f} shards/hr, +{signal_bonus['sv_per_hour']:.1f} SV/hr from {signal_bonus['sites_count']} claimed Origin Site(s). This passive bonus stacks on top of building income and is included in the Base page shard_rate."
+        )
 
     # Decoder / Eternal Ledger awareness
     parts.append("""DECODER TERMINAL & THE ETERNAL LEDGER:

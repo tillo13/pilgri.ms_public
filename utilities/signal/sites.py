@@ -571,6 +571,7 @@ def get_signal_page_render_data(user_id) -> Dict:
 
     bond_fragment_hint = None
     signal_bonds = []
+    user_signal_cards = {}
     if user_id:
         try:
             from utilities.aria.bonds import get_bonds_for_display
@@ -580,12 +581,120 @@ def get_signal_page_render_data(user_id) -> Dict:
         except Exception:
             pass
 
+        try:
+            user_signal_cards = _build_user_signal_cards(user_id)
+        except Exception as e:
+            logger.warning(f"Failed to build user signal cards for {user_id}: {e}")
+            user_signal_cards = {}
+
     return {
         'closest_pilgrim': closest_pilgrim,
         'bond_fragment_hint': bond_fragment_hint,
         'signal_bonds': signal_bonds,
+        'user_signal_cards': user_signal_cards,
         **signal_data,
     }
+
+
+def _build_user_signal_cards(user_id: int) -> Dict[str, Dict]:
+    """
+    Build per-site signal cards for a user — keyed by node_id for unclaimed,
+    site_code for claimed. Each card contains YOUR closest approach, signal
+    strength pips, fuzzy direction, and detection history count.
+    """
+    from utilities.signal.claims import get_user_origin_site_eligibility
+    from utilities.postgres.map import get_or_set_user_mars_home
+    from utilities.mars_math import (
+        point_to_path_distance, bearing_deg, bearing_to_cardinal,
+    )
+
+    eligibility = get_user_origin_site_eligibility(user_id)
+    base = get_or_set_user_mars_home(user_id)
+    base_lat = float(base['latitude'])
+    base_lon = float(base['longitude'])
+
+    # Fetch user completed expeditions once for detection-history count
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT id, destination_name, destination_lat, destination_lon, created_at
+            FROM pilgrim.expeditions
+            WHERE user_id = %s
+            AND status = 'complete'
+            AND destination_lat IS NOT NULL
+            ORDER BY created_at DESC
+        """, (user_id,))
+        expeditions = cur.fetchall()
+
+    cards = {}
+    for site in eligibility:
+        node_id = site['node_id']
+        distance = site.get('distance_km')
+        radius = site.get('unlock_radius_km') or 42.0
+
+        # Signal strength: 5 pips, filled based on how close user is.
+        # Fills when distance/radius <= threshold. At distance=0 → 5 pips.
+        # At distance=radius → 1 pip. Beyond radius → fewer.
+        pips = 0
+        if distance is not None and radius > 0:
+            ratio = distance / radius
+            if ratio <= 0.2: pips = 5
+            elif ratio <= 0.5: pips = 4
+            elif ratio <= 1.0: pips = 3
+            elif ratio <= 2.0: pips = 2
+            elif ratio <= 5.0: pips = 1
+
+        # Fuzzy direction from Base → site. Precision increases as you get closer.
+        arrow = ''
+        cardinal = ''
+        try:
+            bearing = bearing_deg(base_lat, base_lon, float(site['latitude']), float(site['longitude']))
+            arrow, cardinal = bearing_to_cardinal(bearing)
+        except Exception:
+            pass
+
+        # Detection history: count user expeditions whose path is within radius
+        detection_count = 0
+        for exp in expeditions:
+            try:
+                d = point_to_path_distance(
+                    float(site['latitude']), float(site['longitude']),
+                    base_lat, base_lon,
+                    float(exp['destination_lat']), float(exp['destination_lon'])
+                )
+                if d <= radius:
+                    detection_count += 1
+            except Exception:
+                continue
+
+        # Fuzzy distance — round more coarsely when far away
+        fuzzy_km = None
+        if distance is not None:
+            if distance < 50: fuzzy_km = round(distance, 1)
+            elif distance < 500: fuzzy_km = round(distance / 5) * 5
+            else: fuzzy_km = round(distance / 50) * 50
+
+        card = {
+            'node_id': node_id,
+            'site_code': site['site_code'],
+            'mission_name': site['mission_name'],
+            'signal_strength': site['signal_strength'],
+            'is_claimed': site['is_claimed'],
+            'can_claim': site['can_claim'],
+            'can_visit': site['can_visit'],
+            'has_visited': site['has_visited'],
+            'distance_km': distance,
+            'fuzzy_km': fuzzy_km,
+            'closest_expedition': site.get('closest_expedition'),
+            'pips': pips,
+            'pips_empty': 5 - pips,
+            'arrow': arrow,
+            'cardinal': cardinal,
+            'detection_count': detection_count,
+            'unlock_radius_km': radius,
+        }
+        cards[node_id] = card
+        cards[site['site_code']] = card
+    return cards
 
 
 def get_closest_pilgrim_to_origin(origin_sites: List[Dict] = None) -> Optional[Dict]:

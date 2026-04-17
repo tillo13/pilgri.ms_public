@@ -183,6 +183,20 @@ def calculate_accumulated_income(user_id):
     except Exception:
         pass
 
+    # Signal Network passive bonus — per-claim hourly shards + SV, stacks across sites.
+    # Luke's hard requirement: Base homepage must reflect Signal income.
+    signal_bonus = {'shards_per_hour': 0.0, 'sv_per_hour': 0.0, 'sites_count': 0, 'per_tier': {}}
+    signal_shards_accumulated = 0.0
+    try:
+        from utilities.signal.rewards import get_user_signal_income_bonuses
+        signal_bonus = get_user_signal_income_bonuses(user_id)
+        if signal_bonus['shards_per_hour'] > 0 and details:
+            avg_capped_hours = sum(d['capped_hours'] for d in details) / len(details)
+            signal_shards_accumulated = signal_bonus['shards_per_hour'] * avg_capped_hours
+            total_accumulated += signal_shards_accumulated
+    except Exception as e:
+        logger.warning(f"Signal income bonus calc failed for user {user_id}: {e}")
+
     base_hourly_rate = sum(d['hourly_rate'] for d in details)
 
     generating_details = [d for d in details if d['hourly_rate'] > 0]
@@ -270,7 +284,13 @@ def calculate_accumulated_income(user_id):
             sv_accumulated *= sv_scientist_bonus
     except Exception:
         pass
-    sv_hourly_rate = round(sv_base_rate * sv_scientist_bonus, 1)
+    sv_signal_accumulated = 0.0
+    if signal_bonus.get('sv_per_hour', 0) > 0 and details:
+        avg_cap = sum(d['capped_hours'] for d in details) / len(details)
+        sv_signal_accumulated = signal_bonus['sv_per_hour'] * avg_cap
+        sv_accumulated += sv_signal_accumulated
+
+    sv_hourly_rate = round(sv_base_rate * sv_scientist_bonus + signal_bonus.get('sv_per_hour', 0), 1)
 
     return {
         'total_accumulated': round(total_accumulated, 2),
@@ -286,6 +306,14 @@ def calculate_accumulated_income(user_id):
         'any_at_cap': len(structures_at_cap) > 0,
         'cap_hours': ACCUMULATION_CAP_HOURS,
         'cap_days': ACCUMULATION_CAP_HOURS / 24,
+        'signal_bonus': {
+            'shards_per_hour': signal_bonus['shards_per_hour'],
+            'sv_per_hour': signal_bonus['sv_per_hour'],
+            'sites_count': signal_bonus['sites_count'],
+            'per_tier': signal_bonus['per_tier'],
+            'shards_accumulated': round(signal_shards_accumulated, 2),
+            'sv_accumulated': round(sv_signal_accumulated, 1),
+        },
         'bonuses_applied': {
             'passive_income_mult': passive_income_mult,
             'passive_income_source': passive_income_source,
@@ -293,6 +321,8 @@ def calculate_accumulated_income(user_id):
             'all_generation_mult': all_generation_mult,
             'passive_income_base': passive_income_base,
             'scientist_shard_mult': scientist_shard_mult,
+            'signal_shards_per_hour': signal_bonus['shards_per_hour'],
+            'signal_sites_count': signal_bonus['sites_count'],
         },
         'rate_breakdown': {
             'base_hourly_rate': round(base_hourly_rate, 1),

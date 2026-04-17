@@ -616,7 +616,7 @@ details[open] .signal-summary::after {
 .signal-cryptic-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
 }
 
 .signal-node-cryptic {
@@ -631,10 +631,87 @@ details[open] .signal-summary::after {
     font-size: 12px;
 }
 
+/* Per-signal detail card wrapping the cryptic row + YOUR approach */
+.signal-detail-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.signal-detail-card:hover { border-color: var(--color-mars); }
+.signal-detail-card.claimable {
+    border-color: var(--color-success);
+    box-shadow: 0 0 12px rgba(var(--color-success-rgb), 0.25);
+}
+.signal-detail-card .signal-node-cryptic {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+.signal-your-approach {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 14px 10px 14px;
+    border-top: 1px dashed var(--border-color);
+    background: rgba(var(--color-mars-rgb, 236, 116, 39), 0.04);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.signal-strength-bar { display: inline-flex; gap: 3px; }
+.signal-strength-bar .pip {
+    width: 14px; height: 6px; border-radius: 2px;
+    background: var(--border-color);
+    transition: background 0.2s;
+}
+.signal-strength-bar .pip.filled {
+    background: linear-gradient(90deg, var(--color-mars) 0%, var(--color-mars-light) 100%);
+    box-shadow: 0 0 4px rgba(236, 116, 39, 0.4);
+}
+
+.signal-your-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fuzzy-arrow {
+    color: var(--color-mars);
+    font-weight: 700;
+    font-size: 13px;
+    min-width: 38px;
+}
+.fuzzy-km { color: var(--text-primary); font-weight: 600; }
+.your-closest-exp { color: var(--text-muted); font-size: 10px; }
+.signal-detection-history { color: var(--color-info); font-size: 10px; }
+.signal-claim-hint {
+    color: var(--color-success);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+}
+.your-visit-badge {
+    color: var(--color-sepolia);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+}
+
 .signal-node-id {
     color: var(--color-mars);
     font-weight: 600;
     min-width: 70px;
+}
+
+a.signal-node-link {
+    text-decoration: none;
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(236, 116, 39, 0.4);
+    transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+}
+a.signal-node-link:hover {
+    color: var(--color-mars-light);
+    border-bottom-color: var(--color-mars-light);
+    text-shadow: 0 0 6px rgba(236, 116, 39, 0.5);
 }
 
 .signal-node-hint {

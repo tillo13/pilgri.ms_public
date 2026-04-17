@@ -142,6 +142,9 @@ def query_player_data(category, user_id):
             lines.append(f"  All-generation bonus: +{(bonuses.get('all_generation_mult', 1) - 1) * 100:.0f}%")
             lines.append(f"  Scientist shard bonus: +{(bonuses.get('scientist_shard_mult', 1) - 1) * 100:.0f}% (+2% per analysis point, max +100% at 50)")
             lines.append(f"  Mining drone flat bonus: +{bonuses.get('passive_income_base', 0)}/hr")
+            sig_bonus = calc.get('signal_bonus', {})
+            if sig_bonus.get('sites_count', 0) > 0:
+                lines.append(f"  Signal Network flat bonus: +{sig_bonus.get('shards_per_hour', 0):.1f}/hr shards, +{sig_bonus.get('sv_per_hour', 0):.1f}/hr SV ({sig_bonus['sites_count']} claimed site{'s' if sig_bonus['sites_count'] != 1 else ''})")
             lines.append("")
             lines.append("ENVIRONMENTAL FACTORS:")
             lines.append(f"  Day/night cycle efficiency: {rb.get('day_night_efficiency', 0):.0f}%")

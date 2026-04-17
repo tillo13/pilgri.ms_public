@@ -81,21 +81,52 @@
             {% set lat_code = "%03d"|format((site.latitude|abs * 10)|int) %}
             {% set lon_code = "%03d"|format((site.longitude|abs * 10)|int) %}
             {% set node_id = "NODE-" ~ lat_code ~ lon_code %}
-            <div class="signal-node-cryptic">
-                <span class="signal-node-id">{{ node_id }}</span>
-                <span class="signal-node-hint">
-                    {% if site.mission_status == 'successful' %}
-                    Signal strength: Strong
-                    {% elif site.mission_status == 'crashed' %}
-                    Signal strength: Fragmented
+            {% set card = user_signal_cards.get(node_id) if user_signal_cards else None %}
+            <div class="signal-detail-card{% if card and card.can_claim %} claimable{% endif %}">
+                <div class="signal-node-cryptic">
+                    <a class="signal-node-id signal-node-link"
+                       href="/expeditions?tab=map&lat={{ site.latitude }}&lon={{ site.longitude }}&zoom=6&marker={{ node_id }}"
+                       title="Find this signal on the Expedition Map">{{ node_id }}</a>
+                    <span class="signal-node-hint">
+                        {% if site.mission_status == 'successful' %}
+                        Signal strength: Strong
+                        {% elif site.mission_status == 'crashed' %}
+                        Signal strength: Fragmented
+                        {% else %}
+                        Signal strength: Faint
+                        {% endif %}
+                    </span>
+                    {% if closest_pilgrim and closest_pilgrim.node_id == node_id %}
+                    <span class="signal-node-closest">Closest: {{ closest_pilgrim.captain_name }} @ {{ "%.1f"|format(closest_pilgrim.distance_km) }} clicks</span>
                     {% else %}
-                    Signal strength: Faint
+                    <span class="signal-node-status">AWAITING FOUNDER</span>
                     {% endif %}
-                </span>
-                {% if closest_pilgrim and closest_pilgrim.node_id == node_id %}
-                <span class="signal-node-closest">Closest: {{ closest_pilgrim.captain_name }} @ {{ "%.1f"|format(closest_pilgrim.distance_km) }} clicks</span>
-                {% else %}
-                <span class="signal-node-status">AWAITING FOUNDER</span>
+                </div>
+                {% if card %}
+                <div class="signal-your-approach">
+                    <div class="signal-strength-bar" title="Proximity to signal (5 pips = inside unlock radius)">
+                        {% for _ in range(card.pips) %}<span class="pip filled"></span>{% endfor %}
+                        {% for _ in range(card.pips_empty) %}<span class="pip"></span>{% endfor %}
+                    </div>
+                    {% if card.fuzzy_km is not none %}
+                    <div class="signal-your-row">
+                        <span class="fuzzy-arrow" title="Heading from your Base">{{ card.arrow }} {{ card.cardinal }}</span>
+                        <span class="fuzzy-km">~{{ card.fuzzy_km }} km</span>
+                        {% if card.closest_expedition %}
+                        <span class="your-closest-exp">via <em>{{ card.closest_expedition.name }}</em></span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if card.detection_count > 0 %}
+                    <div class="signal-detection-history">
+                        <img src="{{ icons.signal_transmission }}" alt="" class="inline-icon-sm" style="vertical-align: middle; width: 11px; height: 11px;">
+                        You've passed within signal range {{ card.detection_count }} time{{ 's' if card.detection_count != 1 else '' }}
+                    </div>
+                    {% endif %}
+                    {% if card.can_claim %}
+                    <div class="signal-claim-hint">◆ Within claim range — visit this site to become its Founder.</div>
+                    {% endif %}
+                </div>
                 {% endif %}
             </div>
             {% endfor %}
@@ -113,7 +144,9 @@
             <div class="signal-memory">
                 <div class="signal-memory-header">
                     <div class="signal-memory-site">
-                        <span class="signal-memory-code">{{ site.site_code }}</span>
+                        <a class="signal-memory-code signal-node-link"
+                           href="/expeditions?tab=map&lat={{ site.latitude }}&lon={{ site.longitude }}&zoom=6&marker={{ site.site_code }}"
+                           title="Find this site on the Expedition Map">{{ site.site_code }}</a>
                         <span class="signal-memory-name">{{ site.mission_name }}</span>
                     </div>
                     <div class="signal-memory-founder">
@@ -153,6 +186,21 @@
                 <div class="signal-memory-text">
                     "{{ site.memory_text }}"
                 </div>
+                {% set user_card = user_signal_cards.get(site.site_code) if user_signal_cards else None %}
+                {% if user_card %}
+                <div class="signal-your-approach">
+                    <div class="signal-your-row">
+                        {% if user_card.has_visited %}
+                        <span class="your-visit-badge">◆ You've visited this node</span>
+                        {% elif user_card.can_visit %}
+                        <span class="signal-claim-hint">◆ Within range — visit to join the visitor ledger.</span>
+                        {% elif user_card.fuzzy_km is not none %}
+                        <span class="fuzzy-arrow">{{ user_card.arrow }} {{ user_card.cardinal }}</span>
+                        <span class="fuzzy-km">~{{ user_card.fuzzy_km }} km from your closest expedition</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
                 {% if site.legendary_item_name %}
                 <div class="signal-legendary-item clickable-legendary"
                      data-name="{{ site.legendary_item_name }}"

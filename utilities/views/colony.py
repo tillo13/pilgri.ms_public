@@ -311,6 +311,9 @@ def get_colony_page_data(user_id, auth):
             'passive_income_base': income_calc.get('bonuses_applied', {}).get('passive_income_base', 0),
             'scientist_shard_mult': income_calc.get('bonuses_applied', {}).get('scientist_shard_mult', 1.0),
             'theoretical_max_rate': income_calc.get('rate_breakdown', {}).get('theoretical_max_rate', 0),
+            'signal_bonus': income_calc.get('signal_bonus', {
+                'shards_per_hour': 0, 'sv_per_hour': 0, 'sites_count': 0, 'per_tier': {}
+            }),
         }
     except Exception as e:
         logger.warning(f"Could not get income calc for colony: {e}")

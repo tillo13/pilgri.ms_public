@@ -320,6 +320,33 @@ def test_point_to_path_distance():
     return True
 
 
+@test("get_user_signal_income_bonuses structure", tier=2, features=['signal', 'income'], mode='local')
+def test_signal_income_bonuses():
+    """Phase 2.2: helper returns the shape the colony page + pilgrimbot expect."""
+    from utilities.signal.rewards import get_user_signal_income_bonuses
+    from utilities.signal.config import VISITOR_TIER_INCOME_BONUSES
+
+    # Founder tier must exist alongside the visitor tiers.
+    for tier in ('Founder', 'Early Witness', 'Pioneer', 'Pilgrim', 'Wanderer'):
+        assert tier in VISITOR_TIER_INCOME_BONUSES, f"missing tier: {tier}"
+        bonus = VISITOR_TIER_INCOME_BONUSES[tier]
+        assert bonus['shards_per_hour'] >= 0
+        assert bonus['sv_per_hour'] >= 0
+
+    # Pick a real user; result shape must match what colony.html consumes.
+    from utilities.postgres.core import db_cursor
+    with db_cursor() as cur:
+        cur.execute("SELECT id FROM pilgrim.users ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+    if not row:
+        return True  # empty DB — helper not exercised
+    result = get_user_signal_income_bonuses(row['id'])
+    for key in ('shards_per_hour', 'sv_per_hour', 'sites_count', 'per_tier'):
+        assert key in result, f"missing key: {key}"
+    assert isinstance(result['per_tier'], dict)
+    return True
+
+
 @test("origin_sites.unlock_radius_km column", tier=2, features=['db', 'signal'], mode='local')
 def test_origin_sites_radius_column():
     """Phase 2.1: per-site variable radii column must exist and be populated."""
