@@ -312,7 +312,7 @@
                 if (typeof showToast === 'function') {
                     showToast('Construction started — first stage assembling now.', 'success', 'Narog');
                 }
-                reloadSoon();
+                setTimeout(() => { window.location.href = '/crew?tab=robot'; }, 250);
             } catch (e) {
                 btn.disabled = false;
                 btn.style.opacity = '1';
