@@ -301,6 +301,22 @@ def api_robot_status():
     return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
 
 
+@app.route('/api/robot/preview')
+@login_required
+@handle_api_error
+def api_robot_preview():
+    """Preview a randomized stage-source pick (for re-roll UI)."""
+    from utilities.postgres.robot import pick_stage_sources, check_robot_gate, RobotGateError
+    gate = check_robot_gate(g.user_id)
+    if not gate['met']:
+        return jsonify({'success': False, 'gate': gate, 'error': 'Gate not met'}), 200
+    try:
+        sources = pick_stage_sources(g.user_id)
+    except RobotGateError as e:
+        return jsonify({'success': False, 'gate': gate, 'error': str(e)}), 200
+    return jsonify({'success': True, 'gate': gate, 'sources': sources})
+
+
 @app.route('/api/robot/build', methods=['POST'])
 @login_required
 @handle_api_error

@@ -130,102 +130,159 @@ def _resolve_coords(coords_jsonb, dest_lat, dest_lon):
     return lat, lon
 
 
+ROBOT_GATE_MIN_LEGENDARY = 1
+ROBOT_GATE_MIN_RARE = 2
+ROBOT_BUILD_MAX_LEGENDARY = 3
+ROBOT_BUILD_MAX_RARE = 4
+ROBOT_BUILD_TOTAL_ITEMS = 5
+
+
+class RobotGateError(ValueError):
+    """Captain doesn't have the minimum components to start a Narog build."""
+    pass
+
+
+def _pick_with_diversity(items: List[Dict[str, Any]], n: int) -> List[Dict[str, Any]]:
+    """Pick n items from the pool, preferring distinct item types over duplicates.
+
+    Pass 1 takes one of each unique item_name in random order. Pass 2 fills the
+    remainder from whatever is left, shuffled. This biases output toward variety
+    (3 distinct legendaries beats 3 copies of Crystal Sentinel) without ever
+    duplicating a specific discovery row.
+    """
+    import random
+    if n <= 0 or not items:
+        return []
+    by_type: Dict[str, List[Dict[str, Any]]] = {}
+    for item in items:
+        by_type.setdefault(item['item_name'], []).append(item)
+    for t in by_type:
+        random.shuffle(by_type[t])
+    types = list(by_type.keys())
+    random.shuffle(types)
+    chosen: List[Dict[str, Any]] = []
+    for t in types:
+        if len(chosen) >= n:
+            break
+        chosen.append(by_type[t].pop(0))
+    leftovers: List[Dict[str, Any]] = []
+    for t in types:
+        leftovers.extend(by_type[t])
+    random.shuffle(leftovers)
+    for item in leftovers:
+        if len(chosen) >= n:
+            break
+        chosen.append(item)
+    return chosen[:n]
+
+
+def _load_claimed_inventory(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
+    """Return every claimed, not-yet-consumed discovery for a captain, grouped by rarity."""
+    inv: Dict[str, List[Dict[str, Any]]] = {
+        'legendary': [], 'rare': [], 'uncommon': [], 'common': []
+    }
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT ed.id AS discovery_id,
+                   di.item_name,
+                   COALESCE(di.rarity, 'common') AS rarity,
+                   ed.found_at_coordinates AS coords,
+                   e.destination_name AS landmark_name,
+                   e.destination_lat AS landmark_lat,
+                   e.destination_lon AS landmark_lon,
+                   e.completed_at AS recovered_at
+            FROM pilgrim.expedition_discoveries ed
+            JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
+            LEFT JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+            WHERE e.user_id = %s
+              AND ed.claimed_by_user = TRUE
+              AND di.item_name IS NOT NULL
+            ORDER BY ed.id DESC
+        """, (user_id,))
+        for r in cur.fetchall() or []:
+            rarity = r['rarity'] or 'common'
+            lat, lon = _resolve_coords(r['coords'], r['landmark_lat'], r['landmark_lon'])
+            inv.setdefault(rarity, []).append({
+                'kind': 'discovery',
+                'discovery_id': r['discovery_id'],
+                'item_name': r['item_name'] or 'Unknown Fragment',
+                'rarity': rarity,
+                'landmark_name': r['landmark_name'] or 'Unknown Site',
+                'lat': lat,
+                'lon': lon,
+                'recovered_at': r['recovered_at'].isoformat() if r['recovered_at'] else None,
+            })
+    return inv
+
+
+def check_robot_gate(user_id: int) -> Dict[str, Any]:
+    """Inventory summary + gate-met flag. Used by the preview endpoint and the UI
+    to explain what's missing without throwing."""
+    inv = _load_claimed_inventory(user_id)
+    n_leg = len(inv['legendary'])
+    n_rare = len(inv['rare'])
+    return {
+        'met': n_leg >= ROBOT_GATE_MIN_LEGENDARY and n_rare >= ROBOT_GATE_MIN_RARE,
+        'legendary_count': n_leg,
+        'rare_count': n_rare,
+        'min_legendary': ROBOT_GATE_MIN_LEGENDARY,
+        'min_rare': ROBOT_GATE_MIN_RARE,
+    }
+
+
 def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
+    """Pick 5 source manifests for a Narog build using the randomized v2 algorithm.
+
+    Composition: 1-3 legendaries (randomized, capped at inventory) + 2-4 rares
+    (randomized, capped, such that total ≤ 5). Remainder filled with uncommons
+    then commons from the captain's claimed inventory; finally padded with a
+    synthetic home-base stub if the captain literally has nothing else.
+
+    Diversity bias inside each tier (see _pick_with_diversity). Final list is
+    shuffled so the same inputs produce a different stage→item mapping each roll.
+
+    Raises RobotGateError if the gate isn't met. Caller should surface the
+    message verbatim to the captain.
     """
-    Choose 5 source manifests from the captain's real expedition history.
-    Decision #14: each manifest seeds the Sepolia tx data for one robot stage.
+    import random
+    inv = _load_claimed_inventory(user_id)
+    n_leg_avail = len(inv['legendary'])
+    n_rare_avail = len(inv['rare'])
+    if n_leg_avail < ROBOT_GATE_MIN_LEGENDARY or n_rare_avail < ROBOT_GATE_MIN_RARE:
+        raise RobotGateError(
+            f"Narog construction requires at least {ROBOT_GATE_MIN_LEGENDARY} "
+            f"legendary and {ROBOT_GATE_MIN_RARE} rare discoveries. "
+            f"You have {n_leg_avail} legendary and {n_rare_avail} rare."
+        )
 
-    Strategy (single query, no N+1):
-      1. DISTINCT items the captain has recovered, ranked by rarity then value.
-      2. If <5 distinct items, pad with landmark_discoveries (visited landmarks).
-      3. If still <5, pad with synthetic 'home_base' entries.
+    n_legendary = random.randint(
+        ROBOT_GATE_MIN_LEGENDARY,
+        min(ROBOT_BUILD_MAX_LEGENDARY, n_leg_avail),
+    )
+    rare_upper = min(ROBOT_BUILD_MAX_RARE, n_rare_avail, ROBOT_BUILD_TOTAL_ITEMS - n_legendary)
+    n_rare = random.randint(ROBOT_GATE_MIN_RARE, max(ROBOT_GATE_MIN_RARE, rare_upper))
+    n_fill = max(0, ROBOT_BUILD_TOTAL_ITEMS - n_legendary - n_rare)
 
-    Returns a list of dicts with stable keys consumed by the visual + tx layers.
-    """
-    sources: List[Dict[str, Any]] = []
-    try:
-        with db_cursor() as cur:
-            # Pass 1: distinct recovered items, prioritized by rarity tier then value
-            cur.execute("""
-                SELECT * FROM (
-                    SELECT DISTINCT ON (di.item_name)
-                        ed.id            AS discovery_id,
-                        di.item_name     AS item_name,
-                        di.rarity        AS rarity,
-                        ed.found_at_coordinates AS coords,
-                        e.destination_name AS landmark_name,
-                        e.destination_lat AS landmark_lat,
-                        e.destination_lon AS landmark_lon,
-                        e.completed_at   AS recovered_at,
-                        ed.base_value    AS base_value,
-                        CASE COALESCE(di.rarity, 'common')
-                            WHEN 'legendary' THEN 4
-                            WHEN 'rare' THEN 3
-                            WHEN 'uncommon' THEN 2
-                            ELSE 1
-                        END AS rarity_rank
-                    FROM pilgrim.expedition_discoveries ed
-                    JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
-                    LEFT JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
-                    WHERE e.user_id = %s
-                      AND ed.claimed_by_user = TRUE
-                      AND di.item_name IS NOT NULL
-                    ORDER BY di.item_name, ed.base_value DESC NULLS LAST, ed.id DESC
-                ) sub
-                ORDER BY rarity_rank DESC, base_value DESC NULLS LAST
-                LIMIT 5
-            """, (user_id,))
-            for r in cur.fetchall() or []:
-                lat, lon = _resolve_coords(r['coords'], r['landmark_lat'], r['landmark_lon'])
-                sources.append({
-                    'kind': 'discovery',
-                    'discovery_id': r['discovery_id'],
-                    'item_name': r['item_name'] or 'Unknown Fragment',
-                    'rarity': r['rarity'] or 'common',
-                    'landmark_name': r['landmark_name'] or 'Unknown Site',
-                    'lat': lat,
-                    'lon': lon,
-                    'recovered_at': r['recovered_at'].isoformat() if r['recovered_at'] else None,
-                })
+    chosen: List[Dict[str, Any]] = []
+    chosen.extend(_pick_with_diversity(inv['legendary'], n_legendary))
+    chosen.extend(_pick_with_diversity(inv['rare'], n_rare))
+    fill_pool = list(inv.get('uncommon', [])) + list(inv.get('common', []))
+    chosen.extend(_pick_with_diversity(fill_pool, n_fill))
 
-            # Pass 2: pad with visited landmarks
-            if len(sources) < 5:
-                need = 5 - len(sources)
-                cur.execute("""
-                    SELECT landmark_name, latitude, longitude, discovered_at
-                    FROM pilgrim.landmark_discoveries
-                    WHERE user_id = %s
-                    ORDER BY discovered_at DESC
-                    LIMIT %s
-                """, (user_id, need))
-                for r in cur.fetchall() or []:
-                    sources.append({
-                        'kind': 'landmark',
-                        'discovery_id': None,
-                        'item_name': f"Regolith sample from {r['landmark_name']}",
-                        'rarity': 'common',
-                        'landmark_name': r['landmark_name'],
-                        'lat': float(r['latitude']) if r['latitude'] is not None else None,
-                        'lon': float(r['longitude']) if r['longitude'] is not None else None,
-                        'recovered_at': r['discovered_at'].isoformat() if r['discovered_at'] else None,
-                    })
-    except Exception as e:
-        logger.error(f"pick_stage_sources failed for user {user_id}: {e}")
-
-    # Pass 3: synthetic home-base padding (Mars colony origin)
-    while len(sources) < 5:
-        sources.append({
+    while len(chosen) < ROBOT_BUILD_TOTAL_ITEMS:
+        chosen.append({
             'kind': 'home_base',
             'discovery_id': None,
             'item_name': 'Salvaged habitat strut',
             'rarity': 'common',
             'landmark_name': 'Home Base',
-            'lat': 18.65,   # canonical pilgri.ms colony coords
+            'lat': 18.65,
             'lon': 77.43,
             'recovered_at': None,
         })
 
-    return sources[:5]
+    random.shuffle(chosen)
+    return chosen[:ROBOT_BUILD_TOTAL_ITEMS]
 
 
 # ============================================================================
@@ -449,7 +506,10 @@ def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
             'error': 'Robotics Lab required. Build the Robotics Lab in your Colony first.',
         }, 400
 
-    sources = pick_stage_sources(user_id)
+    try:
+        sources = pick_stage_sources(user_id)
+    except RobotGateError as e:
+        return {'success': False, 'error': str(e)}, 400
     if not sources or len(sources) < 5:
         return {
             'success': False,

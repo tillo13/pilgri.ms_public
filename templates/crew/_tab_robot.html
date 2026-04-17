@@ -101,23 +101,30 @@
             is encoded permanently on-chain. No two Narogs are alike.
         </div>
 
-        <!-- 5 mystery stage previews -->
-        <div class="robot-stage-grid mb-16">
+        <!-- 5 stage previews — JS replaces with real picks from /api/robot/preview -->
+        <div class="robot-stage-grid mb-16" id="robot-preview-grid">
             {% for stage in rd.stages_meta %}
-            <div class="robot-stage-card mystery">
+            <div class="robot-stage-card mystery" data-stage-idx="{{ stage.idx }}">
                 <div class="robot-stage-num">{{ stage.idx }}</div>
                 <div class="robot-stage-img-wrap">
                     <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img mystery-img">
                 </div>
                 <div class="robot-stage-label">{{ stage.label }}</div>
-                <div class="robot-stage-source">??? from ???</div>
+                <div class="robot-stage-source">Loading Debra's pick…</div>
             </div>
             {% endfor %}
         </div>
 
-        <button id="robot-build-btn" class="btn-primary" style="background: var(--color-sepolia); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer;">
-            <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Begin Construction
-        </button>
+        <div id="robot-gate-msg" class="text-xs mb-8" style="color: var(--text-secondary); display:none;"></div>
+
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button id="robot-build-btn" class="btn-primary" style="background: var(--color-sepolia); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer;">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Begin Construction
+            </button>
+            <button id="robot-reroll-btn" style="background: var(--bg-secondary); color: var(--text-primary); padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border-default); cursor: pointer;">
+                Have Debra Reconsider
+            </button>
+        </div>
         <div class="text-xs mt-8" style="color: var(--text-secondary); opacity: 0.6;">
             Each stage takes ~1 minute in this build (Step 4d stub) — real-clock days coming in next pass.
         </div>

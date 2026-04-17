@@ -1918,7 +1918,9 @@
       "ensure_robot_tables — Create robot tables if they don't exist. Idempotent + cached.",
       "get_robot — Return the captain's robot row, or None if they haven't started one.",
       "get_stage_log — Return all logged stages for a captain in order.",
-      "pick_stage_sources — Choose 5 source manifests from the captain's real expedition history.",
+      "class RobotGateError — Captain doesn't have the minimum components to start a Narog build.",
+      "check_robot_gate — Inventory summary + gate-met flag. Used by the preview endpoint and the UI",
+      "pick_stage_sources — Pick 5 source manifests for a Narog build using the randomized v2 algorithm.",
       "start_robot_build — Initialize a robot build with the 5 pre-picked source manifests.",
       "log_stage — Append a completed stage to the log AND advance the robot row.",
       "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
@@ -1927,8 +1929,7 @@
       "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
       "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image.",
       "start_build_with_name_prefetch — Full robot-build kickoff: validate lab level, pick sources, start build,",
-      "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —",
-      "get_robot_page_data — Bundle everything the Robot tab needs in one call. Speed-conscious:"
+      "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —"
     ]
   },
   "utilities/postgres/shop.py": {
@@ -2866,15 +2867,15 @@
       "reloadSoon",
       "startCountdown",
       "tick",
+      "rarityClass",
+      "renderPreviewGrid",
+      "renderGateMsg",
+      "fetchPreview",
+      "wireReroll",
       "wireBuildButton",
       "renderNamePills",
       "loadNameSuggestions",
-      "names",
-      "wireNameSave",
-      "name",
-      "readDialState",
-      "renderDial",
-      "adjustDial"
+      "names"
     ]
   },
   "static/js/crew.js": {
@@ -3185,7 +3186,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

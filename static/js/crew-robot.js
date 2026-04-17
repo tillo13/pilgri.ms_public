@@ -94,6 +94,70 @@
         });
     };
 
+    // ----- PREVIEW GRID + RE-ROLL -------------------------------------------
+    function rarityClass(r) {
+        r = (r || 'common').toLowerCase();
+        return ['common','uncommon','rare','legendary'].indexOf(r) >= 0 ? r : 'common';
+    }
+
+    function renderPreviewGrid(sources) {
+        const grid = document.getElementById('robot-preview-grid');
+        if (!grid || !Array.isArray(sources)) return;
+        const cards = grid.querySelectorAll('.robot-stage-card');
+        cards.forEach((card, i) => {
+            const src = sources[i];
+            const srcEl = card.querySelector('.robot-stage-source');
+            if (!src || !srcEl) return;
+            card.classList.remove('mystery');
+            const img = card.querySelector('.robot-stage-img');
+            if (img) img.classList.remove('mystery-img');
+            const rc = rarityClass(src.rarity);
+            const item = src.item_name || 'Unknown';
+            const land = src.landmark_name || 'Unknown Site';
+            srcEl.innerHTML = '<strong>' + item + '</strong><br><em>' + land + '</em>'
+                + '<div class="robot-stage-rarity rarity-' + rc + '">' + rc + '</div>';
+        });
+    }
+
+    function renderGateMsg(gate, errMsg) {
+        const el = document.getElementById('robot-gate-msg');
+        const buildBtn = document.getElementById('robot-build-btn');
+        const rerollBtn = document.getElementById('robot-reroll-btn');
+        if (!el) return;
+        if (gate && !gate.met) {
+            el.style.display = 'block';
+            el.textContent = (errMsg || ('Need ' + gate.min_legendary + ' legendary + ' + gate.min_rare + ' rare (have ' + gate.legendary_count + ' / ' + gate.rare_count + ').'));
+            if (buildBtn) { buildBtn.disabled = true; buildBtn.style.opacity = '0.5'; }
+            if (rerollBtn) { rerollBtn.disabled = true; rerollBtn.style.opacity = '0.5'; }
+        } else {
+            el.style.display = 'none';
+            if (buildBtn) { buildBtn.disabled = false; buildBtn.style.opacity = '1'; }
+            if (rerollBtn) { rerollBtn.disabled = false; rerollBtn.style.opacity = '1'; }
+        }
+    }
+
+    async function fetchPreview() {
+        const rerollBtn = document.getElementById('robot-reroll-btn');
+        if (rerollBtn) { rerollBtn.disabled = true; rerollBtn.textContent = 'Debra thinking…'; }
+        try {
+            const r = await fetch('/api/robot/preview');
+            const data = await r.json();
+            renderGateMsg(data.gate, data.success ? null : data.error);
+            if (data.success && data.sources) renderPreviewGrid(data.sources);
+        } catch (e) { /* ignore */ }
+        finally {
+            if (rerollBtn) { rerollBtn.disabled = false; rerollBtn.textContent = 'Have Debra Reconsider'; }
+        }
+    }
+
+    function wireReroll() {
+        const grid = document.getElementById('robot-preview-grid');
+        const btn = document.getElementById('robot-reroll-btn');
+        if (!grid) return;
+        fetchPreview();
+        if (btn) btn.addEventListener('click', fetchPreview);
+    }
+
     // ----- BUILD button -----------------------------------------------------
     function wireBuildButton() {
         const btn = document.getElementById('robot-build-btn');
@@ -499,6 +563,7 @@
     // ----- INIT -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
+        wireReroll();
         wireNameSave();
         loadNameSuggestions();
         wireDial();
