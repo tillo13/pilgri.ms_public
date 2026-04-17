@@ -225,7 +225,7 @@ async function harvestSepolia() {
     const btn = $('claimButton'); disableBtn(btn);
     showToast('⚡ Harvesting Shards...', 'info', '', 5000);
     try {
-        const data = await postJSON('/api/infrastructure/claim');
+        const data = await apiPost('/api/infrastructure/claim');
         if (data.success) {
             // Update balance immediately from response
             if (data.new_balance !== undefined) setBalance(data.new_balance);
