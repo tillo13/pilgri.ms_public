@@ -48,6 +48,19 @@ function initCrewTrailMap() {
     updateCrewTrailMapMarkers();
 }
 
+// Bug #1291: destinations that already have an incoming chain trail (Y→X)
+// should NOT also render a direct HOME→X line/marker. Otherwise the map shows
+// duplicate gold lines: one Base→X and another Base→Y→X for the same endpoint.
+function getChainCoveredDestinations() {
+    const covered = new Set();
+    nearbyTrails.forEach(t => {
+        if (t.from_landmark && t.from_landmark !== 'HOME' && t.name) {
+            covered.add(t.name);
+        }
+    });
+    return covered;
+}
+
 function updateCrewTrailMapMarkers() {
     if (!crewTrailMap) return;
 
@@ -56,9 +69,14 @@ function updateCrewTrailMapMarkers() {
     trailMapMarkers = [];
 
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
+    const chainCovered = getChainCoveredDestinations();
 
     nearbyTrails.forEach(t => {
         if (!t.latitude || !t.longitude) return;
+
+        // Skip HOME→X when a chain Y→X exists (dedup gold-line clutter)
+        const isHomeLeg = !t.from_landmark || t.from_landmark === 'HOME';
+        if (isHomeLeg && chainCovered.has(t.name)) return;
 
         // Color based on trail completion percentage (segment distance for chain routing)
         const kmBuilt = t.km_built || 0;
@@ -192,8 +210,14 @@ function updateTopTrails() {
     // Filter trails that have been started (km_built > 0) but not yet complete.
     // Bug #1291: completed trails are now in nearbyTrails for map rendering, but
     // "Top Trails" is for trails to continue working on — exclude finished ones.
+    // Also dedup: if Y→X exists as a chain trail, hide the stale HOME→X entry.
+    const chainCovered = getChainCoveredDestinations();
     const inProgress = nearbyTrails
         .filter(t => (t.km_built || 0) > 0 && !t.is_complete)
+        .filter(t => {
+            const isHomeLeg = !t.from_landmark || t.from_landmark === 'HOME';
+            return !(isHomeLeg && chainCovered.has(t.name));
+        })
         .map(t => ({
             ...t,
             totalKm: t.segment_distance_km || t.distance_km || 1,
