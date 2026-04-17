@@ -102,12 +102,32 @@
             </div>
         </div>
 
-        <!-- Craftsmanship readout -->
-        <div class="robot-craft-meter mb-16" id="robot-craft-meter">
-            <div class="robot-craft-label">CRAFTSMANSHIP</div>
-            <div class="robot-craft-score"><span id="robot-craft-current">—</span> <span class="robot-craft-max">/ {{ rd.craftsmanship_max|default(150) }}</span></div>
-            <div class="robot-craft-bar"><div class="robot-craft-fill" id="robot-craft-fill"></div></div>
-            <div class="robot-craft-hint">Higher score = stronger Narog. Legendaries +30, Rares +10, Uncommons +3, Commons +1.</div>
+        <!-- Narog profile: 4 dial stats, each roll creates a different shape -->
+        <div class="robot-profile mb-16" id="robot-profile">
+            <div class="robot-profile-label">NAROG PROFILE — this combination will lean:</div>
+            <div class="robot-profile-rows">
+                <div class="robot-profile-row" data-stat="combat">
+                    <div class="robot-profile-name"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Combat</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill combat"></div></div>
+                    <div class="robot-profile-pct">—</div>
+                </div>
+                <div class="robot-profile-row" data-stat="mining">
+                    <div class="robot-profile-name"><img src="{{ icons.pickaxe_mining }}" alt="" class="inline-icon-sm"> Mining</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill mining"></div></div>
+                    <div class="robot-profile-pct">—</div>
+                </div>
+                <div class="robot-profile-row" data-stat="science">
+                    <div class="robot-profile-name"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Science</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill science"></div></div>
+                    <div class="robot-profile-pct">—</div>
+                </div>
+                <div class="robot-profile-row" data-stat="exploration">
+                    <div class="robot-profile-name"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill exploration"></div></div>
+                    <div class="robot-profile-pct">—</div>
+                </div>
+            </div>
+            <div class="robot-profile-hint">Re-roll to shape a different Narog. Every combination leans somewhere.</div>
         </div>
 
         <!-- 5 stage previews — JS replaces with real picks from /api/robot/preview -->

@@ -138,11 +138,22 @@
         if (box) box.classList.toggle('thinking', !!thinking);
     }
 
-    function setCraft(score, max) {
-        const cur = document.getElementById('robot-craft-current');
-        const fill = document.getElementById('robot-craft-fill');
-        if (cur) cur.textContent = (score == null) ? '—' : score;
-        if (fill && max > 0) fill.style.width = Math.min(100, Math.round((score || 0) / max * 100)) + '%';
+    function setProfile(profile) {
+        if (!profile) return;
+        const keys = ['combat', 'mining', 'science', 'exploration'];
+        // Find the leading stat for highlight
+        let leader = null, leaderVal = -1;
+        keys.forEach(k => { if ((profile[k] || 0) > leaderVal) { leader = k; leaderVal = profile[k]; } });
+        keys.forEach(k => {
+            const row = document.querySelector('.robot-profile-row[data-stat="' + k + '"]');
+            if (!row) return;
+            const fill = row.querySelector('.robot-profile-fill');
+            const pct = row.querySelector('.robot-profile-pct');
+            const v = profile[k] || 0;
+            if (fill) fill.style.width = v + '%';
+            if (pct) pct.textContent = v + '%';
+            row.classList.toggle('lean', k === leader);
+        });
     }
 
     function renderPreviewGrid(sources) {
@@ -213,7 +224,7 @@
             if (data.success && data.sources) {
                 currentSources = data.sources;
                 renderPreviewGrid(data.sources);
-                setCraft(data.craftsmanship_score, data.craftsmanship_max || 150);
+                setProfile(data.stat_profile);
             }
         } catch (e) { /* ignore */ }
         finally {
@@ -240,7 +251,7 @@
             + '<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">'
             + '<div><div class="text-xs" style="color:var(--text-muted)">ITEM</div><div style="font-size:18px;font-weight:800">' + (src.item_name || '—') + '</div></div>'
             + '<div><div class="text-xs" style="color:var(--text-muted)">RARITY</div><div class="robot-stage-rarity rarity-' + rc + '" style="margin-top:2px">' + rc + '</div></div>'
-            + '<div><div class="text-xs" style="color:var(--text-muted)">CRAFTSMANSHIP CONTRIBUTION</div><div style="font-weight:700;color:#ffb454">+' + weight + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">INFLUENCE ON NAROG</div><div style="font-weight:700;color:#ffb454">' + weight + ' pts — shapes the stat profile</div></div>'
             + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
             + '<div><div class="text-xs" style="color:var(--text-muted)">RECOVERED AT</div><div>' + (src.landmark_name || '—') + '</div></div>'
             + '<div><div class="text-xs" style="color:var(--text-muted)">COORDINATES</div><div>' + coord + '</div></div>'

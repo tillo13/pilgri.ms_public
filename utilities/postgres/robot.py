@@ -84,9 +84,49 @@ def ensure_robot_tables():
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
 CRAFTSMANSHIP_MAX = 150  # 5 legendaries = theoretical ceiling
 
+# Keyword → stat mapping. An item_name that matches multiple keywords splits
+# its weight across all matched stats. No match → splits evenly across all 4.
+STAT_KEYWORDS = {
+    'science':     ['crystal', 'quantum', 'core', 'reactor', 'lattice', 'signal'],
+    'mining':      ['obelisk', 'fragment', 'shard', 'ore', 'stone', 'pillar', 'regolith'],
+    'exploration': ['optic', 'lens', 'beacon', 'map', 'compass', 'eye', 'viking'],
+    'combat':      ['sentinel', 'guardian', 'blade', 'armor', 'shell', 'spike', 'claw'],
+}
+STAT_KEYS = ['combat', 'mining', 'science', 'exploration']
+
+
+def _item_stat_bias(item_name: str) -> Dict[str, float]:
+    """Return unit-weight distribution across STAT_KEYS for an item name."""
+    name = (item_name or '').lower()
+    matched = [k for k, kws in STAT_KEYWORDS.items() if any(kw in name for kw in kws)]
+    if not matched:
+        return {k: 0.25 for k in STAT_KEYS}
+    share = 1.0 / len(matched)
+    return {k: (share if k in matched else 0.0) for k in STAT_KEYS}
+
 
 def compute_craftsmanship_score(sources: List[Dict[str, Any]]) -> int:
     return int(sum(RARITY_WEIGHTS.get((s.get('rarity') or 'common').lower(), 1) for s in (sources or [])))
+
+
+def compute_stat_profile(sources: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Return integer-percent profile across STAT_KEYS, summing to 100."""
+    raw = {k: 0.0 for k in STAT_KEYS}
+    for s in (sources or []):
+        w = RARITY_WEIGHTS.get((s.get('rarity') or 'common').lower(), 1)
+        bias = _item_stat_bias(s.get('item_name', ''))
+        for k in STAT_KEYS:
+            raw[k] += w * bias[k]
+    total = sum(raw.values()) or 1.0
+    pct = {k: raw[k] / total * 100 for k in STAT_KEYS}
+    # Round to ints, fix rounding drift so sum == 100
+    rounded = {k: int(round(v)) for k, v in pct.items()}
+    drift = 100 - sum(rounded.values())
+    if drift != 0:
+        # Adjust the stat with the largest fractional remainder
+        frac = sorted(STAT_KEYS, key=lambda k: (pct[k] - rounded[k]), reverse=(drift > 0))
+        rounded[frac[0]] += drift
+    return rounded
 
 
 # ============================================================================

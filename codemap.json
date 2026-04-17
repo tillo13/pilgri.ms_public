@@ -1917,6 +1917,7 @@
     "exports": [
       "ensure_robot_tables — Create robot tables if they don't exist. Idempotent + cached.",
       "compute_craftsmanship_score",
+      "compute_stat_profile — Return integer-percent profile across STAT_KEYS, summing to 100.",
       "get_robot — Return the captain's robot row, or None if they haven't started one.",
       "get_stage_log — Return all logged stages for a captain in order.",
       "class RobotGateError — Captain doesn't have the minimum components to start a Narog build.",
@@ -1928,8 +1929,7 @@
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
       "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
-      "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image.",
-      "start_build_with_name_prefetch — Full robot-build kickoff: validate lab level, pick sources, start build,"
+      "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image."
     ]
   },
   "utilities/postgres/shop.py": {
@@ -2871,7 +2871,7 @@
       "rarityClass",
       "setScientistName",
       "setSciLine",
-      "setCraft",
+      "setProfile",
       "renderPreviewGrid",
       "renderGateMsg",
       "staggerReveal",
@@ -3186,7 +3186,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

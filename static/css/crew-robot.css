@@ -208,6 +208,75 @@
     color: var(--text-muted);
 }
 
+/* ---------- Narog profile (4 stat bars, shape-not-score) ---------- */
+.robot-profile {
+    max-width: 540px;
+    margin: 0 auto 16px;
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    text-align: left;
+}
+.robot-profile-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-align: center;
+}
+.robot-profile-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.robot-profile-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 44px;
+    align-items: center;
+    gap: 10px;
+}
+.robot-profile-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.robot-profile-bar {
+    height: 10px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 5px;
+    overflow: hidden;
+}
+.robot-profile-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 5px;
+    transition: width 0.55s cubic-bezier(.4,1.4,.6,1);
+}
+.robot-profile-fill.combat      { background: linear-gradient(90deg, #ef4444, #f97316); }
+.robot-profile-fill.mining      { background: linear-gradient(90deg, #eab308, #f59e0b); }
+.robot-profile-fill.science     { background: linear-gradient(90deg, #a855f7, #d946ef); }
+.robot-profile-fill.exploration { background: linear-gradient(90deg, #22d3ee, #3b82f6); }
+.robot-profile-pct {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-primary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.robot-profile-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 10px;
+}
+.robot-profile-row.lean .robot-profile-pct { color: #ffb454; }
+
 .robot-stage-card.clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, opacity 0.35s; }
 .robot-stage-card.clickable:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(168,85,247,0.25); }
 .robot-stage-card.locked { border-color: rgba(168,85,247,0.6); box-shadow: 0 0 12px rgba(168,85,247,0.3); }

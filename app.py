@@ -309,6 +309,7 @@ def api_robot_preview():
     from utilities.postgres.robot import (
         pick_stage_sources, check_robot_gate, RobotGateError,
         compute_craftsmanship_score, CRAFTSMANSHIP_MAX,
+        compute_stat_profile,
     )
     from utilities.postgres.users import get_user_scientist
     sci = get_user_scientist(g.user_id) or {}
@@ -323,10 +324,12 @@ def api_robot_preview():
         return jsonify({'success': False, 'gate': gate, 'scientist_name': sci_name,
                         'error': str(e)}), 200
     score = compute_craftsmanship_score(sources)
+    profile = compute_stat_profile(sources)
     return jsonify({
         'success': True, 'gate': gate, 'scientist_name': sci_name,
         'sources': sources, 'craftsmanship_score': score,
         'craftsmanship_max': CRAFTSMANSHIP_MAX,
+        'stat_profile': profile,
     })
 
 
