@@ -75,6 +75,18 @@ def ensure_robot_tables():
             )
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_robot_stage_log_user ON pilgrim.robot_stage_log(user_id)")
+        cur.execute("""
+            ALTER TABLE pilgrim.robot
+            ADD COLUMN IF NOT EXISTS craftsmanship_score INTEGER NOT NULL DEFAULT 0
+        """)
+
+
+RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
+CRAFTSMANSHIP_MAX = 150  # 5 legendaries = theoretical ceiling
+
+
+def compute_craftsmanship_score(sources: List[Dict[str, Any]]) -> int:
+    return int(sum(RARITY_WEIGHTS.get((s.get('rarity') or 'common').lower(), 1) for s in (sources or [])))
 
 
 # ============================================================================
@@ -295,13 +307,14 @@ def start_robot_build(user_id: int, sources: List[Dict[str, Any]],
     Stage 1's stage_ready_at is set to NOW + STAGE_DURATION_SECONDS so the
     auto-tick can advance it on the next page load."""
     ensure_robot_tables()
+    score = compute_craftsmanship_score(sources)
     with db_cursor(commit=True) as cur:
         cur.execute("""
             INSERT INTO pilgrim.robot
                 (user_id, build_status, visual_stage, current_image_url,
-                 stage_images, stage_sources, started_at, stage_started_at,
-                 stage_ready_at, updated_at)
-            VALUES (%s, 'in_progress', 0, %s, '[]'::jsonb, %s::jsonb,
+                 stage_images, stage_sources, craftsmanship_score,
+                 started_at, stage_started_at, stage_ready_at, updated_at)
+            VALUES (%s, 'in_progress', 0, %s, '[]'::jsonb, %s::jsonb, %s,
                     NOW(), NOW(), NOW() + (%s * INTERVAL '1 second'), NOW())
             ON CONFLICT (user_id) DO UPDATE SET
                 build_status = 'in_progress',
@@ -309,6 +322,7 @@ def start_robot_build(user_id: int, sources: List[Dict[str, Any]],
                 current_image_url = EXCLUDED.current_image_url,
                 stage_images = '[]'::jsonb,
                 stage_sources = EXCLUDED.stage_sources,
+                craftsmanship_score = EXCLUDED.craftsmanship_score,
                 started_at = NOW(),
                 stage_started_at = NOW(),
                 stage_ready_at = NOW() + (%s * INTERVAL '1 second'),
@@ -316,7 +330,7 @@ def start_robot_build(user_id: int, sources: List[Dict[str, Any]],
                 cinematic_played = FALSE,
                 updated_at = NOW()
             RETURNING *
-        """, (user_id, initial_image_url, json.dumps(sources),
+        """, (user_id, initial_image_url, json.dumps(sources), score,
               STAGE_DURATION_SECONDS, STAGE_DURATION_SECONDS))
         row = cur.fetchone()
         # Wipe any prior stage log so re-builds start fresh
@@ -493,7 +507,8 @@ def start_robot_awakening_video(user_id: int, flux_app_config: dict, flux) -> tu
 
 
 def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
-                                   sci_name: Optional[str]) -> tuple:
+                                   sci_name: Optional[str],
+                                   locked_sources: Optional[List[Dict[str, Any]]] = None) -> tuple:
     """Full robot-build kickoff: validate lab level, pick sources, start build,
     fire-and-forget Claude name suggestions. Returns (payload_dict, status_code).
     """
@@ -507,7 +522,10 @@ def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
         }, 400
 
     try:
-        sources = pick_stage_sources(user_id)
+        if locked_sources and len(locked_sources) == 5:
+            sources = locked_sources
+        else:
+            sources = pick_stage_sources(user_id)
     except RobotGateError as e:
         return {'success': False, 'error': str(e)}, 400
     if not sources or len(sources) < 5:

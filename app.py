@@ -306,26 +306,44 @@ def api_robot_status():
 @handle_api_error
 def api_robot_preview():
     """Preview a randomized stage-source pick (for re-roll UI)."""
-    from utilities.postgres.robot import pick_stage_sources, check_robot_gate, RobotGateError
+    from utilities.postgres.robot import (
+        pick_stage_sources, check_robot_gate, RobotGateError,
+        compute_craftsmanship_score, CRAFTSMANSHIP_MAX,
+    )
+    from utilities.postgres.users import get_user_scientist
+    sci = get_user_scientist(g.user_id) or {}
+    sci_name = sci.get('name') or 'Scientist'
     gate = check_robot_gate(g.user_id)
     if not gate['met']:
-        return jsonify({'success': False, 'gate': gate, 'error': 'Gate not met'}), 200
+        return jsonify({'success': False, 'gate': gate, 'scientist_name': sci_name,
+                        'error': 'Gate not met'}), 200
     try:
         sources = pick_stage_sources(g.user_id)
     except RobotGateError as e:
-        return jsonify({'success': False, 'gate': gate, 'error': str(e)}), 200
-    return jsonify({'success': True, 'gate': gate, 'sources': sources})
+        return jsonify({'success': False, 'gate': gate, 'scientist_name': sci_name,
+                        'error': str(e)}), 200
+    score = compute_craftsmanship_score(sources)
+    return jsonify({
+        'success': True, 'gate': gate, 'scientist_name': sci_name,
+        'sources': sources, 'craftsmanship_score': score,
+        'craftsmanship_max': CRAFTSMANSHIP_MAX,
+    })
 
 
 @app.route('/api/robot/build', methods=['POST'])
 @login_required
 @handle_api_error
 def api_robot_build():
-    """Start a new robot build."""
+    """Start a new robot build. Accepts an optional locked-in `sources` list
+    (from the /api/robot/preview re-roll UI); falls back to a fresh pick."""
     from utilities.postgres.robot import start_build_with_name_prefetch
     cmd_name = session.get('_cmd') or None
     sci_name = session.get('scientist_name')
-    payload, status = start_build_with_name_prefetch(g.user_id, cmd_name, sci_name)
+    body = request.get_json(silent=True) or {}
+    locked_sources = body.get('sources') if isinstance(body.get('sources'), list) else None
+    payload, status = start_build_with_name_prefetch(
+        g.user_id, cmd_name, sci_name, locked_sources=locked_sources
+    )
     return jsonify(payload), status
 
 

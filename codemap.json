@@ -1916,6 +1916,7 @@
     "description": "Robot construction database operations.",
     "exports": [
       "ensure_robot_tables — Create robot tables if they don't exist. Idempotent + cached.",
+      "compute_craftsmanship_score",
       "get_robot — Return the captain's robot row, or None if they haven't started one.",
       "get_stage_log — Return all logged stages for a captain in order.",
       "class RobotGateError — Captain doesn't have the minimum components to start a Narog build.",
@@ -1928,8 +1929,7 @@
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
       "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
       "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image.",
-      "start_build_with_name_prefetch — Full robot-build kickoff: validate lab level, pick sources, start build,",
-      "tick_robot_build — Auto-advance any stages whose stage_ready_at has elapsed. Idempotent —"
+      "start_build_with_name_prefetch — Full robot-build kickoff: validate lab level, pick sources, start build,"
     ]
   },
   "utilities/postgres/shop.py": {
@@ -2867,15 +2867,15 @@
       "reloadSoon",
       "startCountdown",
       "tick",
+      "pickLine",
       "rarityClass",
+      "setScientistName",
+      "setSciLine",
+      "setCraft",
       "renderPreviewGrid",
       "renderGateMsg",
-      "fetchPreview",
-      "wireReroll",
-      "wireBuildButton",
-      "renderNamePills",
-      "loadNameSuggestions",
-      "names"
+      "staggerReveal",
+      "fetchPreview"
     ]
   },
   "static/js/crew.js": {
@@ -3186,7 +3186,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

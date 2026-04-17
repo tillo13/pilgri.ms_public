@@ -94,10 +94,55 @@
         });
     };
 
-    // ----- PREVIEW GRID + RE-ROLL -------------------------------------------
+    // ----- PREVIEW GRID + RE-ROLL + LOCK-IN ---------------------------------
+    let currentSources = null;   // last sources from /api/robot/preview
+    let currentScientist = 'Scientist';
+    let isLocked = false;
+
+    const SCI_LINES_ROLL = [
+        "Let me turn the pile over again…",
+        "Different bones, different song. Hold still.",
+        "Hmm. I can do better than that. Watch.",
+        "Swapping the stones. Stand back.",
+        "The vault has other ideas tonight.",
+    ];
+    const SCI_LINES_LOCK = [
+        "These are the ones. Don't touch them.",
+        "Locked. The Narog will remember every fragment.",
+        "I've marked the five. Your call, Captain.",
+    ];
+    const SCI_LINES_IDLE = [
+        "I've laid out five candidates. Click any piece to inspect it, or have me reconsider.",
+        "Five from the vault. Tell me if I should reconsider.",
+        "These five feel right. But the choice is yours.",
+    ];
+    function pickLine(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
     function rarityClass(r) {
         r = (r || 'common').toLowerCase();
         return ['common','uncommon','rare','legendary'].indexOf(r) >= 0 ? r : 'common';
+    }
+
+    function setScientistName(name) {
+        if (!name) return;
+        currentScientist = name;
+        document.querySelectorAll('#robot-sci-name, .robot-sci-name-inline').forEach(el => {
+            el.textContent = name;
+        });
+    }
+
+    function setSciLine(text, thinking) {
+        const box = document.getElementById('robot-sci-dialog');
+        const line = document.getElementById('robot-sci-line');
+        if (line) line.textContent = text;
+        if (box) box.classList.toggle('thinking', !!thinking);
+    }
+
+    function setCraft(score, max) {
+        const cur = document.getElementById('robot-craft-current');
+        const fill = document.getElementById('robot-craft-fill');
+        if (cur) cur.textContent = (score == null) ? '—' : score;
+        if (fill && max > 0) fill.style.width = Math.min(100, Math.round((score || 0) / max * 100)) + '%';
     }
 
     function renderPreviewGrid(sources) {
@@ -121,41 +166,137 @@
 
     function renderGateMsg(gate, errMsg) {
         const el = document.getElementById('robot-gate-msg');
-        const buildBtn = document.getElementById('robot-build-btn');
         const rerollBtn = document.getElementById('robot-reroll-btn');
+        const lockBtn = document.getElementById('robot-lockin-btn');
         if (!el) return;
-        if (gate && !gate.met) {
+        const blocked = gate && !gate.met;
+        if (blocked) {
             el.style.display = 'block';
             el.textContent = (errMsg || ('Need ' + gate.min_legendary + ' legendary + ' + gate.min_rare + ' rare (have ' + gate.legendary_count + ' / ' + gate.rare_count + ').'));
-            if (buildBtn) { buildBtn.disabled = true; buildBtn.style.opacity = '0.5'; }
-            if (rerollBtn) { rerollBtn.disabled = true; rerollBtn.style.opacity = '0.5'; }
         } else {
             el.style.display = 'none';
-            if (buildBtn) { buildBtn.disabled = false; buildBtn.style.opacity = '1'; }
-            if (rerollBtn) { rerollBtn.disabled = false; rerollBtn.style.opacity = '1'; }
+        }
+        [rerollBtn, lockBtn].forEach(b => {
+            if (!b) return;
+            b.disabled = !!blocked;
+            b.style.opacity = blocked ? '0.5' : '1';
+        });
+    }
+
+    async function staggerReveal() {
+        const cards = document.querySelectorAll('#robot-preview-grid .robot-stage-card');
+        cards.forEach(c => { c.classList.remove('revealing'); });
+        for (let i = 0; i < cards.length; i++) {
+            cards[i].classList.add('revealing');
+            await new Promise(r => setTimeout(r, 110));
         }
     }
 
-    async function fetchPreview() {
+    async function fetchPreview(isReroll) {
         const rerollBtn = document.getElementById('robot-reroll-btn');
-        if (rerollBtn) { rerollBtn.disabled = true; rerollBtn.textContent = 'Debra thinking…'; }
+        const lockBtn = document.getElementById('robot-lockin-btn');
+        const cards = document.querySelectorAll('#robot-preview-grid .robot-stage-card');
+
+        if (isReroll) {
+            setSciLine(pickLine(SCI_LINES_ROLL), true);
+            cards.forEach(c => c.classList.add('fading'));
+            if (rerollBtn) rerollBtn.disabled = true;
+            if (lockBtn) lockBtn.disabled = true;
+            await new Promise(r => setTimeout(r, 260));
+        }
+
         try {
             const r = await fetch('/api/robot/preview');
             const data = await r.json();
+            if (data.scientist_name) setScientistName(data.scientist_name);
             renderGateMsg(data.gate, data.success ? null : data.error);
-            if (data.success && data.sources) renderPreviewGrid(data.sources);
+            if (data.success && data.sources) {
+                currentSources = data.sources;
+                renderPreviewGrid(data.sources);
+                setCraft(data.craftsmanship_score, data.craftsmanship_max || 150);
+            }
         } catch (e) { /* ignore */ }
         finally {
-            if (rerollBtn) { rerollBtn.disabled = false; rerollBtn.textContent = 'Have Debra Reconsider'; }
+            cards.forEach(c => c.classList.remove('fading'));
+            if (isReroll) await staggerReveal();
+            if (!isLocked) {
+                if (rerollBtn) rerollBtn.disabled = false;
+                if (lockBtn) lockBtn.disabled = false;
+            }
+            setSciLine(isReroll ? "There. Tell me what you think." : pickLine(SCI_LINES_IDLE), false);
         }
+    }
+
+    // ----- Item modal (MarsModal) -------------------------------------------
+    function showSourceModal(src) {
+        if (typeof MarsModal === 'undefined' || !src) return;
+        const rc = rarityClass(src.rarity);
+        const weight = { legendary: 30, rare: 10, uncommon: 3, common: 1 }[rc] || 1;
+        const recAt = src.recovered_at ? new Date(src.recovered_at).toLocaleDateString() : '—';
+        const coord = (src.lat != null && src.lon != null)
+            ? (Number(src.lat).toFixed(3) + '°, ' + Number(src.lon).toFixed(3) + '°')
+            : '—';
+        const body = ''
+            + '<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">ITEM</div><div style="font-size:18px;font-weight:800">' + (src.item_name || '—') + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">RARITY</div><div class="robot-stage-rarity rarity-' + rc + '" style="margin-top:2px">' + rc + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">CRAFTSMANSHIP CONTRIBUTION</div><div style="font-weight:700;color:#ffb454">+' + weight + '</div></div>'
+            + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">RECOVERED AT</div><div>' + (src.landmark_name || '—') + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">COORDINATES</div><div>' + coord + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">DATE RECOVERED</div><div>' + recAt + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">DISCOVERY ID</div><div style="font-family:ui-monospace,Menlo,monospace">#' + (src.discovery_id || '—') + '</div></div>'
+            + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
+            + '<div class="text-xs" style="color:var(--text-muted);font-style:italic">If you lock in this build, this discovery will be fused into your Narog permanently.</div>'
+            + '</div>';
+        MarsModal.show({
+            title: src.item_name || 'Fragment',
+            size: 'md',
+            theme: 'aria',
+            body: body,
+        });
+    }
+
+    function wireCardClicks() {
+        const grid = document.getElementById('robot-preview-grid');
+        if (!grid) return;
+        grid.addEventListener('click', (e) => {
+            const card = e.target.closest('.robot-stage-card');
+            if (!card) return;
+            const idx = parseInt(card.dataset.stageIdx, 10);
+            if (!Number.isFinite(idx) || !currentSources) return;
+            showSourceModal(currentSources[idx - 1]);
+        });
+    }
+
+    // ----- Lock-in toggle ----------------------------------------------------
+    function setLocked(locked) {
+        isLocked = locked;
+        const previewActions = document.getElementById('robot-preview-actions');
+        const lockedActions = document.getElementById('robot-locked-actions');
+        const cards = document.querySelectorAll('#robot-preview-grid .robot-stage-card');
+        if (previewActions) previewActions.style.display = locked ? 'none' : 'flex';
+        if (lockedActions) lockedActions.style.display = locked ? 'flex' : 'none';
+        cards.forEach(c => c.classList.toggle('locked', locked));
+        if (locked) setSciLine(pickLine(SCI_LINES_LOCK), false);
+        else setSciLine(pickLine(SCI_LINES_IDLE), false);
     }
 
     function wireReroll() {
         const grid = document.getElementById('robot-preview-grid');
-        const btn = document.getElementById('robot-reroll-btn');
         if (!grid) return;
-        fetchPreview();
-        if (btn) btn.addEventListener('click', fetchPreview);
+
+        fetchPreview(false);
+        wireCardClicks();
+
+        const reroll = document.getElementById('robot-reroll-btn');
+        if (reroll) reroll.addEventListener('click', () => fetchPreview(true));
+
+        const lockBtn = document.getElementById('robot-lockin-btn');
+        if (lockBtn) lockBtn.addEventListener('click', () => setLocked(true));
+
+        const unlockBtn = document.getElementById('robot-unlock-btn');
+        if (unlockBtn) unlockBtn.addEventListener('click', () => setLocked(false));
     }
 
     // ----- BUILD button -----------------------------------------------------
@@ -167,7 +308,7 @@
             btn.style.opacity = '0.6';
             btn.textContent = 'Sourcing parts…';
             try {
-                await postJSONSafe('/api/robot/build', {});
+                await postJSONSafe('/api/robot/build', currentSources ? { sources: currentSources } : {});
                 if (typeof showToast === 'function') {
                     showToast('Construction started — first stage assembling now.', 'success', 'Narog');
                 }

@@ -93,36 +93,56 @@
     <div class="relative z-2 text-center">
         <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">Robotics Lab — Lv{{ rd.lab_level }}</div>
         <h2 class="text-2xl font-bold mb-12">Forge Your Narog</h2>
-        <div class="text-sm mb-16" style="color: var(--text-secondary); max-width: 540px; margin: 0 auto;">
-            The research is complete. Your scientist has cracked the bond — Sepolia crystal threaded through
-            Martian stone can hold a pattern, carry weight, even <em>respond</em> to commands.
-            Now it needs a body. <strong>Five real discoveries</strong> from your expeditions will be
-            fused into the frame, hull, core, optics, and finishing marks of your Narog. Each component
-            is encoded permanently on-chain. No two Narogs are alike.
+
+        <!-- Scientist dialog -->
+        <div id="robot-sci-dialog" class="robot-sci-dialog mb-16">
+            <div class="robot-sci-name"><span id="robot-sci-name">Scientist</span> says:</div>
+            <div class="robot-sci-line" id="robot-sci-line">
+                I've laid out five candidates from the vault. Click any piece to inspect it, or have me reconsider.
+            </div>
+        </div>
+
+        <!-- Craftsmanship readout -->
+        <div class="robot-craft-meter mb-16" id="robot-craft-meter">
+            <div class="robot-craft-label">CRAFTSMANSHIP</div>
+            <div class="robot-craft-score"><span id="robot-craft-current">—</span> <span class="robot-craft-max">/ {{ rd.craftsmanship_max|default(150) }}</span></div>
+            <div class="robot-craft-bar"><div class="robot-craft-fill" id="robot-craft-fill"></div></div>
+            <div class="robot-craft-hint">Higher score = stronger Narog. Legendaries +30, Rares +10, Uncommons +3, Commons +1.</div>
         </div>
 
         <!-- 5 stage previews — JS replaces with real picks from /api/robot/preview -->
         <div class="robot-stage-grid mb-16" id="robot-preview-grid">
             {% for stage in rd.stages_meta %}
-            <div class="robot-stage-card mystery" data-stage-idx="{{ stage.idx }}">
+            <div class="robot-stage-card mystery clickable" data-stage-idx="{{ stage.idx }}">
                 <div class="robot-stage-num">{{ stage.idx }}</div>
                 <div class="robot-stage-img-wrap">
                     <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img mystery-img">
                 </div>
                 <div class="robot-stage-label">{{ stage.label }}</div>
-                <div class="robot-stage-source">Loading Debra's pick…</div>
+                <div class="robot-stage-source">Loading…</div>
             </div>
             {% endfor %}
         </div>
 
         <div id="robot-gate-msg" class="text-xs mb-8" style="color: var(--text-secondary); display:none;"></div>
 
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            <button id="robot-build-btn" class="btn-primary" style="background: var(--color-sepolia); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer;">
-                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Begin Construction
+        <!-- Unlocked state: Reconsider + Lock In -->
+        <div id="robot-preview-actions" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button id="robot-reroll-btn" class="btn-secondary" style="background: var(--bg-secondary); color: var(--text-primary); padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border-default); cursor: pointer;">
+                Have <span class="robot-sci-name-inline">Scientist</span> Reconsider
             </button>
-            <button id="robot-reroll-btn" style="background: var(--bg-secondary); color: var(--text-primary); padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border-default); cursor: pointer;">
-                Have Debra Reconsider
+            <button id="robot-lockin-btn" class="btn-primary" style="background: var(--color-sepolia); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer;">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Lock In These Parts
+            </button>
+        </div>
+
+        <!-- Locked state: Unlock + Begin Construction -->
+        <div id="robot-locked-actions" style="display:none;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button id="robot-unlock-btn" class="btn-secondary" style="background: var(--bg-secondary); color: var(--text-primary); padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border-default); cursor: pointer;">
+                Unlock &amp; Reconsider
+            </button>
+            <button id="robot-build-btn" class="btn-primary" style="background: linear-gradient(135deg, #a855f7, #ec4899); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 800; font-size: 15px; border: none; cursor: pointer; box-shadow: 0 0 24px rgba(168,85,247,0.5);">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Begin Construction
             </button>
         </div>
         <div class="text-xs mt-8" style="color: var(--text-secondary); opacity: 0.6;">
