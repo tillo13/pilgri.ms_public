@@ -36,6 +36,7 @@ from utilities.postgres.core import db_cursor
 from utilities.postgres.robot import (
     ROBOT_STAGES,
     PLACEHOLDER_STAGE_IMAGE,
+    STAGE_PLACEHOLDER_IMAGES,
     log_stage,
     _stub_advance_one_stage,
 )
@@ -178,12 +179,13 @@ def _release(user_id: int, stage_idx: int) -> None:
 
 def _get_seed_image_url(user_id: int, stage_idx: int) -> str:
     """
-    Resolve the 'input image' for this stage's Kontext edit. Stage 1 uses
-    the shared placeholder (regolith foundation). Stages 2-5 use the prior
-    stage's already-uploaded GCS image from the robot row.
+    Resolve the 'input image' for this stage's Kontext edit. Stage 1 seeds
+    from the 'frame' cairn (a regolith foundation, NOT a finished robot) so
+    the Kontext chain can actually build progressively. Stages 2-5 use the
+    prior stage's already-uploaded GCS image from the robot row.
     """
     if stage_idx <= 1:
-        return PLACEHOLDER_STAGE_IMAGE
+        return STAGE_PLACEHOLDER_IMAGES['frame']
 
     try:
         with db_cursor() as cur:
