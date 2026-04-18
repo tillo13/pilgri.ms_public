@@ -1278,6 +1278,12 @@
       "brainstorm_chat — Generic brainstorm chat with Claude. Used by tech tree and trail brainstorm pages."
     ]
   },
+  "utilities/build_completions.py": {
+    "description": "Build completions summary — catalog-enriched detail for recently-finished",
+    "exports": [
+      "get_recent_build_completions — Recently-completed upgrades with catalog detail for display."
+    ]
+  },
   "utilities/captains_log_utils.py": {
     "description": "Captain's Log Utilities - Chat with Your Captain",
     "exports": [
@@ -2963,14 +2969,14 @@
       "initDepotControls",
       "filterCards",
       "sortCards",
+      "maybeShowBuildCompletionsModal",
+      "diffLines",
+      "escapeHtml",
       "initBuildCountdowns",
       "formatTime",
       "initBuildQueueCountdowns",
       "formatTime",
-      "initItemDetailModal",
-      "formatEffectValue",
-      "formatBuildTime",
-      "formatReqName"
+      "initItemDetailModal"
     ],
     "keywords": "shop purchase, upgrade UI, infrastructure building, commander services"
   },
@@ -3201,7 +3207,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

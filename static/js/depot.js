@@ -95,7 +95,58 @@ window.addEventListener('DOMContentLoaded', function() {
     initItemDetailModal();
     initBuildCountdowns();
     initBuildQueueCountdowns();
+    maybeShowBuildCompletionsModal();
 });
+
+// Bug #1397: surface recently-completed builds as a rich modal on depot
+// landing, once per completion set. Dismiss-state is keyed on the most-recent
+// completion timestamp so new builds re-trigger the modal.
+function maybeShowBuildCompletionsModal() {
+    const completions = DEPOT_DATA.recentCompletions || [];
+    if (!completions.length) return;
+    const key = 'depotCompletionsSeen:' + (completions[0].completed_at || '');
+    try { if (localStorage.getItem(key) === '1') return; } catch (e) {}
+
+    const shardIcon = DEPOT_DATA.shardIcon || '';
+    const cards = completions.map(c => {
+        const img = c.image_url
+            ? `<img src="${c.image_url}" alt="" loading="lazy" style="width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,180,50,0.3);">`
+            : '';
+        const costLine = c.cost
+            ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;"><img src="${shardIcon}" alt="" class="inline-icon-sm"> ${c.cost.toLocaleString()}</div>`
+            : '';
+        const diffLines = (c.effect_diff || []).map(d =>
+            `<div style="font-size:11px;color:var(--color-success);line-height:1.4;">${d}</div>`
+        ).join('');
+        return `
+            <div style="display:flex;gap:12px;padding:10px;background:var(--bg-secondary);border-radius:6px;border:1px solid rgba(255,180,50,0.2);margin-bottom:8px;">
+                ${img}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;color:var(--text-primary);font-weight:600;">${escapeHtml(c.item_name)}</div>
+                    <div style="font-size:12px;color:var(--color-warning);font-weight:500;margin-top:2px;">Lv ${c.old_level} → ${c.new_level}</div>
+                    ${costLine}
+                    ${diffLines ? `<div style="margin-top:6px;">${diffLines}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    MarsModal.show({
+        title: `${completions.length} build${completions.length > 1 ? 's' : ''} complete`,
+        subtitle: 'Ready at the Depot',
+        width: 'md',
+        body: `<div style="max-height:60vh;overflow-y:auto;padding:4px 2px;">${cards}</div>`,
+        footer: '<button class="btn btn-primary mm-dismiss-completions">Got it</button>',
+        onClose: () => { try { localStorage.setItem(key, '1'); } catch (e) {} }
+    });
+    const btn = document.querySelector('.mm-dismiss-completions');
+    if (btn) btn.addEventListener('click', () => MarsModal.hide());
+}
+
+function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 // Live countdown timers for building items in the grid
 function initBuildCountdowns() {

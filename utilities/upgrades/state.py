@@ -129,7 +129,8 @@ def _complete_pending_upgrade(user_id: int, category: str, item_key: str, new_le
         with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.player_upgrades
-                SET level = %s, pending_level = NULL, ready_at = NULL
+                SET level = %s, pending_level = NULL, ready_at = NULL,
+                    upgraded_at = NOW()
                 WHERE user_id = %s AND category = %s AND item_key = %s
             """, (new_level, user_id, category, item_key))
         logger.info(f"✅ Auto-completed upgrade: {user_id} {category}/{item_key} -> Lv{new_level}")

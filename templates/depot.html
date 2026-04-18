@@ -602,7 +602,9 @@ document.addEventListener('DOMContentLoaded', function() {
         {% for cat_key, cat in shop_catalog.items() %}{% for item in cat['items'] %}
         "{{ item.id }}": { "category": "{{ cat.name }}", "effects": {{ item.effects|tojson if item.effects else '{}' }}, "requirements": {{ item.requirements|tojson if item.requirements else '[]' }}, "max_owned": {{ item.max_owned|default(1) }}, "current_owned": {{ item.current_owned|default(0) }}, "build_time": {{ item.build_time_seconds|default(0) }} }{{ "," if not loop.last else "" }}
         {% endfor %}{% endfor %}
-    }
+    },
+    "recentCompletions": {{ recent_completions|default([])|tojson }},
+    "shardIcon": "{{ icons.shard_gem }}"
 }
 </script>
 <script src="/static/js/depot.js?v={{ static_v }}" defer></script>

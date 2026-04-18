@@ -7,6 +7,16 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 
+def _get_recent_completions(user_id: int, since) -> list:
+    """Rich build-completion cards for the briefing (bug #1397)."""
+    try:
+        from utilities.build_completions import get_recent_build_completions
+        return get_recent_build_completions(user_id, since_dt=since, limit=10)
+    except Exception as e:
+        logger.warning(f"recent_completions fetch failed for {user_id}: {e}")
+        return []
+
+
 def get_while_you_were_away_summary(user_id: int) -> dict:
     """
     Generate a comprehensive captain's briefing of what happened since last login.
@@ -475,11 +485,16 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
             except Exception:
                 pass
 
+            # Fetch recent completions once so both the content-gate and
+            # the signature key see the same list (bug #1397).
+            recent_completions = _get_recent_completions(user_id, last_login)
+
             # ===== CHECK IF BRIEFING IS WORTH SHOWING =====
             has_content = (
                 accumulated_shards > 10 or
                 len(expeditions_completed) > 0 or
                 len(infrastructure_completed) > 0 or
+                len(recent_completions) > 0 or
                 pending_harvest > 100 or
                 pending_discoveries > 0 or
                 total_discoveries > 0 or
@@ -493,7 +508,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
 
             # Content-based dismiss key — only changes when briefing content changes.
             # Using last_activity_iso caused re-show on every game action (too noisy).
-            _sig = f"{int(accumulated_shards)//10},{pending_discoveries},{len(expeditions_completed)},{len(infrastructure_completed)}"
+            _sig = f"{int(accumulated_shards)//10},{pending_discoveries},{len(expeditions_completed)},{len(infrastructure_completed)},{len(recent_completions)}"
             briefing_key = hashlib.md5(_sig.encode()).hexdigest()[:10]
 
             return {
@@ -519,6 +534,10 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
 
                 # Infrastructure
                 'infrastructure_completed': infrastructure_completed,
+                # Bug #1397: rich cards for every build/upgrade that finished
+                # while the player was away (name, old→new level, cost, image,
+                # effect diff). Captures upgrades + new infra, not just infra.
+                'recent_completions': recent_completions,
                 'infrastructure_income': infrastructure_income,
                 'accumulated_shards': round(accumulated_shards, 1),
                 'pending_harvest': round(pending_harvest, 1),

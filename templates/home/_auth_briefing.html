@@ -158,14 +158,36 @@
         </a>
         {% endif %}
 
-        <!-- Infrastructure Completed -->
-        {% if away_summary.infrastructure_completed|length > 0 %}
+        <!-- Build/upgrade completions (bug #1397) -->
+        {% if away_summary.recent_completions and away_summary.recent_completions|length > 0 %}
         <a href="/depot" style="text-decoration: none; display: block;">
-        <div style="padding: 8px 10px; background: rgba(255,180,50,0.08); border-radius: 6px; border: 1px solid rgba(255,180,50,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,180,50,0.15)'" onmouseout="this.style.background='rgba(255,180,50,0.08)'">
-            <img src="{{ icons.construction_crane }}" alt="" class="inline-icon">
-            <span style="font-size: 12px; color: var(--text-secondary); margin-left: 6px;">Construction complete:</span>
-            {% for struct in away_summary.infrastructure_completed %}
-            <strong style="color: var(--text-primary);">{{ struct|replace('_', ' ')|title }}</strong>{% if not loop.last %}, {% endif %}
+        <div style="padding: 10px 10px 8px; background: rgba(255,180,50,0.08); border-radius: 6px; border: 1px solid rgba(255,180,50,0.2); margin-bottom: 12px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,180,50,0.13)'" onmouseout="this.style.background='rgba(255,180,50,0.08)'">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                <img src="{{ icons.construction_crane }}" alt="" class="inline-icon">
+                <span style="font-size: 12px; color: var(--color-warning); font-weight: 600;">{{ away_summary.recent_completions|length }} build{{ 's' if away_summary.recent_completions|length > 1 else '' }} complete</span>
+            </div>
+            {% for bc in away_summary.recent_completions[:5] %}
+            <div style="display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; background: var(--bg-secondary); border-radius: 4px; {% if not loop.last %}margin-bottom: 6px;{% endif %}">
+                {% if bc.image_url %}
+                <img src="{{ bc.image_url }}" alt="" loading="lazy" style="width: 48px; height: 48px; border-radius: 4px; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,180,50,0.3);">
+                {% endif %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 12px; color: var(--text-primary); font-weight: 600;">
+                        {{ bc.item_name }}
+                        <span style="color: var(--color-warning); font-weight: 500; margin-left: 4px;">Lv {{ bc.old_level }} → {{ bc.new_level }}</span>
+                    </div>
+                    {% if bc.cost %}
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+                        <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> {{ '{:,}'.format(bc.cost) }}
+                    </div>
+                    {% endif %}
+                    {% if bc.effect_diff %}
+                    <div style="font-size: 10px; color: var(--color-success); margin-top: 3px; line-height: 1.4;">
+                        {% for d in bc.effect_diff[:3] %}{{ d }}{% if not loop.last %} · {% endif %}{% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
             {% endfor %}
         </div>
         </a>

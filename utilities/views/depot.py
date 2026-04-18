@@ -93,6 +93,17 @@ def get_depot_page_data(user_id, auth):
     except Exception:
         build_time_mult = 1.0
 
+    # Bug #1397: recent build completions so the depot landing modal + any
+    # "what just finished" surface can render rich cards (name, old→new level,
+    # cost, image, effect diff). Last 7 days, newest first.
+    from datetime import timedelta
+    from utilities.build_completions import get_recent_build_completions
+    recent_completions = get_recent_build_completions(
+        user_id,
+        since_dt=datetime.now(timezone.utc) - timedelta(days=7),
+        limit=5,
+    )
+
     return {
         'user': auth.get_current_user(), 'current_balance': total_balance, 'wallet_info': wallet_info,
         'pricing': get_pricing_info(user_id), 'has_commander': len(images) > 0,
@@ -108,6 +119,7 @@ def get_depot_page_data(user_id, auth):
         'discovery_count': depot_discovery_count,
         'range_mult': depot_range_mult,
         'build_time_mult': round(build_time_mult, 3),
+        'recent_completions': recent_completions,
     }
 
 
