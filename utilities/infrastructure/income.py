@@ -145,6 +145,7 @@ def calculate_accumulated_income(user_id):
         detail = {
             'structure_type': structure['structure_type'],
             'structure_name': structure['structure_name'],
+            'building_level': building_level,
             'hourly_rate': hourly_rate,
             'hours_elapsed': hours_elapsed,
             'capped_hours': capped_hours,
