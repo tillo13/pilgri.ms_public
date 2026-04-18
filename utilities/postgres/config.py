@@ -21,6 +21,13 @@ ROBOT_STAGES = [
     {'idx': 5, 'key': 'finish',  'label': 'Finishing Touches',  'part': 'paint, glyphs, signal antenna'},
 ]
 
+# Image-gen backend for Narog stages.
+#   'kontext' = Flux Kontext Pro (single-seed edit, current default)
+#   'flux2'   = Flux 2 Pro (up to 8 reference images, multi-ref editing)
+# Flip this to 'flux2' to test the multi-ref chain (cairn + silhouette +
+# captain's item) without touching any other code.
+NAROG_IMAGE_MODEL = 'flux2'
+
 # STUB timing — 60s/stage so QA can see the full build cycle in 5 minutes.
 # Will be replaced with real-clock days scaled by robotics_lab.robot_build_speed_mult.
 STAGE_DURATION_SECONDS = 60

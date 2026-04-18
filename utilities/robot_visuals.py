@@ -28,6 +28,7 @@ will be once the tx layer lands, so wiring Sepolia later is a drop-in.
 """
 
 import logging
+import os
 import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -273,14 +274,38 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
     except Exception as e:
         logger.exception(f"{tag} FluxGenerator init failed: {e}")
         return None
+    # Model selector — config.NAROG_IMAGE_MODEL = 'flux2' uses multi-ref Flux
+    # 2 Pro, anything else uses the single-seed Kontext path. Env var overrides
+    # the config constant so prod can flip without redeploying.
     try:
-        replicate_url = flux.kontext_edit(seed_url, prompt)
+        from utilities.postgres.config import NAROG_IMAGE_MODEL as _DEFAULT_MODEL
+    except Exception:
+        _DEFAULT_MODEL = 'kontext'
+    model_choice = os.environ.get('NAROG_IMAGE_MODEL', _DEFAULT_MODEL).lower()
+    try:
+        if model_choice == 'flux2':
+            # Stage 1: seed + cairn + captain's item (3 refs). Stages 2-5:
+            # prior stage output + captain's item (2 refs). Keeps chain
+            # continuity while introducing each new discovery visually.
+            refs = [seed_url]
+            if stage_idx <= 1:
+                try:
+                    refs.append(STAGE_PLACEHOLDER_IMAGES['frame'])  # cairn rubble
+                except Exception:
+                    pass
+            item_img = source.get('item_image_url') if source else None
+            if item_img:
+                refs.append(item_img)
+            replicate_url = flux.flux2_pro_edit(prompt, image_urls=refs)
+            logger.info(f"{tag} Flux2 ok refs={len(refs)} -> {str(replicate_url)[:80]}")
+        else:
+            replicate_url = flux.kontext_edit(seed_url, prompt)
+            logger.info(f"{tag} Kontext ok -> {str(replicate_url)[:80]}")
         if not replicate_url:
-            logger.error(f"{tag} Kontext returned empty URL")
+            logger.error(f"{tag} {model_choice} returned empty URL")
             return None
-        logger.info(f"{tag} Kontext ok -> {str(replicate_url)[:80]}")
     except Exception as e:
-        logger.exception(f"{tag} Kontext call raised: {e}")
+        logger.exception(f"{tag} {model_choice} call raised: {e}")
         return None
 
     # 2) GCS upload (permanent) — timestamped path keeps assets unique even

@@ -166,6 +166,34 @@ class FluxGenerator:
         logger.info(f"Kontext edit completed: {result_url}")
         return result_url
 
+    def flux2_pro_edit(self, prompt, image_urls=None, aspect_ratio="1:1",
+                        resolution="1 MP", output_format="png", safety_tolerance=2):
+        """Flux 2 Pro — accepts up to 8 reference images for multi-ref editing
+        + character consistency. Same Replicate client as kontext."""
+        logger.info(f"Starting Flux 2 Pro: {prompt[:50]}... refs={len(image_urls or [])}")
+
+        def _do_flux2():
+            input_params = {
+                "prompt": prompt,
+                "aspect_ratio": aspect_ratio,
+                "resolution": resolution,
+                "output_format": output_format,
+                "safety_tolerance": safety_tolerance,
+            }
+            if image_urls:
+                input_params["input_images"] = list(image_urls)[:8]
+            output = self.client.run("black-forest-labs/flux-2-pro", input=input_params)
+            if isinstance(output, list) and output:
+                first = output[0]
+                return first.url if hasattr(first, 'url') else str(first)
+            if hasattr(output, 'url'):
+                return output.url
+            return str(output)
+
+        result_url = self._retry_api_call("Flux 2 Pro", _do_flux2)
+        logger.info(f"Flux 2 Pro completed: {result_url}")
+        return result_url
+
     def nano_banana_edit(self, prompt, image_urls=None, resolution="2K", aspect_ratio="4:3",
                          output_format="png", safety_filter_level="block_only_high"):
         """
