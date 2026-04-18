@@ -30,6 +30,7 @@ will be once the tx layer lands, so wiring Sepolia later is a drop-in.
 import logging
 import os
 import threading
+import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
@@ -338,16 +339,37 @@ def _gather_prior_item_urls(user_id: int, up_to_stage: int) -> list:
     return [u for u in urls if not (u in seen or seen.add(u))]
 
 
-def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Per-stage Flux 2 Pro call. Each stage bolts one captured item onto the
-    prior stage's image, so the captain sees the Narog progressively built
-    across 5 cards. Refs per stage: [prior_image_or_silhouette, cairn,
-    this_stage's_item]. Stage 5 also gets the captain name appended.
-    """
-    tag = f"[robot user={user_id} stage={stage_idx}]"
+def _log_placeholder_stage(user_id: int, stage_idx: int,
+                           source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Log one stage's placeholder icon — no Flux call. Used for the fake
+    progression that plays while the real oneshot forge runs in parallel."""
+    tag = f"[robot user={user_id} placeholder stage={stage_idx}]"
     stage = ROBOT_STAGES[stage_idx - 1]
+    placeholder_img = STAGE_PLACEHOLDER_IMAGES.get(
+        stage['key'], PLACEHOLDER_STAGE_IMAGE
+    )
+    manifest = _build_base_manifest(stage_idx, source)
+    manifest['kind'] = 'placeholder'
+    try:
+        return log_stage(
+            user_id=user_id,
+            stage_idx=stage_idx,
+            source_manifest=manifest,
+            image_url=placeholder_img,
+            data_hex=f"0xstaging_{stage['key']}",
+            tx_hash=f"0xpending{user_id:08x}{stage_idx:02d}",
+        )
+    except Exception as e:
+        logger.exception(f"{tag} log_stage failed: {e}")
+        return None
 
+
+def _run_oneshot_forge(user_id: int, sources: list) -> Optional[str]:
+    """Fire ONE Flux 2 Pro call with silhouette + cairn + every captured
+    item as refs. Returns the GCS URL of the forged Narog, or None on
+    failure. No game-specific text in the prompt — Flux can't render
+    names/locations correctly, so we leave them out."""
+    tag = f"[robot user={user_id} oneshot]"
     try:
         from utilities.replicate_utils import FluxGenerator
         from utilities.google_cloud_storage_utils import upload_blob_from_url
@@ -355,57 +377,74 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
         logger.exception(f"{tag} imports failed: {e}")
         return None
 
-    seed_url = _get_seed_image_url(user_id, stage_idx, source)
-    refs = [seed_url, CAIRN_REF]
-    item_img = source.get('item_image_url') if source else None
-    if item_img:
-        refs.append(item_img)
+    item_urls = []
+    for s in sources:
+        u = s.get('item_image_url')
+        if u and u not in item_urls:
+            item_urls.append(u)
+    # Flux 2 Pro accepts up to 8 input_images.
+    refs = [PLACEHOLDER_STAGE_IMAGE, CAIRN_REF] + item_urls[:6]
     refs = [r for r in refs if r]
-
-    prompt = ONESHOT_FORGE_PROMPT
-    if stage_idx == 5:
-        prompt = f"{prompt} Forged for {_get_captain_name(user_id)}."
-    logger.info(f"{tag} 🤖 forge refs={len(refs)}")
+    logger.info(f"{tag} 🤖 oneshot refs={len(refs)}")
 
     try:
         flux = FluxGenerator()
-        replicate_url = flux.flux2_pro_edit(prompt, image_urls=refs)
-        if not replicate_url:
-            logger.error(f"{tag} Flux2 returned empty URL")
-            return None
-        logger.info(f"{tag} Flux2 ok -> {str(replicate_url)[:80]}")
+        replicate_url = flux.flux2_pro_edit(ONESHOT_FORGE_PROMPT, image_urls=refs)
     except Exception as e:
         logger.exception(f"{tag} Flux2 call raised: {e}")
         return None
+    if not replicate_url:
+        logger.error(f"{tag} Flux2 returned empty URL")
+        return None
+    logger.info(f"{tag} Flux2 ok -> {str(replicate_url)[:80]}")
 
     ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    blob_name = f"robots/{user_id}/stage_{stage_idx}_{ts}.png"
+    blob_name = f"robots/{user_id}/narog_{ts}.png"
     try:
         gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
     except Exception as e:
         logger.exception(f"{tag} GCS upload raised: {e}")
         return None
+    return gcs_url
+
+
+def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Legacy per-stage entry point. Kept so external callers keep working,
+    but internally short-circuits: stages 1–4 log a placeholder icon and
+    stage 5 runs the oneshot forge (using this captain's full sources list
+    via robot.stage_sources)."""
+    if stage_idx < 5:
+        return _log_placeholder_stage(user_id, stage_idx, source)
+
+    tag = f"[robot user={user_id} stage=5]"
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                "SELECT stage_sources FROM pilgrim.robot WHERE user_id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+            sources = (row and row.get('stage_sources')) or [source]
+    except Exception as e:
+        logger.warning(f"{tag} stage_sources fetch failed, using single source: {e}")
+        sources = [source]
+
+    gcs_url = _run_oneshot_forge(user_id, sources)
     if not gcs_url:
-        logger.error(f"{tag} GCS upload returned None")
         return None
 
-    manifest = _build_base_manifest(stage_idx, source)
-    manifest['kind'] = 'flux2_chain'
-    manifest['seed_url'] = seed_url
-    manifest['ref_count'] = len(refs)
-
-    fake_tx = f"0xforge{user_id:08x}{stage_idx:02d}"
+    stage = ROBOT_STAGES[4]
+    manifest = _build_base_manifest(5, source)
+    manifest['kind'] = 'oneshot_flux2'
     try:
-        result = log_stage(
+        return log_stage(
             user_id=user_id,
-            stage_idx=stage_idx,
+            stage_idx=5,
             source_manifest=manifest,
             image_url=gcs_url,
-            data_hex=f"0xforge_{stage['key']}_pending_sepolia",
-            tx_hash=fake_tx,
+            data_hex="0xoneshot_forge_pending_sepolia",
+            tx_hash=f"0xforge{user_id:08x}",
         )
-        logger.info(f"{tag} stage {stage_idx} complete")
-        return result
     except Exception as e:
         logger.exception(f"{tag} log_stage failed: {e}")
         return None
@@ -428,23 +467,66 @@ def _worker(user_id: int, stage_idx: int, source: Dict[str, Any]) -> None:
         _release(user_id, stage_idx)
 
 
+_FAKE_STAGE_INTERVAL_SECONDS = 7
+
+
 def _full_build_worker(user_id: int, sources: list) -> None:
-    """Run the entire Narog build in one background thread.
-    Stages 1–4 log per-stage placeholder icons near-instantly (no Flux cost),
-    then stage 5 runs the one-shot Flux 2 Pro forge. Whole pass finishes in
-    roughly the time of a single Flux call. Captain sees 'forging...' then
-    the final Narog — no inter-stage theatrics."""
+    """Theater vs reality: ONE real Flux 2 Pro call happens in a child thread,
+    while the main thread fakes stages 1–4 by logging placeholder icons at a
+    steady cadence so the UI poller sees visual_stage tick up. When the Flux
+    call finishes, stage 5 gets logged with the real GCS URL. Total wall
+    clock ≈ one Flux call (~30–40s)."""
     tag = f"[robot user={user_id} full-build]"
+    result_holder: Dict[str, Optional[str]] = {'url': None}
+
+    def _forge():
+        try:
+            result_holder['url'] = _run_oneshot_forge(user_id, sources)
+        except Exception as e:
+            logger.exception(f"{tag} forge thread crash: {e}")
+
+    forge_thread = threading.Thread(
+        target=_forge,
+        name=f"robot-forge-flux-{user_id}",
+        daemon=True,
+    )
+    forge_thread.start()
+
     try:
-        for stage_idx in range(1, 6):
+        # Fake stages 1–4 at a steady cadence so the poller advances.
+        for stage_idx in range(1, 5):
             if stage_idx - 1 >= len(sources):
                 logger.error(f"{tag} missing source for stage {stage_idx}")
-                break
+                continue
             source = sources[stage_idx - 1]
-            result = _run_stage(user_id, stage_idx, source)
-            if result is None:
-                logger.error(f"{tag} stage {stage_idx} returned None — falling back to stub")
+            if _log_placeholder_stage(user_id, stage_idx, source) is None:
                 _stub_advance_one_stage(user_id, stage_idx, source)
+            time.sleep(_FAKE_STAGE_INTERVAL_SECONDS)
+
+        # Wait for the real Flux call to finish (may already be done).
+        forge_thread.join()
+        gcs_url = result_holder['url']
+
+        stage5_source = sources[4] if len(sources) >= 5 else (sources[-1] if sources else {})
+        if not gcs_url:
+            logger.error(f"{tag} oneshot forge returned None — stubbing stage 5")
+            _stub_advance_one_stage(user_id, 5, stage5_source)
+            return
+
+        manifest = _build_base_manifest(5, stage5_source)
+        manifest['kind'] = 'oneshot_flux2'
+        try:
+            log_stage(
+                user_id=user_id,
+                stage_idx=5,
+                source_manifest=manifest,
+                image_url=gcs_url,
+                data_hex="0xoneshot_forge_pending_sepolia",
+                tx_hash=f"0xforge{user_id:08x}",
+            )
+        except Exception as e:
+            logger.exception(f"{tag} stage 5 log_stage failed: {e}")
+            _stub_advance_one_stage(user_id, 5, stage5_source)
     except Exception as e:
         logger.exception(f"{tag} crash: {e}")
     finally:
