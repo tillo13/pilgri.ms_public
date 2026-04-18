@@ -268,10 +268,22 @@
     </div>
     <div class="robot-stage-grid">
         {% for stage in rd.stages %}
-        <div class="robot-stage-card {{ stage.status }}">
+        <div class="robot-stage-card clickable {{ stage.status }}"
+             data-stage-idx="{{ stage.idx }}"
+             data-stage-key="{{ stage.key }}"
+             data-stage-label="{{ stage.label }}"
+             data-stage-part="{{ stage.part }}"
+             data-tx-hash="{{ stage.tx_hash or '' }}"
+             data-source='{{ (stage.source or {}) | tojson }}'>
             <div class="robot-stage-num">{{ stage.idx }}</div>
-            <div class="robot-stage-img-wrap">
-                <img src="{{ stage.image_url }}" alt="{{ stage.label }}" class="robot-stage-img cursor-pointer" onclick="showImageModal(this.src)" loading="lazy">
+            <div class="robot-stage-composite">
+                <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon">
+                <span class="robot-stage-plus">+</span>
+                {% if stage.source and stage.source.item_image_url %}
+                <img src="{{ stage.source.item_image_url }}" alt="{{ stage.source.item_name }}" class="robot-stage-item-icon" loading="lazy">
+                {% else %}
+                <img src="{{ icons.shard_gem }}" alt="" class="robot-stage-item-icon">
+                {% endif %}
                 {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
             </div>
             <div class="robot-stage-label">{{ stage.label }}</div>

@@ -292,30 +292,67 @@
     }
 
     // ----- Item modal (MarsModal) -------------------------------------------
-    function showSourceModal(src) {
+    // stageCtx (optional): { idx, key, label, part, tx_hash, forged } — present
+    // when opened from the Build Manifest (post-forge). When absent, we're in
+    // the pre-build preview and show the "locks in when you forge" footer.
+    function showSourceModal(src, stageCtx) {
         if (typeof MarsModal === 'undefined' || !src) return;
         const rc = rarityClass(src.rarity);
         const weight = { legendary: 30, rare: 10, uncommon: 3, common: 1 }[rc] || 1;
-        const recAt = src.recovered_at ? new Date(src.recovered_at).toLocaleDateString() : '—';
+        const rarityBlurb = {
+            legendary: 'Dominates the silhouette — the defining feature of your Narog.',
+            rare:      'Clearly fused into the plating as a bold, recognizable accent.',
+            uncommon:  'Integrated into the armor as a distinct body detail.',
+            common:    'A faint trace etched into the Narog\'s material.',
+        }[rc] || '';
+        const recDate = src.recovered_at ? new Date(src.recovered_at) : null;
+        const recAt = recDate ? recDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+        const daysAgo = recDate ? Math.max(0, Math.floor((Date.now() - recDate.getTime()) / 86400000)) : null;
+        const recAgo = daysAgo === null ? '' : (daysAgo === 0 ? ' (today)' : ' (' + daysAgo + ' day' + (daysAgo === 1 ? '' : 's') + ' ago)');
         const coord = (src.lat != null && src.lon != null)
-            ? (Number(src.lat).toFixed(3) + '°, ' + Number(src.lon).toFixed(3) + '°')
+            ? (Number(src.lat).toFixed(4) + '°, ' + Number(src.lon).toFixed(4) + '°')
             : '—';
-        const imgBlock = src.item_image_url
-            ? '<div style="display:flex;justify-content:center;padding:8px 0;"><img src="' + src.item_image_url + '" alt="' + (src.item_name || '') + '" style="max-width:220px;max-height:220px;border-radius:12px;box-shadow:0 0 24px rgba(168,85,247,0.35);background:rgba(168,85,247,0.06);"></div>'
+        const mapLink = (src.lat != null && src.lon != null)
+            ? ' <a href="/map?lat=' + src.lat + '&lon=' + src.lon + '" style="color:var(--color-sepolia);font-size:11px">› view on map</a>'
             : '';
+        const imgBlock = src.item_image_url
+            ? '<div style="display:flex;justify-content:center;padding:8px 0;"><img src="' + src.item_image_url + '" alt="' + (src.item_name || '') + '" onclick="window.showImageModal && window.showImageModal(this.src)" style="max-width:280px;max-height:280px;border-radius:12px;box-shadow:0 0 32px rgba(168,85,247,0.45);background:rgba(168,85,247,0.06);cursor:pointer;"></div>'
+            : '';
+
+        const stageBlock = stageCtx ? ''
+            + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
+            + '<div style="background:rgba(168,85,247,0.06);border-left:3px solid var(--color-sepolia);padding:8px 12px;border-radius:0 6px 6px 0">'
+            +   '<div class="text-xs" style="color:var(--text-muted)">FORGED INTO</div>'
+            +   '<div style="font-weight:700">Stage ' + stageCtx.idx + ' · ' + stageCtx.label + '</div>'
+            +   '<div class="text-xs" style="color:var(--text-secondary);margin-top:2px">' + (stageCtx.part || '') + '</div>'
+            + '</div>'
+            : '';
+        const txBlock = (stageCtx && stageCtx.tx_hash) ? ''
+            + '<div><div class="text-xs" style="color:var(--text-muted)">LEDGER TX</div>'
+            + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all">' + stageCtx.tx_hash + '</div></div>'
+            : '';
+        const footer = stageCtx
+            ? '<div class="text-xs" style="color:var(--text-muted);font-style:italic">This discovery has been consumed and fused into your Narog — it will not appear in your inventory again. Click the item image for a full-screen view.</div>'
+            : '<div class="text-xs" style="color:var(--text-muted);font-style:italic">If you lock in this build, this discovery will be fused into your Narog permanently.</div>';
+
         const body = ''
             + '<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">'
             + imgBlock
-            + '<div><div class="text-xs" style="color:var(--text-muted)">ITEM</div><div style="font-size:18px;font-weight:800">' + (src.item_name || '—') + '</div></div>'
-            + '<div><div class="text-xs" style="color:var(--text-muted)">RARITY</div><div class="robot-stage-rarity rarity-' + rc + '" style="margin-top:2px">' + rc + '</div></div>'
-            + '<div><div class="text-xs" style="color:var(--text-muted)">INFLUENCE ON NAROG</div><div style="font-weight:700;color:#ffb454">' + weight + ' pts — shapes the stat profile</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">ITEM</div><div style="font-size:20px;font-weight:800">' + (src.item_name || '—') + '</div></div>'
+            + '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">'
+            +   '<div class="robot-stage-rarity rarity-' + rc + '">' + rc + '</div>'
+            +   '<div style="font-weight:700;color:#ffb454">Influence: ' + weight + ' pts</div>'
+            + '</div>'
+            + (rarityBlurb ? '<div class="text-xs" style="color:var(--text-secondary);line-height:1.5">' + rarityBlurb + '</div>' : '')
+            + stageBlock
             + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
-            + '<div><div class="text-xs" style="color:var(--text-muted)">RECOVERED AT</div><div>' + (src.landmark_name || '—') + '</div></div>'
-            + '<div><div class="text-xs" style="color:var(--text-muted)">COORDINATES</div><div>' + coord + '</div></div>'
-            + '<div><div class="text-xs" style="color:var(--text-muted)">DATE RECOVERED</div><div>' + recAt + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">RECOVERED AT</div><div>' + (src.landmark_name || '—') + mapLink + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">COORDINATES</div><div style="font-family:ui-monospace,Menlo,monospace">' + coord + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">DATE RECOVERED</div><div>' + recAt + recAgo + '</div></div>'
             + '<div><div class="text-xs" style="color:var(--text-muted)">DISCOVERY ID</div><div style="font-family:ui-monospace,Menlo,monospace">#' + (src.discovery_id || '—') + '</div></div>'
+            + txBlock
             + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
-            + '<div class="text-xs" style="color:var(--text-muted);font-style:italic">If you lock in this build, this discovery will be fused into your Narog permanently.</div>'
+            + footer
             + '</div>';
         MarsModal.show({
             title: src.item_name || 'Fragment',
@@ -834,6 +871,29 @@
         });
     }
 
+    // ----- Manifest card clicks (post-forge Build Manifest) -----------------
+    function wireManifestClicks() {
+        // Build Manifest cards are rendered server-side with data-source JSON +
+        // stage context. Clicking anywhere on the card opens the rich modal.
+        const cards = document.querySelectorAll('.robot-stage-card[data-source]');
+        cards.forEach(card => {
+            if (card.closest('#robot-preview-grid')) return;  // pre-build grid has its own handler
+            card.addEventListener('click', () => {
+                let src = null;
+                try { src = JSON.parse(card.dataset.source || '{}'); } catch (e) { /* noop */ }
+                if (!src || !src.item_name) return;
+                const stageCtx = {
+                    idx: card.dataset.stageIdx,
+                    key: card.dataset.stageKey,
+                    label: card.dataset.stageLabel,
+                    part: card.dataset.stagePart,
+                    tx_hash: card.dataset.txHash || '',
+                };
+                showSourceModal(src, stageCtx);
+            });
+        });
+    }
+
     // ----- INIT -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
@@ -845,6 +905,7 @@
         startCountdown();
         wireReplayButton();
         wireVideoButton();
+        wireManifestClicks();
         maybeFireRobotCinematic();
     });
 })();
