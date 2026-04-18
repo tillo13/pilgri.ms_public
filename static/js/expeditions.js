@@ -173,13 +173,19 @@ function setVehicleRange(btn, vehicleType) {
 
     const rangeKm = parseInt(btn.dataset.range) || 0;
 
-    // Draw range circle — Leaflet assumes Earth radius (6371km) for its circle rendering.
-    // Our Mars haversine distances use Mars radius (3396km). To convert: a D_km Mars
-    // distance subtends angle D/3396 rad; Leaflet needs that same angle as Earth meters
-    // = (D/3396) * 6371000 = D * (6371/3396) * 1000. Mathematically verified correct.
-    const marsCorrection = 6371 / 3396;
-    rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
-        radius: rangeKm * 1000 * marsCorrection,
+    // Bug #1394: L.circle uses the map's LOCAL meters-per-pixel at the center to
+    // draw a screen-space circle. For small Earth ranges that works; for Mars
+    // ranges of 3k–8k km (up to 135° of arc on a 3396 km planet), the projection
+    // distorts enormously across the span and the screen-circle no longer matches
+    // the set of points whose Mars haversine distance ≤ rangeKm. Some dots land
+    // inside, some outside, depending on bearing. Fix: trace the actual Mars
+    // geodesic circle as a 128-point polygon so Leaflet projects each vertex
+    // independently and the shape faithfully follows the projection's distortion.
+    const MARS_RADIUS_KM = 3396;
+    const points = geodesicCirclePoints(
+        baseCoords.latitude, baseCoords.longitude, rangeKm, MARS_RADIUS_KM, 128
+    );
+    rangeCircle = L.polygon(points, {
         color: '#ffffff',
         fillColor: '#ffffff',
         fillOpacity: 0.04,
@@ -208,6 +214,30 @@ function setVehicleRange(btn, vehicleType) {
             m.setRadius(6);
         }
     });
+}
+
+// Trace a true geodesic circle on a sphere of given radius as N lat/lon points.
+// Angular distance δ = distanceKm / sphereRadiusKm; for each bearing θ in [0,2π):
+//   lat = asin(sin(lat0)·cos(δ) + cos(lat0)·sin(δ)·cos(θ))
+//   lon = lon0 + atan2(sin(θ)·sin(δ)·cos(lat0), cos(δ) − sin(lat0)·sin(lat))
+function geodesicCirclePoints(centerLat, centerLon, distanceKm, sphereRadiusKm, n) {
+    const rad = Math.PI / 180;
+    const lat0 = centerLat * rad;
+    const lon0 = centerLon * rad;
+    const delta = distanceKm / sphereRadiusKm; // angular distance in radians
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+        const theta = (2 * Math.PI * i) / n;
+        const sinLat = Math.sin(lat0) * Math.cos(delta) +
+                       Math.cos(lat0) * Math.sin(delta) * Math.cos(theta);
+        const lat = Math.asin(sinLat);
+        const lon = lon0 + Math.atan2(
+            Math.sin(theta) * Math.sin(delta) * Math.cos(lat0),
+            Math.cos(delta) - Math.sin(lat0) * sinLat
+        );
+        pts.push([lat / rad, lon / rad]);
+    }
+    return pts;
 }
 
 // Build popup content for a marker (called when popup opens)

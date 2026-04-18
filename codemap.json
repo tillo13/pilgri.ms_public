@@ -3108,15 +3108,15 @@
       "initializeMapResizeHandlers",
       "addExpeditionMarkers",
       "setVehicleRange",
+      "geodesicCirclePoints",
+      "theta",
       "buildMarkerPopup",
       "slotsAvailable",
       "fetchLandmarkCost",
       "updateAllExpeditionCosts",
       "updateExpeditionCost",
       "updateCostDisplay",
-      "discount",
-      "initializeSolarConditions",
-      "updateSolarConditions"
+      "discount"
     ],
     "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
   },
