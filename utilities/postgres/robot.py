@@ -518,7 +518,7 @@ def start_robot_awakening_video(user_id: int, flux_app_config: dict, flux) -> tu
 
     Returns (payload_dict, status_code) for the API route.
     """
-    from utilities.replicate_utils import animate_character_video
+    from utilities.replicate_utils import animate_character_video, NAROG_AWAKENING_PROMPT
     import threading
 
     robot = get_robot(user_id)
@@ -536,7 +536,10 @@ def start_robot_awakening_video(user_id: int, flux_app_config: dict, flux) -> tu
 
     def _gen():
         try:
-            video_url = animate_character_video(image_url, flux, user_id=user_id)
+            video_url = animate_character_video(
+                image_url, flux, user_id=user_id,
+                custom_prompt=NAROG_AWAKENING_PROMPT,
+            )
             flux_app_config[status_key].update({'url': video_url, 'generating': False})
             with db_cursor(commit=True) as cur:
                 cur.execute(

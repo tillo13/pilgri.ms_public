@@ -293,12 +293,37 @@ def edit_character_image(image_url, edit_prompt, flux_generator):
     return result['gcs_url']
 
 
-def animate_character_video(character_url, flux_generator, user_id=None, asset_id=None):
-    """Create animation from character image, save to GCS (thread-safe - no session access)."""
+NAROG_AWAKENING_PROMPT = (
+    "A crude makeshift scrap-robot stands on flat rust-red Martian sand, "
+    "stirring to life for the very first time. Its crystal core begins to "
+    "pulse with soft cyan light, then brighter; its cyan eyes flicker on "
+    "and slowly brighten as it wakes from dormancy. The robot's head tilts "
+    "gently as if registering sight for the first time, looks down at its "
+    "own patchwork hands, flexes the fingers cautiously, then looks up in "
+    "quiet wonder. It takes one uncertain, unsteady step forward, arms "
+    "slightly out for balance. Dust drifts from its cracked clay plating. "
+    "Exposed wires and small gadgets bolted to its body twitch and blink "
+    "with tiny indicator lights. Shoulders settle, chest rises in a slow "
+    "first breath-like motion. Camera holds steady, slow push-in on the "
+    "glowing eyes and core. No exploration gesture, no pointing, no "
+    "surveying a horizon — this is purely an awakening, the first moments "
+    "of a newly-forged creature discovering it is alive. Movements are "
+    "slow, deliberate, and tentative throughout."
+)
+
+
+def animate_character_video(character_url, flux_generator, user_id=None, asset_id=None,
+                            custom_prompt=None):
+    """Create animation from character image, save to GCS (thread-safe - no session access).
+
+    `custom_prompt` lets callers override VIDEO_ANIMATION_PROMPT — used for
+    Narog awakening, which needs a 'first breath / first step' vibe instead of
+    the space-explorer-on-a-ridge default.
+    """
     from utilities.google_cloud_storage_utils import save_character_video
 
     logger.info(f"Starting video animation for {character_url}")
-    video_url = flux_generator.animate_character(character_url)
+    video_url = flux_generator.animate_character(character_url, custom_prompt=custom_prompt)
     logger.info(f"Replicate returned: {video_url}")
 
     result = save_character_video(video_url, user_id=user_id, character_asset_id=asset_id)
