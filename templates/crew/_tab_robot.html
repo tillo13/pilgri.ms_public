@@ -136,7 +136,12 @@
             <div class="robot-stage-card mystery clickable" data-stage-idx="{{ stage.idx }}">
                 <div class="robot-stage-num">{{ stage.idx }}</div>
                 <div class="robot-stage-img-wrap">
-                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img mystery-img">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img robot-stage-base-img mystery-img">
+                </div>
+                <div class="robot-stage-composite" style="display:none;">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon">
+                    <span class="robot-stage-plus">+</span>
+                    <img src="" alt="" class="robot-stage-item-icon">
                 </div>
                 <div class="robot-stage-label">{{ stage.label }}</div>
                 <div class="robot-stage-source">Loading…</div>

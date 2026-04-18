@@ -83,6 +83,38 @@
     opacity: 0.5;
 }
 
+/* Composite: base robot stage icon + PLUS + captain's item icon */
+.robot-stage-composite {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 8px;
+    padding: 4px;
+}
+.robot-stage-composite .robot-stage-base-icon,
+.robot-stage-composite .robot-stage-item-icon {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 45%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+.robot-stage-composite .robot-stage-item-icon {
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
+    background: rgba(168, 85, 247, 0.08);
+}
+.robot-stage-plus {
+    flex: 0 0 auto;
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--color-sepolia);
+    line-height: 1;
+}
+
 .robot-stage-pulse {
     position: absolute;
     inset: 0;

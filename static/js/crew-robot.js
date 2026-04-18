@@ -194,11 +194,26 @@
             const srcEl = card.querySelector('.robot-stage-source');
             if (!src || !srcEl) return;
             card.classList.remove('mystery');
-            const img = card.querySelector('.robot-stage-img');
-            if (img) img.classList.remove('mystery-img');
+            const baseImg = card.querySelector('.robot-stage-base-img');
+            if (baseImg) baseImg.classList.remove('mystery-img');
             const rc = rarityClass(src.rarity);
             const item = src.item_name || 'Unknown';
             const land = src.landmark_name || 'Unknown Site';
+
+            // Composite: base stage icon + captain's item icon
+            const composite = card.querySelector('.robot-stage-composite');
+            const itemIcon = card.querySelector('.robot-stage-item-icon');
+            const baseWrap = card.querySelector('.robot-stage-img-wrap');
+            if (composite && itemIcon && src.item_image_url) {
+                itemIcon.src = src.item_image_url;
+                itemIcon.alt = item;
+                composite.style.display = 'flex';
+                if (baseWrap) baseWrap.style.display = 'none';
+            } else if (composite) {
+                composite.style.display = 'none';
+                if (baseWrap) baseWrap.style.display = '';
+            }
+
             srcEl.innerHTML = '<strong>' + item + '</strong><br><em>' + land + '</em>'
                 + '<div class="robot-stage-rarity rarity-' + rc + '">' + rc + '</div>';
         });
