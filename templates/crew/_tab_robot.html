@@ -190,12 +190,31 @@
             {% if rd.is_complete %}Narog Online{% else %}Forging Narog — Stage {{ robot.visual_stage or 0 }}/5{% endif %}
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
+            {% if rd.is_complete %}
             <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
                  alt="Narog" id="robot-hero-img"
                  onclick="showImageModal(this.src)"
-                 class="rounded-lg cursor-pointer{% if not rd.is_complete %} robot-hero-forging{% endif %}"
+                 class="rounded-lg cursor-pointer"
                  style="max-width: 220px; max-height: 220px; border: 3px solid var(--color-sepolia);"
                  loading="lazy">
+            {% else %}
+            <!-- Forging: base silhouette stays put, each stage's item fades in on top
+                 at its anatomical slot. Visual_stage drives which overlays are active. -->
+            <div class="robot-hero-forge-wrap hero-stage-{{ robot.visual_stage or 0 }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/robot_placeholder_stage.png"
+                     alt="Narog" id="robot-hero-img"
+                     class="rounded-lg robot-hero-forging"
+                     style="max-width: 220px; max-height: 220px; border: 3px solid var(--color-sepolia);">
+                {% for stage in rd.stages %}
+                {% if stage.source and stage.source.item_image_url %}
+                <img src="{{ stage.source.item_image_url }}" alt=""
+                     class="robot-hero-overlay robot-hero-overlay-{{ stage.key }}"
+                     data-stage-idx="{{ stage.idx }}"
+                     loading="lazy">
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
             {% if robot.video_url %}
             <div style="text-align: center;">
                 <video src="{{ robot.video_url }}" style="max-width: 220px; max-height: 220px; border-radius: 12px; border: 2px solid rgba(168,85,247,0.3); cursor: pointer;"

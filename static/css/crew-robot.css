@@ -66,6 +66,65 @@
     }
 }
 
+/* ---------- Hero forge overlays ----------
+   During forging, the hero stays the base robot silhouette. Each captured
+   item fades in at its anatomical slot as its stage becomes active.
+   CSS-only: `.hero-stage-N` on the wrapper controls which overlays show. */
+.robot-hero-forge-wrap {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: inline-block;
+}
+.robot-hero-overlay {
+    position: absolute;
+    width: 54px;
+    height: 54px;
+    object-fit: contain;
+    border-radius: 8px;
+    opacity: 0;
+    transform: scale(0.6) rotate(-12deg);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+    pointer-events: none;
+    filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.7));
+    background: rgba(15, 10, 25, 0.55);
+    padding: 3px;
+}
+/* Anatomical positions on the 220x220 silhouette. */
+.robot-hero-overlay-frame   { top: 118px; left: 18px;  }
+.robot-hero-overlay-plating { top: 92px;  left: 82px;  }
+.robot-hero-overlay-core    { top: 92px;  left: 148px; }
+.robot-hero-overlay-optics  { top: 32px;  left: 148px; }
+.robot-hero-overlay-finish  { top: 14px;  left: 82px;  }
+
+/* Reveal overlays progressively as stages complete.
+   hero-stage-N means stages 1..N are logged; pulsing = the stage currently
+   working. */
+.hero-stage-1 .robot-hero-overlay[data-stage-idx="1"],
+.hero-stage-2 .robot-hero-overlay[data-stage-idx="1"],
+.hero-stage-2 .robot-hero-overlay[data-stage-idx="2"],
+.hero-stage-3 .robot-hero-overlay[data-stage-idx="1"],
+.hero-stage-3 .robot-hero-overlay[data-stage-idx="2"],
+.hero-stage-3 .robot-hero-overlay[data-stage-idx="3"],
+.hero-stage-4 .robot-hero-overlay[data-stage-idx="1"],
+.hero-stage-4 .robot-hero-overlay[data-stage-idx="2"],
+.hero-stage-4 .robot-hero-overlay[data-stage-idx="3"],
+.hero-stage-4 .robot-hero-overlay[data-stage-idx="4"],
+.hero-stage-5 .robot-hero-overlay {
+    opacity: 1;
+    transform: scale(1) rotate(-6deg);
+    animation: robotOverlayPop 0.9s ease-out, robotOverlayPulse 2.2s ease-in-out 0.9s infinite;
+}
+@keyframes robotOverlayPop {
+    0%   { opacity: 0; transform: scale(0.3) rotate(-24deg); }
+    70%  { opacity: 1; transform: scale(1.15) rotate(-6deg); }
+    100% { opacity: 1; transform: scale(1) rotate(-6deg); }
+}
+@keyframes robotOverlayPulse {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.5)); }
+    50%      { filter: drop-shadow(0 0 14px rgba(236, 72, 153, 0.9)); }
+}
+
 .robot-stage-num {
     position: absolute;
     top: 6px;
