@@ -795,18 +795,33 @@
     function wireResetButton() {
         const btn = document.getElementById('robot-reset-btn');
         if (!btn) return;
-        btn.addEventListener('click', async () => {
-            if (!confirm('QA: wipe this captain\'s Narog and re-forge from scratch? The Kontext image chain will regenerate.')) return;
-            btn.disabled = true;
-            const original = btn.textContent;
-            btn.textContent = '↻ Resetting...';
-            try {
-                await postJSONSafe('/api/robot/reset', {});
-                window.location.href = '/crew?tab=robot';
-            } catch (e) {
-                btn.disabled = false;
-                btn.textContent = original;
-            }
+        btn.addEventListener('click', () => {
+            const body = '<div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">'
+                + 'Wipe this captain\'s Narog and re-forge from scratch? The Kontext image chain will regenerate with fresh picks. '
+                + '<br><br><em style="color:var(--text-muted);">QA use only — the existing robot row and stage log will be deleted.</em>'
+                + '</div>';
+            const footer = '<div style="display:flex;gap:10px;justify-content:flex-end;">'
+                + '<button id="robot-reset-cancel" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-default);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;">Cancel</button>'
+                + '<button id="robot-reset-confirm" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.55);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;">↻ Start Over</button>'
+                + '</div>';
+            MarsModal.show({ title: 'QA — Start Over', size: 'md', theme: 'aria', body, footer });
+            setTimeout(() => {
+                const cancel = document.getElementById('robot-reset-cancel');
+                const confirmBtn = document.getElementById('robot-reset-confirm');
+                if (cancel) cancel.addEventListener('click', () => MarsModal.hide());
+                if (confirmBtn) confirmBtn.addEventListener('click', async () => {
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = '↻ Resetting...';
+                    try {
+                        await postJSONSafe('/api/robot/reset', {});
+                        MarsModal.hide();
+                        window.location.href = '/crew?tab=robot';
+                    } catch (e) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = '↻ Start Over';
+                    }
+                });
+            }, 0);
         });
     }
 

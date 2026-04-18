@@ -294,6 +294,24 @@
     </div>
 </div>
 
+<!-- QA: Start Over — wipes this captain's Narog + stage_log so the preview
+     re-renders from scratch. Positioned right under the build manifest so
+     Luke can reset quickly during QA. -->
+<div class="dashboard-card p-20 mb-16" style="border: 1px dashed rgba(239,68,68,0.35); background: rgba(239,68,68,0.04);">
+    <div class="text-xs uppercase tracking-wide mb-8" style="color: #fca5a5; font-weight: 600; letter-spacing: 0.08em;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> QA — Start Over
+    </div>
+    <div class="text-sm mb-12" style="color: var(--text-secondary);">
+        Wipe this Narog and re-forge from scratch. The Kontext image chain will regenerate with fresh picks. Used during QA / iteration.
+    </div>
+    <div style="text-align: center;">
+        <button id="robot-reset-btn" type="button"
+            style="background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); border-radius: 10px; padding: 12px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">
+            ↻ Start Over
+        </button>
+    </div>
+</div>
+
 <!-- Awakening Video — generate button (only if no video yet) -->
 {% if rd.is_complete and not robot.video_url %}
 <div class="dashboard-card p-20 mb-16">
@@ -312,23 +330,6 @@
     </div>
 </div>
 {% endif %}
-
-<!-- QA: Start Over — wipes this captain's Narog + stage_log so the preview
-     re-renders from scratch. Temporary while Narog UI is being tuned. -->
-<div class="dashboard-card p-20 mb-16" style="border: 1px dashed rgba(239,68,68,0.35); background: rgba(239,68,68,0.04);">
-    <div class="text-xs uppercase tracking-wide mb-8" style="color: #fca5a5; font-weight: 600; letter-spacing: 0.08em;">
-        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> QA — Start Over
-    </div>
-    <div class="text-sm mb-12" style="color: var(--text-secondary);">
-        Wipe this Narog and re-forge from scratch. The Kontext image chain will regenerate with fresh picks. Used during QA / iteration.
-    </div>
-    <div style="text-align: center;">
-        <button id="robot-reset-btn" type="button"
-            style="background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); border-radius: 10px; padding: 12px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">
-            ↻ Start Over
-        </button>
-    </div>
-</div>
 
 <!-- What does the Narog do? -->
 <div class="dashboard-card p-20 mb-16">
