@@ -673,8 +673,8 @@ def tick_robot_build(user_id: int) -> Dict[str, Any]:
     source = sources[next_stage_idx - 1]
 
     try:
-        from utilities.robot_visuals import start_background_advance
-        start_background_advance(user_id, next_stage_idx, source)
+        from utilities.robot_visuals import start_background_full_build
+        start_background_full_build(user_id, sources)
         # Either the worker is running now and will update on completion, or
         # a prior worker is still running — both cases return the current
         # (unchanged) robot row so the UI stays on the old stage until

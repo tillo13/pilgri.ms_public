@@ -30,7 +30,7 @@ NAROG_IMAGE_MODEL = 'flux2'
 
 # STUB timing — 60s/stage so QA can see the full build cycle in 5 minutes.
 # Will be replaced with real-clock days scaled by robotics_lab.robot_build_speed_mult.
-STAGE_DURATION_SECONDS = 60
+STAGE_DURATION_SECONDS = 0
 
 # Placeholder image used until robot_visuals.py generates real Kontext-chained art.
 PLACEHOLDER_STAGE_IMAGE = (

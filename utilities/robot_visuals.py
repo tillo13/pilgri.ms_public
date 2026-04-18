@@ -456,6 +456,48 @@ def _worker(user_id: int, stage_idx: int, source: Dict[str, Any]) -> None:
         _release(user_id, stage_idx)
 
 
+def _full_build_worker(user_id: int, sources: list) -> None:
+    """Run the entire Narog build in one background thread.
+    Stages 1–4 log per-stage placeholder icons near-instantly (no Flux cost),
+    then stage 5 runs the one-shot Flux 2 Pro forge. Whole pass finishes in
+    roughly the time of a single Flux call. Captain sees 'forging...' then
+    the final Narog — no inter-stage theatrics."""
+    tag = f"[robot user={user_id} full-build]"
+    try:
+        for stage_idx in range(1, 6):
+            if stage_idx - 1 >= len(sources):
+                logger.error(f"{tag} missing source for stage {stage_idx}")
+                break
+            source = sources[stage_idx - 1]
+            result = _run_stage(user_id, stage_idx, source)
+            if result is None:
+                logger.error(f"{tag} stage {stage_idx} returned None — falling back to stub")
+                _stub_advance_one_stage(user_id, stage_idx, source)
+    except Exception as e:
+        logger.exception(f"{tag} crash: {e}")
+    finally:
+        with _IN_FLIGHT_LOCK:
+            _IN_FLIGHT.discard((user_id, 'full'))
+
+
+def start_background_full_build(user_id: int, sources: list) -> bool:
+    """Spawn a single daemon thread that drives the whole build to completion.
+    Replaces the per-stage tick-and-respawn loop."""
+    key = (user_id, 'full')
+    with _IN_FLIGHT_LOCK:
+        if key in _IN_FLIGHT:
+            return False
+        _IN_FLIGHT.add(key)
+    t = threading.Thread(
+        target=_full_build_worker,
+        args=(user_id, sources),
+        name=f"robot-forge-{user_id}",
+        daemon=True,
+    )
+    t.start()
+    return True
+
+
 def start_background_advance(user_id: int, stage_idx: int,
                               source: Dict[str, Any]) -> bool:
     """

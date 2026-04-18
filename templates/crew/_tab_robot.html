@@ -187,7 +187,7 @@
     <div class="card-bg-overlay"></div>
     <div class="relative z-2 text-center">
         <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">
-            {% if rd.is_complete %}Narog Online{% else %}Forge Active — Stage {{ robot.visual_stage }}/5{% endif %}
+            {% if rd.is_complete %}Narog Online{% else %}Forging Narog…{% endif %}
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
             <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
@@ -235,14 +235,11 @@
         </div>
         {% endif %}
 
-        <!-- Stage countdown (active builds only) -->
-        {% if not rd.is_complete and rd.seconds_until_next_stage is not none %}
+        <!-- Active-build spinner (single oneshot Flux 2 Pro forge). -->
+        {% if not rd.is_complete %}
         <div class="robot-countdown-card">
-            <div class="text-xs uppercase tracking-wide" style="color: var(--text-secondary); opacity: 0.7;">Next stage assembling</div>
-            <div id="robot-countdown" class="text-xl font-bold" style="color: var(--color-sepolia);"
-                 data-seconds="{{ rd.seconds_until_next_stage }}">
-                {{ rd.seconds_until_next_stage }}s
-            </div>
+            <div class="text-xs uppercase tracking-wide" style="color: var(--text-secondary); opacity: 0.7;">Forging</div>
+            <div class="text-xl font-bold" style="color: var(--color-sepolia);">…</div>
         </div>
         {% endif %}
 
