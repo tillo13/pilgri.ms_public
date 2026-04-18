@@ -56,77 +56,46 @@ logger = logging.getLogger(__name__)
 #
 # {source} token is replaced with a one-liner from the stage source manifest:
 #   "a {rarity} {item_name} recovered at {landmark_name}".
+_STYLE_SUFFIX = (
+    "Cartoon video game item with bold outlines and stylized proportions, "
+    "isolated on red Martian terrain, vibrant reds and oranges reflecting "
+    "Mars atmosphere, video game asset style. The robot fills the center of "
+    "the frame as the only subject; the ground is empty Martian sand."
+)
+
 STAGE_PROMPT_TEMPLATES = {
     1: (
-        "Transform this recovered Martian artifact into the beginnings of a "
-        "humanoid robot skeleton, fusing the artifact's form, color, and "
-        "material directly INTO the robot's chassis. Rough load-bearing frame "
-        "with rust-red clay limbs lashed together with crystal rebar. Still "
-        "shapeless but recognizably a frame. The robot's structure clearly "
-        "grew from {source}. "
-        "CRITICAL: this recovered item must appear physically embedded IN the "
-        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
-        "place the item on the ground next to the robot, NEVER float it beside "
-        "the robot, NEVER show it as a separate prop in the scene. The robot "
-        "itself is the ONLY subject; the item is a visible part of the robot. "
-        "Cartoon video game item with bold outlines and stylized proportions, "
-        "isolated on red Martian terrain, vibrant reds and oranges reflecting "
-        "Mars atmosphere, video game asset style."
+        "Transform this recovered Martian artifact into a humanoid robot's "
+        "skeletal frame. The artifact becomes the robot's CHEST — visibly "
+        "fused into the center of the torso as a glowing chest-piece. Rough "
+        "load-bearing clay limbs extend outward from it. The robot's chest "
+        "IS made of {source}. " + _STYLE_SUFFIX
     ),
     2: (
-        "Add rough hull plating to this robot frame — pressure-rated panels "
-        "shaped from compressed Martian clay, jointed with Sepolia crystal "
-        "pins. Torso and shoulder plates now recognizable but unfinished. "
-        "The new plating is forged from {source}. "
-        "CRITICAL: this recovered item must appear physically embedded IN the "
-        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
-        "place the item on the ground next to the robot, NEVER float it beside "
-        "the robot, NEVER show it as a separate prop in the scene. The robot "
-        "itself is the ONLY subject; the item is a visible part of the robot. "
-        "Cartoon video game item with bold outlines and stylized proportions, "
-        "isolated on red Martian terrain, vibrant reds and oranges reflecting "
-        "Mars atmosphere, video game asset style."
+        "Embed this artifact directly into the robot's CHEST PLATE as the "
+        "centerpiece of newly added hull plating — pressure-rated panels "
+        "shaped from compressed Martian clay wrap around and hold it. The "
+        "artifact is mounted ON the robot's torso, fused into the armor. "
+        "The plating's central medallion IS {source}. " + _STYLE_SUFFIX
     ),
     3: (
-        "Install a crystalline reactor core at the chest of this robot — a "
-        "hexagonal Sepolia crystal cluster glowing cyan through the clay "
-        "plating. Power conduits trace along the limbs. The crystal was "
-        "cut from {source}. "
-        "CRITICAL: this recovered item must appear physically embedded IN the "
-        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
-        "place the item on the ground next to the robot, NEVER float it beside "
-        "the robot, NEVER show it as a separate prop in the scene. The robot "
-        "itself is the ONLY subject; the item is a visible part of the robot. "
-        "Cartoon video game item with bold outlines and stylized proportions, "
-        "isolated on red Martian terrain, vibrant reds and oranges reflecting "
-        "Mars atmosphere, video game asset style."
+        "The robot's reactor core glows at the center of its chest — the "
+        "core itself IS the embedded artifact, crystalline and pulsing "
+        "through the clay plating. Power conduits trace from the chest core "
+        "down the limbs. The reactor IS {source}, mounted inside the torso. "
+        + _STYLE_SUFFIX
     ),
     4: (
-        "Carve an optical sensor array into this robot's face — a cluster of "
-        "lens-shaped Sepolia crystals in the head, backlit cyan. Add subtle "
-        "Sepolia crystal accents to the joints. Lenses ground from {source}. "
-        "CRITICAL: this recovered item must appear physically embedded IN the "
-        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
-        "place the item on the ground next to the robot, NEVER float it beside "
-        "the robot, NEVER show it as a separate prop in the scene. The robot "
-        "itself is the ONLY subject; the item is a visible part of the robot. "
-        "Cartoon video game item with bold outlines and stylized proportions, "
-        "isolated on red Martian terrain, vibrant reds and oranges reflecting "
-        "Mars atmosphere, video game asset style."
+        "Mount this artifact as the robot's HEAD or EYE cluster — fused "
+        "directly into the face, forming glowing lenses or a single central "
+        "eye backlit cyan. The robot's head IS shaped from {source}. "
+        + _STYLE_SUFFIX
     ),
     5: (
-        "Final assembly — add painted Mars mission glyphs to the chest plate, "
-        "a signal antenna rising from the shoulder, and a heroic pose. The "
-        "robot is now complete: awakened, glowing Sepolia eyes, standing "
-        "ready to serve its captain. Finishing touches use {source}. "
-        "CRITICAL: this recovered item must appear physically embedded IN the "
-        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
-        "place the item on the ground next to the robot, NEVER float it beside "
-        "the robot, NEVER show it as a separate prop in the scene. The robot "
-        "itself is the ONLY subject; the item is a visible part of the robot. "
-        "Cartoon video game item with bold outlines and stylized proportions, "
-        "isolated on red Martian terrain, vibrant reds and oranges reflecting "
-        "Mars atmosphere, video game asset style."
+        "Final assembly — the robot stands in a heroic pose, awakened and "
+        "complete. Mount this artifact as a SHOULDER EMBLEM or CROWN on the "
+        "robot itself, glowing Sepolia eyes, Mars mission glyphs painted on "
+        "the chest. The robot's shoulder crest IS {source}. " + _STYLE_SUFFIX
     ),
 }
 
@@ -147,10 +116,10 @@ ITEM_VISUAL_DESCRIPTORS = {
 # Rarity controls how PROMINENTLY the item appears on the Narog. Higher rarity
 # = more dominant visual feature. Lower = subtle accent.
 RARITY_PROMINENCE = {
-    'legendary': "physically embedded INTO the robot's body as the DOMINANT central feature — fused directly onto the chest, torso, or head of the robot itself, bold and unmistakable. NOT placed on the ground, NOT beside the robot, NOT floating — it must be part of the robot's anatomy",
-    'rare':      "visibly fused INTO the robot's plating or limbs as a clear accent — part of the robot's body itself, not placed beside it",
-    'uncommon':  "subtly integrated INTO the robot's body as a recognizable detail — embedded in the armor or joints, never beside the robot",
-    'common':    "a faint trace embedded IN the robot's material — part of the body, never on the ground nearby",
+    'legendary': "dominating the robot's silhouette as its defining feature, large and unmistakable on the robot's body",
+    'rare':      "clearly fused into the robot's plating as a bold accent of the robot itself",
+    'uncommon':  "integrated into the robot's armor as a recognizable detail of its body",
+    'common':    "a faint trace etched into the robot's material",
 }
 
 
