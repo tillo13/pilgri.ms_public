@@ -267,14 +267,17 @@ window.EpicReveal = (function() {
             var revealFn = opts.revealSound && audio && audio[opts.revealSound] ? opts.revealSound : 'playBondReveal';
             if (audio && audio[revealFn]) audio[revealFn]();
             img.classList.add('visible');
-            // Click the revealed image to open a full-size lightbox modal.
+            // Click the revealed image to open a full-size lightbox.
+            // MarsModal/showImageModal both mount at z-index ~10k which is
+            // BELOW the epic-reveal overlay (99999) — they'd open invisibly
+            // behind it. Mount our own lightbox above the reveal instead.
             img.addEventListener('click', function (ev) {
                 ev.stopPropagation();
-                if (window.MarsModal) {
-                    var body = '<div style="display:flex;justify-content:center;padding:8px 0;">'
-                        + '<img src="' + img.src + '" style="max-width:100%;max-height:70vh;border-radius:12px;"></div>';
-                    MarsModal.show({ title: opts.title || '', size: 'lg', theme: 'aria', body: body });
-                }
+                var lb = document.createElement('div');
+                lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:200000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;';
+                lb.innerHTML = '<img src="' + img.src + '" style="max-width:95vw;max-height:95vh;border-radius:14px;box-shadow:0 12px 48px rgba(0,0,0,0.6);">';
+                lb.addEventListener('click', function () { lb.remove(); });
+                document.body.appendChild(lb);
             });
         }
 
