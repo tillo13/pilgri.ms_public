@@ -357,11 +357,18 @@ def find_nearest_trail_origin(user_id: int, destination_name: str) -> dict:
 
 
 def spawn_next_trail(user_id: int, completed_destination: str) -> Optional[dict]:
-    """When a trail is completed, find the next closest landmark in that direction
-    and create a new trail segment. Maintains exactly 4 active trails.
+    """When a trail is completed, chain a new segment from the completed point
+    to the closest unbuilt landmark that is strictly farther from base.
 
-    The new trail starts from HOME (not from the completed destination) to keep
-    the system simple — distances are always HOME-based.
+    Design (Luke bugs #450, #483, #484, #1291, #1399):
+    - from_landmark = completed_destination (NOT 'HOME') — the new segment
+      chains off the completed point. Render shows Base→P1→P2, not Base→P2.
+    - Candidates must be farther from HOME than completed_destination — no
+      backtracking toward base; chains always extend outward.
+    - Exclude any landmark already present in trail_segments for this user.
+    - Pick the closest candidate to completed_destination (shortest hop).
+    - On candidate conflict (ON CONFLICT DO NOTHING returns no row), fall
+      through to the next candidate instead of leaving an orphan tip.
     """
     from utilities.mars_math import haversine_distance
     try:
@@ -373,42 +380,98 @@ def spawn_next_trail(user_id: int, completed_destination: str) -> Optional[dict]
             base_lat = float(user['home_mars_lat'])
             base_lon = float(user['home_mars_lon'])
 
-            # Get all destinations already in trail_segments (active + completed)
-            cur.execute("SELECT destination_name FROM pilgrim.trail_segments WHERE user_id = %s", (user_id,))
+            cur.execute(
+                "SELECT latitude, longitude FROM pilgrim.mars_mappings WHERE name = %s",
+                (completed_destination,),
+            )
+            completed = cur.fetchone()
+            if not completed:
+                return None
+            comp_lat = float(completed['latitude'])
+            comp_lon = float(completed['longitude'])
+            comp_home_dist = haversine_distance(base_lat, base_lon, comp_lat, comp_lon)
+
+            cur.execute(
+                "SELECT destination_name FROM pilgrim.trail_segments WHERE user_id = %s",
+                (user_id,),
+            )
             existing = {r['destination_name'] for r in (cur.fetchall() or [])}
 
-            # Find closest landmark not already a trail destination
             cur.execute("SELECT name, type, latitude, longitude FROM pilgrim.mars_mappings")
             all_landmarks = cur.fetchall()
 
         candidates = []
         for lm in all_landmarks:
-            if lm['name'] in existing:
+            if lm['name'] in existing or lm['name'] == completed_destination:
                 continue
-            d = haversine_distance(base_lat, base_lon, float(lm['latitude']), float(lm['longitude']))
-            candidates.append({**dict(lm), 'distance': d})
-        candidates.sort(key=lambda x: x['distance'])
+            lm_lat = float(lm['latitude'])
+            lm_lon = float(lm['longitude'])
+            home_dist = haversine_distance(base_lat, base_lon, lm_lat, lm_lon)
+            if home_dist <= comp_home_dist:
+                continue
+            hop_dist = haversine_distance(comp_lat, comp_lon, lm_lat, lm_lon)
+            candidates.append({**dict(lm), 'hop_distance': hop_dist})
+        candidates.sort(key=lambda x: x['hop_distance'])
 
         if not candidates:
+            logger.info(f"spawn_next_trail: no farther-from-base candidates past {completed_destination} for user {user_id}")
             return None
 
-        next_lm = candidates[0]
-        with db_cursor(commit=True) as cur:
-            cur.execute("""
-                INSERT INTO pilgrim.trail_segments
-                (user_id, from_landmark, destination_name, total_distance_km,
-                 km_built, captain_km, scientist_km, aria_km, trip_count, trail_level)
-                VALUES (%s, 'HOME', %s, %s, 0, 0, 0, 0, 0, 'none')
-                ON CONFLICT (user_id, from_landmark, destination_name) DO NOTHING
-                RETURNING *
-            """, (user_id, next_lm['name'], round(next_lm['distance'], 6)))
-            row = cur.fetchone()
+        for next_lm in candidates:
+            with db_cursor(commit=True) as cur:
+                cur.execute("""
+                    INSERT INTO pilgrim.trail_segments
+                    (user_id, from_landmark, destination_name, total_distance_km,
+                     km_built, captain_km, scientist_km, aria_km, trip_count, trail_level)
+                    VALUES (%s, %s, %s, %s, 0, 0, 0, 0, 0, 'none')
+                    ON CONFLICT (user_id, from_landmark, destination_name) DO NOTHING
+                    RETURNING *
+                """, (user_id, completed_destination, next_lm['name'], round(next_lm['hop_distance'], 6)))
+                row = cur.fetchone()
+            if row:
+                logger.info(f"Spawned chain trail for user {user_id}: {completed_destination} -> {next_lm['name']} ({next_lm['hop_distance']:.1f} km hop)")
+                return dict(row)
 
-        logger.info(f"Spawned next trail for user {user_id}: {completed_destination} -> {next_lm['name']} ({next_lm['distance']:.1f} km)")
-        return dict(row) if row else None
+        logger.info(f"spawn_next_trail: all candidates conflicted past {completed_destination} for user {user_id}")
+        return None
     except Exception as e:
         logger.error(f"Failed to spawn next trail: {e}")
         return None
+
+
+def heal_orphan_trail_tips(user_id: int) -> int:
+    """For every completed trail destination that has no descendant chain row,
+    spawn the next-hop chain. Fixes orphans left behind by older code paths
+    (bug #1399: Kasabi completed but no Point 2).
+
+    Returns count of chains spawned.
+    """
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT destination_name
+                FROM pilgrim.trail_segments
+                WHERE user_id = %s
+                  AND total_distance_km IS NOT NULL
+                  AND total_distance_km > 0
+                  AND km_built >= total_distance_km
+                  AND destination_name NOT IN (
+                      SELECT from_landmark FROM pilgrim.trail_segments
+                      WHERE user_id = %s AND from_landmark != 'HOME'
+                  )
+            """, (user_id, user_id))
+            orphan_tips = [r['destination_name'] for r in (cur.fetchall() or [])]
+
+        spawned = 0
+        for tip in orphan_tips:
+            if spawn_next_trail(user_id, tip):
+                spawned += 1
+        if spawned:
+            logger.info(f"heal_orphan_trail_tips: spawned {spawned} chain(s) for user {user_id}")
+        return spawned
+    except Exception as e:
+        logger.error(f"heal_orphan_trail_tips failed for user {user_id}: {e}")
+        return 0
 
 
 # ============================================================================

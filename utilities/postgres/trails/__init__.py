@@ -20,6 +20,7 @@ from utilities.postgres.trails.segments import (  # noqa: F401
     get_trail_progress,
     find_nearest_trail_origin,
     spawn_next_trail,
+    heal_orphan_trail_tips,
     cron_drone_trail_build,
 )
 from utilities.postgres.trails.aria_skills import (  # noqa: F401

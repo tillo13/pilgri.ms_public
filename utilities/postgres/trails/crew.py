@@ -505,8 +505,14 @@ def get_visited_sites_for_trails(user_id: int, frontier_limit: int = 5) -> list:
     next closest landmark in that direction via spawn_next_trail().
     """
     from utilities.mars_math import haversine_distance
+    from utilities.postgres.trails.segments import heal_orphan_trail_tips
     ensure_trail_segments_table()
     try:
+        # Bug #1399: any completed segment without a descendant chain gets healed
+        # on page load — catches orphans left by older code paths (e.g. Kasabi
+        # completed but Point 2 never spawned).
+        heal_orphan_trail_tips(user_id)
+
         with db_cursor() as cur:
             cur.execute("SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = %s", (user_id,))
             user = cur.fetchone()

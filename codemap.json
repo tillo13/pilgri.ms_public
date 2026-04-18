@@ -2033,7 +2033,8 @@
       "add_km_to_trail — Add km progress to a trail segment.",
       "get_trail_progress — Get detailed trail progress for a segment",
       "find_nearest_trail_origin — Find the nearest connected node in the user's trail network to build FROM.",
-      "spawn_next_trail — When a trail is completed, find the next closest landmark in that direction",
+      "spawn_next_trail — When a trail is completed, chain a new segment from the completed point",
+      "heal_orphan_trail_tips — For every completed trail destination that has no descendant chain row,",
       "cron_drone_trail_build — Passive trail building for users with Automation Drone upgrades."
     ],
     "keywords": "trail km add, SV per km (2 SV/km), cron_drone_trail_build passive trail"
@@ -3187,7 +3188,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3265,7 +3266,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
