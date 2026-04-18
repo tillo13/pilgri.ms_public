@@ -291,8 +291,12 @@
         const coord = (src.lat != null && src.lon != null)
             ? (Number(src.lat).toFixed(3) + '°, ' + Number(src.lon).toFixed(3) + '°')
             : '—';
+        const imgBlock = src.item_image_url
+            ? '<div style="display:flex;justify-content:center;padding:8px 0;"><img src="' + src.item_image_url + '" alt="' + (src.item_name || '') + '" style="max-width:220px;max-height:220px;border-radius:12px;box-shadow:0 0 24px rgba(168,85,247,0.35);background:rgba(168,85,247,0.06);"></div>'
+            : '';
         const body = ''
             + '<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">'
+            + imgBlock
             + '<div><div class="text-xs" style="color:var(--text-muted)">ITEM</div><div style="font-size:18px;font-weight:800">' + (src.item_name || '—') + '</div></div>'
             + '<div><div class="text-xs" style="color:var(--text-muted)">RARITY</div><div class="robot-stage-rarity rarity-' + rc + '" style="margin-top:2px">' + rc + '</div></div>'
             + '<div><div class="text-xs" style="color:var(--text-muted)">INFLUENCE ON NAROG</div><div style="font-weight:700;color:#ffb454">' + weight + ' pts — shapes the stat profile</div></div>'

@@ -313,7 +313,9 @@ def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
         ROBOT_GATE_MIN_LEGENDARY,
         min(ROBOT_BUILD_MAX_LEGENDARY, n_leg_avail),
     )
+    unique_rare_types = len({it['item_name'] for it in inv['rare']})
     rare_upper = min(ROBOT_BUILD_MAX_RARE, n_rare_avail, ROBOT_BUILD_TOTAL_ITEMS - n_legendary)
+    rare_upper = max(ROBOT_GATE_MIN_RARE, min(rare_upper, unique_rare_types or ROBOT_GATE_MIN_RARE))
     n_rare = random.randint(ROBOT_GATE_MIN_RARE, max(ROBOT_GATE_MIN_RARE, rare_upper))
     n_fill = max(0, ROBOT_BUILD_TOTAL_ITEMS - n_legendary - n_rare)
 
