@@ -42,6 +42,15 @@
             </div>
         </div>
         </a>
+        {% else %}
+        <!-- Bug #1391: empty-state so the card doesn't silently hide the research slot. -->
+        <a href="/research" style="text-decoration: none; display: block;">
+        <div class="card-stats-box" style="border-radius: 10px; padding: 12px; margin-bottom: 12px; border: 1px dashed rgba(var(--color-aria-rgb), 0.4); background: rgba(var(--color-aria-rgb), 0.03);">
+            <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--color-aria); font-weight: 700; margin-bottom: 6px;">Now Researching</div>
+            <div style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">No research queued</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Pick a tech to start generating progress →</div>
+        </div>
+        </a>
         {% endif %}
 
         <div class="card-subtitle" style="text-align: center; font-size: 12px;">

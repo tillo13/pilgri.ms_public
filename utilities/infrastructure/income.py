@@ -493,6 +493,18 @@ def record_science_value(user_id):
 
     logger.info(f"🔬 User {user_id} recorded {sv_amount:.1f} SV")
 
+    # Bug #1315: mirror harvest/upgrade events — every SV record hits the log.
+    try:
+        from utilities.postgres.activity import log_activity
+        log_activity(
+            user_id, 'research', 'sv_recorded',
+            f"Recorded {round(sv_amount, 1)} SV",
+            amount=float(sv_amount),
+            detail='from Research Station + Scientist'
+        )
+    except Exception as _e:
+        logger.warning(f"activity log (sv_recorded) failed for user {user_id}: {_e}")
+
     from utilities.tech_utils import _get_available_sv
     return {
         'success': True,
