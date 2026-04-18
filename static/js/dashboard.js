@@ -391,6 +391,15 @@ async function checkInfrastructureIncome() {
                 if (svCard) svCard.style.display = 'block';
                 if (svRateEl) svRateEl.textContent = data.sv_hourly_rate.toFixed(1);
                 if (svAccEl) svAccEl.textContent = Math.round(data.sv_accumulated);
+                // Bug #1401: mirror the Record SV affordance from the Crew
+                // tab — enable only when there's ≥1 SV accumulated.
+                const svRecordBtn = $('svRecordBtn');
+                if (svRecordBtn) {
+                    const hasSv = (data.sv_accumulated || 0) >= 1;
+                    svRecordBtn.disabled = !hasSv;
+                    svRecordBtn.style.opacity = hasSv ? '1' : '0.5';
+                    svRecordBtn.style.cursor = hasSv ? 'pointer' : 'not-allowed';
+                }
                 // SV source breakdown
                 if (svBreakdownEl && data.sv_sources) {
                     let html = '';
@@ -894,3 +903,32 @@ window._wb = {
 };
 
 // WB available via briefing card click (window._wb.init(true)) — no auto-popup
+
+// Bug #1401: Record SV from the Base page's Science Value card. Reuses the
+// same /api/scientist/record-sv endpoint that the Crew > Scientist tab calls.
+window.recordSVFromBase = async function() {
+    const btn = $('svRecordBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    const origText = btn.textContent;
+    btn.textContent = 'Recording...';
+    try {
+        const data = await apiPost('/api/scientist/record-sv');
+        if (data && data.success) {
+            showToast('Recorded ' + data.sv_recorded + ' SV', 'success');
+            const accEl = $('svAccumulated');
+            if (accEl) accEl.textContent = '0';
+            btn.textContent = origText;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        } else {
+            showToast((data && data.error) || 'Failed to record SV', 'error');
+            btn.textContent = origText;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        showToast('Connection failed', 'error');
+        btn.textContent = origText;
+        btn.disabled = false;
+    }
+};
