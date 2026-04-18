@@ -797,9 +797,49 @@
         btn.addEventListener('click', () => fireGolemCinematic(false));
     }
 
-    // ----- VIDEO GENERATION (auto) --------------------------------------------
+    // ----- VIDEO GENERATION (auto + regen) -------------------------------------
     // When the narog is complete but has no video yet, kick off generation
-    // immediately and poll for completion. Video becomes the hero on reload.
+    // immediately and poll for completion. On error, surface the real message
+    // from the server and offer a Retry button.
+    function pollVideoStatus(statusEl) {
+        var poll = setInterval(async function() {
+            try {
+                var r = await fetch('/api/robot/video_status');
+                var s = await r.json();
+                if (s && s.url) {
+                    clearInterval(poll);
+                    if (statusEl) statusEl.innerHTML = '<strong>Awakening video ready!</strong>';
+                    reloadSoon();
+                } else if (s && s.error) {
+                    clearInterval(poll);
+                    showVideoError(statusEl, s.error);
+                }
+            } catch (e) { /* keep polling */ }
+        }, 5000);
+    }
+
+    function showVideoError(statusEl, errMsg) {
+        if (!statusEl) return;
+        statusEl.innerHTML = '<div style="color:#fca5a5;font-weight:700;">Video generation failed</div>'
+            + '<div class="text-xs" style="color:var(--text-secondary);margin-top:4px;word-break:break-word;">'
+            + String(errMsg || 'unknown error').slice(0, 240)
+            + '</div>'
+            + '<button id="robot-video-retry-btn" style="margin-top:8px;background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.45);border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;">↻ Retry</button>';
+        var btn = document.getElementById('robot-video-retry-btn');
+        if (btn) btn.addEventListener('click', function() { triggerVideoRegen(statusEl, btn); });
+    }
+
+    async function triggerVideoRegen(statusEl, btn) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Starting...'; }
+        if (statusEl) statusEl.innerHTML = 'Generating Awakening Video…<div class="text-xs" style="opacity:0.7;margin-top:4px;">~60 seconds</div>';
+        try {
+            await postJSONSafe('/api/robot/reset_video', {});
+            pollVideoStatus(statusEl);
+        } catch (e) {
+            showVideoError(statusEl, (e && e.message) || 'request failed');
+        }
+    }
+
     function autoStartVideoGen() {
         var wrap = document.getElementById('robot-hero-awaiting-video');
         if (!wrap) return;  // only present when is_complete && !video_url
@@ -808,22 +848,47 @@
             try {
                 var data = await postJSONSafe('/api/robot/generate_video', {});
                 if (data && data.already_exists) { reloadSoon(); return; }
+                if (data && data.error) { showVideoError(status, data.error); return; }
             } catch (e) { /* fall through to polling */ }
-            var poll = setInterval(async function() {
-                try {
-                    var r = await fetch('/api/robot/video_status');
-                    var s = await r.json();
-                    if (s && s.url) {
-                        clearInterval(poll);
-                        if (status) status.innerHTML = '<strong>Awakening video ready!</strong>';
-                        reloadSoon();
-                    } else if (s && s.error) {
-                        clearInterval(poll);
-                        if (status) status.innerHTML = 'Video generation failed — refresh to retry.';
-                    }
-                } catch (e) { /* keep polling */ }
-            }, 5000);
+            pollVideoStatus(status);
         })();
+    }
+
+    function wireRegenVideoButton() {
+        var btn = document.getElementById('robot-regen-video-btn');
+        if (!btn) return;
+        btn.addEventListener('click', function() {
+            if (!confirm) { /* should not happen, but guard */ }
+            // Use MarsModal pattern — no native confirm() per project rules.
+            if (typeof MarsModal === 'undefined') return;
+            var body = '<div style="font-size:13px;color:var(--text-secondary);line-height:1.55;">'
+                + 'Regenerate the awakening video? The forged Narog + stage log stay intact — only the Wan animation re-runs (~60s).'
+                + '</div>';
+            var footer = '<div style="display:flex;gap:10px;justify-content:flex-end;">'
+                + '<button id="regen-cancel" style="background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border-default);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;">Cancel</button>'
+                + '<button id="regen-confirm" style="background:rgba(168,85,247,0.2);color:var(--color-sepolia);border:1px solid rgba(168,85,247,0.55);border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;">↻ Regenerate</button>'
+                + '</div>';
+            MarsModal.show({ title: 'Regenerate Awakening Video', size: 'md', theme: 'aria', body: body, footer: footer });
+            setTimeout(function() {
+                var cancel = document.getElementById('regen-cancel');
+                var confirmBtn = document.getElementById('regen-confirm');
+                if (cancel) cancel.addEventListener('click', function() { MarsModal.hide(); });
+                if (confirmBtn) confirmBtn.addEventListener('click', async function() {
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = 'Starting...';
+                    try {
+                        await postJSONSafe('/api/robot/reset_video', {});
+                        MarsModal.hide();
+                        // Reload so the hero drops back to "generating..." placeholder
+                        // and autoStartVideoGen takes over via pollVideoStatus.
+                        window.location.reload();
+                    } catch (e) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = '↻ Regenerate';
+                    }
+                });
+            }, 0);
+        });
     }
 
     function wireResetButton() {
@@ -893,6 +958,7 @@
         startCountdown();
         wireReplayButton();
         autoStartVideoGen();
+        wireRegenVideoButton();
         wireManifestClicks();
         maybeFireRobotCinematic();
     });

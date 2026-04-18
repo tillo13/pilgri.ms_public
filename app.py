@@ -421,6 +421,23 @@ def api_robot_video_status():
     return jsonify({'success': True, **status})
 
 
+@app.route('/api/robot/reset_video', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_reset_video():
+    """QA: clear video_url so generation can re-fire. Keeps the forged narog +
+    stage log intact — the expensive 5-Flux forge doesn't repeat."""
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.robot import start_robot_awakening_video
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE pilgrim.robot SET video_url = NULL, updated_at = NOW() WHERE user_id = %s",
+            (g.user_id,))
+    app.config.pop(f'golem_video_{g.user_id}', None)
+    payload, status = start_robot_awakening_video(g.user_id, app.config, flux)
+    return jsonify(payload), status
+
+
 @app.route('/api/robot/suggest_names', methods=['POST'])
 @login_required
 @handle_api_error

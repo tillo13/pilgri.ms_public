@@ -171,7 +171,7 @@
             </button>
         </div>
         <div class="text-xs mt-8" style="color: var(--text-secondary); opacity: 0.6;">
-            Each stage takes ~1 minute in this build (Step 4d stub) — real-clock days coming in next pass.
+            Forge runs as one ~30–40s Flux 2 Pro call. Stages animate as each item fuses onto the silhouette.
         </div>
     </div>
 </div>
@@ -210,6 +210,10 @@
                            class="rounded-lg cursor-pointer"
                            style="width: 240px; height: 240px; object-fit: cover; border: 3px solid var(--color-sepolia); box-shadow: 0 0 24px rgba(168,85,247,0.35);"></video>
                     <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · click to expand</div>
+                    <button id="robot-regen-video-btn" type="button"
+                            style="margin-top: 8px; background: rgba(168,85,247,0.12); color: var(--color-sepolia); border: 1px solid rgba(168,85,247,0.45); border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;">
+                        ↻ Regenerate Video
+                    </button>
                     {% else %}
                     <div class="robot-hero-video-placeholder robot-hero-forging">
                         <img src="{{ icons.rare_sparkle }}" alt="" style="width: 36px; height: 36px; opacity: 0.8; margin-bottom: 8px;">
