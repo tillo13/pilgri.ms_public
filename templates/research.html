@@ -179,6 +179,17 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock %}
 
 {% block content %}
+
+<!-- Hero Section (Bug #1336: Lab page was missing the page-header aesthetic the other 5 pages have) -->
+<div class="hero-section relative rounded-lg overflow-hidden flex flex-col justify-center" style="margin: -20px -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 140px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/mars_surface_bg_1767636111_bg.png" alt="Lab" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0 object-cover">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle mb-6">Tech Tree &amp; Research</div>
+        <h1 class="hero-title text-white mb-0" style="text-shadow: 0 3px 20px rgba(0,0,0,0.7); font-size: 26px;">Lab</h1>
+    </div>
+</div>
+
 {% if not has_research_station %}
 <div class="research-locked">
     <div style="font-size: 48px; margin-bottom: 16px;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-xl"></div>

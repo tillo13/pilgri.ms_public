@@ -147,7 +147,9 @@
                         <a class="signal-memory-code signal-node-link"
                            href="/expeditions?tab=map&lat={{ site.latitude }}&lon={{ site.longitude }}&zoom=6&marker={{ site.site_code }}"
                            title="Find this site on the Expedition Map">{{ site.site_code }}</a>
-                        <span class="signal-memory-name">{{ site.mission_name }}</span>
+                        <a class="signal-memory-name signal-node-link"
+                           href="/expeditions?tab=map&lat={{ site.latitude }}&lon={{ site.longitude }}&zoom=6&marker={{ site.site_code }}"
+                           title="Find this site on the Expedition Map">{{ site.mission_name }}</a>
                     </div>
                     <div class="signal-memory-founder">
                         <span class="signal-founder-label">FOUNDER:</span>
