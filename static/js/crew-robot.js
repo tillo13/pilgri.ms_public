@@ -55,6 +55,15 @@
 
     // ----- countdown --------------------------------------------------------
     function startCountdown() {
+        // If the hero image is in forging state (build in progress), poll
+        // for stage advances so each per-stage Flux call's output appears
+        // without manual reload. No countdown timer — the backend drives
+        // cadence via Flux call durations.
+        const heroForging = document.querySelector('.robot-hero-forging');
+        if (heroForging) {
+            pollForStageAdvance();
+            return;
+        }
         const el = document.getElementById('robot-countdown');
         if (!el) return;
         const initial = parseInt(el.dataset.seconds, 10);

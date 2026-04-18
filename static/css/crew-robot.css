@@ -50,6 +50,22 @@
     50%      { box-shadow: 0 0 22px rgba(168, 85, 247, 0.45); }
 }
 
+/* Hero-image pulse while Narog is forging — each Flux call takes ~30-40s
+   so the blink gives live feedback that the forge is still working. */
+.robot-hero-forging {
+    animation: robotHeroForgingPulse 1.6s ease-in-out infinite;
+}
+@keyframes robotHeroForgingPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(168, 85, 247, 0.0);
+        filter: brightness(1) saturate(1);
+    }
+    50% {
+        box-shadow: 0 0 28px rgba(168, 85, 247, 0.7);
+        filter: brightness(1.15) saturate(1.25);
+    }
+}
+
 .robot-stage-num {
     position: absolute;
     top: 6px;

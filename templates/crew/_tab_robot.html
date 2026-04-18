@@ -187,13 +187,13 @@
     <div class="card-bg-overlay"></div>
     <div class="relative z-2 text-center">
         <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">
-            {% if rd.is_complete %}Narog Online{% else %}Forging Narog…{% endif %}
+            {% if rd.is_complete %}Narog Online{% else %}Forging Narog — Stage {{ robot.visual_stage or 0 }}/5{% endif %}
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
             <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
                  alt="Narog" id="robot-hero-img"
                  onclick="showImageModal(this.src)"
-                 class="rounded-lg cursor-pointer"
+                 class="rounded-lg cursor-pointer{% if not rd.is_complete %} robot-hero-forging{% endif %}"
                  style="max-width: 220px; max-height: 220px; border: 3px solid var(--color-sepolia);"
                  loading="lazy">
             {% if robot.video_url %}
@@ -235,11 +235,14 @@
         </div>
         {% endif %}
 
-        <!-- Active-build spinner (single oneshot Flux 2 Pro forge). -->
+        <!-- Active-build spinner. No countdown — Flux calls take ~30-40s
+             each and drive the cadence themselves. Page polls on interval. -->
         {% if not rd.is_complete %}
         <div class="robot-countdown-card">
-            <div class="text-xs uppercase tracking-wide" style="color: var(--text-secondary); opacity: 0.7;">Forging</div>
-            <div class="text-xl font-bold" style="color: var(--color-sepolia);">…</div>
+            <div class="text-xs uppercase tracking-wide" style="color: var(--text-secondary); opacity: 0.7;">Now forging</div>
+            <div class="text-sm font-bold" style="color: var(--color-sepolia);">
+                {{ rd.stages[robot.visual_stage].label if (robot.visual_stage or 0) < 5 else 'Final assembly' }}
+            </div>
         </div>
         {% endif %}
 

@@ -340,41 +340,14 @@ def _gather_prior_item_urls(user_id: int, up_to_stage: int) -> list:
 
 def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Fast stages 1–4: log the per-stage rock-icon placeholder immediately
-    with the captain's item manifest. No Flux call.
-
-    Stage 5 only: run ONE Flux 2 Pro forge with silhouette + cairn + every
-    captured item from stages 1–4's manifests as reference images. This is
-    the one-and-only Narog image generation — replaces the 5-stage Kontext
-    chain that produced near-identical polished clones.
+    Per-stage Flux 2 Pro call. Each stage bolts one captured item onto the
+    prior stage's image, so the captain sees the Narog progressively built
+    across 5 cards. Refs per stage: [prior_image_or_silhouette, cairn,
+    this_stage's_item]. Stage 5 also gets the captain name appended.
     """
     tag = f"[robot user={user_id} stage={stage_idx}]"
     stage = ROBOT_STAGES[stage_idx - 1]
 
-    # Stages 1–4: placeholder-only, no Flux.
-    if stage_idx < 5:
-        placeholder_img = STAGE_PLACEHOLDER_IMAGES.get(
-            stage['key'], PLACEHOLDER_STAGE_IMAGE
-        )
-        manifest = _build_base_manifest(stage_idx, source)
-        manifest['kind'] = 'placeholder'
-        fake_tx = f"0xpending{user_id:08x}{stage_idx:02d}"
-        try:
-            result = log_stage(
-                user_id=user_id,
-                stage_idx=stage_idx,
-                source_manifest=manifest,
-                image_url=placeholder_img,
-                data_hex=f"0xstaging_{stage['key']}",
-                tx_hash=fake_tx,
-            )
-            logger.info(f"{tag} placeholder stage logged")
-            return result
-        except Exception as e:
-            logger.exception(f"{tag} log_stage failed: {e}")
-            return None
-
-    # Stage 5: one-shot forge.
     try:
         from utilities.replicate_utils import FluxGenerator
         from utilities.google_cloud_storage_utils import upload_blob_from_url
@@ -382,18 +355,17 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
         logger.exception(f"{tag} imports failed: {e}")
         return None
 
-    item_urls = _gather_prior_item_urls(user_id, stage_idx)
-    if source.get('item_image_url'):
-        if source['item_image_url'] not in item_urls:
-            item_urls.append(source['item_image_url'])
-
-    # Flux 2 Pro caps at 8 input_images; silhouette + cairn + up to 6 items.
-    refs = [PLACEHOLDER_STAGE_IMAGE, CAIRN_REF] + item_urls[:6]
+    seed_url = _get_seed_image_url(user_id, stage_idx, source)
+    refs = [seed_url, CAIRN_REF]
+    item_img = source.get('item_image_url') if source else None
+    if item_img:
+        refs.append(item_img)
     refs = [r for r in refs if r]
 
-    captain = _get_captain_name(user_id)
-    prompt = f"{ONESHOT_FORGE_PROMPT} Forged for {captain}."
-    logger.info(f"{tag} 🤖 one-shot forge refs={len(refs)}")
+    prompt = ONESHOT_FORGE_PROMPT
+    if stage_idx == 5:
+        prompt = f"{prompt} Forged for {_get_captain_name(user_id)}."
+    logger.info(f"{tag} 🤖 forge refs={len(refs)}")
 
     try:
         flux = FluxGenerator()
@@ -407,7 +379,7 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
         return None
 
     ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    blob_name = f"robots/{user_id}/narog_{ts}.png"
+    blob_name = f"robots/{user_id}/stage_{stage_idx}_{ts}.png"
     try:
         gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
     except Exception as e:
@@ -418,21 +390,21 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
         return None
 
     manifest = _build_base_manifest(stage_idx, source)
-    manifest['kind'] = 'oneshot_flux2'
+    manifest['kind'] = 'flux2_chain'
+    manifest['seed_url'] = seed_url
     manifest['ref_count'] = len(refs)
-    manifest['forge_prompt'] = prompt[:240]
 
-    fake_tx = f"0xforge{user_id:08x}"
+    fake_tx = f"0xforge{user_id:08x}{stage_idx:02d}"
     try:
         result = log_stage(
             user_id=user_id,
             stage_idx=stage_idx,
             source_manifest=manifest,
             image_url=gcs_url,
-            data_hex="0xoneshot_forge_pending_sepolia",
+            data_hex=f"0xforge_{stage['key']}_pending_sepolia",
             tx_hash=fake_tx,
         )
-        logger.info(f"{tag} forge complete")
+        logger.info(f"{tag} stage {stage_idx} complete")
         return result
     except Exception as e:
         logger.exception(f"{tag} log_stage failed: {e}")
