@@ -62,6 +62,15 @@
         return html;
     }
 
+    function linkifyUrls(escapedText) {
+        // Operates on already-escaped HTML. Wraps http(s) URLs in anchors.
+        return escapedText.replace(/(https?:\/\/[^\s<"']+)/g, function(url) {
+            var clean = url.replace(/[.,;:!?)\]]+$/, '');
+            var trailing = url.slice(clean.length);
+            return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer" class="bt-history-link">' + clean + '</a>' + trailing;
+        });
+    }
+
     function statusClass(status) {
         var map = {
             'New': 'new', 'Backlog': 'backlog', 'Awaiting QA': 'awaiting',
@@ -308,10 +317,15 @@
         if (history && history.length) {
             historyHtml = '<div class="bt-history"><div class="bt-history-title">History (' + history.length + ')</div>' +
                 history.map(function(h) {
-                    var val = escapeHtml(h.new_value || '');
-                    if (val.length > 120) val = val.substring(0, 120) + '...';
-                    var old = escapeHtml(h.old_value || '');
-                    if (old.length > 60) old = old.substring(0, 60) + '...';
+                    var urlRe = /^https?:\/\/\S+$/;
+                    var rawNew = h.new_value || '';
+                    var rawOld = h.old_value || '';
+                    var isUrlNew = urlRe.test(rawNew.trim());
+                    var isUrlOld = urlRe.test(rawOld.trim());
+                    var val = escapeHtml((!isUrlNew && rawNew.length > 120) ? rawNew.substring(0, 120) + '...' : rawNew);
+                    var old = escapeHtml((!isUrlOld && rawOld.length > 60) ? rawOld.substring(0, 60) + '...' : rawOld);
+                    val = linkifyUrls(val);
+                    old = linkifyUrls(old);
                     return '<div class="bt-history-bubble">' +
                         '<div class="bt-history-bubble-header">' +
                             '<strong>' + escapeHtml(h.changed_by) + '</strong> changed <em>' + escapeHtml(h.field_name) + '</em>' +

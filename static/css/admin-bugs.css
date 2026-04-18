@@ -513,6 +513,8 @@
     font-size: 12px; color: rgba(100,255,100,0.7);
     overflow: hidden; text-overflow: ellipsis;
 }
+a.bt-history-link { color: #7dd3fc; text-decoration: underline; word-break: break-all; }
+a.bt-history-link:hover { color: #38bdf8; }
 a.bt-mention-link { color: #f97316; text-decoration: none; font-weight: 600; cursor: default; }
 a.bt-mention-link:hover { text-decoration: underline; }
 
