@@ -190,28 +190,36 @@
             {% if rd.is_complete %}Narog Online{% else %}Forging Narog — Stage {{ robot.visual_stage or 0 }}/5{% endif %}
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
-            {% if rd.is_complete and robot.video_url %}
-            <!-- Completed + video ready: video IS the hero (captain/scientist pattern) -->
-            <div class="robot-hero-video-wrap">
-                <video src="{{ robot.video_url }}" id="robot-hero-video"
-                       playsinline muted autoplay loop
-                       onclick="showGolemVideoModal('{{ robot.video_url }}')"
-                       class="rounded-lg cursor-pointer"
-                       style="max-width: 260px; max-height: 260px; border: 3px solid var(--color-sepolia); box-shadow: 0 0 32px rgba(168,85,247,0.45);"></video>
-                <div class="text-xs mt-4" style="color: var(--text-muted);">Click to expand · <a href="javascript:void(0)" onclick="showImageModal('{{ robot.current_image_url }}')" style="color: var(--color-sepolia);">view still portrait</a></div>
-            </div>
-            {% elif rd.is_complete %}
-            <!-- Completed + video generating: narog image with "awakening video loading" placeholder -->
-            <div class="robot-hero-video-wrap" id="robot-hero-awaiting-video">
-                <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
-                     alt="Narog" id="robot-hero-img"
-                     onclick="showImageModal(this.src)"
-                     class="rounded-lg cursor-pointer robot-hero-forging"
-                     style="max-width: 260px; max-height: 260px; border: 3px solid var(--color-sepolia);"
-                     loading="lazy">
-                <div id="robot-video-loading" class="robot-video-loading">
-                    <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> Generating Awakening Video…
-                    <div class="text-xs" style="opacity: 0.7; margin-top: 2px;">~60 seconds</div>
+            {% if rd.is_complete %}
+            <!-- Completed: still portrait (left) + video or "generating" placeholder (right) -->
+            <div class="robot-hero-pair" {% if not robot.video_url %}id="robot-hero-awaiting-video"{% endif %}>
+                <div class="robot-hero-slot">
+                    <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
+                         alt="Narog" id="robot-hero-img"
+                         onclick="showImageModal(this.src)"
+                         class="rounded-lg cursor-pointer"
+                         style="width: 240px; height: 240px; object-fit: cover; border: 3px solid var(--color-sepolia);"
+                         loading="lazy">
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Still portrait · click to expand</div>
+                </div>
+                <div class="robot-hero-slot">
+                    {% if robot.video_url %}
+                    <video src="{{ robot.video_url }}" id="robot-hero-video"
+                           playsinline muted autoplay loop
+                           onclick="showGolemVideoModal('{{ robot.video_url }}')"
+                           class="rounded-lg cursor-pointer"
+                           style="width: 240px; height: 240px; object-fit: cover; border: 3px solid var(--color-sepolia); box-shadow: 0 0 24px rgba(168,85,247,0.35);"></video>
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · click to expand</div>
+                    {% else %}
+                    <div class="robot-hero-video-placeholder robot-hero-forging">
+                        <img src="{{ icons.rare_sparkle }}" alt="" style="width: 36px; height: 36px; opacity: 0.8; margin-bottom: 8px;">
+                        <div id="robot-video-loading" class="robot-video-loading">
+                            Generating Awakening Video…
+                            <div class="text-xs" style="opacity: 0.7; margin-top: 4px;">~60 seconds</div>
+                        </div>
+                    </div>
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video</div>
+                    {% endif %}
                 </div>
             </div>
             {% else %}
