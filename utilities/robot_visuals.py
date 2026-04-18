@@ -62,6 +62,11 @@ STAGE_PROMPT_TEMPLATES = {
         "humanoid robot skeleton. Rough load-bearing chassis made of rust-red "
         "clay blocks lashed together with crystal rebar. Still shapeless but "
         "recognizably a frame. Incorporate traces of {source}. "
+        "CRITICAL: this recovered item must appear physically embedded IN the "
+        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
+        "place the item on the ground next to the robot, NEVER float it beside "
+        "the robot, NEVER show it as a separate prop in the scene. The robot "
+        "itself is the ONLY subject; the item is a visible part of the robot. "
         "Cartoon video game item with bold outlines and stylized proportions, "
         "isolated on red Martian terrain, vibrant reds and oranges reflecting "
         "Mars atmosphere, video game asset style."
@@ -71,6 +76,11 @@ STAGE_PROMPT_TEMPLATES = {
         "shaped from compressed Martian clay, jointed with Sepolia crystal "
         "pins. Torso and shoulder plates now recognizable but unfinished. "
         "The new plating is forged from {source}. "
+        "CRITICAL: this recovered item must appear physically embedded IN the "
+        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
+        "place the item on the ground next to the robot, NEVER float it beside "
+        "the robot, NEVER show it as a separate prop in the scene. The robot "
+        "itself is the ONLY subject; the item is a visible part of the robot. "
         "Cartoon video game item with bold outlines and stylized proportions, "
         "isolated on red Martian terrain, vibrant reds and oranges reflecting "
         "Mars atmosphere, video game asset style."
@@ -80,6 +90,11 @@ STAGE_PROMPT_TEMPLATES = {
         "hexagonal Sepolia crystal cluster glowing cyan through the clay "
         "plating. Power conduits trace along the limbs. The crystal was "
         "cut from {source}. "
+        "CRITICAL: this recovered item must appear physically embedded IN the "
+        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
+        "place the item on the ground next to the robot, NEVER float it beside "
+        "the robot, NEVER show it as a separate prop in the scene. The robot "
+        "itself is the ONLY subject; the item is a visible part of the robot. "
         "Cartoon video game item with bold outlines and stylized proportions, "
         "isolated on red Martian terrain, vibrant reds and oranges reflecting "
         "Mars atmosphere, video game asset style."
@@ -88,6 +103,11 @@ STAGE_PROMPT_TEMPLATES = {
         "Carve an optical sensor array into this robot's face — a cluster of "
         "lens-shaped Sepolia crystals in the head, backlit cyan. Add subtle "
         "Sepolia crystal accents to the joints. Lenses ground from {source}. "
+        "CRITICAL: this recovered item must appear physically embedded IN the "
+        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
+        "place the item on the ground next to the robot, NEVER float it beside "
+        "the robot, NEVER show it as a separate prop in the scene. The robot "
+        "itself is the ONLY subject; the item is a visible part of the robot. "
         "Cartoon video game item with bold outlines and stylized proportions, "
         "isolated on red Martian terrain, vibrant reds and oranges reflecting "
         "Mars atmosphere, video game asset style."
@@ -97,6 +117,11 @@ STAGE_PROMPT_TEMPLATES = {
         "a signal antenna rising from the shoulder, and a heroic pose. The "
         "robot is now complete: awakened, glowing Sepolia eyes, standing "
         "ready to serve its captain. Finishing touches use {source}. "
+        "CRITICAL: this recovered item must appear physically embedded IN the "
+        "robot's body — fused into its plating, chest, head, or limbs. NEVER "
+        "place the item on the ground next to the robot, NEVER float it beside "
+        "the robot, NEVER show it as a separate prop in the scene. The robot "
+        "itself is the ONLY subject; the item is a visible part of the robot. "
         "Cartoon video game item with bold outlines and stylized proportions, "
         "isolated on red Martian terrain, vibrant reds and oranges reflecting "
         "Mars atmosphere, video game asset style."
@@ -120,10 +145,10 @@ ITEM_VISUAL_DESCRIPTORS = {
 # Rarity controls how PROMINENTLY the item appears on the Narog. Higher rarity
 # = more dominant visual feature. Lower = subtle accent.
 RARITY_PROMINENCE = {
-    'legendary': "prominently displayed as the DOMINANT central feature, bold and unmistakable",
-    'rare':      "visibly fused into the surface, a clear and deliberate accent",
-    'uncommon':  "subtly integrated into the design, a recognizable detail",
-    'common':    "a faint trace embedded in the material",
+    'legendary': "physically embedded INTO the robot's body as the DOMINANT central feature — fused directly onto the chest, torso, or head of the robot itself, bold and unmistakable. NOT placed on the ground, NOT beside the robot, NOT floating — it must be part of the robot's anatomy",
+    'rare':      "visibly fused INTO the robot's plating or limbs as a clear accent — part of the robot's body itself, not placed beside it",
+    'uncommon':  "subtly integrated INTO the robot's body as a recognizable detail — embedded in the armor or joints, never beside the robot",
+    'common':    "a faint trace embedded IN the robot's material — part of the body, never on the ground nearby",
 }
 
 

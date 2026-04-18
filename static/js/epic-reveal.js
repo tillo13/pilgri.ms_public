@@ -267,6 +267,15 @@ window.EpicReveal = (function() {
             var revealFn = opts.revealSound && audio && audio[opts.revealSound] ? opts.revealSound : 'playBondReveal';
             if (audio && audio[revealFn]) audio[revealFn]();
             img.classList.add('visible');
+            // Click the revealed image to open a full-size lightbox modal.
+            img.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                if (window.MarsModal) {
+                    var body = '<div style="display:flex;justify-content:center;padding:8px 0;">'
+                        + '<img src="' + img.src + '" style="max-width:100%;max-height:70vh;border-radius:12px;"></div>';
+                    MarsModal.show({ title: opts.title || '', size: 'lg', theme: 'aria', body: body });
+                }
+            });
         }
 
         // Info section
@@ -315,9 +324,9 @@ window.EpicReveal = (function() {
         // Text area (lines added dynamically)
         html += '<div class="er-text-area"></div>';
 
-        // Image
+        // Image (clickable → opens full-size modal)
         if (opts.image) {
-            html += '<img class="er-image" src="' + opts.image + '" alt="Artifact">';
+            html += '<img class="er-image" src="' + opts.image + '" alt="Artifact" style="cursor: zoom-in;">';
         }
 
         // Title

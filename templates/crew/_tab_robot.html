@@ -5,15 +5,6 @@
 
 {% set rd = robot_data %}
 
-<!-- QA: Start Over button — wipes this captain's robot so the preview re-renders
-     from scratch. Temporary while Narog UI is being tuned. -->
-<div style="text-align:right; margin-bottom:8px;">
-    <button id="robot-reset-btn" type="button"
-        style="background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">
-        ↻ QA: Start Over
-    </button>
-</div>
-
 {% if not rd or not rd.lab_unlocked %}
 
 <!-- ═════════ STATE 1: LOCKED — needs Robotics Lab Lv1+ ═════════ -->
@@ -314,13 +305,30 @@
     </div>
     <div style="text-align: center;">
         <div class="text-sm mb-8" style="color: var(--color-sepolia); font-weight: 600;">90 shards</div>
-        <button id="golem-gen-video-btn" class="btn-primary" style="padding: 10px 24px; font-size: 14px;">
-            Generate Video
+        <button id="golem-gen-video-btn" style="background: var(--color-sepolia); color: white; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; letter-spacing: 0.04em;">
+            <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> Generate Video
         </button>
         <div id="golem-video-status" class="text-xs mt-8" style="color: var(--text-muted); display: none;"></div>
     </div>
 </div>
 {% endif %}
+
+<!-- QA: Start Over — wipes this captain's Narog + stage_log so the preview
+     re-renders from scratch. Temporary while Narog UI is being tuned. -->
+<div class="dashboard-card p-20 mb-16" style="border: 1px dashed rgba(239,68,68,0.35); background: rgba(239,68,68,0.04);">
+    <div class="text-xs uppercase tracking-wide mb-8" style="color: #fca5a5; font-weight: 600; letter-spacing: 0.08em;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> QA — Start Over
+    </div>
+    <div class="text-sm mb-12" style="color: var(--text-secondary);">
+        Wipe this Narog and re-forge from scratch. The Kontext image chain will regenerate with fresh picks. Used during QA / iteration.
+    </div>
+    <div style="text-align: center;">
+        <button id="robot-reset-btn" type="button"
+            style="background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); border-radius: 10px; padding: 12px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">
+            ↻ Start Over
+        </button>
+    </div>
+</div>
 
 <!-- What does the Narog do? -->
 <div class="dashboard-card p-20 mb-16">
