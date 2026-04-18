@@ -350,6 +350,22 @@ def api_robot_build():
     return jsonify(payload), status
 
 
+@app.route('/api/robot/reset', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_reset():
+    """QA-only: wipe the caller's robot + stage_log so the preview re-renders
+    from scratch. Used during Narog iteration. Safe because it only affects the
+    caller's own data."""
+    from utilities.postgres.core import db_cursor
+    with db_cursor(commit=True) as cur:
+        cur.execute('DELETE FROM pilgrim.robot_stage_log WHERE user_id=%s', (g.user_id,))
+        stage_rows = cur.rowcount
+        cur.execute('DELETE FROM pilgrim.robot WHERE user_id=%s', (g.user_id,))
+        robot_rows = cur.rowcount
+    return jsonify({'success': True, 'stage_log_deleted': stage_rows, 'robot_deleted': robot_rows})
+
+
 @app.route('/api/robot/name', methods=['POST'])
 @login_required
 @handle_api_error

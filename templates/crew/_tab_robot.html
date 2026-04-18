@@ -5,6 +5,15 @@
 
 {% set rd = robot_data %}
 
+<!-- QA: Start Over button — wipes this captain's robot so the preview re-renders
+     from scratch. Temporary while Narog UI is being tuned. -->
+<div style="text-align:right; margin-bottom:8px;">
+    <button id="robot-reset-btn" type="button"
+        style="background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">
+        ↻ QA: Start Over
+    </button>
+</div>
+
 {% if not rd or not rd.lab_unlocked %}
 
 <!-- ═════════ STATE 1: LOCKED — needs Robotics Lab Lv1+ ═════════ -->

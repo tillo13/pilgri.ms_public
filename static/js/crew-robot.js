@@ -792,10 +792,29 @@
         });
     }
 
+    function wireResetButton() {
+        const btn = document.getElementById('robot-reset-btn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            if (!confirm('QA: wipe this captain\'s Narog and re-forge from scratch? The Kontext image chain will regenerate.')) return;
+            btn.disabled = true;
+            const original = btn.textContent;
+            btn.textContent = '↻ Resetting...';
+            try {
+                await postJSONSafe('/api/robot/reset', {});
+                window.location.href = '/crew?tab=robot';
+            } catch (e) {
+                btn.disabled = false;
+                btn.textContent = original;
+            }
+        });
+    }
+
     // ----- INIT -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
         wireReroll();
+        wireResetButton();
         wireNameSave();
         loadNameSuggestions();
         wireDial();
