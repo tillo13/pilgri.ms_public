@@ -797,45 +797,33 @@
         btn.addEventListener('click', () => fireGolemCinematic(false));
     }
 
-    // ----- VIDEO GENERATION ---------------------------------------------------
-    function wireVideoButton() {
-        var btn = document.getElementById('golem-gen-video-btn');
-        if (!btn) return;
-        btn.addEventListener('click', async function() {
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
-            var status = document.getElementById('golem-video-status');
-            if (status) { status.style.display = 'block'; status.textContent = 'Starting video generation (~60s)...'; }
+    // ----- VIDEO GENERATION (auto) --------------------------------------------
+    // When the narog is complete but has no video yet, kick off generation
+    // immediately and poll for completion. Video becomes the hero on reload.
+    function autoStartVideoGen() {
+        var wrap = document.getElementById('robot-hero-awaiting-video');
+        if (!wrap) return;  // only present when is_complete && !video_url
+        var status = document.getElementById('robot-video-loading');
+        (async function() {
             try {
                 var data = await postJSONSafe('/api/robot/generate_video', {});
-                if (data.already_exists) {
-                    reloadSoon();
-                    return;
-                }
-                // Poll for completion
-                var poll = setInterval(async function() {
-                    try {
-                        var r = await fetch('/api/robot/video_status');
-                        var s = await r.json();
-                        if (s.url) {
-                            clearInterval(poll);
-                            if (status) status.textContent = 'Video ready!';
-                            reloadSoon();
-                        } else if (s.error) {
-                            clearInterval(poll);
-                            if (status) status.textContent = 'Generation failed. Try again later.';
-                            btn.disabled = false;
-                            btn.textContent = 'Generate Video';
-                        } else if (status) {
-                            status.textContent = 'Generating... this takes about 60 seconds.';
-                        }
-                    } catch (e) { /* keep polling */ }
-                }, 5000);
-            } catch (e) {
-                btn.disabled = false;
-                btn.textContent = 'Generate Video';
-            }
-        });
+                if (data && data.already_exists) { reloadSoon(); return; }
+            } catch (e) { /* fall through to polling */ }
+            var poll = setInterval(async function() {
+                try {
+                    var r = await fetch('/api/robot/video_status');
+                    var s = await r.json();
+                    if (s && s.url) {
+                        clearInterval(poll);
+                        if (status) status.innerHTML = '<strong>Awakening video ready!</strong>';
+                        reloadSoon();
+                    } else if (s && s.error) {
+                        clearInterval(poll);
+                        if (status) status.innerHTML = 'Video generation failed — refresh to retry.';
+                    }
+                } catch (e) { /* keep polling */ }
+            }, 5000);
+        })();
     }
 
     function wireResetButton() {
@@ -904,7 +892,7 @@
         wireDial();
         startCountdown();
         wireReplayButton();
-        wireVideoButton();
+        autoStartVideoGen();
         wireManifestClicks();
         maybeFireRobotCinematic();
     });
