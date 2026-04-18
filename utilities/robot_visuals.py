@@ -65,11 +65,11 @@ _STYLE_SUFFIX = (
 
 STAGE_PROMPT_TEMPLATES = {
     1: (
-        "Transform this recovered Martian artifact into a humanoid robot's "
-        "skeletal frame. The artifact becomes the robot's CHEST — visibly "
-        "fused into the center of the torso as a glowing chest-piece. Rough "
-        "load-bearing clay limbs extend outward from it. The robot's chest "
-        "IS made of {source}. " + _STYLE_SUFFIX
+        "Keep this humanoid robot's overall silhouette and pose. Fuse the "
+        "following artifact directly INTO the robot's CHEST as a glowing "
+        "centerpiece — it replaces the current chest plate and becomes the "
+        "robot's defining feature. The robot's chest IS made of {source}. "
+        + _STYLE_SUFFIX
     ),
     2: (
         "Embed this artifact directly into the robot's CHEST PLATE as the "
@@ -219,18 +219,18 @@ def _release(user_id: int, stage_idx: int) -> None:
 
 def _get_seed_image_url(user_id: int, stage_idx: int, source: Optional[Dict[str, Any]] = None) -> str:
     """
-    Resolve the 'input image' for this stage's Kontext edit. Stage 1 seeds
-    from the captain's OWN first-item image when available so every captain's
-    Narog starts from a visually distinct foundation (prevents the 'always
-    looks like the same cairn' problem). Falls back to the frame cairn when
-    the source has no item image (home-base stub, missing URL).
+    Resolve the 'input image' for this stage's Kontext edit.
+
+    Stage 1 always seeds from the SAME base robot silhouette
+    (`robot_placeholder_stage.png`). Each captain's unique discoveries are
+    introduced via the Kontext prompt, which fuses the item into the robot's
+    body. The chain then progressively layers each subsequent item on top of
+    the prior stage's output.
 
     Stages 2-5 always use the prior stage's already-uploaded GCS image.
     """
     if stage_idx <= 1:
-        if source and source.get('item_image_url'):
-            return source['item_image_url']
-        return STAGE_PLACEHOLDER_IMAGES['frame']
+        return PLACEHOLDER_STAGE_IMAGE
 
     try:
         with db_cursor() as cur:
