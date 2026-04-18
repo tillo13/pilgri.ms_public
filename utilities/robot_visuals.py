@@ -104,12 +104,56 @@ STAGE_PROMPT_TEMPLATES = {
 }
 
 
+# Per-item visual descriptors so each discovery PHYSICALLY shows up on the
+# Narog in a way the captain can recognize. Keyword-matched against item_name
+# (lowercased). Fallback is a generic "recovered fragment".
+ITEM_VISUAL_DESCRIPTORS = {
+    'quantum crystal':  "a prismatic violet-and-cyan crystal lattice pulsing with inner light",
+    'quantum obelisk':  "a monolithic black basalt slab carved with glowing geometric runes",
+    'crystal sentinel': "a faceted aqua-crystal gemstone shaped like a watchful eye",
+    'viking fragment':  "a weathered iron-red metallic shard etched with runic script",
+    'ripple stone':     "a concentric-ringed pale stone that glows softly where touched",
+    'depth reading':    "a dark pressure-scarred rock veined with silver filaments",
+    'echo shard':       "a hollow resonant crystal shard that refracts twin images",
+}
+
+# Rarity controls how PROMINENTLY the item appears on the Narog. Higher rarity
+# = more dominant visual feature. Lower = subtle accent.
+RARITY_PROMINENCE = {
+    'legendary': "prominently displayed as the DOMINANT central feature, bold and unmistakable",
+    'rare':      "visibly fused into the surface, a clear and deliberate accent",
+    'uncommon':  "subtly integrated into the design, a recognizable detail",
+    'common':    "a faint trace embedded in the material",
+}
+
+
+def _describe_item(source: Dict[str, Any]) -> str:
+    """Produce a vivid visual descriptor for Kontext, specific to this item."""
+    item = (source.get('item_name') or 'recovered fragment').strip()
+    key = item.lower()
+    descriptor = ITEM_VISUAL_DESCRIPTORS.get(key)
+    if not descriptor:
+        # Partial match fallback — try any substring hit
+        for k, v in ITEM_VISUAL_DESCRIPTORS.items():
+            if k in key or key in k:
+                descriptor = v
+                break
+    if not descriptor:
+        descriptor = f"a distinctive {item}"
+    return descriptor
+
+
 def _format_source_phrase(source: Dict[str, Any]) -> str:
-    """Collapse a stage source manifest into a one-liner for prompt interpolation."""
-    item = source.get('item_name') or 'recovered fragment'
-    rarity = source.get('rarity') or 'common'
+    """Collapse a stage source manifest into a rich visual phrase for Kontext."""
+    rarity = (source.get('rarity') or 'common').lower()
+    prominence = RARITY_PROMINENCE.get(rarity, RARITY_PROMINENCE['common'])
+    descriptor = _describe_item(source)
+    item_name = source.get('item_name') or 'fragment'
     landmark = source.get('landmark_name') or 'an unknown site'
-    return f"a {rarity} {item} recovered at {landmark}"
+    return (
+        f"{descriptor} — the {rarity} {item_name} recovered at {landmark} — "
+        f"{prominence}"
+    )
 
 
 def _get_captain_name(user_id: int) -> str:

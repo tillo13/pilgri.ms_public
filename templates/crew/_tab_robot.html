@@ -382,6 +382,7 @@
     "stage_duration_seconds": {{ (robot_data.stage_duration_seconds if robot_data else 60) | tojson }},
     "seconds_until_next_stage": {{ (robot_data.seconds_until_next_stage if robot_data else None) | tojson }},
     "robot_name": {{ (robot.name if robot else "") | tojson }},
+    "visual_stage": {{ (robot.visual_stage if robot else 0) | tojson }},
     "name_suggestions": {{ (robot.name_suggestions if robot and robot.name_suggestions else []) | tojson }}
 }
 </script>

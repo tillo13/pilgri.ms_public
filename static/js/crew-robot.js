@@ -60,21 +60,50 @@
         const initial = parseInt(el.dataset.seconds, 10);
         if (!Number.isFinite(initial)) return;
 
+        // If the timer is already expired on page load, the background Kontext
+        // thread is still generating the image. Reloading every second creates
+        // an infinite refresh loop — poll status instead, and only reload when
+        // visual_stage actually advances.
+        if (initial <= 0) {
+            pollForStageAdvance();
+            return;
+        }
+
         let remaining = initial;
         const tick = () => {
             remaining -= 1;
             if (remaining <= 0) {
-                el.textContent = '0s';
+                el.textContent = 'Forging…';
                 clearInterval(countdownInterval);
                 countdownInterval = null;
-                // Reload so the server-side tick advances the next stage
-                reloadSoon();
+                pollForStageAdvance();
                 return;
             }
             el.textContent = fmtSeconds(remaining);
         };
         if (countdownInterval) clearInterval(countdownInterval);
         countdownInterval = setInterval(tick, 1000);
+    }
+
+    function pollForStageAdvance() {
+        const el = document.getElementById('robot-countdown');
+        const currentStage = BRIDGE && BRIDGE.visual_stage;
+        let attempts = 0;
+        const check = async () => {
+            attempts += 1;
+            try {
+                const r = await fetch('/api/robot/status');
+                const data = await r.json();
+                const newStage = data && data.data && data.data.robot && data.data.robot.visual_stage;
+                if (Number.isFinite(newStage) && newStage !== currentStage) {
+                    window.location.reload();
+                    return;
+                }
+            } catch (e) { /* keep polling */ }
+            if (el) el.textContent = 'Forging' + '.'.repeat((attempts % 4));
+            if (attempts < 60) setTimeout(check, 5000); // 5 min ceiling
+        };
+        setTimeout(check, 3000);
     }
 
     // Exposed so the crew tab callback can re-arm the countdown when the
