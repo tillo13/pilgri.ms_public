@@ -58,10 +58,12 @@ logger = logging.getLogger(__name__)
 #   "a {rarity} {item_name} recovered at {landmark_name}".
 STAGE_PROMPT_TEMPLATES = {
     1: (
-        "Transform this Martian regolith foundation into the beginnings of a "
-        "humanoid robot skeleton. Rough load-bearing chassis made of rust-red "
-        "clay blocks lashed together with crystal rebar. Still shapeless but "
-        "recognizably a frame. Incorporate traces of {source}. "
+        "Transform this recovered Martian artifact into the beginnings of a "
+        "humanoid robot skeleton, fusing the artifact's form, color, and "
+        "material directly INTO the robot's chassis. Rough load-bearing frame "
+        "with rust-red clay limbs lashed together with crystal rebar. Still "
+        "shapeless but recognizably a frame. The robot's structure clearly "
+        "grew from {source}. "
         "CRITICAL: this recovered item must appear physically embedded IN the "
         "robot's body — fused into its plating, chest, head, or limbs. NEVER "
         "place the item on the ground next to the robot, NEVER float it beside "
@@ -246,14 +248,19 @@ def _release(user_id: int, stage_idx: int) -> None:
 # CORE STAGE RUNNER
 # ============================================================================
 
-def _get_seed_image_url(user_id: int, stage_idx: int) -> str:
+def _get_seed_image_url(user_id: int, stage_idx: int, source: Optional[Dict[str, Any]] = None) -> str:
     """
     Resolve the 'input image' for this stage's Kontext edit. Stage 1 seeds
-    from the 'frame' cairn (a regolith foundation, NOT a finished robot) so
-    the Kontext chain can actually build progressively. Stages 2-5 use the
-    prior stage's already-uploaded GCS image from the robot row.
+    from the captain's OWN first-item image when available so every captain's
+    Narog starts from a visually distinct foundation (prevents the 'always
+    looks like the same cairn' problem). Falls back to the frame cairn when
+    the source has no item image (home-base stub, missing URL).
+
+    Stages 2-5 always use the prior stage's already-uploaded GCS image.
     """
     if stage_idx <= 1:
+        if source and source.get('item_image_url'):
+            return source['item_image_url']
         return STAGE_PLACEHOLDER_IMAGES['frame']
 
     try:
@@ -287,7 +294,7 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
         return None
 
     stage = ROBOT_STAGES[stage_idx - 1]
-    seed_url = _get_seed_image_url(user_id, stage_idx)
+    seed_url = _get_seed_image_url(user_id, stage_idx, source)
     prompt = _build_stage_prompt(user_id, stage_idx, source)
     logger.info(f"{tag} 🤖 begin key={stage['key']} seed={seed_url[:80]}")
 
