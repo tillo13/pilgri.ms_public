@@ -64,6 +64,54 @@ _STYLE_SUFFIX = (
     "the frame as the only subject; the ground is empty Martian sand."
 )
 
+# One-shot forge prompt — rendered ONCE at stage 5 with silhouette + cairn +
+# every captain's item as refs. Replaces the 5-stage Kontext chain (which
+# produced near-identical polished clones). See testing/test_narog_flux2_oneshot.py
+# for the iteration history that landed on this prompt.
+ONESHOT_FORGE_PROMPT = (
+    "A single makeshift scrap-robot character standing on flat rust-red "
+    "Martian sand with an empty horizon. This is not a polished mech — "
+    "it is a crude junkyard golem spackled together out of Mars dirt, "
+    "caked clay, loose rocks, and scavenged artifacts, held on with "
+    "bundles of exposed open wires, dangling cables, rusted bolts, "
+    "little improvised gadgets, small blinking modules, and wet clay "
+    "mortar oozing between the seams. "
+    "Image 1 only sets the overall humanoid stance and limb layout — "
+    "do not copy its clean finish; the final robot should look rougher, "
+    "dirtier, cruder, and distinctly asymmetric. "
+    "Treat every one of the remaining reference images as raw salvage "
+    "this robot has bolted onto itself at odd angles. "
+    "Vary the placement wildly: oversize one piece, bury another half "
+    "into the torso, stick one sideways off a shoulder, jut one out of "
+    "the back like a spine, wedge one into a hip or thigh. Pieces should "
+    "be off-center, tilted, mismatched in scale, some way too big, some "
+    "half-buried in clay, some wired on with tangled loops of open "
+    "cable and patched-in gadgets. No two pieces should sit "
+    "symmetrically. "
+    "Every salvaged element ends up visibly fused onto the body — not "
+    "on the ground, not floating beside it — but clearly bolted, "
+    "wired, or mudded on rather than smoothly integrated, with loose "
+    "cable ends and tiny exposed gadgets visible around each joint. "
+    "Keep the robot's face and both eyes fully visible and unobstructed "
+    "— never place any artifact, crystal, or rock slab on, over, or "
+    "across the eyes, face, or forehead; route bulky pieces to the "
+    "torso, limbs, shoulders, crown, or back of the head instead. "
+    "The surface is rough and earthen: cracked red clay, dusty rock, "
+    "exposed rebar, chipped paint, streaks of Martian dirt, uneven "
+    "patchwork. One shoulder bulkier than the other, one leg thicker, "
+    "limbs slightly mismatched. Improvised, lopsided, one-of-a-kind. "
+    "Bold black cartoon outlines, chunky stylized proportions, vibrant "
+    "Martian reds and oranges, subtle glowing accents where crystalline "
+    "pieces poke through the dirt. Gritty hand-built video-game "
+    "character-asset style, flat lighting, square 1:1 framing."
+)
+
+CAIRN_REF = (
+    "https://storage.googleapis.com/galactica-pilgrim-assets/"
+    "ui/icons/robot_stage_frame.png"
+)
+
+
 STAGE_PROMPT_TEMPLATES = {
     1: (
         "Keep this humanoid robot's overall silhouette and pose. Fuse the "
@@ -249,114 +297,142 @@ def _get_seed_image_url(user_id: int, stage_idx: int, source: Optional[Dict[str,
     return PLACEHOLDER_STAGE_IMAGE
 
 
-def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Synchronous stage advance — Kontext edit + GCS upload + log_stage.
-    Returns the log_stage result on success, None on failure. Failure
-    is logged; caller falls back to stub.
-    """
-    tag = f"[robot user={user_id} stage={stage_idx}]"
-    try:
-        from utilities.replicate_utils import FluxGenerator
-        from utilities.google_cloud_storage_utils import upload_blob_from_url
-    except ImportError as e:
-        logger.exception(f"{tag} imports failed — cannot run Kontext: {e}")
-        return None
-
+def _build_base_manifest(stage_idx: int, source: Dict[str, Any]) -> Dict[str, Any]:
     stage = ROBOT_STAGES[stage_idx - 1]
-    seed_url = _get_seed_image_url(user_id, stage_idx, source)
-    prompt = _build_stage_prompt(user_id, stage_idx, source)
-    logger.info(f"{tag} 🤖 begin key={stage['key']} seed={seed_url[:80]}")
-
-    # 1) Flux Kontext edit
-    try:
-        flux = FluxGenerator()
-    except Exception as e:
-        logger.exception(f"{tag} FluxGenerator init failed: {e}")
-        return None
-    # Model selector — config.NAROG_IMAGE_MODEL = 'flux2' uses multi-ref Flux
-    # 2 Pro, anything else uses the single-seed Kontext path. Env var overrides
-    # the config constant so prod can flip without redeploying.
-    try:
-        from utilities.postgres.config import NAROG_IMAGE_MODEL as _DEFAULT_MODEL
-    except Exception:
-        _DEFAULT_MODEL = 'kontext'
-    model_choice = os.environ.get('NAROG_IMAGE_MODEL', _DEFAULT_MODEL).lower()
-    try:
-        if model_choice == 'flux2':
-            # Stage 1: seed + cairn + captain's item (3 refs). Stages 2-5:
-            # prior stage output + captain's item (2 refs). Keeps chain
-            # continuity while introducing each new discovery visually.
-            refs = [seed_url]
-            if stage_idx <= 1:
-                try:
-                    refs.append(STAGE_PLACEHOLDER_IMAGES['frame'])  # cairn rubble
-                except Exception:
-                    pass
-            item_img = source.get('item_image_url') if source else None
-            if item_img:
-                refs.append(item_img)
-            replicate_url = flux.flux2_pro_edit(prompt, image_urls=refs)
-            logger.info(f"{tag} Flux2 ok refs={len(refs)} -> {str(replicate_url)[:80]}")
-        else:
-            replicate_url = flux.kontext_edit(seed_url, prompt)
-            logger.info(f"{tag} Kontext ok -> {str(replicate_url)[:80]}")
-        if not replicate_url:
-            logger.error(f"{tag} {model_choice} returned empty URL")
-            return None
-    except Exception as e:
-        logger.exception(f"{tag} {model_choice} call raised: {e}")
-        return None
-
-    # 2) GCS upload (permanent) — timestamped path keeps assets unique even
-    #    if a future recovery rerun ever overwrites (we don't, today).
-    ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    blob_name = f"robots/{user_id}/stage_{stage_idx}_{ts}.png"
-    try:
-        gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
-    except Exception as e:
-        logger.exception(f"{tag} GCS upload raised blob={blob_name}: {e}")
-        return None
-    if not gcs_url:
-        logger.error(f"{tag} GCS upload returned None blob={blob_name} src={str(replicate_url)[:80]}")
-        return None
-    logger.info(f"{tag} GCS ok blob={blob_name}")
-
-    # 3) Build manifest — same shape as stub, ready for Sepolia tx when that
-    #    layer lands. Kind field signals this row came from the real pipeline
-    #    so downstream consumers can distinguish chain-backed from stub rows.
-    manifest = {
+    return {
         'stage_idx': stage_idx,
         'stage_key': stage['key'],
         'stage_label': stage['label'],
         'item_name': source.get('item_name'),
         'rarity': source.get('rarity'),
+        'item_image_url': source.get('item_image_url'),
         'landmark_name': source.get('landmark_name'),
         'lat': source.get('lat'),
         'lon': source.get('lon'),
         'discovery_id': source.get('discovery_id'),
         'recovered_at': source.get('recovered_at'),
         'assembled_at': datetime.utcnow().isoformat() + 'Z',
-        'seed_url': seed_url,
-        'kontext_prompt': prompt[:240],
-        'kind': 'kontext',
     }
 
-    # 4) Persist — fake tx for now (real Sepolia breadcrumb in a follow-up
-    #    step), real image URL replacing the placeholder, manifest captures
-    #    everything the future chain-layer needs.
-    fake_tx = f"0xkontext{user_id:08x}{stage_idx:02d}"
-    fake_data_hex = f"0xkontext_pending_sepolia_{stage['key']}"
+
+def _gather_prior_item_urls(user_id: int, up_to_stage: int) -> list:
+    """Pull item_image_url from stage_log rows 1..up_to_stage-1 for the
+    final-stage oneshot forge. Order-preserving dedupe."""
+    urls = []
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT source_manifest
+                FROM pilgrim.robot_stage_log
+                WHERE user_id = %s AND stage_idx BETWEEN 1 AND %s
+                ORDER BY stage_idx
+            """, (user_id, up_to_stage - 1))
+            for row in cur.fetchall() or []:
+                mf = row.get('source_manifest') or {}
+                u = mf.get('item_image_url')
+                if u:
+                    urls.append(u)
+    except Exception as e:
+        logger.warning(f"_gather_prior_item_urls user={user_id}: {e}")
+    seen = set()
+    return [u for u in urls if not (u in seen or seen.add(u))]
+
+
+def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Fast stages 1–4: log the per-stage rock-icon placeholder immediately
+    with the captain's item manifest. No Flux call.
+
+    Stage 5 only: run ONE Flux 2 Pro forge with silhouette + cairn + every
+    captured item from stages 1–4's manifests as reference images. This is
+    the one-and-only Narog image generation — replaces the 5-stage Kontext
+    chain that produced near-identical polished clones.
+    """
+    tag = f"[robot user={user_id} stage={stage_idx}]"
+    stage = ROBOT_STAGES[stage_idx - 1]
+
+    # Stages 1–4: placeholder-only, no Flux.
+    if stage_idx < 5:
+        placeholder_img = STAGE_PLACEHOLDER_IMAGES.get(
+            stage['key'], PLACEHOLDER_STAGE_IMAGE
+        )
+        manifest = _build_base_manifest(stage_idx, source)
+        manifest['kind'] = 'placeholder'
+        fake_tx = f"0xpending{user_id:08x}{stage_idx:02d}"
+        try:
+            result = log_stage(
+                user_id=user_id,
+                stage_idx=stage_idx,
+                source_manifest=manifest,
+                image_url=placeholder_img,
+                data_hex=f"0xstaging_{stage['key']}",
+                tx_hash=fake_tx,
+            )
+            logger.info(f"{tag} placeholder stage logged")
+            return result
+        except Exception as e:
+            logger.exception(f"{tag} log_stage failed: {e}")
+            return None
+
+    # Stage 5: one-shot forge.
+    try:
+        from utilities.replicate_utils import FluxGenerator
+        from utilities.google_cloud_storage_utils import upload_blob_from_url
+    except ImportError as e:
+        logger.exception(f"{tag} imports failed: {e}")
+        return None
+
+    item_urls = _gather_prior_item_urls(user_id, stage_idx)
+    if source.get('item_image_url'):
+        if source['item_image_url'] not in item_urls:
+            item_urls.append(source['item_image_url'])
+
+    # Flux 2 Pro caps at 8 input_images; silhouette + cairn + up to 6 items.
+    refs = [PLACEHOLDER_STAGE_IMAGE, CAIRN_REF] + item_urls[:6]
+    refs = [r for r in refs if r]
+
+    captain = _get_captain_name(user_id)
+    prompt = f"{ONESHOT_FORGE_PROMPT} Forged for {captain}."
+    logger.info(f"{tag} 🤖 one-shot forge refs={len(refs)}")
+
+    try:
+        flux = FluxGenerator()
+        replicate_url = flux.flux2_pro_edit(prompt, image_urls=refs)
+        if not replicate_url:
+            logger.error(f"{tag} Flux2 returned empty URL")
+            return None
+        logger.info(f"{tag} Flux2 ok -> {str(replicate_url)[:80]}")
+    except Exception as e:
+        logger.exception(f"{tag} Flux2 call raised: {e}")
+        return None
+
+    ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    blob_name = f"robots/{user_id}/narog_{ts}.png"
+    try:
+        gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
+    except Exception as e:
+        logger.exception(f"{tag} GCS upload raised: {e}")
+        return None
+    if not gcs_url:
+        logger.error(f"{tag} GCS upload returned None")
+        return None
+
+    manifest = _build_base_manifest(stage_idx, source)
+    manifest['kind'] = 'oneshot_flux2'
+    manifest['ref_count'] = len(refs)
+    manifest['forge_prompt'] = prompt[:240]
+
+    fake_tx = f"0xforge{user_id:08x}"
     try:
         result = log_stage(
             user_id=user_id,
             stage_idx=stage_idx,
             source_manifest=manifest,
             image_url=gcs_url,
-            data_hex=fake_data_hex,
+            data_hex="0xoneshot_forge_pending_sepolia",
             tx_hash=fake_tx,
         )
-        logger.info(f"{tag} log_stage ok — stage complete")
+        logger.info(f"{tag} forge complete")
         return result
     except Exception as e:
         logger.exception(f"{tag} log_stage failed: {e}")
