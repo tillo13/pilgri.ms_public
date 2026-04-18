@@ -107,6 +107,18 @@
     box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
     background: rgba(168, 85, 247, 0.08);
 }
+.robot-stage-composite .robot-stage-base-icon,
+.robot-stage-composite .robot-stage-item-icon,
+.robot-stage-img-wrap .robot-stage-base-img {
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.robot-stage-composite .robot-stage-base-icon:hover,
+.robot-stage-composite .robot-stage-item-icon:hover,
+.robot-stage-img-wrap .robot-stage-base-img:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 18px rgba(168, 85, 247, 0.55);
+}
 .robot-stage-plus {
     flex: 0 0 auto;
     font-size: 18px;

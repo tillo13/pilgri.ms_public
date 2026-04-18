@@ -316,13 +316,45 @@
         });
     }
 
+    function showStageInfoModal(card) {
+        const key = card.dataset.stageKey || '';
+        const label = card.dataset.stageLabel || 'Stage';
+        const part = card.dataset.stagePart || '';
+        const idx = card.dataset.stageIdx || '—';
+        const baseImg = card.querySelector('.robot-stage-base-icon, .robot-stage-base-img');
+        const src = baseImg ? baseImg.src : '';
+        const imgBlock = src
+            ? '<div style="display:flex;justify-content:center;padding:8px 0;"><img src="' + src + '" alt="' + label + '" style="max-width:220px;max-height:220px;border-radius:12px;background:rgba(255,255,255,0.04);"></div>'
+            : '';
+        const body = ''
+            + '<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">'
+            + imgBlock
+            + '<div><div class="text-xs" style="color:var(--text-muted)">STAGE</div><div style="font-size:18px;font-weight:800">' + idx + '. ' + label + '</div></div>'
+            + '<div><div class="text-xs" style="color:var(--text-muted)">WHAT THIS STAGE BUILDS</div><div>' + part + '</div></div>'
+            + '<hr style="border-color:var(--border-default);opacity:0.3;margin:4px 0">'
+            + '<div class="text-xs" style="color:var(--text-muted);font-style:italic">The item paired with this stage (click the right-hand icon) will be fused into the ' + part + ' during forging.</div>'
+            + '</div>';
+        MarsModal.show({ title: label, size: 'md', theme: 'aria', body: body });
+    }
+
     function wireCardClicks() {
         const grid = document.getElementById('robot-preview-grid');
         if (!grid) return;
         grid.addEventListener('click', (e) => {
             const card = e.target.closest('.robot-stage-card');
             if (!card) return;
+            const role = e.target.dataset ? e.target.dataset.role : null;
             const idx = parseInt(card.dataset.stageIdx, 10);
+            if (role === 'base') {
+                showStageInfoModal(card);
+                return;
+            }
+            if (role === 'item') {
+                if (!Number.isFinite(idx) || !currentSources) return;
+                showSourceModal(currentSources[idx - 1]);
+                return;
+            }
+            // Click on label/source/card chrome → item modal (existing behavior)
             if (!Number.isFinite(idx) || !currentSources) return;
             showSourceModal(currentSources[idx - 1]);
         });

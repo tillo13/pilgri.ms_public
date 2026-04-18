@@ -133,15 +133,15 @@
         <!-- 5 stage previews — JS replaces with real picks from /api/robot/preview -->
         <div class="robot-stage-grid mb-16" id="robot-preview-grid">
             {% for stage in rd.stages_meta %}
-            <div class="robot-stage-card mystery clickable" data-stage-idx="{{ stage.idx }}">
+            <div class="robot-stage-card mystery clickable" data-stage-idx="{{ stage.idx }}" data-stage-key="{{ stage.key }}" data-stage-label="{{ stage.label }}" data-stage-part="{{ stage.part }}">
                 <div class="robot-stage-num">{{ stage.idx }}</div>
                 <div class="robot-stage-img-wrap">
-                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img robot-stage-base-img mystery-img">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img robot-stage-base-img mystery-img" data-role="base">
                 </div>
                 <div class="robot-stage-composite" style="display:none;">
-                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon" data-role="base">
                     <span class="robot-stage-plus">+</span>
-                    <img src="" alt="" class="robot-stage-item-icon">
+                    <img src="" alt="" class="robot-stage-item-icon" data-role="item">
                 </div>
                 <div class="robot-stage-label">{{ stage.label }}</div>
                 <div class="robot-stage-source">Loading…</div>
