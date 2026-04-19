@@ -106,7 +106,9 @@ function renderActivityList(items) {
         const d = new Date(item.timestamp);
         const dateStr = d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
         const timeStr = d.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
-        const cost = item.amount ? `<span style="color: ${ACTIVITY_COLORS[item.category] || '#888'}; font-weight: 600;">${Math.round(item.amount).toLocaleString()} shards</span>` : '';
+        // Bug #1315: sv_recorded amounts are SV, not shards — title already shows "Recorded X.X SV" so suppress redundant right-column cost entirely for that event type
+        const isSV = item.event_type === 'sv_recorded';
+        const cost = (item.amount && !isSV) ? `<span style="color: ${ACTIVITY_COLORS[item.category] || '#888'}; font-weight: 600;">${Math.round(item.amount).toLocaleString()} shards</span>` : '';
         const detailLine = item.detail ? `<span style="color:var(--text-tertiary); font-size:10px; margin-left:6px;">\u00B7 ${item.detail}</span>` : '';
         return `<div class="activity-row" onclick="showActivityDetail(${i})" style="display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--bg-primary); border-radius:8px; cursor:pointer; transition:background 0.15s;" onmouseover="this.style.background='var(--bg-tertiary)'" onmouseout="this.style.background='var(--bg-primary)'">
             <img src="${ACTIVITY_ICONS[item.category] || ACTIVITY_ICONS.purchase}" style="width:28px; height:28px; border-radius:4px; object-fit:cover;" alt="${item.category}">
@@ -133,7 +135,14 @@ function buildEventCardHtml(item) {
     body += `<div class="mm-kv"><span class="mm-kv-label">Date</span><span class="mm-kv-value">${dateStr}</span></div>`;
     body += `<div class="mm-kv"><span class="mm-kv-label">Time</span><span class="mm-kv-value">${timeStr}</span></div>`;
     body += `<div class="mm-kv"><span class="mm-kv-label">Category</span><span class="mm-kv-value" style="color:${color};">${item.category.charAt(0).toUpperCase() + item.category.slice(1)}</span></div>`;
-    if (item.amount) body += `<div class="mm-kv"><span class="mm-kv-label">Amount</span><span class="mm-kv-value" style="color:${color};">${Math.round(item.amount).toLocaleString()} shards</span></div>`;
+    if (item.amount) {
+        // Bug #1315: sv_recorded events are Science Value, not shards
+        const isSV = item.event_type === 'sv_recorded';
+        const amtStr = isSV
+            ? `${Number(item.amount).toFixed(1)} SV`
+            : `${Math.round(item.amount).toLocaleString()} shards`;
+        body += `<div class="mm-kv"><span class="mm-kv-label">Amount</span><span class="mm-kv-value" style="color:${color};">${amtStr}</span></div>`;
+    }
     if (item.detail) body += `<div class="mm-kv"><span class="mm-kv-label">Detail</span><span class="mm-kv-value">${item.detail}</span></div>`;
     if (item.status) body += `<div class="mm-kv"><span class="mm-kv-label">Status</span><span class="mm-kv-value">${item.status.charAt(0).toUpperCase() + item.status.slice(1)}</span></div>`;
     if (item.tx_hash) body += `<div class="mm-kv"><span class="mm-kv-label">Signature</span><span class="mm-kv-value" style="font-family:monospace; font-size:11px; word-break:break-all; color:var(--color-sepolia);">${item.tx_hash.slice(0,12)}...${item.tx_hash.slice(-8)}</span></div>`;

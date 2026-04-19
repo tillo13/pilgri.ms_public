@@ -192,7 +192,8 @@ def get_unified_activity(user_id: int, limit: int = 500) -> List[Dict]:
     from utilities.postgres.activity import get_activity
     rows = get_activity(user_id, limit=limit)
     return [{
-        'category': r['category'], 'title': r['title'], 'detail': r.get('detail', ''),
+        'category': r['category'], 'event_type': r.get('event_type', ''),
+        'title': r['title'], 'detail': r.get('detail', ''),
         'amount': float(r.get('amount') or 0), 'tx_hash': r.get('tx_hash', ''),
         'timestamp': r.get('timestamp', ''), 'image_url': r.get('image_url', ''),
         'status': (r.get('metadata') or {}).get('status', ''),
