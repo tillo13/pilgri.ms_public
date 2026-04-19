@@ -252,9 +252,78 @@
     <!-- SECTION 4: SCIENTIST STAT EFFECTS -->
     <!-- ═══════════════════════════════════════════════════════ -->
     <div class="section" style="border-left: 4px solid var(--color-mars);">
-        <div class="section-title" style="color: var(--color-mars);">Scientist Stats — What Each One Should Do</div>
+        <div class="section-title" style="color: var(--color-mars);">Scientist Stats — What Each One Does Today vs. What It Should Do</div>
 
         <p>Scientists have different stat distributions. Your choice of scientist should matter throughout the game — not just at character select.</p>
+
+        <h4 style="color: var(--color-success); margin-top: 16px;">Reality Today — Actual Code Paths (bug #1108 audit, 2026-04-18)</h4>
+        <p style="color: var(--text-muted); font-size: 13px;">Every place the stat is actually read by the game engine. Also lives in <code>math_registry.json</code> → <code>scientist_stats.*</code> so PilgrimBot can quote it.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Implemented Effects</th>
+                        <th>Formula</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Navigation</strong></td>
+                        <td>
+                            Expedition speed multiplier<br>
+                            Robot Crew trail contribution (bug #1113)
+                        </td>
+                        <td>
+                            <code>1 + nav/150</code><br>
+                            factor <code>nav/50</code> in §5
+                        </td>
+                        <td>
+                            lifecycle.py:84<br>
+                            segments.py:_compute_robot_trail_contribution
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Analysis</strong></td>
+                        <td>
+                            Shard gen (capped)<br>
+                            Scientist passive SV/hr<br>
+                            Discovery enhanced value
+                        </td>
+                        <td>
+                            <code>1 + min(anl,50)×0.02</code><br>
+                            <code>anl/50</code><br>
+                            <code>+anl/200</code>
+                        </td>
+                        <td>
+                            income.py:180<br>
+                            income.py:281<br>
+                            discovery_utils.py:243
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Geology</strong></td>
+                        <td>Terrain-matching discovery weight</td>
+                        <td><code>1 + geo/100</code></td>
+                        <td>discovery_utils.py:206</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Engineering</strong></td>
+                        <td>Expedition cargo slots (only)</td>
+                        <td><code>eng // 10</code></td>
+                        <td>lifecycle.py:227</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 12px; margin-top: 12px;">
+            <strong>Common misconceptions:</strong> Engineering does <em>not</em> affect robot build speed or Depot build time today. Analysis does <em>not</em> affect research speed (that's Research Station + tech branch). Navigation does <em>not</em> affect manual crew trail missions (those use <code>navigation_xp</code> level, not the base stat). Geology does <em>not</em> affect Signal detection yet (proposed in <a href="/brainstorm/signal-phase-2" style="color: var(--color-sepolia);">Signal Phase 2 §1</a>).
+        </p>
+
+        <h4 style="color: var(--color-warning); margin-top: 24px;">Proposed — What Each Stat Should Also Do</h4>
 
         <div class="comparison-table">
             <table>
@@ -268,17 +337,17 @@
                 <tbody>
                     <tr>
                         <td><strong>Navigation</strong></td>
-                        <td>Expedition speed bonus</td>
-                        <td>Robot efficiency once built, trail pathfinding optimization</td>
+                        <td>Expedition speed bonus <em>(shipped)</em></td>
+                        <td>Robot efficiency <em>(partially shipped via #1113 trail hook)</em>, trail pathfinding optimization</td>
                     </tr>
                     <tr>
                         <td><strong>Analysis</strong></td>
                         <td>Research speed bonus (Lab)</td>
-                        <td>Less material waste on robot build, better SV extraction from discoveries</td>
+                        <td>Less material waste on robot build, better SV extraction from discoveries <em>(shard & SV gen shipped)</em></td>
                     </tr>
                     <tr>
                         <td><strong>Geology</strong></td>
-                        <td>Discovery rarity boost (already exists)</td>
+                        <td>Discovery rarity boost <em>(terrain match shipped)</em></td>
                         <td>Signal detection boost, better component quality for robot, resource yields</td>
                     </tr>
                     <tr>
