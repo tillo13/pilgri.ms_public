@@ -219,6 +219,20 @@ document.addEventListener('DOMContentLoaded', function() {
             <span style="font-size: 12px; color: var(--text-primary);">{{ build.name }}</span>
             {% if build.target_level %}<span style="font-size: 11px; color: var(--text-muted);">Lv{{ build.target_level }}</span>{% endif %}
             <span class="build-countdown" data-seconds="{{ build.seconds_remaining }}" style="font-size: 11px; color: var(--color-warning); font-family: monospace; min-width: 50px;"></span>
+            {% if build.rush_eligible %}
+            <button class="btn-shard-rush"
+                    data-category="{{ build.category }}"
+                    data-item-key="{{ build.item_key }}"
+                    data-target-level="{{ build.target_level|default(1) }}"
+                    data-name="{{ build.name }}"
+                    data-rush-cost="{{ build.rush_cost }}"
+                    data-rush-pct="{{ (build.rush_pct * 100)|round|int }}"
+                    onclick="confirmShardRush(this)"
+                    style="font-size: 11px; padding: 3px 8px; background: var(--color-accent); color: white; border: 0; border-radius: 4px; cursor: pointer; font-weight: 600;"
+                    title="Rush remaining time for {{ build.rush_cost }} shards">
+                ⚡ Rush {{ "{:,}".format(build.rush_cost) }}
+            </button>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

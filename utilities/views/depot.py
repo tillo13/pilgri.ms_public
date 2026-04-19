@@ -79,6 +79,25 @@ def get_depot_page_data(user_id, auth):
     # Sort all builds by seconds remaining (soonest first)
     active_builds.sort(key=lambda b: b['seconds_remaining'])
 
+    # Bug #1270 Phase 4: surface Shard Rush eligibility + cost on each active build.
+    try:
+        from utilities.upgrades.shard_rush import (
+            check_equipment_rush_eligibility,
+            check_infrastructure_rush_eligibility,
+        )
+        for b in active_builds:
+            if b.get('category') == 'infrastructure' and b.get('target_level', 1) == 1:
+                # Initial L1 build in colony_infrastructure
+                elig = check_infrastructure_rush_eligibility(user_id, b['item_key'])
+            else:
+                elig = check_equipment_rush_eligibility(user_id, b['category'], b['item_key'])
+            b['rush_eligible'] = elig.get('eligible', False)
+            b['rush_cost'] = elig.get('rush_cost', 0)
+            b['rush_reason'] = elig.get('reason', '')
+            b['rush_pct'] = elig.get('rush_pct', 0)
+    except Exception as e:
+        logger.warning(f"Shard rush enrichment failed: {e}")
+
     # Discovery-based range multiplier (for vehicle effective range display)
     from utilities.postgres.expeditions import get_user_discovered_landmarks
     discovered = get_user_discovered_landmarks(user_id)

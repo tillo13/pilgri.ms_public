@@ -2328,6 +2328,16 @@
       "perform_upgrade — Upgrade an item to the next level."
     ]
   },
+  "utilities/upgrades/shard_rush.py": {
+    "description": "Shard Rush — pay shards to instantly complete an in-progress build.",
+    "exports": [
+      "calculate_rush_cost_pct — The pct of base cost that Shard Rush charges, based on Life Support + Water Extractor levels.",
+      "check_equipment_rush_eligibility — Return {eligible, reason, rush_cost, remaining_hours, target_level} for an in-progress equipment upgrade.",
+      "check_infrastructure_rush_eligibility — Return rush eligibility for an in-progress INITIAL build (Lv1) in colony_infrastructure.",
+      "rush_equipment_upgrade — Charge shards and promote pending_level → level on an in-progress equipment upgrade.",
+      "rush_infrastructure_build — Charge shards and mark an in-progress building as built immediately."
+    ]
+  },
   "utilities/upgrades/state.py": {
     "description": "User-state DB reads: what a given user owns / is building.",
     "exports": [
@@ -3196,7 +3206,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3209,7 +3219,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

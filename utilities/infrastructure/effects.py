@@ -72,6 +72,9 @@ def get_user_infrastructure_effects(user_id: int) -> dict:
                 apply_effect('expedition_capacity', value)
             elif key == 'research_enabled':
                 apply_effect('research_enabled', value)
+            elif key.startswith('stat_') and key.endswith('_bonus'):
+                # Bug #1270 Phase 6: end-game buildings grant captain stat bonuses at L5+
+                apply_effect(key, value)
 
     total_sepolia_rate = 0.0
     for structure in structures:

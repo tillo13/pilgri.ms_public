@@ -1554,6 +1554,37 @@ def api_upgrade():
     return jsonify(handle_upgrade_request(session.get('user_id'), request.get_json() or {}, session))
 
 
+@app.route('/api/shard-rush/upgrade', methods=['POST'])
+@handle_api_error
+def api_shard_rush_upgrade():
+    """Shard Rush: pay shards to instantly complete an in-progress equipment/infrastructure upgrade (category in player_upgrades). Bug #1270 Phase 4."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'error': 'Not logged in'})
+    data = request.get_json() or {}
+    category = data.get('category')
+    item_key = data.get('item_key')
+    if not category or not item_key:
+        return jsonify({'success': False, 'error': 'Missing category or item_key'})
+    from utilities.upgrades.shard_rush import rush_equipment_upgrade
+    return jsonify(rush_equipment_upgrade(user_id, category, item_key))
+
+
+@app.route('/api/shard-rush/infrastructure', methods=['POST'])
+@handle_api_error
+def api_shard_rush_infrastructure():
+    """Shard Rush: pay shards to finish an in-progress Lv1 infrastructure build. Bug #1270 Phase 4."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'error': 'Not logged in'})
+    data = request.get_json() or {}
+    structure_type = data.get('structure_type')
+    if not structure_type:
+        return jsonify({'success': False, 'error': 'Missing structure_type'})
+    from utilities.upgrades.shard_rush import rush_infrastructure_build
+    return jsonify(rush_infrastructure_build(user_id, structure_type))
+
+
 @app.route('/api/upgrades/catalog')
 @handle_api_error
 def api_upgrades_catalog():

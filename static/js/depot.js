@@ -494,3 +494,56 @@ async function buildStructure(type, name, time, cost) {
     }
     catch (e) { showToast(sanitizeErrorMsg(e.message) || 'Connection failed. Please try again.', 'error'); unlockAllPurchases(); enableBtn(btn); }
 }
+
+
+// --- Shard Rush (bug #1270 Phase 4) ---
+async function confirmShardRush(btn) {
+    if (isTxLocked()) {
+        showToast('Please wait for the current operation to complete.', 'warning');
+        return;
+    }
+    const category = btn.dataset.category;
+    const itemKey = btn.dataset.itemKey;
+    const name = btn.dataset.name;
+    const targetLevel = btn.dataset.targetLevel;
+    const rushCost = parseInt(btn.dataset.rushCost, 10);
+    const rushPct = btn.dataset.rushPct;
+
+    MarsModal.show({
+        title: '⚡ Shard Rush',
+        body: `<div style="font-size: 14px; line-height: 1.6;">
+            <p>Pay <strong>${rushCost.toLocaleString()} shards</strong> to instantly complete <strong>${escapeHtml(name)} Lv${targetLevel}</strong>.</p>
+            <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">Rush cost: ${rushPct}% of base upgrade price (discount grows with Life Support + Water Extractor levels).</p>
+        </div>`,
+        buttons: [
+            { label: 'Cancel', class: 'btn-secondary', onClick: () => MarsModal.hide() },
+            { label: `Rush for ${rushCost.toLocaleString()}`, class: 'btn-primary', onClick: () => { MarsModal.hide(); executeShardRush(category, itemKey, name); } }
+        ]
+    });
+}
+
+async function executeShardRush(category, itemKey, name) {
+    lockAllPurchases();
+    showToast(`⚡ Rushing ${name}...`, 'success', 'Shard Rush', 3000);
+    try {
+        const isInfraL1 = category === 'infrastructure' && document.querySelector(`.btn-shard-rush[data-item-key="${itemKey}"][data-target-level="1"]`);
+        const endpoint = isInfraL1 ? '/api/shard-rush/infrastructure' : '/api/shard-rush/upgrade';
+        const payload = isInfraL1 ? { structure_type: itemKey } : { category, item_key: itemKey };
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.success && data.rushed) {
+            showToast(`✅ ${name} complete! ${data.rush_cost.toLocaleString()} shards spent.`, 'success', 'Rush Complete', 4000);
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            showToast(sanitizeErrorMsg(data.error) || 'Rush failed.', 'error', 'Rush Failed');
+            unlockAllPurchases();
+        }
+    } catch (e) {
+        showToast(sanitizeErrorMsg(e.message) || 'Connection failed.', 'error', 'Rush Failed');
+        unlockAllPurchases();
+    }
+}
