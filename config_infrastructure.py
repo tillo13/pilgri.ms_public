@@ -360,37 +360,37 @@ INFRASTRUCTURE_CATALOG = {
             },
             4: {
                 'name': 'Crop Biodome', 'cost': 2810, 'build_time_days': 5,
-                'life_support_reduction': 0.20,
+                'life_support_reduction': 0.20, 'science_generation_rate': 1.0,
                 'image_url': '',
             },
             5: {
                 'name': 'Regolith Farm', 'cost': 3147, 'build_time_days': 7,
-                'life_support_reduction': 0.24,
+                'life_support_reduction': 0.24, 'science_generation_rate': 1.5,
                 'image_url': '',
             },
             6: {
                 'name': 'Crystal-Lit Gardens', 'cost': 3525, 'build_time_days': 8,
-                'life_support_reduction': 0.28,
+                'life_support_reduction': 0.28, 'science_generation_rate': 2.0,
                 'image_url': '',
             },
             7: {
                 'name': 'Underground Farm Complex', 'cost': 3948, 'build_time_days': 10,
-                'life_support_reduction': 0.32,
+                'life_support_reduction': 0.32, 'science_generation_rate': 2.5,
                 'image_url': '',
             },
             8: {
                 'name': 'Biosphere Module', 'cost': 4422, 'build_time_days': 11,
-                'life_support_reduction': 0.36,
+                'life_support_reduction': 0.36, 'science_generation_rate': 3.0,
                 'image_url': '',
             },
             9: {
                 'name': 'Self-Sustaining Ecosystem', 'cost': 4952, 'build_time_days': 13,
-                'life_support_reduction': 0.40,
+                'life_support_reduction': 0.40, 'science_generation_rate': 3.5,
                 'image_url': '',
             },
             10: {
                 'name': 'Mars Eden', 'cost': 5547, 'build_time_days': 14,
-                'life_support_reduction': 0.45,
+                'life_support_reduction': 0.45, 'science_generation_rate': 4.0,
                 'image_url': '',
             },
         }
@@ -478,7 +478,7 @@ INFRASTRUCTURE_CATALOG = {
             },
             2: {
                 'name': 'Specimen Analysis Bay', 'cost': 2240, 'build_time_days': 3,
-                'research_enabled': True, 'bio_value_mult': 1.15, 'discovery_chance_bonus': 0.03,
+                'research_enabled': True, 'bio_value_mult': 1.15, 'discovery_chance_bonus': 0.03, 'science_generation_rate': 1.0,
                 'image_url': '',
             },
             3: {
