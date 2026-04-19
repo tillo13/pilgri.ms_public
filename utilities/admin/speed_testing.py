@@ -9,6 +9,26 @@ THRESHOLD_SECONDS = 3.0
 DB_CALLS_MAX = DB_CALL_WARN_THRESHOLD  # Per-page cursor-open budget; over = N+1 smell.
 
 
+class _StubAuth:
+    """Minimal auth stub so the speed test can run outside a live Flask request
+    (e.g. from a cron or CLI). Real auth uses Flask session; we just need an
+    object that exposes get_current_user()/is_authenticated() returning the
+    tested user's basic record."""
+    def __init__(self, user_id):
+        self._user = {'user_id': user_id, 'google_id': f'speedtest-{user_id}', 'email': ''}
+        try:
+            with db_cursor() as cur:
+                cur.execute("SELECT google_id, email FROM users WHERE user_id = %s", (user_id,))
+                row = cur.fetchone()
+                if row:
+                    self._user['google_id'] = row[0] or self._user['google_id']
+                    self._user['email'] = row[1] or ''
+        except Exception:
+            pass
+    def get_current_user(self): return self._user
+    def is_authenticated(self): return True
+
+
 def execute_speed_test(test_user_id, auth):
     """Run the full page-data speed test suite and persist results.
 
@@ -23,6 +43,28 @@ def execute_speed_test(test_user_id, auth):
     from utilities.tech_utils import get_research_page_data
     from utilities.admin_utils import get_admin_dashboard_data
     from utilities.signal_utils import get_signal_page_render_data
+
+    if auth is None:
+        auth = _StubAuth(test_user_id)
+
+    # Some page_data helpers read flask.session/g; when invoked from a CLI (no
+    # active request), push a test request context so those reads don't explode.
+    ctx = None
+    try:
+        from flask import current_app, has_request_context, session, g
+        if not has_request_context():
+            try:
+                app = current_app._get_current_object()
+            except RuntimeError:
+                from app import app as _app  # noqa: WPS433 — only on CLI path
+                app = _app
+            ctx = app.test_request_context('/')
+            ctx.push()
+            session['user'] = auth.get_current_user()
+            session['user_id'] = test_user_id
+            g.user_id = test_user_id
+    except Exception:
+        ctx = None
 
     tests = [
         ('Home /', 'get_dashboard_page_data', lambda: get_dashboard_page_data(test_user_id, auth)),
@@ -75,4 +117,9 @@ def execute_speed_test(test_user_id, auth):
              slowest['page'] if slowest else None,
              slowest['time_s'] if slowest else 0, all_ok)
         )
+    if ctx is not None:
+        try:
+            ctx.pop()
+        except Exception:
+            pass
     return pages, all_ok

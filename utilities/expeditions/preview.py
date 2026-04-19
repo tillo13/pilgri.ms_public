@@ -236,7 +236,11 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     discovered = get_user_discovered_landmarks(user_id)
     fog_radius = min(1000, 300 + len(discovered) * 50)
     range_mult = fog_radius / 300.0
-    scanner_range_mult = (upgrade_effects or {}).get('vehicle_range_mult', 1.0)
+    try:
+        from utilities.upgrades_utils import get_user_upgrade_effects
+        scanner_range_mult = get_user_upgrade_effects(user_id).get('vehicle_range_mult', 1.0)
+    except Exception:
+        scanner_range_mult = 1.0
 
     # Calculate estimates per vehicle (with segment compounding)
     vehicle_estimates = []
