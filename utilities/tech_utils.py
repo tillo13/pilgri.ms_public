@@ -586,27 +586,15 @@ def _get_tech_effects_uncached(user_id: int) -> Dict[str, Any]:
         """, (user_id,))
         rows = cur.fetchall()
 
-    # Aggregate per-branch (same merge rules as _get_branch_effects), then merge across branches.
-    per_branch: Dict[str, Dict[str, Any]] = {}
+    # Merge all completed tech effects. Within-branch AND across-branch, _mult effects
+    # compound multiplicatively (matches pre-a1e77bb _get_branch_effects behavior).
+    # The single-query refactor in a1e77bb briefly changed this to max()-within-branch,
+    # which silently dropped Luke's expedition_speed_mult from 14.44 to 1.74 (bug #1411).
     for row in rows:
-        branch = row['branch']
-        tech_data = TECH_CATALOG.get(branch, {}).get('techs', {}).get(row['tech_key'])
+        tech_data = TECH_CATALOG.get(row['branch'], {}).get('techs', {}).get(row['tech_key'])
         if not tech_data:
             continue
-        scaled = scale_effects(tech_data.get('effects', {}), row['branch_level'])
-        b = per_branch.setdefault(branch, {})
-        for key, value in scaled.items():
-            if key not in b:
-                b[key] = value
-            elif key.endswith('_mult'):
-                b[key] = max(b[key], value) if 'cost' not in key else min(b[key], value)
-            elif isinstance(value, (int, float)):
-                b[key] = b[key] + value
-            elif isinstance(value, bool):
-                b[key] = b[key] or value
-
-    for branch_effects in per_branch.values():
-        for key, value in branch_effects.items():
+        for key, value in scale_effects(tech_data.get('effects', {}), row['branch_level']).items():
             if key not in effects:
                 effects[key] = value
             elif key.endswith('_mult'):
