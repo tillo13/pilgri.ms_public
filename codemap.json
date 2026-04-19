@@ -52,7 +52,7 @@
     "exports": [
       "class SignedIntConverter",
       "force_canonical_host",
-      "start_timer — Start timing the request.",
+      "start_timer — Start timing the request + reset per-request DB-call counter.",
       "check_apikey_auth — Allow ?apikey=SECRET&user_id=X to bypass OAuth (Playwright/admin testing).",
       "check_first_contact — Intercept page loads for pending ARIA bond first-contact cinematic.",
       "log_request_time — Log request duration to console for performance monitoring.",
@@ -1682,7 +1682,7 @@
       "start_research — Start researching a technology. Deducts SV, creates timer.",
       "get_research_progress — Get active research progress for countdown display.",
       "cancel_research — Cancel active research. Refunds SV by deleting the player_techs row.",
-      "get_tech_effects — Calculate cumulative effects from all completed tech research.",
+      "get_tech_effects",
       "get_user_tech_status — Full tech tree state for a user. Auto-completes expired research first.",
       "get_tech_summary — Lab Summary Box data (bug #1286). One DB query → all completed techs across",
       "get_research_page_data — Single call for /research template rendering."
@@ -1698,14 +1698,15 @@
       "needs_image_generation — Check if this level needs an image generated.",
       "get_kontext_prompt_for_level — Generate the Kontext edit prompt for upgrading to this level.",
       "generate_upgrade_image_background — Generate upgrade image using Kontext (runs in background thread).",
-      "get_stored_image_url — Get the stored image URL from database (overrides config if exists).",
+      "get_stored_image_url — Get the stored image URL from database. Per-request memoized via the full image map — so repeat",
+      "get_all_stored_images — Bulk-fetch every stored upgrade image as {(category, item_key, level): url}.",
+      "get_best_available_image_from_map — Same walk-back logic as get_best_available_image but uses a pre-fetched image_map (zero DB calls).",
       "maybe_generate_upgrade_image — Check if image generation is needed and trigger it if so.",
       "is_first_reveal_user — Check if this user was the first to reveal this upgrade level.",
       "get_tech_image_from_db — Get stored tech image from DB for a specific tech at a branch level.",
       "generate_tech_branch_icons — Generate new icons for all 5 techs in a branch at a new level.",
       "get_infrastructure_level_image_url — Get the current image_url for an infrastructure building level from config.",
-      "get_previous_infrastructure_level_image_url — Get the image_url for the previous infrastructure level. Checks DB first.",
-      "maybe_generate_infrastructure_image — Check if infrastructure image generation is needed and trigger it if so."
+      "get_previous_infrastructure_level_image_url — Get the image_url for the previous infrastructure level. Checks DB first."
     ]
   },
   "utilities/upgrades_utils.py": {
@@ -1751,7 +1752,7 @@
     ]
   },
   "utilities/admin/speed_testing.py": {
-    "description": "Admin speed test — times server-side page data functions and saves results to DB.",
+    "description": "Admin speed test — times server-side page data functions + counts DB cursors per page.",
     "exports": [
       "execute_speed_test — Run the full page-data speed test suite and persist results."
     ]
@@ -1826,7 +1827,7 @@
       "set_primary_commander — Set a specific captain as primary",
       "update_commander_name — Update the captain name for a user (in both users table and replicate_assets).",
       "rename_captain_with_validation — Validate + rename captain. Returns API-ready response dict.",
-      "get_commander_stats — Get captain stats from most recent character_image WITH stats"
+      "get_commander_stats — Get captain stats from most recent character_image WITH stats. Per-request memoized."
     ]
   },
   "utilities/postgres/brainstorm.py": {
@@ -1868,6 +1869,10 @@
       "get_db_connection — Get a connection from the pool (fast!) or create new if pool fails.",
       "get_pool_health — Return connection pool health stats for admin monitoring.",
       "get_db_connection_stats — Query pg_stat_activity for global connection stats.",
+      "reset_db_counter",
+      "request_memo — Per-request cache for read-only helpers. Second call with the same key returns the cached value",
+      "set_db_context — Tag the current request so over-threshold warnings identify the page.",
+      "get_db_counter",
       "db_cursor — Context manager for database operations - uses connection pool for speed.",
       "json_serial — JSON serializer for datetime objects",
       "test_connection — Test database connection"
@@ -1887,7 +1892,7 @@
       "get_user_expedition_history — Get expedition history with discoveries for user.",
       "get_expedition_discovery_items — Get all discovery items for a specific expedition with item details.",
       "record_landmark_discovery — Record landmark discovery",
-      "get_user_discovered_landmarks — Get all landmarks user has discovered",
+      "get_user_discovered_landmarks — Get all landmarks user has discovered. Memoized per-request.",
       "get_discovery_items_catalog — Get all active discovery items WITH MISSION DATA",
       "create_expedition_discoveries — Bulk insert expedition discoveries",
       "get_expedition_discoveries — Get discoveries for expedition"
@@ -1896,9 +1901,11 @@
   "utilities/postgres/map.py": {
     "description": "Mars coordinates, landmarks, fog-of-war, and frontier line database operations.",
     "exports": [
+      "get_all_mars_mappings — Fetch every mars_mappings row. Memoized per-request.",
+      "get_mars_mappings_by_name — Dict of name -> mars_mappings row. Memoized per-request.",
       "get_random_mars_coordinates — Generate random Mars coordinates with safe buffer zones",
       "get_nearest_mars_landmarks — Find nearest Mars landmarks to coordinates",
-      "get_or_set_user_mars_home — Get user's Mars home coordinates, or set if not assigned",
+      "get_or_set_user_mars_home",
       "get_mars_landmarks_within_radius — Get all landmarks within a radius of a center point.",
       "get_user_furthest_expeditions_by_direction — Get the furthest completed expedition in each of 8 directions.",
       "get_frontier_landmarks_beyond_point — Get landmarks beyond a point in a specific direction.",
@@ -1948,7 +1955,7 @@
       "get_user_depot_transactions — Get recent depot transactions for user",
       "get_unified_activity — Get unified activity log from activity_events table (single source of truth).",
       "create_infrastructure — Create infrastructure record",
-      "get_user_infrastructure — Get user's infrastructure with auto-activation",
+      "get_user_infrastructure — Get user's infrastructure with auto-activation.",
       "get_infrastructure_by_id — Get single infrastructure by ID",
       "update_infrastructure_status — Update infrastructure status",
       "get_user_upgrades — Get all upgrades owned by a user. If active_only=True, only returns completed builds.",
@@ -1965,11 +1972,11 @@
       "ensure_scientist_column — Ensure the scientist_key column exists in users table",
       "ensure_passive_sv_column — Ensure the passive_sv_generated column exists in users table",
       "add_passive_sv — Add passive Science Value to user's accumulated total.",
-      "get_passive_sv — Get user's accumulated passive Science Value.",
+      "get_passive_sv",
       "assign_scientist_to_user — Assign a scientist to a user. If no key provided, assign randomly.",
       "reassign_scientist — Reassign a user's scientist. Returns success/error dict.",
       "reassign_scientist_flow — Full scientist-swap flow: validate, auto-claim pending shards + SV,",
-      "get_user_scientist — Get the scientist assigned to a user",
+      "get_user_scientist",
       "upsert_user — Create or update user record from Google OAuth data",
       "get_user_by_id — Get basic user info by ID.",
       "get_user_by_email — Get basic user info by email.",
@@ -2318,7 +2325,7 @@
   "utilities/upgrades/effects.py": {
     "description": "Cumulative upgrade effects aggregator.",
     "exports": [
-      "get_user_upgrade_effects — Calculate all cumulative effects from user's upgrades AND infrastructure."
+      "get_user_upgrade_effects"
     ]
   },
   "utilities/upgrades/flow.py": {
@@ -2348,6 +2355,7 @@
       "count_concurrent_upgrades — Count how many builds are in progress (equipment upgrades + infrastructure construction).",
       "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
       "get_active_builds — Get list of active builds with name, category, target level, and seconds remaining.",
+      "get_all_build_statuses — Bulk-fetch build status for every player_upgrades row. Returns {(category, item_key): status_dict}.",
       "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
       "get_upgrade_stats — Get stats for an item at a given level - handles both upgrades and infrastructure"
     ]
@@ -3284,7 +3292,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

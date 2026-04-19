@@ -5,10 +5,45 @@ import random
 import logging
 from typing import Dict, Any, Optional, List
 
-from utilities.postgres.core import db_cursor, _fetchone, _fetchall
+from utilities.postgres.core import db_cursor, _fetchone, _fetchall, request_memo
 from utilities.mars_math import calculate_mars_distance
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# FULL MARS MAPPINGS CACHE (per-request)
+# mars_mappings is ~2000 rows of static reference data. Fetching once per
+# request and filtering in Python is dramatically cheaper than the repeated
+# bounding-box queries fog-of-war + frontier-line code used to issue.
+# ============================================================================
+
+def get_all_mars_mappings() -> List[Dict]:
+    """Fetch every mars_mappings row. Memoized per-request."""
+    def _load():
+        try:
+            with db_cursor() as cur:
+                cur.execute("""
+                    SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link
+                    FROM pilgrim.mars_mappings
+                """)
+                rows = _fetchall(cur)
+            for r in rows:
+                r['latitude'] = float(r['latitude'])
+                r['longitude'] = float(r['longitude'])
+            return rows
+        except Exception as e:
+            logger.warning(f"Could not load mars_mappings: {e}")
+            return []
+    return request_memo(('get_all_mars_mappings',), _load)
+
+
+def get_mars_mappings_by_name() -> Dict[str, Dict]:
+    """Dict of name -> mars_mappings row. Memoized per-request."""
+    return request_memo(
+        ('get_mars_mappings_by_name',),
+        lambda: {r['name']: r for r in get_all_mars_mappings()},
+    )
 
 
 # ============================================================================
@@ -46,6 +81,10 @@ def get_nearest_mars_landmarks(latitude, longitude, limit=5):
 
 
 def get_or_set_user_mars_home(user_id):
+    return request_memo(('get_or_set_user_mars_home', user_id), lambda: _get_or_set_user_mars_home_uncached(user_id))
+
+
+def _get_or_set_user_mars_home_uncached(user_id):
     """Get user's Mars home coordinates, or set if not assigned"""
     try:
         with db_cursor(commit=True) as cur:
@@ -76,27 +115,20 @@ def get_mars_landmarks_within_radius(center_lat: float, center_lon: float, radiu
     not limited by count. This ensures all directions get coverage.
     """
     try:
-        # Convert radius to approximate degrees (59km per degree on Mars)
         radius_deg = radius_km / 59
+        lat_min, lat_max = center_lat - radius_deg, center_lat + radius_deg
+        lon_min, lon_max = center_lon - radius_deg, center_lon + radius_deg
 
-        with db_cursor() as cur:
-            # Flat formula as bounding-box pre-filter (fast), then re-filter by true haversine below
-            cur.execute("""
-                SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link
-                FROM pilgrim.mars_mappings
-                WHERE latitude BETWEEN %s - %s AND %s + %s
-                  AND longitude BETWEEN %s - %s AND %s + %s
-            """, (center_lat, radius_deg, center_lat, radius_deg,
-                  center_lon, radius_deg, center_lon, radius_deg))
-            rows = _fetchall(cur)
-
-        # Recalculate distance_km using true Mars haversine — same metric as the range circle
         results = []
-        for row in rows:
-            dist = calculate_mars_distance(center_lat, center_lon, row['latitude'], row['longitude'])
+        for row in get_all_mars_mappings():
+            lat, lon = row['latitude'], row['longitude']
+            if not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
+                continue
+            dist = calculate_mars_distance(center_lat, center_lon, lat, lon)
             if dist <= radius_km:
-                row['distance_km'] = round(dist, 2)
-                results.append(row)
+                out = dict(row)
+                out['distance_km'] = round(dist, 2)
+                results.append(out)
         results.sort(key=lambda r: r['distance_km'])
         return results
     except Exception as e:
@@ -206,23 +238,31 @@ def get_frontier_landmarks_beyond_point(
     if not conditions:
         return []
 
-    where_clause = ' AND '.join(conditions)
-
     try:
-        with db_cursor() as cur:
-            # Fetch plenty of candidates sorted by distance — no hard cap
-            cur.execute(f"""
-                SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link,
-                       SQRT(POW(latitude - {home_lat}, 2) + POW(longitude - {home_lon}, 2)) * 59 as distance_km
-                FROM pilgrim.mars_mappings
-                WHERE {where_clause}
-                ORDER BY SQRT(POW(latitude - {home_lat}, 2) + POW(longitude - {home_lon}, 2))
-                LIMIT 150
-            """)
-            all_landmarks = _fetchall(cur)
+        # Python-filter from the cached mars_mappings pool (memoized per-request).
+        def _matches(r):
+            lat, lon = r['latitude'], r['longitude']
+            if 'N' in direction and not lat > furthest_lat: return False
+            if 'S' in direction and not lat < furthest_lat: return False
+            if 'E' in direction and not lon > furthest_lon: return False
+            if 'W' in direction and not lon < furthest_lon: return False
+            return True
 
-            if not all_landmarks:
-                return []
+        candidates = []
+        for r in get_all_mars_mappings():
+            if not _matches(r):
+                continue
+            dist = math.sqrt((r['latitude'] - home_lat) ** 2 + (r['longitude'] - home_lon) ** 2) * 59
+            out = dict(r)
+            out['distance_km'] = dist
+            candidates.append(out)
+        candidates.sort(key=lambda r: r['distance_km'])
+        all_landmarks = candidates[:150]
+
+        if not all_landmarks:
+            return []
+
+        if True:  # preserve original indent block
 
             # STEPPING STONE SELECTION: Pick one landmark per distance band.
             # Adaptive band size: 500km for nearby, shrinks for distant exploration.
@@ -356,30 +396,26 @@ def get_available_landmarks_by_discovery(user_id: int, base_coords: dict, limit:
                 lm['last_yield'] = disc['sepolia_earned']
                 lm['visit_count'] = disc.get('visit_count', 1)
 
-    # BUG FIX: Always include ALL discovered landmarks, even if outside fog-of-war
-    # Player has been there - they should always be able to return!
+    # BUG FIX: Always include ALL discovered landmarks, even if outside fog-of-war.
+    # Use the per-request cached mars_mappings lookup to avoid per-miss DB queries.
+    mappings_by_name = get_mars_mappings_by_name()
     for disc in discovered:
-        if disc['landmark_name'] not in all_candidates:
-            # Fetch this landmark from DB and add it
-            try:
-                with db_cursor() as cur:
-                    cur.execute("""
-                        SELECT name, type, latitude, longitude, diameter_km, origin, quad_name, link
-                        FROM pilgrim.mars_mappings WHERE name = %s
-                    """, (disc['landmark_name'],))
-                    row = _fetchone(cur)
-                    if row:
-                        row['distance_km'] = round(calculate_mars_distance(
-                            base_lat, base_lon, row['latitude'], row['longitude']
-                        ), 2)
-                        row['is_discovered'] = True
-                        row['last_visit'] = disc['discovered_at']
-                        row['last_yield'] = disc['sepolia_earned']
-                        row['visit_count'] = disc.get('visit_count', 1)
-                        all_landmarks.append(row)
-                        all_candidates[disc['landmark_name']] = row  # Add to candidates dict too
-            except Exception as e:
-                logger.warning(f"Could not fetch discovered landmark {disc['landmark_name']}: {e}")
+        name = disc['landmark_name']
+        if name in all_candidates:
+            continue
+        source = mappings_by_name.get(name)
+        if not source:
+            continue
+        row = dict(source)
+        row['distance_km'] = round(calculate_mars_distance(
+            base_lat, base_lon, row['latitude'], row['longitude']
+        ), 2)
+        row['is_discovered'] = True
+        row['last_visit'] = disc['discovered_at']
+        row['last_yield'] = disc['sepolia_earned']
+        row['visit_count'] = disc.get('visit_count', 1)
+        all_landmarks.append(row)
+        all_candidates[name] = row
 
     # === LAYER 2: FRONTIER LINES (additive to fog-of-war) ===
     # Players should ALWAYS see 1-3 dots in each of 8 directions beyond their furthest point

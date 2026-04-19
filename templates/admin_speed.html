@@ -71,6 +71,10 @@
                 <div class="speed-bar-label">
                     <strong>{{ r.page }}</strong>
                     <span class="text-sm text-muted">{{ r.function }}</span>
+                    {% if r.db_calls is defined and r.db_calls > 0 %}
+                      {% set db_color = '#4ade80' if r.db_calls <= 10 else '#f59e0b' if r.db_calls <= 20 else '#ef4444' %}
+                      <span class="text-sm" style="color:{{ db_color }};font-weight:600;">db:{{ r.db_calls }}</span>
+                    {% endif %}
                 </div>
                 <div class="speed-bar-track">
                     <div class="speed-bar-fill" style="width: {{ pct }}%; background: {{ color }};"></div>

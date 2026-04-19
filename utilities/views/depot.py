@@ -14,6 +14,10 @@ def get_depot_page_data(user_id, auth):
     total_balance, wallet_info, _ = get_fast_balance_and_wallet_info(user_id)  # FAST: no blockchain
     images = get_user_replicate_assets(user_id, asset_type='character_image', limit=1)
 
+    # PREFETCH: get_user_infrastructure is UPDATE+commit+SELECT — call ONCE, pass through everywhere.
+    from utilities.postgres.shop import get_user_infrastructure as _get_user_infra
+    user_structures = _get_user_infra(user_id)
+
     # Get shop catalog with availability info (excluding items now in UPGRADE_CATALOG)
     # ALL shop items have been migrated to the unified 10-level upgrade system
     MIGRATED_TO_UPGRADES = {
@@ -40,28 +44,30 @@ def get_depot_page_data(user_id, auth):
 
     # Get upgrade catalog (vehicles, equipment, storage, etc.)
     try:
-        from utilities.upgrades_utils import get_upgrade_catalog_for_user
-        upgrade_catalog = get_upgrade_catalog_for_user(user_id)
+        from utilities.upgrades.catalog import get_upgrade_catalog_for_user
+        upgrade_catalog = get_upgrade_catalog_for_user(user_id, _prefetch_structures=user_structures, _prefetch_balance=total_balance)
     except ImportError:
         upgrade_catalog = {}
 
     # Get captain stats for display
     commander, stats = get_commander_and_stats(user_id)
 
-    # Get upgrade cap info and active builds for UI
+    # Get upgrade cap info and active builds for UI (reuse prefetched infra_levels for cap)
     try:
         from utilities.upgrades_utils import count_concurrent_upgrades, get_user_upgrade_cap, get_active_builds
+        from utilities.upgrades.catalog import get_all_infrastructure_levels
+        _infra_levels = get_all_infrastructure_levels(user_id, structures=user_structures)
         concurrent_upgrades = count_concurrent_upgrades(user_id)
-        upgrade_cap = get_user_upgrade_cap(user_id)
+        upgrade_cap = get_user_upgrade_cap(user_id, _prefetch_infra_levels=_infra_levels)
         active_builds = get_active_builds(user_id)  # NEW system (player_upgrades)
     except ImportError:
         concurrent_upgrades = 0
         upgrade_cap = 3
         active_builds = []
 
-    # Add infrastructure builds to active_builds
-    from utilities.infrastructure_utils import get_user_infrastructure, INFRASTRUCTURE_CATALOG
-    for infra in get_user_infrastructure(user_id):
+    # Add infrastructure builds to active_builds (reuse prefetched user_structures)
+    from utilities.infrastructure_utils import INFRASTRUCTURE_CATALOG
+    for infra in user_structures:
         if infra.get('status') == 'building' and infra.get('ready_at'):
             ready_at = infra['ready_at']
             if hasattr(ready_at, 'tzinfo') and ready_at.tzinfo is None:

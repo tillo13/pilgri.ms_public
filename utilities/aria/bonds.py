@@ -521,6 +521,11 @@ def _complete_bond(bond_id: int) -> dict:
 
 
 def _get_commander_name(user_id: int) -> str | None:
+    from utilities.postgres.core import request_memo
+    return request_memo(('_get_commander_name', user_id), lambda: _get_commander_name_uncached(user_id))
+
+
+def _get_commander_name_uncached(user_id: int) -> str | None:
     """Get commander name for a user."""
     try:
         with db_cursor() as cur:

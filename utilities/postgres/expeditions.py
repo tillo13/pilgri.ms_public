@@ -291,8 +291,12 @@ def record_landmark_discovery(user_id: int, landmark_name: str, landmark_type: s
         return False
 
 def get_user_discovered_landmarks(user_id: int) -> List[Dict]:
-    """Get all landmarks user has discovered"""
-    return _get_many('landmark_discoveries', 'user_id = %s', (user_id,), 'discovered_at DESC', 'discovered landmarks')
+    """Get all landmarks user has discovered. Memoized per-request."""
+    from utilities.postgres.core import request_memo
+    return request_memo(
+        ('get_user_discovered_landmarks', user_id),
+        lambda: _get_many('landmark_discoveries', 'user_id = %s', (user_id,), 'discovered_at DESC', 'discovered landmarks'),
+    )
 
 
 # ============================================================================

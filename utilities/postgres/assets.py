@@ -320,7 +320,12 @@ def rename_captain_with_validation(user_id: int, new_name: str, flask_session) -
 
 
 def get_commander_stats(user_id: int) -> Optional[Dict]:
-    """Get captain stats from most recent character_image WITH stats"""
+    """Get captain stats from most recent character_image WITH stats. Per-request memoized."""
+    from utilities.postgres.core import request_memo
+    return request_memo(('get_commander_stats', user_id), lambda: _get_commander_stats_uncached(user_id))
+
+
+def _get_commander_stats_uncached(user_id: int) -> Optional[Dict]:
     try:
         with db_cursor() as cur:
             cur.execute("""

@@ -43,9 +43,9 @@ def get_passive_income_source(user_id: int) -> Dict:
     Find which upgrade provides passive income multiplier.
     Reads from power/generator upgrade path in UPGRADE_CATALOG.
     """
-    from utilities.upgrades_utils import get_user_upgrade_level, get_upgrade_stats
+    from utilities.upgrades.state import get_all_user_upgrades, get_upgrade_stats
 
-    level = get_user_upgrade_level(user_id, 'power', 'generator')
+    level = get_all_user_upgrades(user_id).get('power', {}).get('generator', 0)
     if level < 1:
         return None
 

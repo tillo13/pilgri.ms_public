@@ -13,8 +13,15 @@ logger = logging.getLogger(__name__)
 # SCHEMA MIGRATIONS (user-related)
 # ============================================================================
 
+_scientist_column_ensured = False
+_passive_sv_column_ensured = False
+
+
 def ensure_scientist_column() -> bool:
     """Ensure the scientist_key column exists in users table"""
+    global _scientist_column_ensured
+    if _scientist_column_ensured:
+        return True
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
@@ -28,6 +35,7 @@ def ensure_scientist_column() -> bool:
                     END IF;
                 END $$;
             """)
+            _scientist_column_ensured = True
             return True
     except Exception as e:
         logger.error(f"❌ Failed to ensure scientist column: {e}")
@@ -36,6 +44,9 @@ def ensure_scientist_column() -> bool:
 
 def ensure_passive_sv_column() -> bool:
     """Ensure the passive_sv_generated column exists in users table"""
+    global _passive_sv_column_ensured
+    if _passive_sv_column_ensured:
+        return True
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
@@ -49,6 +60,7 @@ def ensure_passive_sv_column() -> bool:
                     END IF;
                 END $$;
             """)
+            _passive_sv_column_ensured = True
             return True
     except Exception as e:
         logger.error(f"Failed to ensure passive_sv_generated column: {e}")
@@ -76,6 +88,11 @@ def add_passive_sv(user_id: int, amount: float) -> bool:
 
 
 def get_passive_sv(user_id: int) -> float:
+    from utilities.postgres.core import request_memo
+    return request_memo(('get_passive_sv', user_id), lambda: _get_passive_sv_uncached(user_id))
+
+
+def _get_passive_sv_uncached(user_id: int) -> float:
     """Get user's accumulated passive Science Value."""
     try:
         ensure_passive_sv_column()
@@ -181,6 +198,11 @@ def reassign_scientist_flow(user_id: int, new_key: str, flask_session) -> dict:
 
 
 def get_user_scientist(user_id: int) -> Optional[Dict]:
+    from utilities.postgres.core import request_memo
+    return request_memo(('get_user_scientist', user_id), lambda: _get_user_scientist_uncached(user_id))
+
+
+def _get_user_scientist_uncached(user_id: int) -> Optional[Dict]:
     """Get the scientist assigned to a user"""
     from config import COLONY_SCIENTISTS
     try:

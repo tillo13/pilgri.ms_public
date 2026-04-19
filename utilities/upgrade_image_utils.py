@@ -178,19 +178,45 @@ def _store_generated_image_url(category: str, item_key: str, level: int, gcs_url
 
 
 def get_stored_image_url(category: str, item_key: str, level: int) -> Optional[str]:
-    """Get the stored image URL from database (overrides config if exists)."""
-    from utilities.postgres.core import db_cursor
+    """Get the stored image URL from database. Per-request memoized via the full image map — so repeat
+    calls across get_best_available_image walk-back loops cost zero DB round-trips after the first."""
+    image_map = get_all_stored_images()
+    return image_map.get((category, item_key, int(level)))
 
-    try:
-        with db_cursor() as cur:
-            cur.execute("""
-                SELECT image_url FROM pilgrim.upgrade_images
-                WHERE category = %s AND item_key = %s AND level = %s
-            """, (category, item_key, level))
-            row = cur.fetchone()
-            return row['image_url'] if row else None
-    except:
-        return None
+
+def get_all_stored_images() -> Dict[tuple, str]:
+    """Bulk-fetch every stored upgrade image as {(category, item_key, level): url}.
+    Per-request memoized — one DB call per Flask request regardless of caller count."""
+    from utilities.postgres.core import db_cursor, request_memo
+
+    def _load():
+        out: Dict[tuple, str] = {}
+        try:
+            with db_cursor() as cur:
+                cur.execute("SELECT category, item_key, level, image_url FROM pilgrim.upgrade_images")
+                for row in cur.fetchall():
+                    if row['image_url']:
+                        out[(row['category'], row['item_key'], int(row['level']))] = row['image_url']
+        except Exception as e:
+            logger.error(f"get_all_stored_images failed: {e}")
+        return out
+
+    return request_memo(('get_all_stored_images',), _load)
+
+
+def get_best_available_image_from_map(category: str, item_key: str, level: int, image_map: Dict[tuple, str]) -> str:
+    """Same walk-back logic as get_best_available_image but uses a pre-fetched image_map (zero DB calls)."""
+    for lv in range(level, 0, -1):
+        stored = image_map.get((category, item_key, lv))
+        if stored:
+            return stored
+        if category == 'infrastructure':
+            config_url = get_infrastructure_level_image_url(item_key, lv)
+        else:
+            config_url = get_level_image_url(category, item_key, lv)
+        if config_url and config_url.strip():
+            return config_url
+    return ''
 
 
 def maybe_generate_upgrade_image(

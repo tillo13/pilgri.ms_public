@@ -14,8 +14,14 @@ logger = logging.getLogger(__name__)
 # SCHEMA MIGRATIONS (infrastructure-related)
 # ============================================================================
 
+_dust_covered_column_ensured = False
+
+
 def ensure_dust_covered_column() -> bool:
     """Ensure the dust_covered column exists in colony_infrastructure table"""
+    global _dust_covered_column_ensured
+    if _dust_covered_column_ensured:
+        return True
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
@@ -35,6 +41,7 @@ def ensure_dust_covered_column() -> bool:
                     END IF;
                 END $$;
             """)
+            _dust_covered_column_ensured = True
             return True
     except Exception as e:
         logger.error(f"❌ Failed to ensure dust_covered column: {e}")
@@ -238,7 +245,15 @@ def create_infrastructure(user_id, structure_type, structure_name, latitude, lon
 
 
 def get_user_infrastructure(user_id, structure_type=None):
-    """Get user's infrastructure with auto-activation"""
+    """Get user's infrastructure with auto-activation.
+    Per-request memoized (unless structure_type filter is used) — avoids the UPDATE+SELECT cost on repeat calls."""
+    if structure_type is None:
+        from utilities.postgres.core import request_memo
+        return request_memo(('get_user_infrastructure', user_id), lambda: _get_user_infrastructure_uncached(user_id))
+    return _get_user_infrastructure_uncached(user_id, structure_type)
+
+
+def _get_user_infrastructure_uncached(user_id, structure_type=None):
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""

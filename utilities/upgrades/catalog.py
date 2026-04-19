@@ -43,11 +43,16 @@ def get_level_stats(category: str, item_key: str, level: int) -> Optional[dict]:
 def get_all_infrastructure_levels(user_id: int, structures=None) -> dict:
     """
     Bulk-fetch all infrastructure levels in ONE query. Returns {building_key: level}.
-    Active buildings with no upgrade record default to level 1.
-    Auto-completes any pending upgrades whose ready_at has passed.
-
-    Pass pre-fetched structures to avoid redundant get_user_infrastructure() call.
+    Per-request memoized (keyed on user_id) — second call is free.
     """
+    from utilities.postgres.core import request_memo
+    return request_memo(
+        ('get_all_infrastructure_levels', user_id),
+        lambda: _get_all_infrastructure_levels_uncached(user_id, structures),
+    )
+
+
+def _get_all_infrastructure_levels_uncached(user_id: int, structures=None) -> dict:
     from datetime import datetime, timezone
     from utilities.upgrades.state import _complete_pending_upgrade
 
@@ -152,7 +157,7 @@ def get_next_upgrade_cost(category: str, item_key: str, current_level: int) -> O
     return next_stats.get('cost', 0)
 
 
-def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
+def get_upgrade_catalog_for_user(user_id: int, _prefetch_structures=None, _prefetch_balance=None) -> Dict[str, Any]:
     """
     Get the full upgrade catalog enriched with user's current levels and affordability.
     Used by Depot to show all upgradeable items.
@@ -180,12 +185,22 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
     from utilities.depot_utils import get_fast_balance_and_wallet_info
     from utilities.upgrades.state import (
         get_all_user_upgrades,
-        get_upgrade_build_status,
+        get_all_build_statuses,
     )
+    from utilities.upgrade_image_utils import get_all_stored_images, get_best_available_image_from_map
 
     try:
         user_upgrades = get_all_user_upgrades(user_id)
-        balance, _, _ = get_fast_balance_and_wallet_info(user_id)  # FAST: no blockchain
+        if _prefetch_balance is not None:
+            balance = _prefetch_balance
+        else:
+            balance, _, _ = get_fast_balance_and_wallet_info(user_id)  # FAST: no blockchain
+
+        # BULK prefetch: eliminates N+1 (build_status + images + infra levels) across the two loops below.
+        build_statuses = get_all_build_statuses(user_id)
+        image_map = get_all_stored_images()
+        user_structures = _prefetch_structures if _prefetch_structures is not None else get_user_infrastructure(user_id)
+        infra_levels = get_all_infrastructure_levels(user_id, structures=user_structures)
 
         result = {}
 
@@ -193,8 +208,7 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
             result[category] = {}
 
             for item_key, item_config in items.items():
-                # Get build status first (may auto-complete if ready)
-                build_status = get_upgrade_build_status(user_id, category, item_key)
+                build_status = build_statuses.get((category, item_key))
                 is_building = build_status.get('is_building', False) if build_status else False
 
                 current_level = user_upgrades.get(category, {}).get(item_key, 0)
@@ -205,10 +219,8 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
                 is_locked = current_level == 0
                 is_max = current_level >= item_config.get('max_level', 1)
 
-                # Image resolution: DB generated → config → walk back to nearest level with image
-                from utilities.upgrade_image_utils import get_best_available_image
                 display_level = (current_level + 1) if is_locked else current_level
-                display_image = get_best_available_image(category, item_key, display_level) if display_level > 0 else ''
+                display_image = get_best_available_image_from_map(category, item_key, display_level, image_map) if display_level > 0 else ''
 
                 # Include all level data (used by rich upgrade modal)
                 # Pass all stats through (excluding image_url to keep JSON lean)
@@ -255,18 +267,16 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
         # INFRASTRUCTURE - Add buildings that user already owns for upgrade
         # ========================================================================
         result['infrastructure'] = {}
-        user_buildings = get_user_infrastructure(user_id)
-        owned_types = {b['structure_type'] for b in user_buildings if b.get('status') == 'active'}
+        owned_types = {b['structure_type'] for b in user_structures if b.get('status') == 'active'}
 
         for item_key, item_config in INFRASTRUCTURE_CATALOG.items():
-            # Only show buildings the user has already built
             if item_key not in owned_types:
                 continue
 
-            build_status = get_upgrade_build_status(user_id, 'infrastructure', item_key)
+            build_status = build_statuses.get(('infrastructure', item_key))
             is_building = build_status.get('is_building', False) if build_status else False
 
-            current_level = get_infrastructure_level(user_id, item_key)
+            current_level = infra_levels.get(item_key, 1)
             current_stats = get_level_stats('infrastructure', item_key, current_level) or {}
             next_stats = get_level_stats('infrastructure', item_key, current_level + 1)
 
@@ -274,9 +284,7 @@ def get_upgrade_catalog_for_user(user_id: int) -> Dict[str, Any]:
             max_level = item_config.get('max_level', 10)
             is_max = current_level >= max_level
 
-            # Image resolution: DB generated → config → walk back to nearest level with image
-            from utilities.upgrade_image_utils import get_best_available_image
-            display_image = get_best_available_image('infrastructure', item_key, current_level)
+            display_image = get_best_available_image_from_map('infrastructure', item_key, current_level, image_map)
 
             # All levels data for modal - pass all stats through
             all_levels = {}

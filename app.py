@@ -122,8 +122,11 @@ def force_canonical_host():
 
 @app.before_request
 def start_timer():
-    """Start timing the request."""
+    """Start timing the request + reset per-request DB-call counter."""
     g.start_time = time.time()
+    from utilities.postgres.core import reset_db_counter, set_db_context
+    reset_db_counter()
+    set_db_context(f"{request.method} {request.path}")
 
 @app.before_request
 def check_apikey_auth():
@@ -160,7 +163,15 @@ def log_request_time(response):
         captain_name = session.get('_cmd', '')
         user_tag = f" [{captain_name or f'user:{user_id}'}]" if user_id else ""
 
-        logger.info(f"{color}⏱️  {request.method} {request.path}{user_tag} → {duration:.1f}ms{reset}")
+        from utilities.postgres.core import get_db_counter, DB_CALL_WARN_THRESHOLD
+        db_count = get_db_counter()
+        db_tag = f" [db:{db_count}]" if db_count else ""
+        logger.info(f"{color}⏱️  {request.method} {request.path}{user_tag} → {duration:.1f}ms{db_tag}{reset}")
+        if db_count > DB_CALL_WARN_THRESHOLD and not request.path.startswith('/static'):
+            logger.warning(
+                f"🐌 SLOW: {request.method} {request.path} issued {db_count} db_cursor opens "
+                f"(threshold {DB_CALL_WARN_THRESHOLD}). Likely N+1 — prefetch + pass-through."
+            )
     return response
 
 # Force HTTPS and set security headers

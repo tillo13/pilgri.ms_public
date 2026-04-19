@@ -92,7 +92,12 @@ def _get_user_completed_techs(user_id: int, branch_level: int = None) -> Dict[st
 
 
 def _get_active_research(user_id: int) -> Optional[Dict]:
-    """Get current researching tech, if any."""
+    """Get current researching tech, if any. Per-request memoized."""
+    from utilities.postgres.core import request_memo
+    return request_memo(('_get_active_research', user_id), lambda: _get_active_research_uncached(user_id))
+
+
+def _get_active_research_uncached(user_id: int) -> Optional[Dict]:
     ensure_player_techs_table()
     with db_cursor() as cur:
         cur.execute("""
@@ -263,7 +268,15 @@ def _get_user_branch_levels(user_id: int) -> Dict[str, int]:
 
 
 def _get_completed_techs_at_level(user_id: int, branch: str, branch_level: int) -> list:
-    """Get list of tech_keys completed at a specific branch level."""
+    """Get list of tech_keys completed at a specific branch level. Per-request memoized."""
+    from utilities.postgres.core import request_memo
+    return request_memo(
+        ('_get_completed_techs_at_level', user_id, branch, branch_level),
+        lambda: _get_completed_techs_at_level_uncached(user_id, branch, branch_level),
+    )
+
+
+def _get_completed_techs_at_level_uncached(user_id: int, branch: str, branch_level: int) -> list:
     ensure_player_techs_table()
     with db_cursor() as cur:
         cur.execute("""
@@ -337,13 +350,13 @@ def _get_tech_image(branch: str, tech_key: str, branch_level: int, tech_data: di
 
 
 def _has_research_station(user_id: int) -> bool:
-    """Check if user has active research_station infrastructure."""
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT id FROM pilgrim.colony_infrastructure
-            WHERE user_id = %s AND structure_type = 'research_station' AND status = 'active'
-        """, (user_id,))
-        return cur.fetchone() is not None
+    """Check if user has active research_station infrastructure.
+    Reads from the per-request memoized infrastructure list instead of a fresh query."""
+    from utilities.postgres.shop import get_user_infrastructure
+    for b in get_user_infrastructure(user_id):
+        if b.get('structure_type') == 'research_station' and b.get('status') == 'active':
+            return True
+    return False
 
 
 def _check_tech_available(user_id: int, branch: str, tech_key: str) -> tuple:
@@ -553,17 +566,46 @@ def cancel_research(user_id: int, session) -> Dict[str, Any]:
 
 
 def get_tech_effects(user_id: int) -> Dict[str, Any]:
+    from utilities.postgres.core import request_memo
+    return request_memo(('get_tech_effects', user_id), lambda: _get_tech_effects_uncached(user_id))
+
+
+def _get_tech_effects_uncached(user_id: int) -> Dict[str, Any]:
     """
     Calculate cumulative effects from all completed tech research.
-    Called by get_user_upgrade_effects() to merge into the pipeline.
-
-    Aggregates effects from all branches, scaling by the branch_level
-    each tech was completed at.
+    Single query across ALL branches (was N+1 per branch).
     """
+    from config_tech import scale_effects
     effects = {}
 
-    for branch in TECH_CATALOG.keys():
-        branch_effects = _get_branch_effects(user_id, branch)
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT branch, tech_key, COALESCE(branch_level, 1) as branch_level
+            FROM pilgrim.player_techs
+            WHERE user_id = %s AND status = 'completed'
+        """, (user_id,))
+        rows = cur.fetchall()
+
+    # Aggregate per-branch (same merge rules as _get_branch_effects), then merge across branches.
+    per_branch: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        branch = row['branch']
+        tech_data = TECH_CATALOG.get(branch, {}).get('techs', {}).get(row['tech_key'])
+        if not tech_data:
+            continue
+        scaled = scale_effects(tech_data.get('effects', {}), row['branch_level'])
+        b = per_branch.setdefault(branch, {})
+        for key, value in scaled.items():
+            if key not in b:
+                b[key] = value
+            elif key.endswith('_mult'):
+                b[key] = max(b[key], value) if 'cost' not in key else min(b[key], value)
+            elif isinstance(value, (int, float)):
+                b[key] = b[key] + value
+            elif isinstance(value, bool):
+                b[key] = b[key] or value
+
+    for branch_effects in per_branch.values():
         for key, value in branch_effects.items():
             if key not in effects:
                 effects[key] = value

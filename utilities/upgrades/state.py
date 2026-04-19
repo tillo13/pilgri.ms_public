@@ -76,10 +76,17 @@ def get_user_upgrade_level(user_id: int, category: str, item_key: str) -> int:
 
     For infrastructure: returns level based on building existence + upgrade record.
     """
+    from utilities.postgres.core import request_memo
+    return request_memo(
+        ('get_user_upgrade_level', user_id, category, item_key),
+        lambda: _get_user_upgrade_level_uncached(user_id, category, item_key),
+    )
+
+
+def _get_user_upgrade_level_uncached(user_id: int, category: str, item_key: str) -> int:
     from datetime import datetime, timezone
     from utilities.upgrades.catalog import get_infrastructure_level, get_item_config
 
-    # Special handling for infrastructure - uses building existence as base
     if category == 'infrastructure':
         return get_infrastructure_level(user_id, item_key)
 
@@ -258,15 +265,18 @@ def count_concurrent_upgrades(user_id: int) -> int:
         return equipment_count + infra_count
 
 
-def get_user_upgrade_cap(user_id: int) -> int:
+def get_user_upgrade_cap(user_id: int, _prefetch_infra_levels=None) -> int:
     """
     Get user's max concurrent upgrade cap.
     Base cap is 3. Habitat Module Level 5+ adds +1 slot.
+    Pass _prefetch_infra_levels (dict from get_all_infrastructure_levels) to skip 2 DB round-trips.
     """
-    from utilities.upgrades.catalog import get_infrastructure_level
     cap = BASE_CONCURRENT_UPGRADE_CAP
-    # Check for habitat module level 5+
-    habitat_level = get_infrastructure_level(user_id, 'habitat_module')
+    if _prefetch_infra_levels is not None:
+        habitat_level = _prefetch_infra_levels.get('habitat_module', 0)
+    else:
+        from utilities.upgrades.catalog import get_infrastructure_level
+        habitat_level = get_infrastructure_level(user_id, 'habitat_module')
     if habitat_level >= 5:
         cap += 1  # +1 slot at level 5
     return cap
@@ -311,11 +321,60 @@ def get_active_builds(user_id: int) -> list:
     return builds
 
 
+def get_all_build_statuses(user_id: int) -> Dict[tuple, dict]:
+    """Bulk-fetch build status for every player_upgrades row. Returns {(category, item_key): status_dict}.
+    Eliminates N+1 get_upgrade_build_status() calls in depot catalog iteration."""
+    from datetime import datetime, timezone
+    out: Dict[tuple, dict] = {}
+    try:
+        ensure_upgrades_table()
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT category, item_key, level, pending_level, ready_at
+                FROM pilgrim.player_upgrades
+                WHERE user_id = %s
+            """, (user_id,))
+            rows = cur.fetchall()
+        now = datetime.now(timezone.utc)
+        to_complete = []
+        for row in rows:
+            cat = row['category']; key = row['item_key']
+            pending_level = row['pending_level']
+            ready_at = row['ready_at']
+            if not pending_level or not ready_at:
+                out[(cat, key)] = {'is_building': False, 'current_level': row['level']}
+                continue
+            ready_at_aware = ready_at.replace(tzinfo=timezone.utc) if ready_at.tzinfo is None else ready_at
+            seconds_remaining = max(0, (ready_at_aware - now).total_seconds())
+            if seconds_remaining <= 0:
+                to_complete.append((cat, key, pending_level))
+                out[(cat, key)] = {'is_building': False, 'current_level': pending_level}
+            else:
+                out[(cat, key)] = {
+                    'is_building': True,
+                    'pending_level': pending_level,
+                    'ready_at': ready_at_aware.isoformat(),
+                    'seconds_remaining': int(seconds_remaining),
+                    'current_level': row['level'],
+                }
+        for cat, key, pl in to_complete:
+            _complete_pending_upgrade(user_id, cat, key, pl)
+    except Exception as e:
+        logger.error(f"get_all_build_statuses failed: {e}")
+    return out
+
+
 def get_all_user_upgrades(user_id: int) -> Dict[str, Dict[str, int]]:
     """
     Get all upgrades for a user as nested dict: {category: {item_key: level}}
     Includes default levels for items not yet in DB.
+    Per-request memoized — second call in the same request is free.
     """
+    from utilities.postgres.core import request_memo
+    return request_memo(('get_all_user_upgrades', user_id), lambda: _get_all_user_upgrades_uncached(user_id))
+
+
+def _get_all_user_upgrades_uncached(user_id: int) -> Dict[str, Dict[str, int]]:
     try:
         ensure_upgrades_table()
 

@@ -15,9 +15,9 @@ def get_vehicle_for_expedition(user_id: int, vehicle_type: str = 'rover') -> Dic
     Get vehicle stats for expedition calculations.
     Returns stats dict with cargo, speed_mult, discovery bonuses.
     """
-    from utilities.upgrades.state import get_user_upgrade_level, get_upgrade_stats
+    from utilities.upgrades.state import get_all_user_upgrades, get_upgrade_stats
 
-    level = get_user_upgrade_level(user_id, 'vehicles', vehicle_type)
+    level = get_all_user_upgrades(user_id).get('vehicles', {}).get(vehicle_type, 0)
     if level == 0:
         return None  # Vehicle not unlocked
 

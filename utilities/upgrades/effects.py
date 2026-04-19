@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
+    from utilities.postgres.core import request_memo
+    return request_memo(('get_user_upgrade_effects', user_id), lambda: _get_user_upgrade_effects_uncached(user_id))
+
+
+def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
     """
     Calculate all cumulative effects from user's upgrades AND infrastructure.
     Reads from player_upgrades table + UPGRADE_CATALOG.

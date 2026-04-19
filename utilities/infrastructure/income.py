@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 def user_has_maintenance_drone(user_id: int) -> bool:
     """Check if user has dust immunity from the Maintenance Drone path (Lv3 = Dust Guard)."""
-    from utilities.upgrades_utils import get_user_upgrade_level
-    return get_user_upgrade_level(user_id, 'maintenance', 'maintenance') >= 3
+    from utilities.upgrades.state import get_all_user_upgrades
+    return get_all_user_upgrades(user_id).get('maintenance', {}).get('maintenance', 0) >= 3
 
 
 def calculate_accumulated_income(user_id):

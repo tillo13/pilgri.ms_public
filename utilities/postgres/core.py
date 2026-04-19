@@ -162,9 +162,49 @@ def get_db_connection_stats():
         return {'error': str(e)[:100]}
 
 
+# ============================================================================
+# PER-REQUEST DB-CALL TELEMETRY
+# Counts db_cursor() opens in each Flask request. Logs a warning and records
+# to request.db_counter if the count exceeds DB_CALL_WARN_THRESHOLD.
+# Reset via reset_db_counter() from a before_request hook; read via get_db_counter().
+# ============================================================================
+
+_tls = threading.local()
+DB_CALL_WARN_THRESHOLD = 20  # per-request cursor opens; anything above this is a smell
+
+
+def reset_db_counter():
+    _tls.count = 0
+    _tls.context = None
+    _tls.memo = {}
+
+
+def request_memo(key: tuple, loader):
+    """Per-request cache for read-only helpers. Second call with the same key returns the cached value
+    (no DB hit). Reset by reset_db_counter() at the start of each Flask request."""
+    memo = getattr(_tls, 'memo', None)
+    if memo is None:
+        _tls.memo = memo = {}
+    if key in memo:
+        return memo[key]
+    val = loader()
+    memo[key] = val
+    return val
+
+
+def set_db_context(label: str):
+    """Tag the current request so over-threshold warnings identify the page."""
+    _tls.context = label
+
+
+def get_db_counter() -> int:
+    return getattr(_tls, 'count', 0)
+
+
 @contextmanager
 def db_cursor(dict_cursor=True, commit=False):
     """Context manager for database operations - uses connection pool for speed."""
+    _tls.count = getattr(_tls, 'count', 0) + 1
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) if dict_cursor else conn.cursor()
     try:
