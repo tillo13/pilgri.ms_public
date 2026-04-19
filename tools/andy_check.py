@@ -292,11 +292,41 @@ def check_expedition_completion():
 
 
 def check_discovery_claims():
-    """Batch claim any unclaimed discoveries from completed expeditions."""
+    """Batch claim unclaimed discoveries from completed expeditions.
+
+    First unlocks any `unlocked_at IS NULL` rows on completed/recalled expeditions
+    (matches the game-mechanic path in get_expedition_discovery_progress — visiting
+    the expedition modal does this as a side effect, but andy_check never clicks).
+    Without this, `claim_all_pending_discoveries` silently skips locked rows and the
+    next expedition launch fails with 'Claim your discoveries from X before...'."""
+    from utilities.postgres.core import db_cursor
     from utilities.postgres.expeditions import (
         claim_all_pending_discoveries,
         get_total_unclaimed_discoveries_count,
+        unlock_discoveries_by_distance,
     )
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT e.id, e.distance_km
+            FROM pilgrim.expeditions e
+            WHERE e.user_id = %s
+              AND e.status IN ('complete', 'recalled')
+              AND EXISTS (
+                SELECT 1 FROM pilgrim.expedition_discoveries ed
+                WHERE ed.expedition_id = e.id
+                  AND ed.unlocked_at IS NULL
+                  AND ed.claimed_by_user = false
+              )
+        """, (ANDY_USER_ID,))
+        locked_exps = cur.fetchall()
+
+    unlocked_total = 0
+    for exp in locked_exps:
+        n = unlock_discoveries_by_distance(exp['id'], float(exp['distance_km']))
+        unlocked_total += n
+    if unlocked_total:
+        log.info(f"  ✓ unlocked {unlocked_total} discoveries across {len(locked_exps)} completed expedition(s)")
 
     count = get_total_unclaimed_discoveries_count(ANDY_USER_ID)
     if count == 0:
@@ -597,6 +627,95 @@ AUTHED_PAGES = [
     '/research', '/inventory', '/lore', '/signal', '/admin/bugs',
 ]
 
+# Click-driven API endpoints the UI calls after a page load. Page GETs won't
+# catch bugs inside these — the modules only import when the browser POSTs.
+# Each entry is (method, path, payload). `success_key` = key to assert truthy
+# in the JSON response (None = any 2xx is good). Bug #1410 is the reason this
+# sweep exists: preview.py had an UnboundLocalError that /expeditions GET
+# didn't trip because the page template never imports preview.py.
+AUTHED_API_PROBES = [
+    # Expedition launch flow (the bug that spawned this — #1410)
+    ('POST', '/api/expedition/preview',
+        {'distance_km': 100, 'destination_type': 'crater', 'destination_name': 'AndyCheckProbe'},
+        'success'),
+    ('POST', '/api/expeditions/calculate_cost',
+        {'distance_km': 100, 'destination_type': 'crater'},
+        None),
+    # Lab / research tab
+    ('GET', '/api/tech/status', None, None),
+    ('GET', '/api/tech/progress', None, None),
+    # Crew / trail tab
+    ('GET', '/api/crew/mission/status', None, None),
+    ('GET', '/api/crew/mission/nearby', None, None),
+    # Colony feeds
+    ('GET', '/api/colony/activity', None, None),
+    ('GET', '/api/expeditions/recent_discoveries', None, None),
+    ('GET', '/api/expeditions/history', None, None),
+    # Signal tab
+    ('GET', '/api/signal/status', None, None),
+    ('GET', '/api/signal/origin/eligibility', None, None),
+    # Balance / nav stats surfaced on every page
+    ('GET', '/api/user/balance', None, None),
+    ('GET', '/api/nav/stats', None, None),
+    # ARIA
+    ('GET', '/api/aria/hint', None, None),
+]
+
+
+def check_authed_api_probes():
+    """POST/GET every click-driven API endpoint as Andy. Catches bugs that only
+    fire when the UI actually calls the endpoint — not on the page GET.
+
+    Added after bug #1410: a NameError in get_expedition_preview shipped to prod
+    because check_authed_page_renders only GETs pages, and check_expeditions
+    calls launch_expedition() directly in Python (never hits the preview HTTP
+    endpoint the modal uses)."""
+    from app import app
+    from utilities.postgres.users import get_user_by_id
+    user = get_user_by_id(ANDY_USER_ID)
+    if not user:
+        raise RuntimeError(f"Andy user #{ANDY_USER_ID} not found in DB")
+
+    failures = []
+    with app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess['user_id'] = ANDY_USER_ID
+            sess['user'] = {
+                'email': user.get('email'),
+                'name': user.get('name') or user.get('email', 'Andy'),
+                'picture': user.get('picture_url'),
+                'google_id': user.get('google_id'),
+            }
+        for method, path, payload, success_key in AUTHED_API_PROBES:
+            try:
+                if method == 'POST':
+                    resp = client.post(path, json=payload or {}, follow_redirects=False)
+                else:
+                    resp = client.get(path, follow_redirects=False)
+                code = resp.status_code
+                if code >= 500:
+                    body = resp.get_data(as_text=True)[:400]
+                    failures.append(f"{method} {path} → {code}\n      {body}")
+                    log.info(f"  ❌ {method} {path} → {code}")
+                    continue
+                # 3xx/4xx aren't necessarily bugs — e.g. admin-only endpoints as non-admin.
+                # But if the endpoint returned 200 and has a success_key, it must be truthy.
+                if code == 200 and success_key and resp.is_json:
+                    data = resp.get_json() or {}
+                    if not data.get(success_key):
+                        err = data.get('error') or data.get('message') or str(data)[:200]
+                        failures.append(f"{method} {path} → 200 but {success_key}=false: {err}")
+                        log.info(f"  ❌ {method} {path} → 200 {success_key}=false: {err[:80]}")
+                        continue
+                log.info(f"  ✅ {method} {path} → {code}")
+            except Exception as e:
+                failures.append(f"{method} {path} → exception: {e}")
+                log.info(f"  ❌ {method} {path} → exception: {e}")
+    if failures:
+        raise RuntimeError(
+            f"{len(failures)} authed API probe(s) failed:\n  " + "\n  ".join(failures)
+        )
+
 
 def check_authed_page_renders():
     """Render every player-facing page as Andy via Flask test_client.
@@ -661,6 +780,8 @@ def main():
         ("New Infrastructure", check_new_infrastructure),
         # --- VERIFY AUTHED PAGE RENDERS (catches Jinja/view 500s) ---
         ("Authed Page Renders", check_authed_page_renders),
+        # --- VERIFY CLICK-DRIVEN API ENDPOINTS (catches bugs GETs miss — #1410) ---
+        ("Authed API Probes", check_authed_api_probes),
     ]
 
     failures = []
@@ -672,7 +793,7 @@ def main():
             log.info(f"  ⚠️  Skipped locally (needs {e.name} — works on GCP)")
         except Exception as e:
             log.info(f"  ❌ {name} error: {e}")
-            if name == "Authed Page Renders":
+            if name in ("Authed Page Renders", "Authed API Probes"):
                 failures.append(str(e))
         log.info("")
 
