@@ -238,10 +238,19 @@ def get_completed_bugs(limit=50, search=None):
         return []
 
 
+IMMUTABLE_ONCE_SET = {'description', 'to_validate'}
+
+
 def update_bug(bug_id, changed_by, **fields):
     """Update bug fields and log changes to bug_history.
 
-    Usage: update_bug(42, 'PilgrimBot', status='AWAITING_QA', to_validate='TEST: ...')
+    Usage: update_bug(42, 'PilgrimBot', status='AWAITING_QA')
+
+    IMMUTABLE_ONCE_SET fields (description, to_validate) CANNOT be overwritten
+    once they hold non-empty content. Any validation notes, ship logs, or
+    additional context must go in bug_comments via add_bug_comment() so the
+    full history is preserved. Ticket #1413-era lesson: pb dev was overwriting
+    to_validate on every call, silently erasing multi-phase shipped work.
     """
     ensure_bug_tables()
     if not fields:
@@ -252,6 +261,19 @@ def update_bug(bug_id, changed_by, **fields):
             cur.execute("SELECT * FROM pilgrim.bugs WHERE id = %s", (bug_id,))
             old = _fetchone(cur)
             if not old:
+                return False
+
+            # Immutability guard — strip any attempt to overwrite locked fields.
+            for locked in list(IMMUTABLE_ONCE_SET):
+                if locked in fields:
+                    existing = (old.get(locked) or '').strip()
+                    if existing:
+                        logger.warning(
+                            "Refusing to overwrite %s on bug #%s (already set). "
+                            "Use add_bug_comment() instead.", locked, bug_id
+                        )
+                        fields.pop(locked)
+            if not fields:
                 return False
 
             # Log each changed field

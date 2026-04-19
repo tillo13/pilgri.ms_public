@@ -181,7 +181,7 @@
       "format_bug_row — Format a single bug for CLI display.",
       "cmd_list — Show bugs grouped by priority.",
       "cmd_add — Add a new bug.",
-      "cmd_dev — Add TEST: validation instructions.",
+      "cmd_dev — Post a TEST: validation comment + flip status to Awaiting QA.",
       "cmd_status — Update bug status.",
       "cmd_search — Search bugs by keyword.",
       "cmd_done — Mark bug as done (QA only).",
@@ -524,7 +524,7 @@
       "format_bug_row — Format a single bug for CLI display.",
       "cmd_list — Show bugs grouped by priority.",
       "cmd_add — Add a new bug.",
-      "cmd_dev — Add TEST: validation instructions.",
+      "cmd_dev — Post a TEST: validation comment + flip status to Awaiting QA.",
       "cmd_status — Update bug status.",
       "cmd_search — Search bugs by keyword.",
       "cmd_done — Mark bug as done (QA only).",
@@ -3217,7 +3217,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
