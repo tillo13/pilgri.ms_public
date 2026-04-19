@@ -349,11 +349,7 @@
 
         // Comments thread
         var commentsHtml = '<div class="bt-comments">' +
-            '<div class="bt-comments-title">Discussion (' + comments.length + ') <span style="font-size:10px;text-transform:none;opacity:0.5;">newest first</span></div>' +
-            '<div class="bt-comment-input">' +
-                '<textarea id="btCommentBody" placeholder="Add a comment... Use #123 to reference other bugs" rows="2"></textarea>' +
-                '<button class="bt-btn bt-btn-sm bt-btn-primary" onclick="BT.addComment(' + bug.id + ')">Post</button>' +
-            '</div>';
+            '<div class="bt-comments-title">Discussion (' + comments.length + ') <span style="font-size:10px;text-transform:none;opacity:0.5;">oldest first</span></div>';
         if (comments.length) {
             commentsHtml += comments.map(function(c) {
                 var isPilgrimBot = c.author === 'PilgrimBot';
@@ -369,6 +365,11 @@
         } else {
             commentsHtml += '<div style="color:rgba(255,255,255,0.3);font-size:13px;margin-bottom:8px;">No comments yet</div>';
         }
+        commentsHtml +=
+            '<div class="bt-comment-input">' +
+                '<textarea id="btCommentBody" placeholder="Add a comment... Use #123 to reference other bugs" rows="2"></textarea>' +
+                '<button class="bt-btn bt-btn-sm bt-btn-primary" onclick="BT.addComment(' + bug.id + ')">Post</button>' +
+            '</div>';
         commentsHtml += '</div>';
 
         overlay.innerHTML =

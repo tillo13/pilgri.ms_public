@@ -551,7 +551,7 @@ def get_bug_comments(bug_id):
         with db_cursor() as cur:
             cur.execute("""
                 SELECT * FROM pilgrim.bug_comments
-                WHERE bug_id = %s ORDER BY created_at DESC
+                WHERE bug_id = %s ORDER BY created_at ASC
             """, (bug_id,))
             return _serialize_rows(_fetchall(cur))
     except Exception as e:
