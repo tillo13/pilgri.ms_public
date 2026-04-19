@@ -181,4 +181,17 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
     except Exception:
         pass
 
+    # Scientist Engineering stat → build speed bonus (stacks with Logistics)
+    # Per bug #1270 section 4 (Luke 2026-04-12): use Scientist ENG as a passive build-speed lever.
+    try:
+        from utilities.postgres.users import get_user_scientist
+        scientist = get_user_scientist(user_id)
+        if scientist:
+            engineering = scientist.get('stats', {}).get('engineering', 0) or 0
+            # ENG 0 = no bonus, 50 = 10% faster, 100 = 20% faster (floor 50%, matches Logistics shape)
+            eng_build_mult = max(0.5, 1.0 - engineering / 500.0)
+            effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * eng_build_mult
+    except Exception:
+        pass
+
     return effects
