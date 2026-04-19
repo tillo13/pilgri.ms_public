@@ -2041,7 +2041,7 @@
       "find_nearest_trail_origin — Find the nearest connected node in the user's trail network to build FROM.",
       "spawn_next_trail — When a trail is completed, chain a new segment from the completed point",
       "heal_orphan_trail_tips — For every completed trail destination that has no descendant chain row,",
-      "cron_drone_trail_build — Passive trail building for users with Automation Drone upgrades."
+      "cron_drone_trail_build — Passive trail building for users with Automation Drone upgrades AND Robot Crew."
     ],
     "keywords": "trail km add, SV per km (2 SV/km), cron_drone_trail_build passive trail"
   },
@@ -3209,7 +3209,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

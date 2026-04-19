@@ -478,11 +478,48 @@ def heal_orphan_trail_tips(user_id: int) -> int:
 # AUTOMATION DRONE — Passive Trail Building (cron job, runs every 30 min)
 # ============================================================================
 
+def _compute_robot_trail_contribution(user_id: int) -> float:
+    """bug #1113: Robot Crew's exploration dial slot contributes passive km/hr to trail building.
+
+    Luke §5 starting formula: 0.025 km/hr at dial=25%, stage=5, robotics_lab=1, scientist_nav=50.
+    Scales linearly with each factor. Zero when the robot hasn't been built yet.
+    """
+    try:
+        with db_cursor() as cur:
+            cur.execute("SELECT build_status, visual_stage, dial FROM pilgrim.robot WHERE user_id = %s", (user_id,))
+            robot = cur.fetchone()
+        if not robot or not robot.get('dial'):
+            return 0.0
+        stage = int(robot.get('visual_stage') or 0)
+        if stage < 1:
+            return 0.0
+        exploration = int((robot['dial'] or {}).get('exploration', 0) or 0)
+        if exploration <= 0:
+            return 0.0
+
+        from utilities.upgrades_utils import get_all_infrastructure_levels
+        from utilities.postgres.users import get_user_scientist
+        rl_level = int((get_all_infrastructure_levels(user_id) or {}).get('robotics_lab', 0))
+        if rl_level < 1:
+            return 0.0
+        sci = get_user_scientist(user_id) or {}
+        nav = int((sci.get('stats') or {}).get('navigation', 0) or 0)
+
+        # 0.025 km/hr baseline at dial=25, stage=5, rl=1, nav=50
+        return 0.025 * (exploration / 25.0) * (stage / 5.0) * rl_level * (max(nav, 1) / 50.0)
+    except Exception as e:
+        logger.warning(f"robot trail contribution failed for user {user_id}: {e}")
+        return 0.0
+
+
 def cron_drone_trail_build():
-    """Passive trail building for users with Automation Drone upgrades.
+    """Passive trail building for users with Automation Drone upgrades AND Robot Crew.
 
     Called by /api/cron/drone_trail_build every 30 minutes.
-    Adds km based on drone level's trail_km_per_hour config.
+    Contributions (summed):
+      - Maintenance drone trail_km_per_hour (bug #1149)
+      - Mining drone trail_km_per_hour (bug #1149)
+      - Robot Crew exploration-dial slot (bug #1113)
     Builds on the trail closest to completion (most km_built / total_distance_km).
     """
     from config_upgrades import UPGRADE_CATALOG
@@ -507,6 +544,8 @@ def cron_drone_trail_build():
                     continue
                 cfg = UPGRADE_CATALOG.get(cat, {}).get(key, {}).get('levels', {}).get(lv, {})
                 km_per_hour += cfg.get('trail_km_per_hour', 0) or 0
+            # bug #1113: Robot Crew's exploration dial adds a small km/hr contribution.
+            km_per_hour += _compute_robot_trail_contribution(user_id)
             if km_per_hour <= 0:
                 continue
 
