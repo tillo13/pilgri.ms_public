@@ -882,7 +882,7 @@ INFRASTRUCTURE_CATALOG = {
     # Each level shortens robot stage assembly time via robot_build_speed_mult.
     # =========================================================================
     'robotics_lab': {
-        'name': 'Robotics Lab',
+        'name': 'Narog Lab',
         'description': 'Workshop where recovered Martian salvage is forged into an autonomous robot',
         'icon': '\U0001f916',  # 🤖
         'category': 'research',

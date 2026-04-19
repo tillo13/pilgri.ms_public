@@ -565,7 +565,7 @@ def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
     if int(levels.get('robotics_lab', 0)) < 1:
         return {
             'success': False,
-            'error': 'Robotics Lab required. Build the Robotics Lab in your Colony first.',
+            'error': 'Narog Lab required. Build the Narog Lab in your Colony first.',
         }, 400
 
     try:
@@ -723,7 +723,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         prereq_defs = [
             {'key': 'research_station', 'name': 'Research Station', 'required_level': 3},
             {'key': 'regolith_forge', 'name': 'Regolith Forge', 'required_level': 3},
-            {'key': 'robotics_lab', 'name': 'Robotics Lab', 'required_level': 1},
+            {'key': 'robotics_lab', 'name': 'Narog Lab', 'required_level': 1},
         ]
         for pd in prereq_defs:
             cat = INFRASTRUCTURE_CATALOG.get(pd['key'], {})
