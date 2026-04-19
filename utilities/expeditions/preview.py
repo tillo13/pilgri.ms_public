@@ -232,10 +232,11 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
     trail_data = get_user_trail(user_id, destination_name)
     trail_speed_mult = TRAIL_SPEED_MULTIPLIERS.get(trail_data['trail_level'], 1.0)
 
-    # Range scales with fog radius (experienced players can reach further)
+    # Range scales with fog radius (experienced players can reach further) × scanner bonus
     discovered = get_user_discovered_landmarks(user_id)
     fog_radius = min(1000, 300 + len(discovered) * 50)
     range_mult = fog_radius / 300.0
+    scanner_range_mult = (upgrade_effects or {}).get('vehicle_range_mult', 1.0)
 
     # Calculate estimates per vehicle (with segment compounding)
     vehicle_estimates = []
@@ -268,8 +269,8 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         # Total speed mult (for backwards compatibility)
         total_speed = effective_speed / BASE_SPEED_KM_PER_HOUR
 
-        # Range check: scaled by fog radius (more discoveries = further reach)
-        max_range = int(v.get('max_range_km', 9999) * range_mult)
+        # Range check: fog radius × scanner vehicle_range_mult (Scanner L2+ extends range)
+        max_range = int(v.get('max_range_km', 9999) * range_mult * scanner_range_mult)
         out_of_range = distance_km > max_range
         available = v['available'] and not out_of_range
         unavailable_reason = f'Out of range ({max_range} km max)' if out_of_range else ('In use' if not v['available'] else '')

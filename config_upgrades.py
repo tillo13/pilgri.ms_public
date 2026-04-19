@@ -233,51 +233,61 @@ UPGRADE_CATALOG = {
                 1: {
                     'name': 'Surface Scanner', 'cost': 0,
                     'discovery_chance_bonus': 0.10, 'rare_chance_bonus': 0, 'legendary_chance_bonus': 0,
+                    'vehicle_range_mult': 1.00,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/scanner_basic_1767505603.png',
                 },
                 2: {
                     'name': 'Deep Core Scanner', 'cost': 300, 'build_time_days': 1,
                     'discovery_chance_bonus': 0.15, 'rare_chance_bonus': 0.03, 'legendary_chance_bonus': 0,
+                    'vehicle_range_mult': 1.03,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/scanner_deep_1767505613.png',
                 },
                 3: {
                     'name': 'Resonance Array', 'cost': 336, 'build_time_days': 2,
                     'discovery_chance_bonus': 0.20, 'rare_chance_bonus': 0.05, 'legendary_chance_bonus': 0,
+                    'vehicle_range_mult': 1.05, 'signal_detection_enabled': True,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/scanner_quantum_1770262697.png',
                 },
                 4: {
                     'name': 'Harmonic Scanner', 'cost': 376, 'build_time_days': 3,
                     'discovery_chance_bonus': 0.25, 'rare_chance_bonus': 0.08, 'legendary_chance_bonus': 0.01,
+                    'vehicle_range_mult': 1.08, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
                 5: {
                     'name': 'Seismic Probe', 'cost': 422, 'build_time_days': 4,
                     'discovery_chance_bonus': 0.30, 'rare_chance_bonus': 0.10, 'legendary_chance_bonus': 0.02,
+                    'vehicle_range_mult': 1.12, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
                 6: {
                     'name': 'Subsurface Imager', 'cost': 472, 'build_time_days': 6,
                     'discovery_chance_bonus': 0.35, 'rare_chance_bonus': 0.13, 'legendary_chance_bonus': 0.03,
+                    'vehicle_range_mult': 1.16, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
                 7: {
                     'name': 'Regolith Sonar', 'cost': 529, 'build_time_days': 8,
                     'discovery_chance_bonus': 0.40, 'rare_chance_bonus': 0.16, 'legendary_chance_bonus': 0.03,
+                    'vehicle_range_mult': 1.20, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
                 8: {
                     'name': 'Spectral Analyzer', 'cost': 592, 'build_time_days': 10,
                     'discovery_chance_bonus': 0.45, 'rare_chance_bonus': 0.20, 'legendary_chance_bonus': 0.04,
+                    'vehicle_range_mult': 1.25, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
                 9: {
                     'name': 'Quantum Resonance Array', 'cost': 663, 'build_time_days': 12,
                     'discovery_chance_bonus': 0.50, 'rare_chance_bonus': 0.23, 'legendary_chance_bonus': 0.04,
+                    'vehicle_range_mult': 1.30, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
                 10: {
                     'name': 'Omniscient Eye', 'cost': 743, 'build_time_days': 14,
                     'discovery_chance_bonus': 0.55, 'rare_chance_bonus': 0.25, 'legendary_chance_bonus': 0.05,
+                    'vehicle_range_mult': 1.35, 'signal_detection_enabled': True,
                     'image_url': '',
                 },
             }

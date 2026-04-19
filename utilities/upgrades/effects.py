@@ -37,6 +37,8 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
         'cargo_slots': 0,
         'fuel_cost_mult': 1.0,
         'max_range_km': 0,
+        'vehicle_range_mult': 1.0,
+        'signal_detection_enabled': False,
 
         # Discovery effects
         'discovery_chance_bonus': 0.0,
