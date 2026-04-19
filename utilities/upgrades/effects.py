@@ -183,11 +183,16 @@ def get_user_upgrade_effects(user_id: int) -> Dict[str, Any]:
 
     # Scientist Engineering stat → build speed bonus (stacks with Logistics)
     # Per bug #1270 section 4 (Luke 2026-04-12): use Scientist ENG as a passive build-speed lever.
+    # Direct lookup — avoids get_user_scientist()'s ensure_scientist_column() DDL round-trip on every effects read.
     try:
-        from utilities.postgres.users import get_user_scientist
-        scientist = get_user_scientist(user_id)
-        if scientist:
-            engineering = scientist.get('stats', {}).get('engineering', 0) or 0
+        from config import COLONY_SCIENTISTS
+        from utilities.postgres.core import db_cursor
+        with db_cursor() as cur:
+            cur.execute("SELECT scientist_key FROM pilgrim.users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+        key = row.get('scientist_key') if row else None
+        if key and key in COLONY_SCIENTISTS:
+            engineering = COLONY_SCIENTISTS[key].get('stats', {}).get('engineering', 0) or 0
             # ENG 0 = no bonus, 50 = 10% faster, 100 = 20% faster (floor 50%, matches Logistics shape)
             eng_build_mult = max(0.5, 1.0 - engineering / 500.0)
             effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * eng_build_mult

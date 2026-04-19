@@ -23,19 +23,34 @@ RUSH_CEILING = 0.50
 RUSH_PER_LEVEL = 0.0125
 
 
-def _get_infra_level(user_id: int, structure_type: str) -> int:
-    """Active level of an infrastructure building. 0 = not built, 1 = built with no upgrade record."""
-    from utilities.upgrades.catalog import get_infrastructure_level
-    try:
-        return get_infrastructure_level(user_id, structure_type)
-    except Exception:
-        return 0
-
-
 def calculate_rush_cost_pct(user_id: int) -> float:
-    """The pct of base cost that Shard Rush charges, based on Life Support + Water Extractor levels."""
-    ls = _get_infra_level(user_id, 'life_support')
-    water = _get_infra_level(user_id, 'water_extractor')
+    """The pct of base cost that Shard Rush charges, based on Life Support + Water Extractor levels.
+    Direct, read-only query — avoids the UPDATE+SELECT path in get_user_infrastructure()."""
+    ls = 0
+    water = 0
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                """
+                SELECT c.structure_type, COALESCE(u.level, 1) AS level
+                FROM pilgrim.colony_infrastructure c
+                LEFT JOIN pilgrim.player_upgrades u
+                  ON u.user_id = c.user_id
+                 AND u.category = 'infrastructure'
+                 AND u.item_key = c.structure_type
+                WHERE c.user_id = %s
+                  AND c.status = 'active'
+                  AND c.structure_type IN ('life_support', 'water_extractor')
+                """,
+                (user_id,),
+            )
+            for row in cur.fetchall():
+                if row['structure_type'] == 'life_support':
+                    ls = int(row['level'])
+                elif row['structure_type'] == 'water_extractor':
+                    water = int(row['level'])
+    except Exception as e:
+        logger.warning(f"calculate_rush_cost_pct fallback: {e}")
     raw = RUSH_CEILING - RUSH_PER_LEVEL * (ls + water)
     return max(RUSH_FLOOR, raw)
 

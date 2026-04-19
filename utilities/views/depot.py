@@ -80,21 +80,27 @@ def get_depot_page_data(user_id, auth):
     active_builds.sort(key=lambda b: b['seconds_remaining'])
 
     # Bug #1270 Phase 4: surface Shard Rush eligibility + cost on each active build.
+    # Compute rush_pct ONCE from infrastructure levels (avoid N+1 per build).
     try:
         from utilities.upgrades.shard_rush import (
-            check_equipment_rush_eligibility,
-            check_infrastructure_rush_eligibility,
+            calculate_rush_cost_pct, _upgrade_base_cost, _infrastructure_base_cost,
+            RUSH_THRESHOLD_HOURS,
         )
+        rush_pct = calculate_rush_cost_pct(user_id)
         for b in active_builds:
+            remaining_hours = b.get('seconds_remaining', 0) / 3600.0
+            if remaining_hours <= 0 or remaining_hours >= RUSH_THRESHOLD_HOURS:
+                b['rush_eligible'] = False
+                b['rush_cost'] = 0
+                b['rush_pct'] = rush_pct
+                continue
             if b.get('category') == 'infrastructure' and b.get('target_level', 1) == 1:
-                # Initial L1 build in colony_infrastructure
-                elig = check_infrastructure_rush_eligibility(user_id, b['item_key'])
+                base_cost = _infrastructure_base_cost(b['item_key'], 1)
             else:
-                elig = check_equipment_rush_eligibility(user_id, b['category'], b['item_key'])
-            b['rush_eligible'] = elig.get('eligible', False)
-            b['rush_cost'] = elig.get('rush_cost', 0)
-            b['rush_reason'] = elig.get('reason', '')
-            b['rush_pct'] = elig.get('rush_pct', 0)
+                base_cost = _upgrade_base_cost(b['category'], b['item_key'], b.get('target_level', 1))
+            b['rush_eligible'] = base_cost > 0
+            b['rush_cost'] = int(round(base_cost * rush_pct))
+            b['rush_pct'] = rush_pct
     except Exception as e:
         logger.warning(f"Shard rush enrichment failed: {e}")
 
