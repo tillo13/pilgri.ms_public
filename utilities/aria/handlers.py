@@ -8,7 +8,8 @@ from typing import Dict, Any, Optional
 
 from utilities.aria.chat import get_aria_response, stream_aria_response
 from utilities.aria.conversation import save_aria_message, get_aria_conversation_history
-from utilities.aria.animations import check_for_aria_animation
+from utilities.aria.animations import check_for_aria_animation, record_aria_animation
+from utilities.aria.config import ARIA_ANIMATIONS
 
 logger = logging.getLogger(__name__)
 
