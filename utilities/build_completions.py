@@ -138,8 +138,13 @@ def get_recent_build_completions(user_id: int, since_dt=None, limit: int = 10) -
             or entry.get('name')
             or item_key.replace('_', ' ').title()
         )
-        image_url = new_data.get('image_url') or old_data.get('image_url') or entry.get('icon') or ''
-        prev_image_url = old_data.get('image_url') or ''
+        from utilities.upgrade_image_utils import get_best_available_image
+        image_url = (
+            get_best_available_image(category, item_key, new_level)
+            or entry.get('icon')
+            or ''
+        )
+        prev_image_url = get_best_available_image(category, item_key, old_level) or ''
         try:
             cost = int(new_data.get('cost') or 0)
         except Exception:

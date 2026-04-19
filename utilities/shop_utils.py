@@ -120,6 +120,7 @@ def get_user_equipment_data(user_id: int) -> Dict:
     """
     try:
         from utilities.upgrades_utils import get_all_user_upgrades, get_upgrade_stats
+        from utilities.upgrade_image_utils import get_best_available_image
         from config_upgrades import UPGRADE_CATALOG
 
         user_upgrades = get_all_user_upgrades(user_id)
@@ -145,7 +146,7 @@ def get_user_equipment_data(user_id: int) -> Dict:
                     'quantity': 1,
                     'max_owned': 1,
                     'effects': effects,
-                    'image_url': stats.get('image_url') if stats else None,
+                    'image_url': get_best_available_image(category_key, item_key, level) or (stats.get('image_url') if stats else None),
                     'status': 'active',
                     'ready_at': None,
                     'seconds_remaining': 0,
