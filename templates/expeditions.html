@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <img src="{{ icons.tab_map }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Map
     </button>
     <button class="expedition-tab" data-tab="vehicles" onclick="switchMainTab('vehicles')">
-        <img src="{{ icons.vehicle_speed }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Fleet{% if active_expeditions and active_expeditions|length > 0 %}<span style="background: var(--color-mars); color: white; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 6px;">{{ active_expeditions|length }}</span>{% endif %}
+        <img src="{{ icons.vehicle_speed }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Fleet{% if traveling_expeditions and traveling_expeditions|length > 0 %}<span style="background: var(--color-mars); color: white; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 6px;">{{ traveling_expeditions|length }}</span>{% endif %}
     </button>
     <button class="expedition-tab" data-tab="signal" onclick="switchMainTab('signal')">
         <img src="{{ icons.signal_transmission }}" alt="" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">Signal
@@ -222,10 +222,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Sort Controls -->
 <div class="expedition-controls">
     <div style="font-size: 13px; color: var(--text-primary);">
-        {% if active_expeditions and active_expeditions|length >= (max_concurrent_expeditions|default(1)) %}
+        {% if traveling_expeditions and traveling_expeditions|length >= (max_concurrent_expeditions|default(1)) %}
         <span style="color: var(--color-mars); font-weight: 600;"><img src="{{ icons.warning_alert }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> All {{ max_concurrent_expeditions|default(1) }} expedition slot{% if max_concurrent_expeditions|default(1) > 1 %}s{% endif %} in use</span>
-        {% elif active_expeditions and active_expeditions|length > 0 %}
-        <span style="color: var(--color-success); font-weight: 600;">✓ {{ (max_concurrent_expeditions|default(1)) - active_expeditions|length }} slot{% if (max_concurrent_expeditions|default(1)) - active_expeditions|length > 1 %}s{% endif %} available</span>
+        {% elif traveling_expeditions and traveling_expeditions|length > 0 %}
+        <span style="color: var(--color-success); font-weight: 600;">✓ {{ (max_concurrent_expeditions|default(1)) - traveling_expeditions|length }} slot{% if (max_concurrent_expeditions|default(1)) - traveling_expeditions|length > 1 %}s{% endif %} available</span>
         {% else %}
         <span><strong>Logistics</strong> = faster travel • <strong>Exploration</strong> = better rewards <a href="#" onclick="event.preventDefault(); showExpeditionCostHelp();" style="color: var(--color-sepolia); font-size: 11px; margin-left: 4px;">(?)</a></span>
         {% endif %}
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
             <div class="exp-card-actions">
-                {% if active_expeditions and active_expeditions|length >= (max_concurrent_expeditions|default(1)) %}
+                {% if traveling_expeditions and traveling_expeditions|length >= (max_concurrent_expeditions|default(1)) %}
                 <button class="btn btn-secondary expedition-launch-btn" disabled style="background: var(--neutral-400); color: var(--text-muted); cursor: not-allowed;">
                     Slots Full
                 </button>
@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Hidden data for JS -->
 <script id="map-data" type="application/json">{{ landmarks_json|safe }}</script>
 <script id="base-coords" type="application/json">{"latitude": {{ base_lat }}, "longitude": {{ base_lon }}}</script>
-<script>window.maxConcurrentExpeditions = {{ max_concurrent_expeditions|default(1) }};window.activeExpeditionCount = {{ active_expeditions|length if active_expeditions else 0 }};</script>
+<script>window.maxConcurrentExpeditions = {{ max_concurrent_expeditions|default(1) }};window.activeExpeditionCount = {{ traveling_expeditions|length if traveling_expeditions else 0 }};</script>
 <script type="application/json" id="expeditionPageData">
 {
     "icons": {
@@ -349,8 +349,8 @@ document.addEventListener('DOMContentLoaded', function() {
     <div style="margin-bottom: 20px;">
         {% if active_expeditions|length > 1 %}
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div style="font-size: 13px; font-weight: 600; color: var(--color-mars);"><img src="{{ icons.rocket_launch }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> {{ active_expeditions|length }} Active Expeditions</div>
-            <div style="font-size: 11px; color: var(--text-muted);">{{ active_expeditions|length }}/{{ max_concurrent_expeditions|default(1) }} slots used</div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--color-mars);"><img src="{{ icons.rocket_launch }}" alt="" style="width: 14px; height: 14px; vertical-align: middle;"> {{ active_expeditions|length }} Expedition{% if active_expeditions|length > 1 %}s{% endif %}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ traveling_expeditions|length }}/{{ max_concurrent_expeditions|default(1) }} slots used</div>
         </div>
         {% endif %}
         {% for expedition in active_expeditions %}
@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function() {
                  data-vehicle-level="{{ vehicle.level }}"
                  data-vehicle-cargo="{{ vehicle.cargo }}"
                  data-vehicle-speed="{{ vehicle.speed_mult }}"
-                 data-vehicle-image="{{ vehicle.image_url or '' }}"
+                 data-vehicle-image="{{ vehicle.image_url or (icons.vehicle_drone if vehicle.vehicle_type == 'drone' else (icons.vehicle_buggy if vehicle.vehicle_type == 'buggy' else icons.vehicle_rover)) }}"
                  data-vehicle-discovery="{{ vehicle.discovery_bonus }}"
                  data-vehicle-rare="{{ vehicle.rare_bonus }}"
                  data-vehicle-legendary="{{ vehicle.legendary_bonus }}"

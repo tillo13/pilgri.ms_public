@@ -127,6 +127,12 @@ def get_expeditions_page_data(user_id: int) -> dict:
     active_vehicle_types = {e.get('vehicle_type', 'rover') for e in active_expeditions
                             if e.get('status') in ('traveling', 'recalled')}
 
+    # "In transit" — expeditions that consume a vehicle slot. Excludes returned-but-
+    # unclaimed (status='complete'), which still appear in active_expeditions so users
+    # can see the Claim button but do NOT occupy a slot.
+    traveling_expeditions = [e for e in active_expeditions
+                             if e.get('status') in ('traveling', 'recalled')]
+
     # Enrich vehicles with range breakdown data + availability
     for v in owned_vehicles:
         vtype = v.get('vehicle_type', 'rover')
@@ -153,6 +159,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
         'drop_coords': home_coords,
         'landmarks': landmarks,
         'active_expeditions': active_expeditions,
+        'traveling_expeditions': traveling_expeditions,
         'discovered_landmarks': discovered_landmarks,
         'landmarks_json': json.dumps(js_landmarks),
         'base_lat': float(home_coords['latitude']),

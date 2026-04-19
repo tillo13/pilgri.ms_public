@@ -196,26 +196,62 @@ function formatTechEffect(effects) {
     return parts.join(' · ') || '';
 }
 
-function showTechDetailModal(tech) {
+window._techCache = window._techCache || {};
+
+function showTechDetailModalByKey(branchKey, techKey) {
+    const tech = (window._techCache[branchKey] || {})[techKey];
+    if (!tech) return;
+    const branch = window._techCache.__branches && window._techCache.__branches[branchKey];
+    showTechDetailModal(tech, branch);
+}
+
+function formatDuration(seconds) {
+    if (!seconds || seconds <= 0) return '—';
+    if (seconds >= 86400) return `${Math.floor(seconds/86400)}d ${Math.floor((seconds%86400)/3600)}h`;
+    if (seconds >= 3600) return `${Math.floor(seconds/3600)}h ${Math.floor((seconds%3600)/60)}m`;
+    if (seconds >= 60) return `${Math.floor(seconds/60)}m`;
+    return `${seconds}s`;
+}
+
+function showTechDetailModal(tech, branch) {
     const statusColors = { completed: 'var(--color-success)', researching: 'var(--color-sepolia)', available: 'var(--text-primary)', locked: 'var(--text-muted)' };
-    const statusLabels = { completed: 'Completed', researching: 'Researching...', available: 'Available', locked: 'Locked' };
+    const statusLabels = { completed: 'Completed', researching: 'Researching...', available: 'Available', locked: 'Locked — prereqs not met' };
     const effectLine = formatTechEffect(tech.effects || {});
-    const costLine = tech.status === 'completed' ? '' : `<div style="font-size:12px; color:var(--text-secondary); margin-top:8px;">${tech.cost_sv.toLocaleString()} SV</div>`;
+    const reqs = (tech.requires || []).length ? tech.requires.join(', ') : 'None';
+    const row = (label, value) => `<div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:12px;"><span style="color:var(--text-muted);">${label}</span><span style="color:var(--text-primary); text-align:right;">${value}</span></div>`;
+
+    const imgHtml = tech.image_url
+        ? `<img src="${tech.image_url}" style="width:100%; max-width:260px; aspect-ratio:1/1; object-fit:cover; border-radius:12px; border:2px solid ${statusColors[tech.status]};" loading="lazy">`
+        : `<div style="width:260px; height:260px; background:var(--bg-tertiary); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:60px; color:var(--text-muted);">?</div>`;
+
+    const progressHtml = tech.status === 'researching' && tech.progress_pct !== undefined ? `
+        <div style="margin-top:12px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px;">
+                <span>Progress</span><span>${tech.progress_pct}% · ${formatDuration(tech.remaining_seconds)} remaining</span>
+            </div>
+            <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
+                <div style="height:100%; width:${tech.progress_pct}%; background:var(--color-sepolia); border-radius:4px;"></div>
+            </div>
+        </div>` : '';
+
     const body = `
+        <div style="text-align:center; margin-bottom:14px;">${imgHtml}</div>
         <div style="text-align:center; margin-bottom:12px;">
-            ${tech.image_url ? `<img src="${tech.image_url}" style="width:80px;height:80px;border-radius:8px;margin-bottom:8px;" loading="lazy">` : ''}
-            <div style="font-size:11px; font-weight:600; color:${statusColors[tech.status]};">${statusLabels[tech.status]}</div>
+            <div style="display:inline-block; padding:4px 10px; border-radius:10px; background:rgba(255,255,255,0.05); font-size:11px; font-weight:700; color:${statusColors[tech.status]}; text-transform:uppercase; letter-spacing:0.5px;">${statusLabels[tech.status]}</div>
         </div>
-        <div style="font-size:12px; color:var(--text-secondary); line-height:1.5; margin-bottom:8px;">${tech.description}</div>
-        ${effectLine ? `<div style="font-size:12px; color:var(--color-sepolia); font-weight:600;">${effectLine}</div>` : ''}
-        ${costLine}
-        ${tech.status === 'researching' && tech.progress_pct !== undefined ? `
-            <div style="margin-top:10px;">
-                <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden;">
-                    <div style="height:100%; width:${tech.progress_pct}%; background:var(--color-sepolia); border-radius:3px;"></div>
-                </div>
-            </div>` : ''}`;
-    new MarsModal({ title: tech.name, body, width: 'sm' }).show();
+        <div style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">${tech.description || ''}</div>
+        ${effectLine ? `<div style="background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.25); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:13px; color:var(--color-sepolia); font-weight:600;">${effectLine}</div>` : ''}
+        <div style="background:var(--bg-card); border-radius:8px; padding:8px 12px; margin-bottom:12px;">
+            ${branch ? row('Branch', `${branch.name} · Lv${branch.branch_level || 1}`) : ''}
+            ${row('Tier', tech.tier || 1)}
+            ${tech.status !== 'completed' ? row('SV Cost', `${(tech.cost_sv || 0).toLocaleString()} SV`) : ''}
+            ${tech.status !== 'completed' ? row('Research Time', formatDuration(tech.research_time_seconds)) : ''}
+            ${row('Prerequisites', reqs)}
+            ${row('Tech Key', tech.tech_key || '—')}
+        </div>
+        ${progressHtml}
+    `;
+    new MarsModal({ title: tech.name, body, width: 'md' }).show();
 }
 
 async function loadLab() {
@@ -253,20 +289,24 @@ async function loadLab() {
         }
 
         let branchesHtml = '';
+        window._techCache = { __branches: {} };
         for (const [branchKey, branch] of Object.entries(branches)) {
             const branchIcon = branch.icon_url ? `<img src="${branch.icon_url}" style="width:20px;height:20px;border-radius:3px;">` : `<span style="font-size:16px;">${branch.icon}</span>`;
             const completed = branch.completed_count || 0;
             const total = branch.total_techs || 5;
             const lvl = branch.branch_level || 1;
+            window._techCache.__branches[branchKey] = branch;
+            window._techCache[branchKey] = {};
 
             // Build tech items grid
             let techsHtml = '';
             const techs = branch.techs || {};
             for (const [techKey, tech] of Object.entries(techs)) {
+                window._techCache[branchKey][techKey] = tech;
                 const statusBorder = tech.status === 'completed' ? 'var(--color-success)' : tech.status === 'researching' ? 'var(--color-sepolia)' : 'rgba(255,255,255,0.08)';
                 const opacity = tech.status === 'locked' ? '0.4' : '1';
                 const badge = tech.status === 'completed' ? '<div style="position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:var(--color-success);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;">&#10003;</div>' : '';
-                techsHtml += `<div onclick='showTechDetailModal(${JSON.stringify(tech).replace(/'/g, "&#39;")})' style="cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; opacity:${opacity};">
+                techsHtml += `<div onclick="showTechDetailModalByKey('${branchKey}','${techKey}')" style="cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; opacity:${opacity};">
                     <div style="width:48px; height:48px; border-radius:8px; border:2px solid ${statusBorder}; overflow:hidden; background:var(--bg-tertiary);">
                         ${tech.image_url ? `<img src="${tech.image_url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;">?</div>`}
                     </div>

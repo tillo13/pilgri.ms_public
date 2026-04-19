@@ -25,6 +25,14 @@ def get_vehicle_for_expedition(user_id: int, vehicle_type: str = 'rover') -> Dic
     if not stats:
         return None
 
+    # Resolve image through the same DB→config→walk-back chain the Depot uses,
+    # so vehicles with no image_url at this exact level still find nearest art.
+    try:
+        from utilities.upgrade_image_utils import get_all_stored_images, get_best_available_image_from_map
+        image_url = get_best_available_image_from_map('vehicles', vehicle_type, level, get_all_stored_images())
+    except Exception:
+        image_url = stats.get('image_url')
+
     return {
         'vehicle_type': vehicle_type,
         'level': level,
@@ -35,7 +43,7 @@ def get_vehicle_for_expedition(user_id: int, vehicle_type: str = 'rover') -> Dic
         'discovery_bonus': stats.get('discovery_bonus', 0),
         'rare_bonus': stats.get('rare_bonus', 0),
         'legendary_bonus': stats.get('legendary_bonus', 0),
-        'image_url': stats.get('image_url'),
+        'image_url': image_url or stats.get('image_url'),
     }
 
 
