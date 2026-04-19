@@ -55,6 +55,8 @@ function renderPreLaunchModal(l, preview) {
         <div id="modal-trip-estimate" style="margin-bottom:16px;">${renderTripEstimate(firstAvailable)}</div>
         <!-- Speed Breakdown -->
         <div id="modal-speed-stack">${renderSpeedStack(firstAvailable, sb)}</div>
+        <!-- Bug #1329: Research Tech Bonuses — list every tech multiplier/bonus that applies to this expedition -->
+        ${renderTechBonuses(preview.tech_bonuses)}
         <!-- Captain -->
         <div class="mm-section-label">Captain</div>
         <div class="mm-person">
@@ -131,6 +133,30 @@ function renderTripEstimate(vehicle) {
         </div>${returnHtml}`;
 }
 
+// Bug #1329: render the Research Tech Bonuses section — the tech multipliers
+// are applied server-side (preview.py) but were never shown in the modal. This
+// only renders if at least one bonus is non-trivial, to keep the modal quiet
+// for captains with no research completed yet.
+function renderTechBonuses(tb) {
+    if (!tb) return '';
+    const rows = [];
+    if (tb.speed_mult > 1) rows.push(['Expedition Speed', `×${tb.speed_mult}`]);
+    if (tb.cargo_mult > 1) rows.push(['Cargo Capacity', `×${tb.cargo_mult}`]);
+    if (tb.fuel_cost_mult && tb.fuel_cost_mult < 1) rows.push(['Fuel Cost', `×${tb.fuel_cost_mult} (${Math.round((1 - tb.fuel_cost_mult) * 100)}% cheaper)`]);
+    if (tb.discovery_chance_bonus > 0) rows.push(['Discovery Chance', `+${Math.round(tb.discovery_chance_bonus * 100)}%`]);
+    if (tb.legendary_chance_bonus > 0) rows.push(['Legendary Chance', `+${Math.round(tb.legendary_chance_bonus * 100)}%`]);
+    if (tb.discovery_value_mult > 1) rows.push(['Discovery Value', `×${tb.discovery_value_mult}`]);
+    if (!rows.length) return '';
+    return `
+        <div class="mm-section-label">Research Tech Bonuses</div>
+        <div style="font-size:12px; display:grid; grid-template-columns:1fr auto; gap:4px 12px; margin-bottom:16px;">
+            ${rows.map(([label, val]) => `
+                <span>${label}</span>
+                <span style="text-align:right; color:var(--color-success);">${val}</span>
+            `).join('')}
+        </div>`;
+}
+
 function renderSpeedStack(vehicle, baseBreakdown) {
     // Use vehicle-specific values when available, fall back to base breakdown
     const vehicleMult = vehicle ? vehicle.speed_mult : baseBreakdown.vehicle_mult;
@@ -148,6 +174,7 @@ function renderSpeedStack(vehicle, baseBreakdown) {
             <span>Vehicle ×</span><span style="text-align:right; color:var(--color-success);">${vehicleMult}x</span>
             <span>Captain Logistics ×</span><span style="text-align:right; color:var(--color-success);">${sb.captain_logistics_mult}x</span>
             <span>Scientist Nav ×</span><span style="text-align:right; ${sb.scientist_nav_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.scientist_nav_mult}x</span>
+            <span>Research Tech ×</span><span style="text-align:right; ${sb.tech_speed_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.tech_speed_mult != null ? sb.tech_speed_mult : 1}x</span>
             <span>Trail${sb.trail_level && sb.trail_level !== 'none' ? ' (' + sb.trail_level + ')' : ''}${hasCompounding ? ' <span style="font-size:9px; color:var(--color-sepolia);">⚡</span>' : ''}</span>
             <span style="text-align:right; ${sb.trail_speed_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.trail_speed_mult}x${sb.trail_trip_count > 0 ? ' <span style="font-size:10px;opacity:0.6;">(' + sb.trail_trip_count + ' trips)</span>' : ''}</span>
             <span>Terrain (${terrainName.split(':')[0]})</span><span style="text-align:right; ${terrainMult < 1 ? 'color:var(--color-mars)' : ''}">${terrainMult}x</span>

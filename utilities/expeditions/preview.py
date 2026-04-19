@@ -318,6 +318,9 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         'vehicle_mult': primary_vehicle['speed_mult'] if primary_vehicle else 1.0,
         'captain_logistics_mult': round(logistics_speed_bonus, 2),
         'scientist_nav_mult': scientist_nav_mult,
+        # Bug #1329: tech research contributes a speed multiplier that was already
+        # applied to travel-time math but never surfaced to the Speed Stack UI.
+        'tech_speed_mult': round(tech_speed_mult, 2),
         'trail_speed_mult': round(effective_trail_mult, 2),
         'trail_level': trail_data['trail_level'],
         'trail_trip_count': trail_data['trip_count'],
@@ -328,6 +331,19 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         # Segment compounding info
         'segments': segments,
         'has_segment_compounding': has_segment_compounding,
+    }
+
+    # Bug #1329: collect all research tech bonuses that apply to expeditions so the
+    # confirmation modal can display them. Values are already being applied to the
+    # underlying math (cost.py fuel, discovery_utils rarity + value) — this block
+    # only exposes them to the frontend.
+    tech_bonuses = {
+        'speed_mult': round(tech_speed_mult, 2),
+        'cargo_mult': round(tech_cargo_mult, 2),
+        'fuel_cost_mult': round(tech_effects.get('fuel_cost_mult', 1.0), 2),
+        'discovery_chance_bonus': round(tech_effects.get('discovery_chance_bonus', 0.0), 3),
+        'legendary_chance_bonus': round(tech_effects.get('legendary_chance_bonus', 0.0), 3),
+        'discovery_value_mult': round(tech_effects.get('discovery_value_mult', 1.0), 2),
     }
 
     # Storage capacity check (Storage Bunker upgrade) - counts ALL inventory, not just unclaimed
@@ -351,6 +367,7 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         },
         'vehicles': vehicle_estimates,
         'speed_breakdown': speed_breakdown,
+        'tech_bonuses': tech_bonuses,
         'captain': {
             'name': captain_name,
             'image_url': captain_image,
