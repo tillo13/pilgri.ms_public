@@ -707,12 +707,10 @@ setInterval(updateTimer, 1000);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTechModal(); });
 
 // ─── Step 6: branch level-up cinematic ─────────────────────────────────────
-// Bug #1286 celebration moment, deferred from the polish stack to here so the
-// generalized EpicReveal framework powers it (same one used for ARIA bonds +
-// Signal final). Forward-only: tracks each branch's last-seen level in
-// localStorage; if the current page render shows a higher branch_level, fire
-// the cinematic exactly once per level-up.
-(function () {
+// Bug #1286/#1287: EpicReveal is loaded via `defer` in base.html, so it is
+// not on window during body parse. Wait for DOMContentLoaded — defer scripts
+// have all executed by then — before checking for the level-up and firing.
+document.addEventListener('DOMContentLoaded', function () {
     if (!window.EpicReveal || !techData || !techData.branches) return;
     const STORAGE_KEY = 'pilgrims_branch_lvl_seen_v1';
     let seen = {};
@@ -762,6 +760,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTechMod
             ],
         });
     }
-})();
+});
 </script>
 {% endblock %}
