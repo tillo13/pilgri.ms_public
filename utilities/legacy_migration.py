@@ -32,9 +32,9 @@ LEGACY_ITEM_MAP = {
     # Research → research/research
     'research_lab': ('research', 'research', 1),
     'research_advanced': ('research', 'research', 2),
-    # Automation → automation/automation (Lv3 = first dust_storm_immune level)
-    'mining_drone': ('automation', 'automation', 1),
-    'maintenance_drone': ('automation', 'automation', 3),
+    # Automation split (bug #1149): maintenance path = dust, mining path = passive income
+    'maintenance_drone': ('maintenance', 'maintenance', 3),  # grants dust immunity
+    'mining_drone': ('mining', 'mining', 1),                 # first tier of passive income
 }
 
 # Suits are independent (no chain) - count owned = level

@@ -761,7 +761,7 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
         category_labels = {
             'vehicles': 'VEHICLES', 'equipment': 'EQUIPMENT (scanners, life support, cargo)',
             'power': 'POWER', 'research': 'RESEARCH', 'gear': 'GEAR',
-            'automation': 'AUTOMATION', 'storage': 'STORAGE',
+            'maintenance': 'MAINTENANCE DRONES (dust/cleaning)', 'mining': 'MINING DRONES (passive income)', 'storage': 'STORAGE',
         }
         upgrade_sections = []
         for category, items in snapshot['upgrades'].items():

@@ -2410,7 +2410,7 @@
   "utilities/infrastructure/income.py": {
     "description": "Accumulated income: calculation, claim, science value recording.",
     "exports": [
-      "user_has_maintenance_drone — Check if user has dust immunity from automation upgrade (level 3+ = Dust Guard)",
+      "user_has_maintenance_drone — Check if user has dust immunity from the Maintenance Drone path (Lv3 = Dust Guard).",
       "calculate_accumulated_income — Calculate total accumulated Sepolia from all active generators.",
       "claim_accumulated_income — Claim all accumulated Sepolia from generators and send to wallet.",
       "record_science_value — Record (claim) accumulated Science Value from Research Station. Separate from shard harvest."
@@ -3196,7 +3196,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3209,7 +3209,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3274,7 +3274,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

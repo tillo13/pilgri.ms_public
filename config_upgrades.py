@@ -598,64 +598,81 @@ UPGRADE_CATALOG = {
     },
 
     # =========================================================================
-    # AUTOMATION - Passive income + dust storm immunity
+    # MAINTENANCE - Dust cleaning + solar panel protection (bug #1149)
+    # Passive income lives on the separate 'mining' path.
     # =========================================================================
-    'automation': {
-        'automation': {
-            'name': 'Automation Drones',
-            'description': 'Automated systems for maintenance and mining',
-            'icon': '\u2699\ufe0f',
-            'max_level': 10,
+    'maintenance': {
+        'maintenance': {
+            'name': 'Maintenance Drones',
+            'description': 'Keeps solar panels clean and protects against dust storms',
+            'icon': '\U0001f9f9',
+            'max_level': 3,
             'default_level': 0,
             'levels': {
                 1: {
                     'name': 'Maintenance Drone', 'cost': 2500, 'build_time_days': 0.042,
-                    'passive_income_base': 3, 'dust_storm_immune': False, 'trail_km_per_hour': 0.5,
+                    'dust_storm_immune': False, 'trail_km_per_hour': 0.5,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/maintenance_drone_1770262697.png',
                 },
                 2: {
                     'name': 'Sweeper Drone', 'cost': 2800, 'build_time_days': 3,
-                    'passive_income_base': 5, 'dust_storm_immune': False, 'trail_km_per_hour': 0.7,
+                    'dust_storm_immune': False, 'trail_km_per_hour': 0.7,
                     'image_url': '',
                 },
                 3: {
                     'name': 'Dust Guard', 'cost': 3136, 'build_time_days': 4,
-                    'passive_income_base': 7, 'dust_storm_immune': True, 'trail_km_per_hour': 1.0,
+                    'dust_storm_immune': True, 'trail_km_per_hour': 1.0,
+                    'image_url': '',
+                },
+            }
+        },
+    },
+
+    # =========================================================================
+    # MINING - Passive shard generation (bug #1149)
+    # Separate from maintenance; does not clean panels or grant dust immunity.
+    # =========================================================================
+    'mining': {
+        'mining': {
+            'name': 'Mining Drones',
+            'description': 'Autonomous shard extraction — generates passive income',
+            'icon': '\u26cf\ufe0f',
+            'max_level': 7,
+            'default_level': 0,
+            'levels': {
+                1: {
+                    'name': 'Mining Drone I', 'cost': 3512, 'build_time_days': 6,
+                    'passive_income_base': 9, 'trail_km_per_hour': 1.5,
+                    'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/mining_drone_1767506740.png',
+                },
+                2: {
+                    'name': 'Mining Drone II', 'cost': 3934, 'build_time_days': 7,
+                    'passive_income_base': 12, 'trail_km_per_hour': 2.0,
+                    'image_url': '',
+                },
+                3: {
+                    'name': 'Extraction Swarm', 'cost': 4406, 'build_time_days': 9,
+                    'passive_income_base': 15, 'trail_km_per_hour': 3.0,
                     'image_url': '',
                 },
                 4: {
-                    'name': 'Mining Drone I', 'cost': 3512, 'build_time_days': 6,
-                    'passive_income_base': 9, 'dust_storm_immune': True, 'trail_km_per_hour': 1.5,
-                    'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/mining_drone_1767506740.png',
+                    'name': 'Deep Miner', 'cost': 4935, 'build_time_days': 10,
+                    'passive_income_base': 18, 'trail_km_per_hour': 4.0,
+                    'image_url': '',
                 },
                 5: {
-                    'name': 'Mining Drone II', 'cost': 3934, 'build_time_days': 7,
-                    'passive_income_base': 12, 'dust_storm_immune': True, 'trail_km_per_hour': 2.0,
+                    'name': 'Regolith Processor', 'cost': 5527, 'build_time_days': 11,
+                    'passive_income_base': 22, 'trail_km_per_hour': 5.0,
                     'image_url': '',
                 },
                 6: {
-                    'name': 'Extraction Swarm', 'cost': 4406, 'build_time_days': 9,
-                    'passive_income_base': 15, 'dust_storm_immune': True, 'trail_km_per_hour': 3.0,
+                    'name': 'Autonomous Excavator', 'cost': 6190, 'build_time_days': 13,
+                    'passive_income_base': 26, 'trail_km_per_hour': 6.5,
                     'image_url': '',
                 },
                 7: {
-                    'name': 'Deep Miner', 'cost': 4935, 'build_time_days': 10,
-                    'passive_income_base': 18, 'dust_storm_immune': True, 'trail_km_per_hour': 4.0,
-                    'image_url': '',
-                },
-                8: {
-                    'name': 'Regolith Processor', 'cost': 5527, 'build_time_days': 11,
-                    'passive_income_base': 22, 'dust_storm_immune': True, 'trail_km_per_hour': 5.0,
-                    'image_url': '',
-                },
-                9: {
-                    'name': 'Autonomous Excavator', 'cost': 6190, 'build_time_days': 13,
-                    'passive_income_base': 26, 'dust_storm_immune': True, 'trail_km_per_hour': 6.5,
-                    'image_url': '',
-                },
-                10: {
                     'name': 'Mars Mining Matrix', 'cost': 6933, 'build_time_days': 14,
-                    'passive_income_base': 30, 'dust_storm_immune': True, 'trail_km_per_hour': 8.0,
+                    'passive_income_base': 30, 'trail_km_per_hour': 8.0,
                     'image_url': '',
                 },
             }

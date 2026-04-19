@@ -161,7 +161,7 @@ function formatLevelStats(stats, category) {
 function getMilestoneNote(itemKey, level) {
     const milestones = {
         'habitat_module': { 5: '⭐ +1 concurrent build slot!' },
-        'automation': { 3: '⭐ Gains dust storm immunity!' },
+        'maintenance': { 3: '⭐ Gains dust storm immunity!' },
         'regolith_forge': { 5: '⭐ Unlocks Resonance Chamber!' },
         'resonance_chamber': { 5: '⭐ Unlocks Thermal Vent Tap!' },
         'thermal_vent_tap': { 5: '⭐ Unlocks Monolith Antenna!' },
@@ -187,8 +187,11 @@ function getUpgradeEffectDescription(category, itemKey) {
         'gear': {
             'suit': 'Boosts exploration stat and trail building speed (+5% per level). Better mobility on Mars.'
         },
-        'automation': {
-            'automation': 'Generates passive shards per hour automatically. At Lv3+, immune to dust storms.'
+        'maintenance': {
+            'maintenance': 'Cleans solar panels and protects against dust storms. At Lv3, colony becomes fully dust-immune.'
+        },
+        'mining': {
+            'mining': 'Autonomous shard extraction — adds a flat shards/hour yield on top of solar generation.'
         },
         'storage': {
             'bunker': 'Increases discovery storage capacity. More storage = more finds before you must sell.'

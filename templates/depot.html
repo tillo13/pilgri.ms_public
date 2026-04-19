@@ -488,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <!-- Milestone notes for special bonuses at certain levels -->
             {% if item_key == 'habitat_module' and item.current_level < 5 %}
             <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-sepolia); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv5: +1 build slot</div>
-            {% elif item_key == 'automation' and item.current_level < 3 %}
+            {% elif item_key == 'maintenance' and item.current_level < 3 %}
             <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-success); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv3: Dust storm immunity</div>
             {% elif item_key == 'regolith_forge' and item.current_level < 5 %}
             <div class="depot-card-milestone" style="font-size: 10px; color: var(--color-sepolia); margin-top: 4px;"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm"> Lv5: Unlocks Resonance Chamber</div>

@@ -154,7 +154,7 @@ def get_user_equipment_data(user_id: int) -> Dict:
                     'level_name': stats.get('name', f'Lv{level}') if stats else f'Lv{level}',
                 })
 
-        category_order = ['equipment', 'gear', 'power', 'research', 'automation', 'storage', 'infrastructure']
+        category_order = ['equipment', 'gear', 'power', 'research', 'maintenance', 'mining', 'storage', 'infrastructure']
         owned.sort(key=lambda x: (category_order.index(x['category']) if x['category'] in category_order else 99, x.get('cost', 0)))
 
         return {

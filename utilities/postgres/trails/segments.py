@@ -499,13 +499,14 @@ def cron_drone_trail_build():
 
         for u in users:
             user_id = u['user_id']
-            drone_level = get_user_upgrade_level(user_id, 'automation', 'automation')
-            if drone_level < 1:
-                continue
-
-            # Get drone trail_km_per_hour from config
-            drone_config = UPGRADE_CATALOG.get('automation', {}).get('automation', {}).get('levels', {}).get(drone_level, {})
-            km_per_hour = drone_config.get('trail_km_per_hour', 0)
+            # bug #1149: Maintenance + Mining drones both contribute trail_km/hr. Sum both paths.
+            km_per_hour = 0.0
+            for (cat, key) in (('maintenance', 'maintenance'), ('mining', 'mining')):
+                lv = get_user_upgrade_level(user_id, cat, key)
+                if lv < 1:
+                    continue
+                cfg = UPGRADE_CATALOG.get(cat, {}).get(key, {}).get('levels', {}).get(lv, {})
+                km_per_hour += cfg.get('trail_km_per_hour', 0) or 0
             if km_per_hour <= 0:
                 continue
 
