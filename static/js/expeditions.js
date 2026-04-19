@@ -173,31 +173,34 @@ function setVehicleRange(btn, vehicleType) {
 
     const rangeKm = parseInt(btn.dataset.range) || 0;
 
-    // Bug #1394: L.circle uses the map's LOCAL meters-per-pixel at the center to
-    // draw a screen-space circle. For small Earth ranges that works; for Mars
-    // ranges of 3k–8k km (up to 135° of arc on a 3396 km planet), the projection
-    // distorts enormously across the span and the screen-circle no longer matches
-    // the set of points whose Mars haversine distance ≤ rangeKm. Some dots land
-    // inside, some outside, depending on bearing. Fix: trace the actual Mars
-    // geodesic circle as a 128-point polygon so Leaflet projects each vertex
-    // independently and the shape faithfully follows the projection's distortion.
+    // Bug #1394 ReOpen: the earlier geodesic-polygon fix breaks when the angular
+    // radius δ = rangeKm / MARS_RADIUS_KM exceeds π/2 (half a hemisphere). At that
+    // point the ring winds past ±180° longitude; adjacent vertices can jump 339°
+    // and Leaflet draws a straight line across the whole map (Luke's screenshot 3:
+    // two vertical arcs on the edges with horizontal bars). Only the Buggy
+    // (8000km = 135°) hits this; Rover (53°) and Drone (25°) are safe. Fix:
+    // bounded-certainty subset — only render a ring when δ ≤ π/2. When δ > π/2
+    // skip the polygon entirely and let the dot dim/bright classification below
+    // carry the in/out-of-range signal (that logic is unchanged and correct).
     const MARS_RADIUS_KM = 3396;
-    const points = geodesicCirclePoints(
-        baseCoords.latitude, baseCoords.longitude, rangeKm, MARS_RADIUS_KM, 128
-    );
-    rangeCircle = L.polygon(points, {
-        color: '#ffffff',
-        fillColor: '#ffffff',
-        fillOpacity: 0.04,
-        weight: 2,
-        opacity: 0.7,
-        dashArray: '8, 6',
-        interactive: false
-    }).addTo(map);
-    // Bug #1283: explicit label on the range circle so Luke can verify visually that
-    // a marker labeled "403km" is correctly OUT of a 300km vehicle range. Without
-    // this, the dashed circle is just a hint — players can't tell what km it represents.
-    rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
+    const delta = rangeKm / MARS_RADIUS_KM;
+    if (delta <= Math.PI / 2) {
+        const points = geodesicCirclePoints(
+            baseCoords.latitude, baseCoords.longitude, rangeKm, MARS_RADIUS_KM, 128
+        );
+        rangeCircle = L.polygon(points, {
+            color: '#ffffff',
+            fillColor: '#ffffff',
+            fillOpacity: 0.04,
+            weight: 2,
+            opacity: 0.7,
+            dashArray: '8, 6',
+            interactive: false
+        }).addTo(map);
+        // Bug #1283: explicit label on the range circle so Luke can verify visually that
+        // a marker labeled "403km" is correctly OUT of a 300km vehicle range.
+        rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
+    }
     // Store current selected range so marker popups can compute in/out status
     window.__currentRangeKm = rangeKm;
 
