@@ -42,6 +42,13 @@
         });
         // @mentions on raw text
         processed = processed.replace(/@(\w+)/g, '[[MENTION:$1]]');
+        // Auto-link bare URLs — wrap in <> so marked treats them as autolinks.
+        // Skip URLs already in markdown link/image syntax: ](url) or <url>.
+        processed = processed.replace(/(^|[^\]\(<])(https?:\/\/[^\s<>)"']+)/g, function(m, pre, url) {
+            var clean = url.replace(/[.,;:!?)\]]+$/, '');
+            var trailing = url.slice(clean.length);
+            return pre + '<' + clean + '>' + trailing;
+        });
 
         // Use marked.js for full GFM markdown
         var html;
@@ -59,6 +66,9 @@
         html = html.replace(/\[\[MENTION:(\w+)\]\]/g, function(_, name) {
             return '<a class="bt-mention-link" href="mailto:' + name + '" onclick="return false;" title="Notified via email">@' + name + '</a>';
         });
+        // External links open in new tab (skip internal bt-bug-link / bt-mention-link)
+        html = html.replace(/<a (?![^>]*\bclass="bt-(bug|mention)-link")([^>]*?)href="(https?:[^"]+)"([^>]*)>/g,
+            '<a $2href="$3" target="_blank" rel="noopener noreferrer"$4>');
         return html;
     }
 
@@ -307,8 +317,8 @@
         function editableField(label, field, value) {
             return '<div class="bt-field">' +
                 '<div class="bt-field-label">' + label + '</div>' +
-                '<div class="bt-field-value bt-field-editable" data-field="' + field + '" data-bug="' + bug.id + '" onclick="BT.startEdit(this, ' + bug.id + ',\'' + field + '\')">' +
-                (value ? linkifyBugRefs(value) : '') +
+                '<div class="bt-field-value bt-field-editable bt-md" data-field="' + field + '" data-bug="' + bug.id + '" onclick="if(!event.target.closest(\'a,code,pre\')) BT.startEdit(this, ' + bug.id + ',\'' + field + '\')">' +
+                (value ? formatCommentBody(value) : '') +
                 '</div></div>';
         }
 
