@@ -7,7 +7,7 @@ import os
 import time
 import logging
 
-from anthropic import Anthropic
+from utilities.anthropic_logger import new_client
 
 from utilities.anthropic.client import _get_anthropic_api_key
 from utilities.anthropic.pricing import log_api_usage
@@ -19,7 +19,7 @@ def brainstorm_chat(message, context, history, user_id=None):
     """Generic brainstorm chat with Claude. Used by tech tree and trail brainstorm pages."""
     api_key = _get_anthropic_api_key()
 
-    client = Anthropic(api_key=api_key)
+    client = new_client()
 
     # Enrich context with endgame registry for signal/endgame-related pages
     enriched_context = context

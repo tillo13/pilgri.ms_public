@@ -8,7 +8,7 @@ import base64
 import logging
 import time
 from typing import List, Dict, Any, Iterator
-from anthropic import Anthropic
+from utilities.anthropic_logger import new_client
 
 from utilities.anthropic.pricing import (
     CLAUDE_MODELS,
@@ -70,11 +70,8 @@ class ClaudeClient:
         # Use longer timeout for Opus 4 original, standard for others
         timeout = 60.0 if "claude-opus-4-20250514" in model else 30.0
 
-        self.client = Anthropic(
-            api_key=self.api_key,
-            timeout=timeout,  # Dynamic timeout based on model
-            max_retries=2
-        )
+        self.client = new_client(timeout=timeout, # Dynamic timeout based on model
+            max_retries=2)
 
         logger.info(f"Initialized Claude client with model: {self.model} (timeout: {timeout}s)")
         if enable_beta_features:

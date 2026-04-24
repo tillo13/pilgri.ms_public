@@ -9,6 +9,7 @@ import threading
 import time as _time
 
 from utilities.claude_utils import create_client, log_api_usage
+from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
 from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger("pilgrimbot")

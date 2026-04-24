@@ -5,6 +5,7 @@ import os
 import time as _time
 
 from utilities.claude_utils import CLAUDE_MODELS, log_api_usage
+from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
 
 from utilities.pilgrimbot.file_reader import read_local_file
 

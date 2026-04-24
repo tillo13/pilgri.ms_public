@@ -425,7 +425,7 @@ def generate_aria_snapshot_narrative(caption: str, snapshot_type: str = None,
     Returns:
         A 2-4 sentence narrative in ARIA's voice
     """
-    from anthropic import Anthropic
+    from utilities.anthropic_logger import new_client
     from utilities.anthropic.client import _get_anthropic_api_key
     from utilities.anthropic.pricing import log_api_usage
 
@@ -463,7 +463,7 @@ Write a brief narrative in ARIA's voice describing this moment, like an Instagra
     try:
         api_key = _get_anthropic_api_key()
 
-        client = Anthropic(api_key=api_key)
+        client = new_client()
         _start = time.time()
         response = client.messages.create(
             model="claude-3-haiku-20240307",  # Fast and cheap
@@ -505,7 +505,7 @@ def generate_aria_snapshot_prompt(user_context: dict, forced_category: str = Non
     """
     import random
     from datetime import datetime
-    from anthropic import Anthropic
+    from utilities.anthropic_logger import new_client
     from utilities.anthropic.client import _get_anthropic_api_key
     from utilities.anthropic.pricing import log_api_usage
 
@@ -829,7 +829,7 @@ Return ONLY valid JSON."""
         api_key = _get_anthropic_api_key()
 
         # Use direct Anthropic client (lightweight call)
-        client = Anthropic(api_key=api_key)
+        client = new_client()
         _start = time.time()
         response = client.messages.create(
             model="claude-3-haiku-20240307",
