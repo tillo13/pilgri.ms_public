@@ -104,7 +104,11 @@ window.addEventListener('DOMContentLoaded', function() {
 function maybeShowBuildCompletionsModal() {
     const completions = DEPOT_DATA.recentCompletions || [];
     if (!completions.length) return;
-    const key = 'depotCompletionsSeen:' + (completions[0].completed_at || '');
+    // Hash the full completion set (not just newest timestamp) so null/duplicate
+    // completed_at values can't collide into a singleton dismiss key that
+    // suppresses every future modal. Bug #1397 reopen.
+    const hash = completions.map(c => `${c.category}:${c.item_key}:${c.new_level}`).join('|');
+    const key = 'depotCompletionsSeen:' + hash;
     try { if (localStorage.getItem(key) === '1') return; } catch (e) {}
 
     const shardIcon = DEPOT_DATA.shardIcon || '';

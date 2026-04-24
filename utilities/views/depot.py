@@ -124,14 +124,15 @@ def get_depot_page_data(user_id, auth):
     except Exception:
         build_time_mult = 1.0
 
-    # Bug #1397: recent build completions so the depot landing modal + any
-    # "what just finished" surface can render rich cards (name, old→new level,
-    # cost, image, effect diff). Last 7 days, newest first.
+    # Bug #1397: recent build completions for the depot landing modal. 24h
+    # window (not 7d) — Luke reported a week-old build showing up because
+    # historical upgraded_at values predate the build-complete fix and sort
+    # arbitrarily. WYWA briefing still uses its own 7d window.
     from datetime import timedelta
     from utilities.build_completions import get_recent_build_completions
     recent_completions = get_recent_build_completions(
         user_id,
-        since_dt=datetime.now(timezone.utc) - timedelta(days=7),
+        since_dt=datetime.now(timezone.utc) - timedelta(hours=24),
         limit=5,
     )
 
