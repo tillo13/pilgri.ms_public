@@ -1272,6 +1272,16 @@
       "start_background_snapshot_generation — Start daily snapshot generation in a background thread."
     ]
   },
+  "utilities/anthropic_logger.py": {
+    "description": "Canonical Anthropic API wrapper for Andy's fleet.",
+    "exports": [
+      "get_client — Returns the shared Anthropic client (cached). Use only when you need raw",
+      "new_client — Return a FRESH Anthropic client with the canonical API key + any extra",
+      "log_usage_async — Log to kumori_api_usage.",
+      "logged_create — Drop-in replacement for client.messages.create(...). Auto-logs usage.",
+      "logged_stream — Context manager wrapping client.messages.stream(...). Logs final usage on exit."
+    ]
+  },
   "utilities/brainstorm_chat.py": {
     "description": "Generic brainstorm chat used by tech tree and trail brainstorm pages.",
     "exports": [
@@ -3217,7 +3227,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3295,7 +3305,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
