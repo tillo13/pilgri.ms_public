@@ -515,11 +515,16 @@ async function confirmShardRush(btn) {
             <p>Pay <strong>${rushCost.toLocaleString()} shards</strong> to instantly complete <strong>${escapeHtml(name)} Lv${targetLevel}</strong>.</p>
             <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">Rush cost: ${rushPct}% of base upgrade price (discount grows with Life Support + Water Extractor levels).</p>
         </div>`,
-        buttons: [
-            { label: 'Cancel', class: 'btn-secondary', onClick: () => MarsModal.hide() },
-            { label: `Rush for ${rushCost.toLocaleString()}`, class: 'btn-primary', onClick: () => { MarsModal.hide(); executeShardRush(category, itemKey, name); } }
-        ]
+        footer: `
+            <button class="btn btn-secondary" id="shardRushCancelBtn">Cancel</button>
+            <button class="btn btn-primary" id="shardRushConfirmBtn">⚡ Rush for ${rushCost.toLocaleString()}</button>
+        `
     });
+    document.getElementById('shardRushCancelBtn').onclick = () => MarsModal.hide();
+    document.getElementById('shardRushConfirmBtn').onclick = () => {
+        MarsModal.hide();
+        executeShardRush(category, itemKey, name);
+    };
 }
 
 async function executeShardRush(category, itemKey, name) {
