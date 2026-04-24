@@ -107,29 +107,44 @@
         </div>
         {% endif %}
 
-        <!-- Scientist Stats as Rings -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-            {% set stats = [
-                ('Nav', scientist.stats.navigation if scientist.stats else 0, 'var(--color-sepolia)', '×' ~ "%.1f"|format(1 + (scientist.stats.navigation if scientist.stats else 0) / 150) ~ ' trail speed'),
-                ('Anl', scientist.stats.analysis if scientist.stats else 0, 'var(--color-success)', '+' ~ ((scientist.stats.analysis if scientist.stats else 0) / 2)|int ~ '% disc value'),
-                ('Geo', scientist.stats.geology if scientist.stats else 0, 'var(--color-mars)', '+' ~ (scientist.stats.geology if scientist.stats else 0) ~ '% minerals'),
-                ('Eng', scientist.stats.engineering if scientist.stats else 0, 'var(--color-primary)', '+' ~ ((scientist.stats.engineering if scientist.stats else 0) / 10)|int ~ ' cargo')
-            ] %}
-            {% for label, val, color, desc in stats %}
-            <div style="text-align: center;">
-                <div class="sci-stat-ring" style="margin: 0 auto 6px;">
-                    <svg width="56" height="56" viewBox="0 0 56 56">
-                        <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
-                        <circle cx="28" cy="28" r="24" fill="none" stroke="{{ color }}" stroke-width="4"
-                                stroke-dasharray="{{ (val / 50 * 150.8)|round(1) }} 150.8"
-                                stroke-linecap="round" style="filter: drop-shadow(0 0 4px {{ color }});"/>
-                    </svg>
-                    <div class="ring-label" style="color: {{ color }};">{{ val }}</div>
+        <!-- Scientist Stats — verbose definitions matching captain-tab layout (bug #1415) -->
+        {% set nav = scientist.stats.navigation if scientist.stats else 0 %}
+        {% set anl = scientist.stats.analysis if scientist.stats else 0 %}
+        {% set geo = scientist.stats.geology if scientist.stats else 0 %}
+        {% set eng = scientist.stats.engineering if scientist.stats else 0 %}
+        <div class="commander-stats-panel">
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Navigation <span style="opacity:0.5;font-size:10px;font-weight:400;">(NAV)</span></span>
+                    <span class="stat-value">{{ nav }}/50</span>
                 </div>
-                <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">{{ label }}</div>
-                <div style="font-size: 9px; opacity: 0.4; margin-top: 2px;">{{ desc }}</div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(nav / 50 * 100)|round|int, 100]|min }}%; background: var(--color-sepolia);"></div></div>
+                <div class="stat-desc">×{{ "%.2f"|format(1 + nav / 150) }} expedition speed — applied on top of vehicle speed, captain Logistics, and trail bonuses (+0.67% per point, max ×1.33 at 50).</div>
             </div>
-            {% endfor %}
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Analysis <span style="opacity:0.5;font-size:10px;font-weight:400;">(ANL)</span></span>
+                    <span class="stat-value">{{ anl }}/50</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(anl / 50 * 100)|round|int, 100]|min }}%; background: var(--color-success);"></div></div>
+                <div class="stat-desc">+{{ (anl / 2)|int }}% discovery value on recorded finds — stacks multiplicatively with captain Exploration and distance bonuses (+0.5% per point, max +25% at 50).</div>
+            </div>
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Geology <span style="opacity:0.5;font-size:10px;font-weight:400;">(GEO)</span></span>
+                    <span class="stat-value">{{ geo }}/50</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(geo / 50 * 100)|round|int, 100]|min }}%; background: var(--color-mars);"></div></div>
+                <div class="stat-desc">+{{ geo }}% spawn chance for mineral/rock discoveries near terrain features on expedition paths (+1% per point, max +50% at 50).</div>
+            </div>
+            <div class="stat-pill">
+                <div class="stat-pill-header">
+                    <span class="stat-name">Engineering <span style="opacity:0.5;font-size:10px;font-weight:400;">(ENG)</span></span>
+                    <span class="stat-value">{{ eng }}/50</span>
+                </div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(eng / 50 * 100)|round|int, 100]|min }}%; background: var(--color-primary);"></div></div>
+                <div class="stat-desc">+{{ (eng / 10)|int }} cargo capacity on every expedition — stacks on top of vehicle cargo and Material Science tech (+1 per 10 points, max +5 at 50).</div>
+            </div>
         </div>
     </div>
 </div>
