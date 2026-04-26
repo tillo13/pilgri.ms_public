@@ -300,6 +300,11 @@ def logged_create(*, app_name: str, feature: Optional[str] = None,
                             model='claude-sonnet-4-6', max_tokens=4096,
                             messages=[...])
     """
+    try:
+        from utilities.killswitch import check_killswitch
+        check_killswitch('anthropic')
+    except ImportError:
+        pass
     t0 = time.time()
     model = create_kwargs.get('model', 'unknown')
     client = get_client()
@@ -324,6 +329,11 @@ def logged_stream(*, app_name: str, feature: Optional[str] = None,
             for text in stream.text_stream:
                 yield text
     """
+    try:
+        from utilities.killswitch import check_killswitch
+        check_killswitch('anthropic')
+    except ImportError:
+        pass
     t0 = time.time()
     model = stream_kwargs.get('model', 'unknown')
     client = get_client()

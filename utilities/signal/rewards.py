@@ -161,10 +161,10 @@ def generate_legendary_item_for_origin(
         # Use the project's standard Flux model (flux-kontext-pro) with just a prompt
         # The prompt already follows the Mars-material aesthetic from CLAUDE.md
         try:
-            output = generator.client.run(
-                FLUX_MODEL,
-                input={"prompt": engraved_prompt}
-            )
+            from utilities.replicate_utils import _killswitched_run
+            output = _killswitched_run(generator.client, FLUX_MODEL,
+                                        {"prompt": engraved_prompt},
+                                        feature='signal_reward_engrave')
         except Exception as e:
             logger.error(f"Flux generation failed for {site_code}: {e}")
             return None
@@ -334,10 +334,10 @@ def generate_visitor_reward_image(
         logger.info(f"Flux prompt: {engraved_prompt[:80]}...")
 
         try:
-            output = generator.client.run(
-                FLUX_MODEL,
-                input={"prompt": engraved_prompt}
-            )
+            from utilities.replicate_utils import _killswitched_run
+            output = _killswitched_run(generator.client, FLUX_MODEL,
+                                        {"prompt": engraved_prompt},
+                                        feature='signal_reward_engrave')
         except Exception as e:
             logger.error(f"Flux generation failed for visitor {claim_id}: {e}")
             return None

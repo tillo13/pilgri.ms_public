@@ -247,7 +247,9 @@ def _generate_bond_image_async(bond_id: int, user_id_1: int, user_id_2: int, lan
             flux = FluxGenerator()
             logger.info(f"🎨 Generating bond image for bond {bond_id}...")
 
-            replicate_url = flux.client.run(FLUX_MODEL, input={'prompt': prompt})
+            from utilities.replicate_utils import _killswitched_run
+            replicate_url = _killswitched_run(flux.client, FLUX_MODEL,
+                                               {'prompt': prompt}, feature='aria_bond')
             if isinstance(replicate_url, list):
                 replicate_url = replicate_url[0]
             else:

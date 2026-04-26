@@ -210,7 +210,10 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
             if pure_landscape or len(source_image_urls) == 0:
                 logger.info("  Generating with Flux Pro (pure landscape, no reference images)...")
                 start_time = time.time()
-                result = flux.client.run(FLUX_MODEL, input={'prompt': prompt, 'aspect_ratio': '4:3'})
+                from utilities.replicate_utils import _killswitched_run
+                result = _killswitched_run(flux.client, FLUX_MODEL,
+                                            {'prompt': prompt, 'aspect_ratio': '4:3'},
+                                            feature='aria_snapshot')
                 replicate_url = result[0] if isinstance(result, list) else str(result)
                 generator_type = 'claude_dynamic + flux_pro'
             else:

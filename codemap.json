@@ -1470,6 +1470,13 @@
     ],
     "keywords": "SHIM — real code in utilities/infrastructure/ package. effective rate, mining drone, base total, income breakdown"
   },
+  "utilities/killswitch.py": {
+    "description": "Central paid-API killswitch — galactica side.",
+    "exports": [
+      "class KillswitchTripped",
+      "check_killswitch — Raise KillswitchTripped if `provider` is disabled OR MTD + est >= cap."
+    ]
+  },
   "utilities/legacy_migration.py": {
     "description": "Legacy Shop → Upgrade System Migration",
     "exports": [
@@ -1592,6 +1599,13 @@
       "send_audit_email — Send detailed audit email with all transaction and deletion results",
       "reclaim_assets — Full asset reclamation: sweep wallets and delete user data",
       "main"
+    ]
+  },
+  "utilities/replicate_logger.py": {
+    "description": "Replicate usage logger — galactica side.",
+    "exports": [
+      "estimate_cost",
+      "log_replicate_async"
     ]
   },
   "utilities/replicate_utils.py": {
@@ -3227,7 +3241,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3305,7 +3319,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

@@ -71,6 +71,31 @@ def get_secret(secret_id, project_id=None):
 
 
 # ---------------------------------------------------------------------------
+# KILLSWITCH + USAGE LOGGING WRAPPER
+# ---------------------------------------------------------------------------
+
+def _killswitched_run(client, model, input_data, feature, image_count=1):
+    """Wrap replicate client.run() with central killswitch check + spend log.
+    Raises KillswitchTripped if MTD spend across all kumori-family apps for
+    Replicate has crossed the cap configured in kumori_api_killswitch."""
+    try:
+        from utilities.killswitch import check_killswitch
+        check_killswitch('replicate')
+    except ImportError:
+        pass
+    t0 = time.time()
+    output = client.run(model, input=input_data)
+    duration = time.time() - t0
+    try:
+        from utilities.replicate_logger import log_replicate_async
+        log_replicate_async(model=model, image_count=image_count,
+                            duration_seconds=duration, feature=feature)
+    except ImportError:
+        pass
+    return output
+
+
+# ---------------------------------------------------------------------------
 # FLUX / KONTEXT / NANO BANANA / WAN VIDEO
 # ---------------------------------------------------------------------------
 
@@ -121,7 +146,9 @@ class FluxGenerator:
             corrected_data = self._fix_exif_orientation(image_data)
             image_b64 = base64.b64encode(corrected_data).decode('utf-8')
             data_uri = f"data:image/png;base64,{image_b64}"
-            output = self.client.run(flux_model, input={'input_image': data_uri, 'prompt': prompt})
+            output = _killswitched_run(self.client, flux_model,
+                                        {'input_image': data_uri, 'prompt': prompt},
+                                        feature='process_image')
             return output[0] if isinstance(output, list) else str(output)
 
         result_url = self._retry_api_call("Image Processing", _do_process_image)
@@ -138,7 +165,9 @@ class FluxGenerator:
             corrected_data = self._fix_exif_orientation(response.content)
             image_b64 = base64.b64encode(corrected_data).decode('utf-8')
             data_uri = f"data:image/png;base64,{image_b64}"
-            output = self.client.run(flux_model, input={'input_image': data_uri, 'prompt': edit_prompt})
+            output = _killswitched_run(self.client, flux_model,
+                                        {'input_image': data_uri, 'prompt': edit_prompt},
+                                        feature='edit_image')
             return output[0] if isinstance(output, list) else str(output)
 
         result_url = self._retry_api_call("Image Editing", _do_edit_image)
@@ -150,13 +179,14 @@ class FluxGenerator:
         logger.info(f"Starting Kontext edit: {edit_prompt[:50]}...")
 
         def _do_kontext_edit():
-            output = self.client.run(
-                "black-forest-labs/flux-kontext-pro",
-                input={
+            output = _killswitched_run(
+                self.client, "black-forest-labs/flux-kontext-pro",
+                {
                     "prompt": edit_prompt,
                     "input_image": image_url,
                     "output_format": output_format,
                 },
+                feature='kontext_edit',
             )
             if hasattr(output, 'url'):
                 return output.url
@@ -182,7 +212,8 @@ class FluxGenerator:
             }
             if image_urls:
                 input_params["input_images"] = list(image_urls)[:8]
-            output = self.client.run("black-forest-labs/flux-2-pro", input=input_params)
+            output = _killswitched_run(self.client, "black-forest-labs/flux-2-pro",
+                                        input_params, feature='flux2_pro')
             if isinstance(output, list) and output:
                 first = output[0]
                 return first.url if hasattr(first, 'url') else str(first)
@@ -215,7 +246,8 @@ class FluxGenerator:
                 input_params["image_input"] = image_urls
                 logger.info(f"Using {len(image_urls)} reference image(s)")
 
-            output = self.client.run("google/nano-banana-pro", input=input_params)
+            output = _killswitched_run(self.client, "google/nano-banana-pro",
+                                        input_params, feature='nano_banana_pro')
 
             if isinstance(output, list) and len(output) > 0:
                 return str(output[0])
@@ -243,7 +275,11 @@ class FluxGenerator:
             logger.info("   🔗 Using last_image for smooth transition")
 
         def _do_animate_character():
-            output = self.client.run(video_model, input={"image": image_url, "prompt": prompt, **settings})
+            output = _killswitched_run(
+                self.client, video_model,
+                {"image": image_url, "prompt": prompt, **settings},
+                feature='animate_character',
+            )
             return str(output)
 
         result_url = self._retry_api_call("Character Animation", _do_animate_character)
@@ -351,15 +387,16 @@ class VisionAnalyzer:
         """Run a custom prompt against LLaVA for the given image URL."""
         logger.info("Analyzing image with LLaVA...")
         try:
-            output = self.client.run(
-                self.model,
-                input={
+            output = _killswitched_run(
+                self.client, self.model,
+                {
                     "image": image_url,
                     "prompt": prompt,
                     "temperature": temperature,
                     "max_tokens": max_tokens,
                     "top_p": 1,
                 },
+                feature='vision_analyze',
             )
             response = ""
             for item in output:
