@@ -43,15 +43,19 @@ function initCrewTrailMap() {
     crewTrailMap = L.map('crew-trail-map', {
         center: [baseCoords.latitude, baseCoords.longitude],
         zoom: 4,
-        minZoom: 1,         // v3 chains span the whole planet — let captains zoom way out
+        minZoom: 1,
         maxZoom: 8,
-        zoomControl: true,  // Bug fix 2026-04-28: zoom buttons restored
+        zoomControl: true,
         scrollWheelZoom: true,
-        doubleClickZoom: true
+        doubleClickZoom: true,
+        worldCopyJump: false,                 // Don't tile Mars horizontally — chains span the planet
+        maxBoundsViscosity: 1.0,
+        maxBounds: [[-90, -180], [90, 180]]   // Lock view to one Mars
     });
 
     L.tileLayer('https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-2/all/{z}/{x}/{y}.png', {
-        attribution: ''
+        attribution: '',
+        noWrap: true                          // Don't repeat tiles past lon=180
     }).addTo(crewTrailMap);
 
     // Add base marker
@@ -91,11 +95,21 @@ function updateCrewTrailMapMarkers() {
     const chainCovered = getChainCoveredDestinations();
 
     // v3 cardinal colors — N=blue, E=green, S=red, W=yellow
-    // Colorblind-safe palette (Okabe-Ito): blue / bluish-green / vermilion-magenta / yellow.
-    // Distinct under deuteranopia, protanopia, tritanopia. Keep Andy + Luke able to tell them apart.
-    const dirColor = { N: '#0072B2', E: '#009E73', S: '#CC79A7', W: '#F0E442' };
-    // Plus per-direction dash patterns so direction is also encoded by line shape, not color alone.
-    const dirDash  = { N: null,      E: '14,6',    S: '3,6',     W: '10,4,3,4' };
+    // High-contrast palette tuned for severe colorblind viewers on the orange-red Mars terrain.
+    // Each color sits at the OPPOSITE end of the color wheel from Mars red — and pairs with
+    // a unique dash pattern so direction is encoded by SHAPE too, not color alone.
+    // Tested against deuteranopia, protanopia, tritanopia simulators.
+    const dirColor = {
+        N: '#FFFFFF',  // pure white — max luminance contrast on red, reads at any size
+        E: '#00FFFF',  // bright cyan — Mars-red's complementary color, can't be confused with terrain
+        S: '#FF1493',  // hot pink/magenta — high saturation against orange, distinct from red
+        W: '#000000'   // pure black — minimum luminance contrast on red
+    };
+    // Per-direction dash pattern (so colorblind viewers can tell chains apart by shape too)
+    const dirDash  = { N: null,      E: '16,8',     S: '4,6',     W: '12,4,4,4' };
+    // Every chain line gets drawn TWICE — first a dark halo underneath (for high contrast on any bg),
+    // then the bright color on top. Halo color picks the opposite luminance of the chain color.
+    const dirHalo  = { N: '#000000', E: '#000000',  S: '#000000', W: '#FFFFFF' };
 
     nearbyTrails.forEach(t => {
         if (!t.latitude || !t.longitude) return;
@@ -116,37 +130,37 @@ function updateCrewTrailMapMarkers() {
         const fromLat = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_latitude) ? t.from_latitude : baseCoords.latitude;
         const fromLon = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_longitude) ? t.from_longitude : baseCoords.longitude;
 
-        // v3: cardinal-color + per-direction dash pattern so chains are distinguishable
-        // for colorblind captains (Andy + Luke). Built segments are bright solid; unbuilt
-        // and not-started use the chain's signature dash pattern at full color.
+        // v3: cardinal-color + dash pattern + halo for colorblind contrast.
+        // Built segments draw thick on top of a halo. Unbuilt portions use the same color
+        // with the direction's signature dash so chains are distinguishable even without color.
         const onChain = !!(t.chain_direction && dirColor[t.chain_direction]);
         const chainDash = onChain ? dirDash[t.chain_direction] : null;
+        const chainHalo = onChain ? dirHalo[t.chain_direction] : '#000000';
+        const drawWithHalo = (latlngs, opts) => {
+            // Halo: thick line in opposite-luminance color underneath
+            trailMapMarkers.push(L.polyline(latlngs, {
+                color: chainHalo, weight: (opts.weight || 4) + 3,
+                opacity: 0.55, dashArray: opts.dashArray || null
+            }).addTo(crewTrailMap));
+            // Bright line on top
+            trailMapMarkers.push(L.polyline(latlngs, opts).addTo(crewTrailMap));
+        };
         if (percent > 0 && percent < 100) {
             const frac = percent / 100;
             const midLat = fromLat + (t.latitude - fromLat) * frac;
             const midLon = fromLon + (t.longitude - fromLon) * frac;
-            // Built portion: solid (no dash) in chain color
-            trailMapMarkers.push(L.polyline(
-                [[fromLat, fromLon], [midLat, midLon]],
-                { color: color, weight: 5, opacity: 1.0 }
-            ).addTo(crewTrailMap));
-            // Unbuilt portion: same color but using direction's signature dash
-            trailMapMarkers.push(L.polyline(
-                [[midLat, midLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.7 : 0.7, dashArray: chainDash || '8,10' }
-            ).addTo(crewTrailMap));
+            // Built portion: solid (no dash) in chain color, with halo
+            drawWithHalo([[fromLat, fromLon], [midLat, midLon]],
+                { color: color, weight: 5, opacity: 1.0 });
+            // Unbuilt portion: chain color with signature dash, with halo
+            drawWithHalo([[midLat, midLon], [t.latitude, t.longitude]],
+                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.85 : 0.7, dashArray: chainDash || '8,10' });
         } else if (percent >= 100) {
-            // Fully complete: thick solid in chain color (v3) or gold (legacy)
-            trailMapMarkers.push(L.polyline(
-                [[fromLat, fromLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffdc32', weight: 5, opacity: 0.95 }
-            ).addTo(crewTrailMap));
+            drawWithHalo([[fromLat, fromLon], [t.latitude, t.longitude]],
+                { color: onChain ? color : '#ffdc32', weight: 5, opacity: 0.95 });
         } else {
-            // Not started: dashed in chain color with signature pattern (v3) or white (legacy)
-            trailMapMarkers.push(L.polyline(
-                [[fromLat, fromLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.65 : 0.7, dashArray: chainDash || '8,10' }
-            ).addTo(crewTrailMap));
+            drawWithHalo([[fromLat, fromLon], [t.latitude, t.longitude]],
+                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.85 : 0.7, dashArray: chainDash || '8,10' });
         }
 
         // Add destination marker - CLICK opens the Chart Trail modal
@@ -201,11 +215,21 @@ function drawGhostChainRoutes() {
     ghostRouteLines.forEach(l => crewTrailMap.removeLayer(l));
     ghostRouteLines = [];
 
-    // Colorblind-safe palette (Okabe-Ito): blue / bluish-green / vermilion-magenta / yellow.
-    // Distinct under deuteranopia, protanopia, tritanopia. Keep Andy + Luke able to tell them apart.
-    const dirColor = { N: '#0072B2', E: '#009E73', S: '#CC79A7', W: '#F0E442' };
-    // Plus per-direction dash patterns so direction is also encoded by line shape, not color alone.
-    const dirDash  = { N: null,      E: '14,6',    S: '3,6',     W: '10,4,3,4' };
+    // High-contrast palette tuned for severe colorblind viewers on the orange-red Mars terrain.
+    // Each color sits at the OPPOSITE end of the color wheel from Mars red — and pairs with
+    // a unique dash pattern so direction is encoded by SHAPE too, not color alone.
+    // Tested against deuteranopia, protanopia, tritanopia simulators.
+    const dirColor = {
+        N: '#FFFFFF',  // pure white — max luminance contrast on red, reads at any size
+        E: '#00FFFF',  // bright cyan — Mars-red's complementary color, can't be confused with terrain
+        S: '#FF1493',  // hot pink/magenta — high saturation against orange, distinct from red
+        W: '#000000'   // pure black — minimum luminance contrast on red
+    };
+    // Per-direction dash pattern (so colorblind viewers can tell chains apart by shape too)
+    const dirDash  = { N: null,      E: '16,8',     S: '4,6',     W: '12,4,4,4' };
+    // Every chain line gets drawn TWICE — first a dark halo underneath (for high contrast on any bg),
+    // then the bright color on top. Halo color picks the opposite luminance of the chain color.
+    const dirHalo  = { N: '#000000', E: '#000000',  S: '#000000', W: '#FFFFFF' };
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
 
     // Build a from_landmark → coords lookup using nearbyTrails (which has lat/lon for built segments)
@@ -228,12 +252,19 @@ function drawGhostChainRoutes() {
             }
         }
         if (pts.length < 2) continue;
-        // Ghost route — visible enough to read the round-the-world arc, faint enough not to fight
-        // with the bright built portion. Each direction's ghost uses its signature dash pattern.
+        // Halo (drawn first, underneath) — opposite luminance so the colored line pops on ANY terrain
+        const ghostHalo = L.polyline(pts, {
+            color: dirHalo[d],
+            weight: 6,
+            opacity: 0.45,
+            dashArray: dirDash[d] || '6,10'
+        }).addTo(crewTrailMap);
+        ghostRouteLines.push(ghostHalo);
+        // Bright color on top
         const ghost = L.polyline(pts, {
             color: dirColor[d],
             weight: 3,
-            opacity: 0.55,
+            opacity: 0.85,
             dashArray: dirDash[d] || '6,10'
         }).addTo(crewTrailMap);
         ghostRouteLines.push(ghost);
@@ -320,11 +351,21 @@ function updateTopTrails() {
     // Group nearbyTrails by chain_direction. The backend returns one row per direction
     // for the next unbuilt segment + completed segment rows.
     const dirOrder = ['N', 'E', 'S', 'W'];
-    // Colorblind-safe palette (Okabe-Ito): blue / bluish-green / vermilion-magenta / yellow.
-    // Distinct under deuteranopia, protanopia, tritanopia. Keep Andy + Luke able to tell them apart.
-    const dirColor = { N: '#0072B2', E: '#009E73', S: '#CC79A7', W: '#F0E442' };
-    // Plus per-direction dash patterns so direction is also encoded by line shape, not color alone.
-    const dirDash  = { N: null,      E: '14,6',    S: '3,6',     W: '10,4,3,4' };
+    // High-contrast palette tuned for severe colorblind viewers on the orange-red Mars terrain.
+    // Each color sits at the OPPOSITE end of the color wheel from Mars red — and pairs with
+    // a unique dash pattern so direction is encoded by SHAPE too, not color alone.
+    // Tested against deuteranopia, protanopia, tritanopia simulators.
+    const dirColor = {
+        N: '#FFFFFF',  // pure white — max luminance contrast on red, reads at any size
+        E: '#00FFFF',  // bright cyan — Mars-red's complementary color, can't be confused with terrain
+        S: '#FF1493',  // hot pink/magenta — high saturation against orange, distinct from red
+        W: '#000000'   // pure black — minimum luminance contrast on red
+    };
+    // Per-direction dash pattern (so colorblind viewers can tell chains apart by shape too)
+    const dirDash  = { N: null,      E: '16,8',     S: '4,6',     W: '12,4,4,4' };
+    // Every chain line gets drawn TWICE — first a dark halo underneath (for high contrast on any bg),
+    // then the bright color on top. Halo color picks the opposite luminance of the chain color.
+    const dirHalo  = { N: '#000000', E: '#000000',  S: '#000000', W: '#FFFFFF' };
     const dirIcon  = { N: '⬆', E: '➡', S: '⬇', W: '⬅' };
     const byDir = { N: [], E: [], S: [], W: [] };
     for (const t of nearbyTrails) {

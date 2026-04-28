@@ -144,24 +144,24 @@
                 <!-- The 4 chains (cardinal legend, colorblind-safe) -->
                 <p class="mt-12 mb-8"><strong style="color: var(--text-primary);">Every captain has exactly 4 trails — one per cardinal direction (N / E / S / W).</strong> Each is a chain of landmark hops from your base out to your <em>antipode</em> — the landmark on the opposite side of Mars. All 4 chains terminate at the same antipode, just routed through different hemispheres.</p>
                 <div class="grid mb-12" style="grid-template-columns: repeat(2, 1fr); gap: 6px;">
-                    <div style="border-left: 4px solid #0072B2; padding: 6px 10px; background: rgba(0,114,178,0.08); border-radius: 0 6px 6px 0;">
-                        <strong style="color: #0072B2;">⬆ N CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— solid line</span><br>
+                    <div style="border-left: 4px solid #FFFFFF; padding: 6px 10px; background: rgba(255,255,255,0.08); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #FFFFFF;">⬆ N CHAIN</strong> <span class="opacity-60" style="font-family: monospace;">— solid white</span><br>
                         <span class="opacity-70">Routes via the North Pole</span>
                     </div>
-                    <div style="border-left: 4px solid #009E73; padding: 6px 10px; background: rgba(0,158,115,0.08); border-radius: 0 6px 6px 0;">
-                        <strong style="color: #009E73;">➡ E CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— long-dashed</span><br>
+                    <div style="border-left: 4px solid #00FFFF; padding: 6px 10px; background: rgba(0,255,255,0.10); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #00FFFF;">➡ E CHAIN</strong> <span class="opacity-60" style="font-family: monospace;">— cyan, long-dashed</span><br>
                         <span class="opacity-70">Routes east through the equator</span>
                     </div>
-                    <div style="border-left: 4px solid #CC79A7; padding: 6px 10px; background: rgba(204,121,167,0.10); border-radius: 0 6px 6px 0;">
-                        <strong style="color: #CC79A7;">⬇ S CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— dotted</span><br>
+                    <div style="border-left: 4px solid #FF1493; padding: 6px 10px; background: rgba(255,20,147,0.10); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #FF1493;">⬇ S CHAIN</strong> <span class="opacity-60" style="font-family: monospace;">— magenta, dotted</span><br>
                         <span class="opacity-70">Routes via the South Pole</span>
                     </div>
-                    <div style="border-left: 4px solid #F0E442; padding: 6px 10px; background: rgba(240,228,66,0.10); border-radius: 0 6px 6px 0;">
-                        <strong style="color: #F0E442;">⬅ W CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— dash-dot</span><br>
+                    <div style="border-left: 4px solid #000000; padding: 6px 10px; background: rgba(0,0,0,0.30); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #000000; background: rgba(255,255,255,0.7); padding: 1px 4px; border-radius: 3px;">⬅ W CHAIN</strong> <span class="opacity-60" style="font-family: monospace;">— black, dash-dot</span><br>
                         <span class="opacity-70">Routes west through the equator</span>
                     </div>
                 </div>
-                <p class="mb-12 opacity-70" style="font-size: 11px;">Colors use the Okabe-Ito colorblind-safe palette + a unique line pattern per direction so you can tell chains apart even without color.</p>
+                <p class="mb-12 opacity-70" style="font-size: 11px;">Each chain uses a high-contrast color (white / cyan / magenta / black) PLUS a unique dash pattern, with a dark halo, so colorblind captains can tell them apart by shape and luminance — not just color.</p>
 
                 <!-- The map legend -->
                 <p class="mb-12"><strong style="color: var(--text-primary);">On the map:</strong> each chain shows as a dashed line in its signature color tracing the FULL route from base to antipode. Bright thick segments = what you've built. The color circle at the end of each line is the antipode beacon (same landmark, four routes). Click + Build / drone cron / ARIA Resonance all advance whichever direction is set as active (highlighted in Top Trails below).</p>
