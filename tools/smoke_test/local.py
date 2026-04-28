@@ -295,6 +295,19 @@ def test_signal_cinematic_getter_shape():
     return True
 
 
+@test("Maintenance Drone L1-L3 has build_time_mult", tier=1, features=['config', 'depot'], mode='local')
+def test_maintenance_drone_build_time_mult():
+    """Phase 4b (#1270 section 4 point 3): Maintenance Drone passive build-speed bonus."""
+    from config_upgrades import UPGRADE_CATALOG
+    levels = UPGRADE_CATALOG.get('maintenance', {}).get('maintenance', {}).get('levels', {})
+    expected = {1: 0.98, 2: 0.95, 3: 0.92}
+    for lv, want in expected.items():
+        got = levels.get(lv, {}).get('build_time_mult')
+        if got != want:
+            return f"L{lv} build_time_mult expected {want}, got {got}"
+    return True
+
+
 @test("puzzle_fragments tables seeded", tier=1, features=['db', 'signal'], mode='local')
 def test_puzzle_fragments_seeded():
     """Phase 2.3c: catalog has 14 fragments seeded."""

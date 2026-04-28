@@ -204,4 +204,20 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
     except Exception:
         pass
 
+    # Phase 4b (#1270 section 4 point 3): Maintenance Drone passive build-speed bonus.
+    # Goes outside the upgrade aggregator above because that block uses max() for non-cost
+    # _mult keys, which is wrong for build_time_mult (lower is faster). Multiplies
+    # into the chain — stacks with Logistics × ENG.
+    try:
+        from utilities.upgrades_utils import get_user_upgrade_level
+        from config_upgrades import UPGRADE_CATALOG
+        maint_lv = get_user_upgrade_level(user_id, 'maintenance', 'maintenance')
+        if maint_lv >= 1:
+            cfg = UPGRADE_CATALOG.get('maintenance', {}).get('maintenance', {}).get('levels', {}).get(maint_lv, {})
+            m = cfg.get('build_time_mult', 1.0) or 1.0
+            if m != 1.0:
+                effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * m
+    except Exception:
+        pass
+
     return effects

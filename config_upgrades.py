@@ -622,16 +622,19 @@ UPGRADE_CATALOG = {
                 1: {
                     'name': 'Maintenance Drone', 'cost': 2500, 'build_time_days': 0.042,
                     'dust_storm_immune': False, 'trail_km_per_hour': 0.5,
+                    'build_time_mult': 0.98,
                     'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/maintenance_drone_1770262697.png',
                 },
                 2: {
                     'name': 'Sweeper Drone', 'cost': 2800, 'build_time_days': 3,
                     'dust_storm_immune': False, 'trail_km_per_hour': 0.7,
+                    'build_time_mult': 0.95,
                     'image_url': '',
                 },
                 3: {
                     'name': 'Dust Guard', 'cost': 3136, 'build_time_days': 4,
                     'dust_storm_immune': True, 'trail_km_per_hour': 1.0,
+                    'build_time_mult': 0.92,
                     'image_url': '',
                 },
             }
