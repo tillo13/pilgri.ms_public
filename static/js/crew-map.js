@@ -2,6 +2,18 @@
 // CREW-MAP.JS - Trail Map, Chart Trail Modal, Crew Selection
 // ============================================================================
 
+// v3 (#1414): hydrate window.activeTrailDirection from server on page load
+async function loadActiveTrailDirection() {
+    try {
+        const data = await apiGet('/api/trails/chains');
+        if (data && data.success) {
+            window.activeTrailDirection = data.active_direction || 'N';
+            if (typeof updateTopTrails === 'function') updateTopTrails();
+        }
+    } catch (e) { /* silent */ }
+}
+document.addEventListener('DOMContentLoaded', loadActiveTrailDirection);
+
 function initCrewTrailMap() {
     if (typeof L === 'undefined') {
         // Load Leaflet if not available
@@ -25,10 +37,12 @@ function initCrewTrailMap() {
 
     crewTrailMap = L.map('crew-trail-map', {
         center: [baseCoords.latitude, baseCoords.longitude],
-        zoom: 6,
-        minZoom: 4,
+        zoom: 4,
+        minZoom: 1,         // v3 chains span the whole planet — let captains zoom way out
         maxZoom: 8,
-        zoomControl: false
+        zoomControl: true,  // Bug fix 2026-04-28: zoom buttons restored
+        scrollWheelZoom: true,
+        doubleClickZoom: true
     });
 
     L.tileLayer('https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-2/all/{z}/{x}/{y}.png', {
@@ -71,6 +85,9 @@ function updateCrewTrailMapMarkers() {
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
     const chainCovered = getChainCoveredDestinations();
 
+    // v3 cardinal colors — N=blue, E=green, S=red, W=yellow
+    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
+
     nearbyTrails.forEach(t => {
         if (!t.latitude || !t.longitude) return;
 
@@ -78,11 +95,13 @@ function updateCrewTrailMapMarkers() {
         const isHomeLeg = !t.from_landmark || t.from_landmark === 'HOME';
         if (isHomeLeg && chainCovered.has(t.name)) return;
 
-        // Color based on trail completion percentage (segment distance for chain routing)
+        // Color based on chain direction (v3) — fall back to completion-based for legacy rows
         const kmBuilt = t.km_built || 0;
         const totalKm = t.segment_distance_km || t.distance_km || 1;
         const percent = Math.min(100, (kmBuilt / totalKm) * 100);
-        const color = percent >= 100 ? '#ffdc32' : percent >= 50 ? '#64dc96' : percent > 0 ? '#f0a860' : '#888';
+        const color = (t.chain_direction && dirColor[t.chain_direction])
+            ? dirColor[t.chain_direction]
+            : (percent >= 100 ? '#ffdc32' : percent >= 50 ? '#64dc96' : percent > 0 ? '#f0a860' : '#888');
 
         // Draw trail line: solid portion = built, dashed = remaining
         const fromLat = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_latitude) ? t.from_latitude : baseCoords.latitude;
@@ -201,62 +220,84 @@ function updateCrewTrailContributions() {
     }
 }
 
-// Update Top Trails section - shows best trails to continue working on
+// v3 (#1414): Top Trails is now a distinctly NSEW view — one row per cardinal chain
+// with chain-cumulative progress. Click a row to set it as your active direction
+// AND open the chart-trail modal for the next unbuilt segment.
 function updateTopTrails() {
     const section = document.getElementById('top-trails-section');
     const list = document.getElementById('top-trails-list');
     if (!section || !list) return;
-
-    // Filter trails that have been started (km_built > 0) but not yet complete.
-    // Bug #1291: completed trails are now in nearbyTrails for map rendering, but
-    // "Top Trails" is for trails to continue working on — exclude finished ones.
-    // Also dedup: if Y→X exists as a chain trail, hide the stale HOME→X entry.
-    const chainCovered = getChainCoveredDestinations();
-    const inProgress = nearbyTrails
-        .filter(t => (t.km_built || 0) > 0 && !t.is_complete)
-        .filter(t => {
-            const isHomeLeg = !t.from_landmark || t.from_landmark === 'HOME';
-            return !(isHomeLeg && chainCovered.has(t.name));
-        })
-        .map(t => ({
-            ...t,
-            totalKm: t.segment_distance_km || t.distance_km || 1,
-            percent: Math.min(100, ((t.km_built || 0) / (t.segment_distance_km || t.distance_km || 1)) * 100)
-        }))
-        .sort((a, b) => b.percent - a.percent)  // Highest progress first
-        .slice(0, 5);  // Top 5
-
     section.style.display = 'block';
-    if (inProgress.length === 0) {
-        list.innerHTML = '<div class="text-xs opacity-60 p-8" style="background: var(--bg-tertiary); border-radius: 6px;">No trails in progress yet. Click a destination on the map to start charting a trail!</div>';
-        return;
+
+    // Group nearbyTrails by chain_direction. The backend returns one row per direction
+    // for the next unbuilt segment + completed segment rows.
+    const dirOrder = ['N', 'E', 'S', 'W'];
+    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
+    const dirIcon  = { N: '⬆', E: '➡', S: '⬇', W: '⬅' };
+    const byDir = { N: [], E: [], S: [], W: [] };
+    for (const t of nearbyTrails) {
+        if (t.chain_direction && byDir[t.chain_direction]) byDir[t.chain_direction].push(t);
     }
 
-    list.innerHTML = inProgress.map(t => {
-        const barColor = t.percent >= 100 ? '#ffdc32' : t.percent >= 50 ? '#64dc96' : '#f0a860';
-        // Show enough precision for small percentages
-        let statusText;
-        if (t.percent >= 100) statusText = '✓ Complete!';
-        else if (t.percent >= 1) statusText = `${t.percent.toFixed(1)}%`;
-        else if (t.percent >= 0.01) statusText = `${t.percent.toFixed(2)}%`;
-        else if (t.percent > 0) statusText = `${t.percent.toFixed(6).replace(/\.?0+$/, '')}%`;
-        else statusText = '0%';
+    // Get active direction from window (set by crew page) so we can highlight it
+    const activeDir = window.activeTrailDirection || 'N';
+
+    list.innerHTML = dirOrder.map(d => {
+        const segs = byDir[d];
+        if (!segs || segs.length === 0) {
+            return `<div class="p-8" style="background: var(--bg-tertiary); border-radius: 6px; border: 1px solid var(--border-default); opacity: 0.6;">
+                <div class="text-xs"><span style="color:${dirColor[d]}; font-weight:700;">${dirIcon[d]} ${d} CHAIN</span> — no chain data</div>
+            </div>`;
+        }
+        // Chain-cumulative state from any row (all rows for same direction share these)
+        const meta = segs[0];
+        const totalKm = meta.chain_total_km || 0;
+        const builtKm = meta.chain_km_built || 0;
+        const completedSegs = meta.chain_completed_segments || 0;
+        const totalSegs = meta.chain_total_segments || 0;
+        const tier = meta.chain_prestige_tier || 'none';
+        const pct = totalKm > 0 ? Math.min(100, (builtKm / totalKm) * 100) : 0;
+        // Find the next-unbuilt segment row (is_complete=false)
+        const next = segs.find(s => !s.is_complete);
+        const isActive = (d === activeDir);
+        const borderStyle = isActive ? `2px solid ${dirColor[d]}` : `1px solid var(--border-default)`;
+        const activeBadge = isActive ? `<span style="color:${dirColor[d]}; font-size:10px; font-weight:700;">● ACTIVE</span>` : '';
+        const segLabel = next ? `seg ${next.segment_index} of ${totalSegs} → ${next.name}` : `${totalSegs}/${totalSegs} segments — ✓ Complete`;
+        const onclick = next
+            ? `setActiveChainAndOpen('${d}', '${(next.name||'').replace(/'/g, "\\'")}')`
+            : `setActiveChainOnly('${d}')`;
         return `
-            <div class="p-8" style="background: var(--bg-tertiary); border-radius: 6px; cursor: pointer; border: 1px solid var(--border-default);" onclick="openChartTrailModalByName('${t.name.replace(/'/g, "\\'")}')">
+            <div class="p-8" style="background: var(--bg-tertiary); border-radius: 6px; cursor: pointer; border: ${borderStyle};" onclick="${onclick}">
                 <div class="flex justify-between items-center mb-4">
-                    <span class="text-xs font-semibold">${t.from_landmark && t.from_landmark !== 'HOME' ? t.from_landmark + ' → ' : ''}${t.name}</span>
-                    <span class="text-xs" style="color: ${barColor};">${statusText}</span>
+                    <span class="text-xs font-semibold" style="color: ${dirColor[d]}; letter-spacing: 1px;">${dirIcon[d]} ${d} CHAIN ${activeBadge}</span>
+                    <span class="text-xs" style="color: ${dirColor[d]};">${pct.toFixed(1)}% · ${tier}</span>
                 </div>
+                <div class="text-xs opacity-70 mb-4">${segLabel}</div>
                 <div style="height: 4px; background: var(--bg-secondary); border-radius: 2px; overflow: hidden;">
-                    <div style="height: 100%; width: ${t.percent}%; background: ${barColor}; transition: width 0.3s;"></div>
+                    <div style="height: 100%; width: ${pct}%; background: ${dirColor[d]}; transition: width 0.3s;"></div>
                 </div>
                 <div class="flex justify-between text-xs opacity-60 mt-4">
-                    <span>${(t.km_built || 0).toFixed(3)} / ${(t.totalKm).toFixed(1)} km</span>
-                    <span>${(1 + (t.km_built || 0) / (t.totalKm) * 0.5).toFixed(2)}× speed</span>
+                    <span>${builtKm.toFixed(0)} / ${totalKm.toFixed(0)} km · ${completedSegs}/${totalSegs} segs</span>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+async function setActiveChainOnly(direction) {
+    try {
+        await apiPost('/api/trails/active_direction', { direction });
+        window.activeTrailDirection = direction;
+        if (typeof showToast === 'function') showToast(`Active chain: ${direction}`, 'success');
+        updateTopTrails();  // re-render to show new active
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Failed to set active direction', 'error');
+    }
+}
+
+async function setActiveChainAndOpen(direction, segmentName) {
+    await setActiveChainOnly(direction);
+    openChartTrailModalByName(segmentName);
 }
 
 // Helper to open modal by trail name

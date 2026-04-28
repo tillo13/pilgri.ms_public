@@ -2920,9 +2920,11 @@
   "static/js/crew-map.js": {
     "description": "CREW-MAP.JS - Trail Map, Chart Trail Modal, Crew Selection",
     "exports": [
+      "loadActiveTrailDirection",
       "initCrewTrailMap",
       "getChainCoveredDestinations",
       "updateCrewTrailMapMarkers",
+      "color",
       "fromLat",
       "fromLon",
       "updateCrewTrailContributions",
@@ -2931,10 +2933,8 @@
       "ariaPct",
       "marsPct",
       "updateTopTrails",
-      "openChartTrailModalByName",
-      "openChartTrailModal",
-      "speedMult",
-      "updateCrewModalStatus"
+      "isActive",
+      "setActiveChainOnly"
     ]
   },
   "static/js/crew-missions.js": {
@@ -3326,7 +3326,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
