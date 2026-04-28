@@ -513,30 +513,34 @@ def _compute_robot_trail_contribution(user_id: int) -> float:
 
 
 def cron_drone_trail_build():
-    """Passive trail building for users with Automation Drone upgrades AND Robot Crew.
+    """v3 (#1414): passive trail building targets the captain's active chain.
 
     Called by /api/cron/drone_trail_build every 30 minutes.
-    Contributions (summed):
-      - Maintenance drone trail_km_per_hour (bug #1149)
-      - Mining drone trail_km_per_hour (bug #1149)
-      - Robot Crew exploration-dial slot (bug #1113)
-    Builds on the trail closest to completion (most km_built / total_distance_km).
+    Contributions (summed → fed into add_km_to_active_chain as source='drone'):
+      - Maintenance drone trail_km_per_hour
+      - Mining drone trail_km_per_hour
+      - Robot Crew exploration-dial slot (#1113)
+    Drones build the next unbuilt segment of the captain's active_trail_direction.
     """
     from config_upgrades import UPGRADE_CATALOG
     from utilities.upgrades_utils import get_user_upgrade_level
+    from utilities.postgres.trails.chains import (
+        ensure_user_trail_chains_table,
+        add_km_to_active_chain,
+    )
 
-    ensure_trail_segments_table()
+    ensure_user_trail_chains_table()
     results = []
 
     try:
         with db_cursor() as cur:
-            # Get all users who have active trail segments
-            cur.execute("SELECT DISTINCT user_id FROM pilgrim.trail_segments WHERE km_built < total_distance_km AND total_distance_km > 0")
+            # Every captain with chains is eligible; cron filters to those with drone/robot output > 0
+            cur.execute("SELECT DISTINCT user_id FROM pilgrim.user_trail_chains")
             users = cur.fetchall()
 
         for u in users:
             user_id = u['user_id']
-            # bug #1149: Maintenance + Mining drones both contribute trail_km/hr. Sum both paths.
+            # Maintenance + Mining drone contributions
             km_per_hour = 0.0
             for (cat, key) in (('maintenance', 'maintenance'), ('mining', 'mining')):
                 lv = get_user_upgrade_level(user_id, cat, key)
@@ -544,62 +548,43 @@ def cron_drone_trail_build():
                     continue
                 cfg = UPGRADE_CATALOG.get(cat, {}).get(key, {}).get('levels', {}).get(lv, {})
                 km_per_hour += cfg.get('trail_km_per_hour', 0) or 0
-            # bug #1113: Robot Crew's exploration dial adds a small km/hr contribution.
-            km_per_hour += _compute_robot_trail_contribution(user_id)
-            if km_per_hour <= 0:
+            # Robot Crew exploration-dial contribution
+            robot_contrib = _compute_robot_trail_contribution(user_id)
+            if km_per_hour + robot_contrib <= 0:
                 continue
 
             # 30 min cron interval = 0.5 hours
-            km_to_add = km_per_hour * 0.5
+            drone_km = km_per_hour * 0.5
+            robot_km = robot_contrib * 0.5
 
-            # Find the trail closest to completion (highest % built)
-            with db_cursor() as cur:
-                cur.execute("""
-                    SELECT destination_name, from_landmark, km_built, total_distance_km
-                    FROM pilgrim.trail_segments
-                    WHERE user_id = %s AND total_distance_km > 0 AND km_built < total_distance_km
-                    ORDER BY (km_built / total_distance_km) DESC
-                    LIMIT 1
-                """, (user_id,))
-                trail = cur.fetchone()
+            # Add drone km
+            if drone_km > 0:
+                state = add_km_to_active_chain(user_id, drone_km, 'drone')
+                if state:
+                    # Award SV (2 SV/km, same as v2 cron)
+                    try:
+                        from utilities.postgres.users import add_passive_sv
+                        sv = int(drone_km * 2)
+                        if sv > 0:
+                            add_passive_sv(user_id, sv)
+                    except Exception:
+                        pass
+                    results.append(f"user {user_id}: drone +{drone_km:.2f}km → "
+                                   f"{state['direction']} seg {state['segment_index']}")
 
-            if not trail:
-                continue
-
-            dest = trail['destination_name']
-            from_lm = trail['from_landmark']
-            total_dist = float(trail['total_distance_km'])
-
-            # Cap km_to_add so we don't overshoot
-            remaining = total_dist - float(trail['km_built'])
-            actual_km = min(km_to_add, remaining)
-
-            # Add km as 'drone' worker type
-            with db_cursor(commit=True) as cur:
-                cur.execute("""
-                    UPDATE pilgrim.trail_segments
-                    SET km_built = COALESCE(km_built, 0) + %s,
-                        drone_km = COALESCE(drone_km, 0) + %s,
-                        last_used_at = NOW()
-                    WHERE user_id = %s AND from_landmark = %s AND destination_name = %s
-                """, (actual_km, actual_km, user_id, from_lm, dest))
-
-            # Award SV (2 SV/km, same as manual)
-            if actual_km > 0:
-                try:
-                    from utilities.postgres.users import add_passive_sv
-                    trail_sv = int(actual_km * 2)
-                    if trail_sv > 0:
-                        add_passive_sv(user_id, trail_sv)
-                except Exception:
-                    pass
-
-            # Check if trail just completed — spawn next
-            new_built = float(trail['km_built']) + actual_km
-            if new_built >= total_dist:
-                spawn_next_trail(user_id, dest)
-
-            results.append(f"user {user_id}: +{actual_km:.2f}km to {dest} (drone Lv{drone_level})")
+            # Add robot km separately so attribution is correct
+            if robot_km > 0:
+                state = add_km_to_active_chain(user_id, robot_km, 'robot')
+                if state:
+                    try:
+                        from utilities.postgres.users import add_passive_sv
+                        sv = int(robot_km * 2)
+                        if sv > 0:
+                            add_passive_sv(user_id, sv)
+                    except Exception:
+                        pass
+                    results.append(f"user {user_id}: robot +{robot_km:.2f}km → "
+                                   f"{state['direction']} seg {state['segment_index']}")
 
     except Exception as e:
         logger.error(f"Drone trail cron error: {e}")

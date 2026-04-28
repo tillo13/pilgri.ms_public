@@ -294,104 +294,86 @@ function startCrewMission(member) {
 }
 
 function renderTrailList() {
+    // v3 (#1414): show 4 cardinal chain rows. Captain picks a direction;
+    // backend auto-targets the next unbuilt segment of that chain.
     const container = document.getElementById('mission-trail-list');
-    // Bug #1291: completed trails are now included in nearbyTrails for map rendering,
-    // but the picker should only show buildable trails.
-    const buildable = nearbyTrails.filter(t => !t.is_complete);
+    const buildable = nearbyTrails.filter(t => !t.is_complete && t.chain_direction);
     if (buildable.length === 0) {
-        container.innerHTML = '<div class="text-xs opacity-60">No discovered landmarks yet. Explore on expeditions first!</div>';
+        container.innerHTML = '<div class="text-xs opacity-60">No active chain segments — your chains may all be complete.</div>';
         return;
     }
-
+    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
     container.innerHTML = buildable.map(t => {
         const kmBuilt = t.km_built || 0;
-        const totalKm = t.distance_km || 1;
-        const percent = Math.min(100, (kmBuilt / totalKm) * 100).toFixed(1);
-        const speedMult = (1 + (kmBuilt / totalKm) * 0.5).toFixed(2);
+        const segKm = t.segment_distance_km || 1;
+        const segPct = Math.min(100, (kmBuilt / segKm) * 100).toFixed(1);
+        const speedMult = (1 + (kmBuilt / segKm) * 0.5).toFixed(2);
+        const chainPct = t.chain_total_km ? ((t.chain_km_built / t.chain_total_km) * 100).toFixed(1) : '0';
+        const color = dirColor[t.chain_direction] || '#888';
         return `
-        <div class="trail-option" onclick="selectTrail('${t.name}')"
-             style="padding: 12px; border: 1px solid var(--border-default); border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s;"
-             onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--border-default)'">
+        <div class="trail-option" onclick="selectChainDirection('${t.chain_direction}', '${t.name.replace(/'/g, "\\'")}')"
+             style="padding: 14px; border: 2px solid ${color}; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s;"
+             onmouseover="this.style.boxShadow='0 0 12px ${color}55'" onmouseout="this.style.boxShadow='none'">
             <div class="flex justify-between items-center mb-8">
                 <div>
-                    <div class="text-sm font-semibold">${t.name}</div>
-                    <div class="text-xs opacity-60">${t.type} • ${t.distance_km.toFixed(1)}km from base</div>
+                    <div class="text-sm font-semibold" style="color: ${color}; letter-spacing: 1px;">${t.chain_direction} CHAIN — segment ${t.segment_index} of ${t.chain_total_segments}</div>
+                    <div class="text-xs font-semibold mt-4">→ ${t.name}</div>
+                    <div class="text-xs opacity-60">${segKm.toFixed(0)} km segment · ${t.chain_prestige_tier || 'none'}</div>
                 </div>
                 <div class="text-right">
                     <div class="text-xs font-semibold" style="color: var(--color-sepolia);">${speedMult}× speed</div>
-                    <div class="text-xs opacity-60">${percent}% built</div>
+                    <div class="text-xs opacity-60">${segPct}% segment</div>
+                    <div class="text-xs opacity-50 mt-4">Chain: ${chainPct}%</div>
                 </div>
             </div>
             <div style="background: var(--bg-primary); height: 4px; border-radius: 2px; overflow: hidden;">
-                <div style="background: var(--color-sepolia); height: 100%; width: ${percent}%; transition: width 0.3s;"></div>
+                <div style="background: ${color}; height: 100%; width: ${segPct}%; transition: width 0.3s;"></div>
             </div>
-            <div class="text-xs opacity-50 mt-4">${kmBuilt.toFixed(3)} / ${totalKm.toFixed(1)} km</div>
+            <div class="text-xs opacity-50 mt-4">${kmBuilt.toFixed(2)} / ${segKm.toFixed(0)} km this segment</div>
         </div>
     `}).join('');
 }
 
-async function selectTrail(name) {
+async function selectChainDirection(direction, segmentName) {
+    // v3: set active direction, then trigger the build for the active crew member.
     closeMissionPicker();
     const btn = document.getElementById(`${pendingMissionMember}-mission-btn`);
     btn.disabled = true;
     btn.textContent = pendingMissionMember === 'aria' ? 'Attuning...' : 'Building...';
-
     try {
-        // Use new km-based trail building API (duration calculated server-side)
-        const data = await apiPost('/api/trail/build', {
-                destination_name: name,
-                worker_type: pendingMissionMember
-            });
-
-        if (data.success) {
-            const trail = data.trail;
-            showToast(`+${data.km_added.toFixed(3)} km to ${name} (${trail.percent_complete.toFixed(1)}% complete, ${trail.speed_mult.toFixed(2)}× speed)`, 'success');
-            loadCrewMissions(); // Refresh
+        await apiPost('/api/trails/active_direction', { direction });
+        if (pendingMissionMember === 'aria') {
+            const data = await apiPost('/api/aria/resonance', {});
+            if (data.success) {
+                showToast(`ARIA resonance: +${(data.km_added || 0).toFixed(2)}km to ${direction} chain seg ${data.segment_index}`, 'success');
+            } else {
+                showToast(data.error || 'Resonance failed', 'error');
+            }
         } else {
-            showToast(data.error || 'Failed to build trail', 'error');
-            loadCrewMissions();
+            const data = await apiPost('/api/trail/build', { worker_type: pendingMissionMember });
+            if (data.success) {
+                showToast(`Building ${direction} chain seg ${data.chain_segment_index} → ${segmentName}`, 'success');
+            } else {
+                showToast(data.error || 'Failed to start mission', 'error');
+            }
         }
     } catch (e) {
         showToast('Network error', 'error');
-        loadCrewMissions();
     }
+    loadCrewMissions();
 }
 
+// v2 compat shim — old callsites
+async function selectTrail(name) {
+    // Find the chain row matching this destination and route through the new picker
+    const row = nearbyTrails.find(t => t.name === name);
+    const direction = row ? row.chain_direction : 'N';
+    return selectChainDirection(direction, name);
+}
 
 async function selectTrailForAria(name) {
-    if (pendingMissionMember === 'aria') {
-        closeMissionPicker();
-        const btn = document.getElementById('aria-mission-btn');
-        btn.disabled = true;
-        btn.textContent = 'Attuning...';
-
-        try {
-            const data = await apiPost('/api/aria/resonance', {destination_name: name});
-            if (data.success) {
-                showToast(`ARIA resonance: +2 trail to ${name} (now ${data.trail.trail_level})`, 'success');
-                loadCrewMissions();
-            } else {
-                showToast(data.error || 'Resonance failed', 'error');
-                loadCrewMissions();
-            }
-        } catch (e) {
-            showToast('Network error', 'error');
-            loadCrewMissions();
-        }
-    } else {
-        selectTrail(name);
-    }
+    return selectTrail(name);
 }
-
-// Override selectTrail to handle ARIA
-const _originalSelectTrail = selectTrail;
-selectTrail = function(name) {
-    if (pendingMissionMember === 'aria') {
-        selectTrailForAria(name);
-    } else {
-        _originalSelectTrail(name);
-    }
-};
 
 function closeMissionPicker() {
     document.getElementById('mission-picker-modal').style.display = 'none';

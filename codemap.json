@@ -496,6 +496,18 @@
       "main"
     ]
   },
+  "tools/migrate_trail_km_to_chains.py": {
+    "description": "TRAILS v3 — migrate existing trail_segments km into user_trail_chains.",
+    "exports": [
+      "class MigrationDriftError",
+      "bearing_to_cardinal — Bucket a bearing (0-360) into N/E/S/W.",
+      "get_user_trail_segments_with_km — Fetch this user's trail_segments with non-zero km_built.",
+      "get_chain_segments_for_direction — Fetch chain segments for one direction, ordered by segment_index.",
+      "allocate_km_to_chain — Greedy-allocate km into the chain (inward to outward).",
+      "migrate_captain — Migrate one captain. Returns delta report.",
+      "main"
+    ]
+  },
   "tools/new_player_walkthrough.py": {
     "description": "New Player Walkthrough Test Harness",
     "exports": [
@@ -2034,9 +2046,25 @@
       "get_aria_skills — Get ARIA skills for a user, creating default record if needed",
       "add_aria_skill_xp — Add XP to an ARIA skill. Levels up automatically.",
       "handle_resonance_request — Route-glue wrapper for POST /api/aria/resonance.",
-      "use_aria_resonance — Use ARIA's daily resonance ability to boost a trail by +2"
+      "use_aria_resonance — v3 (#1414): ARIA Resonance adds a chunk of km to the user's active chain."
     ],
     "keywords": "use_aria_resonance, resonance cooldown 24h, ARIA skill XP"
+  },
+  "utilities/postgres/trails/chains.py": {
+    "description": "TRAILS v3 — Antipode chain computation + storage.",
+    "exports": [
+      "ensure_user_trail_chains_table — Idempotent migration: pilgrim.user_trail_chains + users.active_trail_direction.",
+      "find_antipode_landmark — Return the landmark whose great-circle distance from base is maximum.",
+      "dijkstra_chain — Constrained Dijkstra from base to antipode. Returns ordered hops.",
+      "compute_user_trail_chains — Compute the 4 cardinal chains for this user's base. Pure — no DB write.",
+      "persist_user_trail_chains — INSERT chain rows for user. Idempotent — skips if user already has rows.",
+      "get_active_chain_segments — For each direction, return the next unbuilt segment + chain progress summary.",
+      "get_user_active_direction — Read pilgrim.users.active_trail_direction; default 'N'.",
+      "set_user_active_direction — Persist captain's active chain direction. Returns True if updated.",
+      "add_km_to_active_chain — Add km to the next unbuilt segment of the user's active chain.",
+      "get_chain_speed_mult_for_destination — Speed multiplier for an expedition to `destination_name`.",
+      "get_all_user_chains — Return every chain row for the user (used by Chain Math modal + admin)."
+    ]
   },
   "utilities/postgres/trails/config.py": {
     "description": "Trail system constants — level thresholds + speed multipliers."
@@ -2052,7 +2080,7 @@
       "get_trail_consumable_discoveries — Get claimed discoveries that can be consumed for trail building bonuses.",
       "consume_discovery_for_trail — Consume a discovery item for trail building bonus.",
       "get_nearby_trails_for_missions — DEPRECATED: Use get_visited_sites_for_trails instead",
-      "get_visited_sites_for_trails — Get exactly 4 active trail destinations for trail construction.",
+      "get_visited_sites_for_trails — v3 (#1414): return the 4 cardinal chains as 4 trail sites.",
       "get_crew_mission_status_with_stats — Mission status enriched with per-crew stat multipliers — used by the",
       "get_crew_nearby_payload — Formatted trails + home base coords for the /api/crew/mission/nearby endpoint."
     ],
@@ -2073,7 +2101,7 @@
       "find_nearest_trail_origin — Find the nearest connected node in the user's trail network to build FROM.",
       "spawn_next_trail — When a trail is completed, chain a new segment from the completed point",
       "heal_orphan_trail_tips — For every completed trail destination that has no descendant chain row,",
-      "cron_drone_trail_build — Passive trail building for users with Automation Drone upgrades AND Robot Crew."
+      "cron_drone_trail_build — v3 (#1414): passive trail building targets the captain's active chain."
     ],
     "keywords": "trail km add, SV per km (2 SV/km), cron_drone_trail_build passive trail"
   },
@@ -2154,7 +2182,7 @@
   "utilities/expeditions/trails.py": {
     "description": "Trail-building crew mission orchestration.",
     "exports": [
-      "handle_trail_build_request — Handle a trail build request. Returns result dict for jsonify.",
+      "handle_trail_build_request — v3 (#1414): trail build mission targets the captain's active chain segment.",
       "get_trail_consumables_data — Get available consumables and scanner bonus for trail building."
     ],
     "keywords": "handle_trail_build_request, EVA suit trail bonus, consumables"
@@ -2162,7 +2190,7 @@
   "utilities/expeditions/travel.py": {
     "description": "Multi-segment travel time for expeditions.",
     "exports": [
-      "calculate_segmented_travel_time — Travel time using trail-segment compounding."
+      "calculate_segmented_travel_time — Travel time with v3 chain-aware speed bonus."
     ],
     "keywords": "calculate_segmented_travel_time, trail speed bonus, segment travel"
   },
@@ -3285,7 +3313,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3363,7 +3391,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

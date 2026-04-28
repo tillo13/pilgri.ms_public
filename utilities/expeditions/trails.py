@@ -12,17 +12,21 @@ logger = logging.getLogger(__name__)
 
 
 def handle_trail_build_request(user_id, data):
-    """Handle a trail build request. Returns result dict for jsonify."""
+    """v3 (#1414): trail build mission targets the captain's active chain segment.
+
+    Body still accepts `destination_name` for back-compat (e.g. "N chain seg 3")
+    but the actual target is auto-resolved to the next unbuilt segment of the
+    captain's active chain direction.
+    """
     from utilities.postgres.trails import get_crew_mission_status, start_crew_mission, consume_discovery_for_trail
+    from utilities.postgres.trails.chains import (
+        ensure_user_trail_chains_table, get_user_active_direction, get_active_chain_segments,
+    )
     from utilities.postgres.core import db_cursor
     from utilities.shop_utils import get_scanner_trail_bonus
     from config import get_scientist_trail_bonus, COLONY_SCIENTISTS
 
-    destination = data.get('destination_name', '')
     worker_type = data.get('worker_type', '').lower()
-
-    if not destination:
-        return {'success': False, 'error': 'No destination specified'}
     if worker_type not in ('captain', 'scientist', 'aria'):
         return {'success': False, 'error': 'Invalid worker type'}
 
@@ -34,31 +38,15 @@ def handle_trail_build_request(user_id, data):
     if member_status.get('complete'):
         return {'success': False, 'error': f'{worker_type.title()} has a mission to claim first'}
 
-    # Validate destination is an active trail target (or visited expedition site)
-    with db_cursor() as cur:
-        # Check active trail segments first
-        cur.execute("""
-            SELECT ts.destination_name, mm.latitude, mm.longitude, u.home_mars_lat, u.home_mars_lon
-            FROM pilgrim.trail_segments ts
-            JOIN pilgrim.mars_mappings mm ON mm.name = ts.destination_name
-            JOIN pilgrim.users u ON u.id = ts.user_id
-            WHERE ts.user_id = %s AND ts.destination_name = %s
-            LIMIT 1
-        """, (user_id, destination))
-        row = cur.fetchone()
-        if not row:
-            # Fallback: check visited expedition sites
-            cur.execute("""
-                SELECT DISTINCT e.destination_name, mm.latitude, mm.longitude, u.home_mars_lat, u.home_mars_lon
-                FROM pilgrim.expeditions e
-                JOIN pilgrim.mars_mappings mm ON mm.name = e.destination_name
-                JOIN pilgrim.users u ON u.id = e.user_id
-                WHERE e.user_id = %s AND e.destination_name = %s AND e.status = 'complete'
-                LIMIT 1
-            """, (user_id, destination))
-            row = cur.fetchone()
-            if not row:
-                return {'success': False, 'error': 'Destination not available for trail building'}
+    # Resolve target: the next unbuilt segment of the captain's active chain.
+    ensure_user_trail_chains_table()
+    direction = get_user_active_direction(user_id)
+    chain_state = get_active_chain_segments(user_id).get(direction) or {}
+    next_seg = chain_state.get('next_unbuilt')
+    if not next_seg:
+        return {'success': False, 'error': f'Your {direction} chain is complete — switch direction to keep building'}
+    destination = next_seg['to_landmark']
+    from_landmark = next_seg['from_landmark']
 
     # Calculate km based on crew stats, scanner, and consumable
     # Stats are the PRIMARY driver (1x-6x). See config_shop.BASE_TRAIL_RATE_KMH.
@@ -126,17 +114,15 @@ def handle_trail_build_request(user_id, data):
     duration_minutes = trail_calc['duration_minutes']
     km_to_add = trail_calc['km_to_add']
 
-    # Chain routing: find nearest connected node to build from
-    from utilities.postgres.trails import find_nearest_trail_origin
-    origin = find_nearest_trail_origin(user_id, destination)
-    from_landmark = origin.get('from_landmark', 'HOME')
-
+    # v3: chain segment is pre-resolved (next_seg above). No need to look up origin.
     result = start_crew_mission(user_id, worker_type, destination, duration_minutes, km_to_add, from_landmark)
 
     if result.get('success'):
         result['km_to_add'] = round(km_to_add, 4)
         result['from_landmark'] = from_landmark
-        result['segment_distance_km'] = origin.get('segment_distance_km', 0)
+        result['segment_distance_km'] = round(float(next_seg['segment_distance_km']), 2)
+        result['chain_direction'] = direction
+        result['chain_segment_index'] = next_seg['segment_index']
         result['stat_multiplier'] = round(stat_multiplier, 2)
         result['stat_bonus'] = stat_bonus_desc
         result['scanner_multiplier'] = round(scanner_multiplier, 2)

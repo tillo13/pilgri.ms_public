@@ -23,6 +23,17 @@ from utilities.postgres.trails.segments import (  # noqa: F401
     heal_orphan_trail_tips,
     cron_drone_trail_build,
 )
+from utilities.postgres.trails.chains import (  # noqa: F401
+    ensure_user_trail_chains_table,
+    compute_user_trail_chains,
+    persist_user_trail_chains,
+    get_active_chain_segments,
+    get_user_active_direction,
+    set_user_active_direction,
+    add_km_to_active_chain,
+    get_chain_speed_mult_for_destination,
+    get_all_user_chains,
+)
 from utilities.postgres.trails.aria_skills import (  # noqa: F401
     get_aria_skills,
     add_aria_skill_xp,

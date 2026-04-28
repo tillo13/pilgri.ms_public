@@ -295,6 +295,80 @@ def test_signal_cinematic_getter_shape():
     return True
 
 
+@test("user_trail_chains schema exists", tier=1, features=['db', 'trails'], mode='local')
+def test_user_trail_chains_schema():
+    """v3 (#1414): table + active_trail_direction column exist."""
+    from utilities.postgres.trails.chains import ensure_user_trail_chains_table
+    from utilities.postgres.core import db_cursor
+    ensure_user_trail_chains_table()
+    with db_cursor() as cur:
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='pilgrim' AND table_name='user_trail_chains'")
+        cols = {r['column_name'] for r in cur.fetchall()}
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='pilgrim' AND table_name='users' AND column_name='active_trail_direction'")
+        has_col = bool(cur.fetchone())
+    required = {'user_id', 'direction', 'segment_index', 'from_landmark', 'to_landmark',
+                'segment_distance_km', 'km_built', 'captain_km', 'scientist_km', 'aria_km',
+                'drone_km', 'robot_km', 'completed_at'}
+    missing = required - cols
+    if missing:
+        return f"missing columns: {missing}"
+    if not has_col:
+        return "missing pilgrim.users.active_trail_direction"
+    return True
+
+
+@test("antipode chain persisted for Andy", tier=2, features=['trails'], mode='local')
+def test_andy_chain_persisted():
+    """v3 (#1414): read Andy's persisted chains, validate totals against comment 607."""
+    from utilities.postgres.core import db_cursor
+    expected = {
+        'S': (10488, 18), 'W': (10553, 17), 'E': (10804, 19), 'N': (11015, 18)
+    }
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT direction, COUNT(*) AS hops, SUM(segment_distance_km) AS total,
+                   MAX(to_landmark) FILTER (WHERE segment_index = (
+                     SELECT MAX(segment_index) FROM pilgrim.user_trail_chains x
+                     WHERE x.user_id = 45 AND x.direction = pilgrim.user_trail_chains.direction
+                   )) AS antipode
+            FROM pilgrim.user_trail_chains WHERE user_id = 45
+            GROUP BY direction
+        """)
+        rows = {r['direction']: r for r in cur.fetchall()}
+    for d, (km_exp, hops_exp) in expected.items():
+        r = rows.get(d)
+        if not r:
+            return f"{d} chain not persisted for Andy"
+        total = float(r['total'])
+        delta_pct = abs(total - km_exp) / km_exp * 100
+        if delta_pct > 2.0:
+            return f"{d} chain {total:.0f}km diverges {delta_pct:.1f}% from {km_exp}km"
+        if abs(int(r['hops']) - hops_exp) > 1:
+            return f"{d} chain {r['hops']} hops, expected {hops_exp}"
+        if r['antipode'] != 'Da Vinci':
+            return f"{d} chain ends at {r['antipode']}"
+    return True
+
+
+@test("get_active_chain_segments shape", tier=2, features=['trails'], mode='local')
+def test_active_chain_segments_shape():
+    from utilities.postgres.trails.chains import get_active_chain_segments
+    result = get_active_chain_segments(45)
+    for d in ('N', 'S', 'E', 'W'):
+        if d not in result:
+            return f"missing direction {d}"
+    return True
+
+
+@test("chain speed mult for off-chain dest is 1.0", tier=2, features=['trails', 'expeditions'], mode='local')
+def test_off_chain_speed_mult():
+    from utilities.postgres.trails.chains import get_chain_speed_mult_for_destination
+    mult = get_chain_speed_mult_for_destination(45, '__definitely_not_a_landmark__')
+    if mult != 1.0:
+        return f"off-chain mult should be 1.0, got {mult}"
+    return True
+
+
 @test("Maintenance Drone L1-L3 has build_time_mult", tier=1, features=['config', 'depot'], mode='local')
 def test_maintenance_drone_build_time_mult():
     """Phase 4b (#1270 section 4 point 3): Maintenance Drone passive build-speed bonus."""

@@ -89,100 +89,63 @@ def add_aria_skill_xp(user_id: int, skill: str, xp_amount: int) -> dict:
 def handle_resonance_request(user_id: int, data: dict) -> dict:
     """Route-glue wrapper for POST /api/aria/resonance.
 
-    Validates that a destination was provided and is a known discovery, then
-    delegates to use_aria_resonance().
+    v3 (#1414): Resonance no longer takes a destination — it adds km to the
+    captain's active chain. The `destination_name` arg is accepted for backward
+    compat but ignored.
     """
-    destination = (data.get('destination_name') or '').strip()
-    if not destination:
-        return {'success': False, 'error': 'No destination specified'}
-
-    from utilities.postgres.core import db_cursor
-    with db_cursor() as cur:
-        cur.execute("""
-            SELECT 1 FROM pilgrim.landmark_discoveries
-            WHERE user_id = %s AND landmark_name = %s
-        """, (user_id, destination))
-        if not cur.fetchone():
-            return {'success': False, 'error': 'Destination not discovered yet'}
-
-    return use_aria_resonance(user_id, destination)
+    return use_aria_resonance(user_id, (data.get('destination_name') or '').strip() or None)
 
 
-def use_aria_resonance(user_id: int, destination_name: str) -> dict:
-    """Use ARIA's daily resonance ability to boost a trail by +2"""
+def use_aria_resonance(user_id: int, destination_name: str = None) -> dict:
+    """v3 (#1414): ARIA Resonance adds a chunk of km to the user's active chain.
+
+    `destination_name` arg is ignored — kept for back-compat. Resonance now
+    targets the next unbuilt segment of `users.active_trail_direction`.
+    """
     from datetime import datetime
     try:
-        # Avoid circular import — crew.ensure_crew_missions_schema ensures mission columns on users
         from utilities.postgres.trails.crew import ensure_crew_missions_schema
+        from utilities.postgres.trails.chains import (
+            ensure_user_trail_chains_table, add_km_to_active_chain,
+        )
         ensure_crew_missions_schema()
+        ensure_user_trail_chains_table()
         now = datetime.utcnow()
 
         with db_cursor(commit=True) as cur:
-            # Check cooldown
-            cur.execute("""
-                SELECT aria_last_resonance FROM pilgrim.users WHERE id = %s
-            """, (user_id,))
+            cur.execute("SELECT aria_last_resonance FROM pilgrim.users WHERE id = %s", (user_id,))
             row = cur.fetchone()
             if row and row['aria_last_resonance']:
                 seconds_since = (now - row['aria_last_resonance']).total_seconds()
-                if seconds_since < 86400:  # 24 hours
+                if seconds_since < 86400:
                     hours_remaining = (86400 - seconds_since) / 3600
                     return {'success': False, 'error': f'ARIA resonance on cooldown ({hours_remaining:.1f}h remaining)'}
+            cur.execute("UPDATE pilgrim.users SET aria_last_resonance = %s WHERE id = %s", (now, user_id))
 
-            # Update cooldown
-            cur.execute("""
-                UPDATE pilgrim.users SET aria_last_resonance = %s WHERE id = %s
-            """, (now, user_id))
+        # Resonance chunk = base rate × 15min session worth of km
+        from config_shop import BASE_TRAIL_RATE_KMH
+        resonance_km = BASE_TRAIL_RATE_KMH * (15 / 60)
 
-            # Increment trail by 2 (ARIA bonus) — always applies to HOME segment
-            ensure_trail_segments_table()
-            cur.execute("""
-                INSERT INTO pilgrim.trail_segments (user_id, from_landmark, destination_name, trip_count, trail_level, last_used_at)
-                VALUES (%s, 'HOME', %s, 2, 'marked', NOW())
-                ON CONFLICT (user_id, from_landmark, destination_name)
-                DO UPDATE SET trip_count = pilgrim.trail_segments.trip_count + 2,
-                              last_used_at = NOW()
-                RETURNING trip_count
-            """, (user_id, destination_name))
-            row = cur.fetchone()
-            new_count = row['trip_count']
-            new_level = get_trail_level_from_count(new_count)
-            cur.execute("""
-                UPDATE pilgrim.trail_segments SET trail_level = %s
-                WHERE user_id = %s AND from_landmark = 'HOME' AND destination_name = %s
-            """, (new_level, user_id, destination_name))
-
-            # Also add km (resonance gives ~1 base session worth of trail progress)
-            from config_shop import BASE_TRAIL_RATE_KMH
-            resonance_km = BASE_TRAIL_RATE_KMH * (15 / 60)  # Base rate × 15min session
-            # Get total_distance_km for the trail segment
-            cur.execute("""
-                SELECT total_distance_km FROM pilgrim.trail_segments
-                WHERE user_id = %s AND from_landmark = 'HOME' AND destination_name = %s
-            """, (user_id, destination_name))
-            seg = cur.fetchone()
-            seg_dist = float(seg['total_distance_km']) if seg and seg['total_distance_km'] else None
-
-        # Add km outside the main transaction (same pattern as complete_crew_mission)
-        if seg_dist:
-            add_km_to_trail(user_id, destination_name, resonance_km, 'aria', seg_dist, 'HOME')
+        state = add_km_to_active_chain(user_id, resonance_km, 'aria')
+        if not state:
+            return {'success': False, 'error': 'No active chain segment to build (chain may be complete)'}
 
         with db_cursor(commit=True) as cur:
-            # Log the resonance
             cur.execute("""
                 INSERT INTO pilgrim.crew_missions (user_id, crew_member, mission_type, destination_name, started_at, completed_at, trip_count_added)
-                VALUES (%s, 'aria', 'resonance', %s, %s, %s, 2)
-            """, (user_id, destination_name, now, now))
+                VALUES (%s, 'aria', 'resonance', %s, %s, %s, 0)
+            """, (user_id, state.get('direction', '?'), now, now))
             from utilities.postgres.activity import log_activity
-            log_activity(user_id, 'trail', 'trail_resonance', f"ARIA Resonance: {destination_name}",
-                         detail=f"+{resonance_km:.2f}km · Trail Lv{new_level} · {new_count} trips", source_table='crew_missions')
+            log_activity(user_id, 'trail', 'trail_resonance',
+                         f"ARIA Resonance: {state['direction']} chain seg {state['segment_index']}",
+                         detail=f"+{state['km_added']:.2f}km", source_table='crew_missions')
 
         return {
             'success': True,
-            'destination': destination_name,
-            'trip_count_added': 2,
-            'km_added': round(resonance_km, 4),
-            'trail': {'destination_name': destination_name, 'trip_count': new_count, 'trail_level': new_level}
+            'direction': state['direction'],
+            'segment_index': state['segment_index'],
+            'km_added': round(state['km_added'], 4),
+            'completed': state['completed'],
         }
     except Exception as e:
         logger.error(f"Failed to use ARIA resonance: {e}")

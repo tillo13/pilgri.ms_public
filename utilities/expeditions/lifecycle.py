@@ -649,14 +649,10 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     )
 
     # ========================================================================
-    # TRAIL NETWORK: Increment trail for completed route
+    # TRAIL NETWORK (v3 — bug #1414): expeditions no longer mutate trails.
+    # Trails are 4 deterministic cardinal chains per captain, built by crew /
+    # drones / ARIA. Expedition arrival is a no-op for the trail system.
     # ========================================================================
-    try:
-        from utilities.postgres.trails import increment_user_trail
-        trail_result = increment_user_trail(user_id, expedition['destination_name'])
-        logger.info(f"🛤️ Trail updated: {expedition['destination_name']} → {trail_result['trail_level']} ({trail_result['trip_count']} trips)")
-    except Exception as e:
-        logger.error(f"Failed to update trail: {e}")
 
     # ========================================================================
     # SV ECONOMY: Award Science Value on expedition completion

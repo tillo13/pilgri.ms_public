@@ -7,7 +7,6 @@ from utilities.postgres.trails.segments import (
     ensure_trail_segments_table,
     add_km_to_trail,
     get_trail_progress,
-    spawn_next_trail,
 )
 from utilities.postgres.trails.aria_skills import add_aria_skill_xp
 
@@ -333,57 +332,27 @@ def complete_crew_mission(user_id: int, crew_member: str) -> dict:
                 )
             """, (now, xp_gain, user_id, crew_member))
 
-        # Add km to trail segment (outside the transaction to avoid issues)
-        trail_result = None
+        # v3 (#1414): km goes to the captain's active chain segment, not a trail_segments row.
+        chain_state = None
         if km_to_add > 0:
-            from utilities.mars_math import haversine_distance
-            with db_cursor() as cur:
-                # Get destination coords
-                cur.execute("SELECT latitude, longitude FROM pilgrim.mars_mappings WHERE name = %s", (destination,))
-                dest_coords = cur.fetchone()
-
-                if from_landmark == 'HOME':
-                    # Distance from base to destination
-                    cur.execute("SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = %s", (user_id,))
-                    user = cur.fetchone()
-                    if user and dest_coords:
-                        distance_km = haversine_distance(
-                            float(user['home_mars_lat']), float(user['home_mars_lon']),
-                            float(dest_coords['latitude']), float(dest_coords['longitude']))
-                    else:
-                        distance_km = 100
-                else:
-                    # Distance from origin landmark to destination
-                    cur.execute("SELECT latitude, longitude FROM pilgrim.mars_mappings WHERE name = %s", (from_landmark,))
-                    from_coords = cur.fetchone()
-                    if from_coords and dest_coords:
-                        distance_km = haversine_distance(
-                            float(from_coords['latitude']), float(from_coords['longitude']),
-                            float(dest_coords['latitude']), float(dest_coords['longitude']))
-                    else:
-                        distance_km = 100
-
-            trail_result = add_km_to_trail(user_id, destination, km_to_add, crew_member, distance_km, from_landmark)
-            if trail_result:
-                trail_result = get_trail_progress(user_id, destination, from_landmark)
-
-                # Check if trail just completed — spawn next dot
-                if (trail_result.get('km_built', 0) >= trail_result.get('total_distance_km', 0)
-                        and trail_result.get('total_distance_km', 0) > 0):
-                    next_trail = spawn_next_trail(user_id, destination)
-                    if next_trail:
-                        trail_result['completed'] = True
-                        trail_result['next_trail'] = next_trail.get('destination_name')
+            from utilities.postgres.trails.chains import add_km_to_active_chain
+            chain_state = add_km_to_active_chain(user_id, km_to_add, crew_member)
 
         return {
             'success': True,
             'crew_member': crew_member,
-            'from_landmark': from_landmark,
             'destination': destination,
             'km_added': km_to_add,
             'xp_gained': xp_gain,
             'new_xp_total': current_xp + xp_gain,
-            'trail': trail_result
+            'chain_state': chain_state,
+            # back-compat for any frontend still reading 'trail'
+            'trail': {
+                'destination_name': chain_state['direction'] if chain_state else destination,
+                'km_built': chain_state['km_built'] if chain_state else 0,
+                'total_distance_km': chain_state['segment_distance_km'] if chain_state else 0,
+                'completed': chain_state['completed'] if chain_state else False,
+            } if chain_state else None,
         }
     except Exception as e:
         logger.error(f"Failed to complete crew mission: {e}")
@@ -495,110 +464,117 @@ def get_nearby_trails_for_missions(user_id: int, max_distance_km: float = 50.0) 
 
 
 def get_visited_sites_for_trails(user_id: int, frontier_limit: int = 5) -> list:
-    """Get exactly 4 active trail destinations for trail construction.
+    """v3 (#1414): return the 4 cardinal chains as 4 trail sites.
 
-    Always returns up to 4 trails — the user's active trail_segments from HOME.
-    If fewer than 4 exist in DB, fills remaining slots with the closest unstarted
-    landmarks from mars_mappings (auto-creating trail_segments for them).
-
-    When a trail is completed (km_built >= total_distance_km), it chains to the
-    next closest landmark in that direction via spawn_next_trail().
+    Each "site" is the next unbuilt segment of one of the captain's chains
+    (N/S/E/W). Plus completed segments returned for map rendering.
     """
-    from utilities.mars_math import haversine_distance
-    from utilities.postgres.trails.segments import heal_orphan_trail_tips
-    ensure_trail_segments_table()
+    from utilities.postgres.trails.chains import (
+        ensure_user_trail_chains_table, get_active_chain_segments, get_all_user_chains,
+    )
+    from utilities.postgres.map import get_mars_mappings_by_name
+    ensure_user_trail_chains_table()
     try:
-        # Bug #1399: any completed segment without a descendant chain gets healed
-        # on page load — catches orphans left by older code paths (e.g. Kasabi
-        # completed but Point 2 never spawned).
-        heal_orphan_trail_tips(user_id)
-
         with db_cursor() as cur:
             cur.execute("SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = %s", (user_id,))
             user = cur.fetchone()
             if not user or not user['home_mars_lat']:
                 return []
-
             base_lat = float(user['home_mars_lat'])
             base_lon = float(user['home_mars_lon'])
 
-            # Get user's active trail segments (all from HOME for now)
-            cur.execute("""
-                SELECT ts.from_landmark, ts.destination_name, ts.km_built, ts.captain_km,
-                       ts.scientist_km, ts.aria_km, ts.trip_count, ts.trail_level,
-                       ts.total_distance_km, m.type, m.latitude, m.longitude
-                FROM pilgrim.trail_segments ts
-                JOIN pilgrim.mars_mappings m ON m.name = ts.destination_name
-                WHERE ts.user_id = %s
-                  AND (ts.km_built < ts.total_distance_km OR ts.total_distance_km IS NULL)
-                ORDER BY ts.total_distance_km ASC NULLS LAST
-            """, (user_id,))
-            active_trails = [dict(r) for r in (cur.fetchall() or [])]
+        active = get_active_chain_segments(user_id)
+        all_chains = get_all_user_chains(user_id)
+        landmarks_by_name = get_mars_mappings_by_name()
 
-            # Bug #1291: also fetch COMPLETED trails so the map can show built infrastructure.
-            # Previously these were filtered out and Luke's completed Canas trail vanished
-            # from the map the moment a chain trail (Canas->Tignish) appeared.
-            cur.execute("""
-                SELECT ts.from_landmark, ts.destination_name, ts.km_built, ts.captain_km,
-                       ts.scientist_km, ts.aria_km, ts.trip_count, ts.trail_level,
-                       ts.total_distance_km, m.type, m.latitude, m.longitude
-                FROM pilgrim.trail_segments ts
-                JOIN pilgrim.mars_mappings m ON m.name = ts.destination_name
-                WHERE ts.user_id = %s
-                  AND ts.total_distance_km IS NOT NULL
-                  AND ts.km_built >= ts.total_distance_km
-                ORDER BY ts.total_distance_km ASC
-            """, (user_id,))
-            completed_trails = [dict(r) for r in (cur.fetchall() or [])]
-
-        # If we have 4+ active trails, return them + all completed
-        if len(active_trails) >= 4:
-            return _format_trail_sites(active_trails[:4] + completed_trails, base_lat, base_lon)
-
-        # Fill remaining slots with closest unstarted landmarks
-        active_dests = {t['destination_name'] for t in active_trails}
-        # Also exclude completed trail destinations
-        with db_cursor() as cur:
-            cur.execute("""
-                SELECT destination_name FROM pilgrim.trail_segments
-                WHERE user_id = %s AND km_built >= total_distance_km AND total_distance_km > 0
-            """, (user_id,))
-            completed_dests = {r['destination_name'] for r in (cur.fetchall() or [])}
-
-            cur.execute("SELECT name, type, latitude, longitude FROM pilgrim.mars_mappings")
-            all_landmarks = cur.fetchall()
-
-        exclude = active_dests | completed_dests
-        candidates = []
-        for lm in all_landmarks:
-            if lm['name'] in exclude:
+        sites = []
+        # 1 row per direction with the next unbuilt segment as the "trail site"
+        for direction in ('N', 'E', 'S', 'W'):
+            info = active.get(direction) or {}
+            seg = info.get('next_unbuilt')
+            if not seg:
                 continue
-            d = haversine_distance(base_lat, base_lon, float(lm['latitude']), float(lm['longitude']))
-            candidates.append({**dict(lm), 'distance': d})
-        candidates.sort(key=lambda x: x['distance'])
-
-        # Auto-create trail segments for the fill slots
-        needed = 4 - len(active_trails)
-        for c in candidates[:needed]:
-            with db_cursor(commit=True) as cur:
-                cur.execute("""
-                    INSERT INTO pilgrim.trail_segments
-                    (user_id, from_landmark, destination_name, total_distance_km,
-                     km_built, captain_km, scientist_km, aria_km, trip_count, trail_level)
-                    VALUES (%s, 'HOME', %s, %s, 0, 0, 0, 0, 0, 'none')
-                    ON CONFLICT (user_id, from_landmark, destination_name) DO NOTHING
-                """, (user_id, c['name'], round(c['distance'], 6)))
-            active_trails.append({
-                'from_landmark': 'HOME', 'destination_name': c['name'],
-                'km_built': 0, 'captain_km': 0, 'scientist_km': 0, 'aria_km': 0,
-                'trip_count': 0, 'trail_level': 'none',
-                'total_distance_km': round(c['distance'], 6),
-                'type': c['type'], 'latitude': c['latitude'], 'longitude': c['longitude'],
+            dest_name = seg['to_landmark']
+            from_name = seg['from_landmark']
+            dest_lm = landmarks_by_name.get(dest_name)
+            if not dest_lm:
+                continue
+            dest_lat = float(dest_lm['latitude'])
+            dest_lon = float(dest_lm['longitude'])
+            if from_name == 'HOME':
+                from_lat, from_lon = base_lat, base_lon
+            else:
+                from_lm = landmarks_by_name.get(from_name)
+                from_lat = float(from_lm['latitude']) if from_lm else base_lat
+                from_lon = float(from_lm['longitude']) if from_lm else base_lon
+            seg_dist = float(seg['segment_distance_km'])
+            km_built = float(seg['km_built'] or 0)
+            sites.append({
+                'name': dest_name,
+                'type': dest_lm.get('type', 'Crater, craters'),
+                'latitude': dest_lat,
+                'longitude': dest_lon,
+                'distance_km': round(seg_dist, 2),
+                'from_landmark': from_name,
+                'from_latitude': from_lat,
+                'from_longitude': from_lon,
+                'segment_distance_km': round(seg_dist, 2),
+                'km_built': km_built,
+                'is_complete': False,
+                'captain_km': float(seg['captain_km'] or 0),
+                'scientist_km': float(seg['scientist_km'] or 0),
+                'aria_km': float(seg['aria_km'] or 0),
+                'drone_km': float(seg['drone_km'] or 0),
+                'robot_km': float(seg['robot_km'] or 0),
+                'chain_direction': direction,
+                'segment_index': seg['segment_index'],
+                'chain_total_km': info.get('total_km'),
+                'chain_km_built': info.get('km_built_total'),
+                'chain_completed_segments': info.get('completed_segments'),
+                'chain_total_segments': info.get('total_segments'),
+                'chain_prestige_tier': info.get('prestige_tier'),
+                'trail_level': seg.get('tier', 'none'),
             })
-
-        return _format_trail_sites(active_trails[:4] + completed_trails, base_lat, base_lon)
+        # Completed segments — useful for map rendering
+        for row in all_chains:
+            if not row.get('completed_at'):
+                continue
+            dest_name = row['to_landmark']
+            from_name = row['from_landmark']
+            dest_lm = landmarks_by_name.get(dest_name)
+            if not dest_lm:
+                continue
+            if from_name == 'HOME':
+                from_lat, from_lon = base_lat, base_lon
+            else:
+                from_lm = landmarks_by_name.get(from_name)
+                from_lat = float(from_lm['latitude']) if from_lm else base_lat
+                from_lon = float(from_lm['longitude']) if from_lm else base_lon
+            sites.append({
+                'name': dest_name,
+                'type': dest_lm.get('type', 'Crater, craters'),
+                'latitude': float(dest_lm['latitude']),
+                'longitude': float(dest_lm['longitude']),
+                'distance_km': round(float(row['segment_distance_km']), 2),
+                'from_landmark': from_name,
+                'from_latitude': from_lat,
+                'from_longitude': from_lon,
+                'segment_distance_km': round(float(row['segment_distance_km']), 2),
+                'km_built': float(row['km_built'] or 0),
+                'is_complete': True,
+                'captain_km': float(row['captain_km'] or 0),
+                'scientist_km': float(row['scientist_km'] or 0),
+                'aria_km': float(row['aria_km'] or 0),
+                'drone_km': float(row['drone_km'] or 0),
+                'robot_km': float(row['robot_km'] or 0),
+                'chain_direction': row['direction'],
+                'segment_index': row['segment_index'],
+                'trail_level': 'Superhighway',
+            })
+        sites.sort(key=lambda s: (s['is_complete'], s.get('chain_direction', 'Z'), s.get('segment_index', 0)))
+        return sites
     except Exception as e:
-        logger.error(f"Failed to get visited sites for trails: {e}")
+        logger.error(f"Failed to get visited sites for trails (v3): {e}")
         return []
 
 

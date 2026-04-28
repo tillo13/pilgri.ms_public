@@ -86,6 +86,7 @@ def get_or_set_user_mars_home(user_id):
 
 def _get_or_set_user_mars_home_uncached(user_id):
     """Get user's Mars home coordinates, or set if not assigned"""
+    newly_set = False
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("SELECT home_mars_lat, home_mars_lon, home_mars_set_at FROM pilgrim.users WHERE id = %s", (user_id,))
@@ -95,8 +96,18 @@ def _get_or_set_user_mars_home_uncached(user_id):
                 cur.execute("UPDATE pilgrim.users SET home_mars_lat = %s, home_mars_lon = %s, home_mars_set_at = NOW() WHERE id = %s",
                             (coords['latitude'], coords['longitude'], user_id))
                 logger.info(f"Set Mars home for user {user_id}: {coords}")
-                return coords
-            return {'latitude': float(result['home_mars_lat']), 'longitude': float(result['home_mars_lon']), 'set_at': result['home_mars_set_at']}
+                newly_set = True
+            else:
+                coords = {'latitude': float(result['home_mars_lat']), 'longitude': float(result['home_mars_lon']), 'set_at': result['home_mars_set_at']}
+
+        # v3 (#1414): when a captain's base is first set, immediately compute their 4 antipode chains.
+        if newly_set:
+            try:
+                from utilities.postgres.trails.chains import compute_user_trail_chains, persist_user_trail_chains
+                persist_user_trail_chains(user_id, compute_user_trail_chains(user_id))
+            except Exception as e:
+                logger.warning(f"Failed to compute trail chains during onboarding for user {user_id}: {e}")
+        return coords
     except Exception as e:
         logger.error(f"❌ Failed to get/set Mars home: {e}")
         return get_random_mars_coordinates()

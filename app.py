@@ -1492,6 +1492,35 @@ def api_puzzle_whisper_seen(fragment_id):
     return jsonify({'success': mark_whisper_seen(g.user_id, fragment_id)})
 
 
+@app.route('/api/trails/active_direction', methods=['POST'])
+@login_required
+@handle_api_error
+def api_trails_active_direction():
+    """v3 (#1414): captain picks which of their 4 cardinal chains to actively build."""
+    from utilities.postgres.trails.chains import set_user_active_direction
+    data = request.get_json() or {}
+    direction = (data.get('direction') or '').upper()
+    if direction not in ('N', 'S', 'E', 'W'):
+        return jsonify({'success': False, 'error': 'direction must be N/S/E/W'})
+    return jsonify({'success': set_user_active_direction(g.user_id, direction), 'direction': direction})
+
+
+@app.route('/api/trails/chains', methods=['GET'])
+@login_required
+@handle_api_error
+def api_trails_chains():
+    """v3 (#1414): full chain state for the captain — used by Crew page + Chain Math modal."""
+    from utilities.postgres.trails.chains import (
+        get_active_chain_segments, get_user_active_direction, get_all_user_chains,
+    )
+    return jsonify({
+        'success': True,
+        'active_direction': get_user_active_direction(g.user_id),
+        'chains': get_active_chain_segments(g.user_id),
+        'all_segments': get_all_user_chains(g.user_id),
+    })
+
+
 @app.route('/api/signal/user/claims', methods=['GET'])
 @login_required
 @handle_api_error

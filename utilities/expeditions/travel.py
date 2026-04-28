@@ -1,39 +1,24 @@
 """
 Multi-segment travel time for expeditions.
 
-Long journeys compound intermediate trail bonuses: if a highway trail exists
-at 50km and the destination is 500km away, the first 50km uses highway speed
-and the remainder uses the destination trail speed.
+v3 (bug #1414): Trails are now 4 deterministic cardinal chains per captain.
+An expedition's destination either lies on a chain (a chain segment's
+to_landmark) or it doesn't. On-chain destinations get the segment's
+speed multiplier. Off-chain destinations get baseline 1.0× (no trail bonus).
 
-Pure orchestration — no mutations. Reads trails + base coords from the DB.
+The old multi-segment compounding (walking arbitrary trail_segments rows in
+distance order) is gone. The chain segment IS the trail. No "highway up to
+50km then road after" math — destinations are atomic v3.
+
+Pure orchestration — no mutations.
 """
 
 import logging
 
 from utilities.expeditions.config import BASE_SPEED_KM_PER_HOUR
-from utilities.postgres.trails import (
-    TRAIL_SPEED_MULTIPLIERS,
-    get_trail_speed_mult_for_destination,
-)
+from utilities.postgres.trails.chains import get_chain_speed_mult_for_destination
 
 logger = logging.getLogger(__name__)
-
-
-def _single_segment(distance_km, base_speed_mult, trail_info):
-    """Fallback: whole journey as one segment at the destination trail speed."""
-    trail_mult = trail_info['speed_mult']
-    hours = distance_km / (BASE_SPEED_KM_PER_HOUR * base_speed_mult * trail_mult)
-    return {
-        'total_hours': hours,
-        'segments': [{
-            'distance': distance_km,
-            'trail_level': trail_info.get('trail_level', 'none'),
-            'speed_mult': trail_mult,
-            'hours': hours,
-        }],
-        'effective_trail_mult': trail_mult,
-        'trail_info': trail_info,
-    }
 
 
 def calculate_segmented_travel_time(
@@ -44,106 +29,37 @@ def calculate_segmented_travel_time(
     base_coords: dict = None,
 ) -> dict:
     """
-    Travel time using trail-segment compounding.
+    Travel time with v3 chain-aware speed bonus.
 
-    Returns dict with total_hours, segments[], effective_trail_mult (weighted avg).
+    If the destination is the to_landmark of one of the captain's 4 cardinal
+    chain segments, applies that segment's km-ratio speed multiplier (1.0× to
+    1.5×). Otherwise no trail bonus.
+
+    Returns the same shape the rest of the codebase expects:
+      total_hours, segments[], effective_trail_mult.
     """
-    from utilities.postgres.core import db_cursor  # local: avoid top-level cycle
-
+    chain_mult = 1.0
+    chain_segment_label = 'none'
     try:
-        with db_cursor() as cur:
-            if not base_coords:
-                cur.execute(
-                    "SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = %s",
-                    (user_id,),
-                )
-                user = cur.fetchone()
-                if user and user['home_mars_lat']:
-                    base_coords = {
-                        'latitude': float(user['home_mars_lat']),
-                        'longitude': float(user['home_mars_lon']),
-                    }
-
-            if not base_coords:
-                # No base coords → can't segment, fall back to simple calc
-                trail_info = get_trail_speed_mult_for_destination(
-                    user_id, destination_name, destination_distance_km
-                )
-                return _single_segment(destination_distance_km, base_speed_mult, trail_info)
-
-            cur.execute("""
-                SELECT t.destination_name, t.trip_count, t.trail_level,
-                       m.latitude, m.longitude,
-                       (6371 * SQRT(POW(RADIANS(m.latitude - %s), 2) +
-                        POW(RADIANS(m.longitude - %s) * COS(RADIANS(m.latitude)), 2))) as distance_km
-                FROM pilgrim.trail_segments t
-                JOIN pilgrim.mars_mappings m ON m.name = t.destination_name
-                WHERE t.user_id = %s AND t.trip_count > 0
-                ORDER BY distance_km ASC
-            """, (base_coords['latitude'], base_coords['longitude'], user_id))
-            trails_with_distance = cur.fetchall() or []
-
+        chain_mult = get_chain_speed_mult_for_destination(user_id, destination_name)
+        if chain_mult > 1.0:
+            chain_segment_label = 'chain'
     except Exception as e:
-        logger.error(f"Error calculating segmented travel: {e}")
-        trail_info = get_trail_speed_mult_for_destination(
-            user_id, destination_name, destination_distance_km
-        )
-        return _single_segment(destination_distance_km, base_speed_mult, trail_info)
+        logger.warning(f"chain speed lookup failed user={user_id} dest={destination_name}: {e}")
 
-    intermediate_trails = [
-        t for t in trails_with_distance
-        if float(t['distance_km']) < destination_distance_km
-    ]
-
-    dest_trail_info = get_trail_speed_mult_for_destination(
-        user_id, destination_name, destination_distance_km
-    )
-    dest_trail_mult = dest_trail_info['speed_mult']
-
-    if not intermediate_trails:
-        return _single_segment(destination_distance_km, base_speed_mult, dest_trail_info)
-
-    segments = []
-    current_distance = 0
-    total_hours = 0
-
-    for trail in intermediate_trails:
-        trail_dist = float(trail['distance_km'])
-        trail_mult = TRAIL_SPEED_MULTIPLIERS.get(trail['trail_level'], 1.0)
-
-        segment_distance = trail_dist - current_distance
-        if segment_distance > 0:
-            best_mult = max(trail_mult, segments[-1]['speed_mult'] if segments else 1.0)
-            segment_hours = segment_distance / (BASE_SPEED_KM_PER_HOUR * base_speed_mult * best_mult)
-            segments.append({
-                'distance': segment_distance,
-                'trail_level': trail['trail_level'],
-                'speed_mult': best_mult,
-                'hours': segment_hours,
-                'landmark': trail['destination_name'],
-            })
-            total_hours += segment_hours
-            current_distance = trail_dist
-
-    final_distance = destination_distance_km - current_distance
-    if final_distance > 0:
-        final_hours = final_distance / (BASE_SPEED_KM_PER_HOUR * base_speed_mult * dest_trail_mult)
-        segments.append({
-            'distance': final_distance,
-            'trail_level': dest_trail_info.get('trail_level', 'none'),
-            'speed_mult': dest_trail_mult,
-            'hours': final_hours,
-            'landmark': destination_name,
-        })
-        total_hours += final_hours
-
-    if total_hours > 0:
-        weighted_mult = sum(s['speed_mult'] * s['hours'] for s in segments) / total_hours
-    else:
-        weighted_mult = dest_trail_mult
+    effective_speed = BASE_SPEED_KM_PER_HOUR * base_speed_mult * chain_mult
+    if effective_speed <= 0:
+        effective_speed = BASE_SPEED_KM_PER_HOUR
+    total_hours = destination_distance_km / effective_speed
 
     return {
         'total_hours': total_hours,
-        'segments': segments,
-        'effective_trail_mult': round(weighted_mult, 2),
+        'segments': [{
+            'distance': destination_distance_km,
+            'trail_level': chain_segment_label,
+            'speed_mult': chain_mult,
+            'hours': total_hours,
+            'landmark': destination_name,
+        }],
+        'effective_trail_mult': round(chain_mult, 3),
     }

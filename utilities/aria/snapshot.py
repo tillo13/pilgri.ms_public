@@ -925,19 +925,29 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
         if aria_self_line:
             parts.append(f"ARIA SELF-STATUS (CRITICAL — this is you): {aria_self_line}\nALWAYS check this before answering 'where are you?' or 'what are you doing?'. Do not say you are at base when this says otherwise. Do not just agree with the captain — read this field and answer from data.")
 
-    # Trail network
+    # v3 (#1414): Trail Network — 4 cardinal antipode chains per captain
     try:
-        from utilities.postgres.core import db_cursor
-        with db_cursor() as cur:
-            cur.execute("""
-                SELECT destination_name, trail_level, total_distance_km, km_built
-                FROM pilgrim.trail_segments WHERE user_id = %s ORDER BY created_at
-            """, (user_id,))
-            trail_rows = cur.fetchall()
-        if trail_rows:
-            trail_lines = [f"{t['destination_name']} (Lv{t['trail_level']}, {float(t['km_built']):.0f}/{float(t['total_distance_km']):.0f} km)" for t in trail_rows]
-            parts.append(f"TRAIL NETWORK ({len(trail_rows)} trails): {'; '.join(trail_lines)}")
-            parts.append("TRAIL INFO: Captains can send Captain, Scientist, or ARIA on trail-building missions from the Crew tab. Trails reduce expedition travel time to destinations. Higher trail levels = faster travel.")
+        from utilities.postgres.trails.chains import (
+            get_active_chain_segments, get_user_active_direction,
+        )
+        active_dir = get_user_active_direction(user_id)
+        chains = get_active_chain_segments(user_id)
+        if chains and any(chains.values()):
+            chain_lines = []
+            for direction in ('N', 'E', 'S', 'W'):
+                info = chains.get(direction) or {}
+                if not info:
+                    continue
+                pct = info.get('percent_complete', 0)
+                kb = info.get('km_built_total', 0)
+                tk = info.get('total_km', 0)
+                cs = info.get('completed_segments', 0)
+                ts = info.get('total_segments', 0)
+                tier = info.get('prestige_tier', 'none')
+                star = ' [ACTIVE]' if direction == active_dir else ''
+                chain_lines.append(f"{direction}{star}: {kb:.0f}/{tk:.0f}km ({pct}%, {cs}/{ts} segs, {tier})")
+            parts.append(f"TRAIL NETWORK (v3 antipode chains, active={active_dir}): {' | '.join(chain_lines)}")
+            parts.append("TRAIL INFO (v3): Each captain has 4 cardinal chains (N/S/E/W) terminating at their antipode landmark. Crew/drones/ARIA build the next unbuilt segment of the captain's active chain. Switch active direction anytime. Off-chain expeditions get no trail bonus.")
     except Exception:
         pass
 
