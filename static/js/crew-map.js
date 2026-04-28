@@ -180,17 +180,42 @@ function updateCrewTrailMapMarkers() {
     }
     if (antipodeCoords) {
         const labelText = (antipodeName || 'ANTIPODE').toUpperCase();
-        const beacon = L.marker(antipodeCoords, {
-            icon: L.divIcon({
-                className: '',
-                html: `<div class="antipode-beacon-wrap"><div class="antipode-beacon"></div><div class="antipode-beacon-label">◆ ${labelText}</div></div>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-            }),
-            zIndexOffset: 1000   // float above all chain lines/dots
+        // Outer pulsing ring (SVG, animated via .deep-link-pulse like expedition signals)
+        const pulseRing = L.circleMarker(antipodeCoords, {
+            radius: 22,
+            fillColor: '#fbbf24',
+            color: '#fbbf24',
+            weight: 2,
+            opacity: 0.7,
+            fillOpacity: 0.12,
+            className: 'deep-link-pulse',
+            interactive: false
         }).addTo(crewTrailMap);
+        trailMapMarkers.push(pulseRing);
+        // Inner solid marker (clickable)
+        const beacon = L.circleMarker(antipodeCoords, {
+            radius: 11,
+            fillColor: '#ec7427',
+            color: '#ffffff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 1
+        }).addTo(crewTrailMap);
+        beacon.bindTooltip(`◆ ${labelText} — antipode (click for chain progress)`, { direction: 'top', offset: [0, -8] });
         beacon.on('click', () => openAntipodeModal(antipodeName));
         trailMapMarkers.push(beacon);
+        // Permanent label below the marker so it's always identifiable
+        const label = L.marker(antipodeCoords, {
+            icon: L.divIcon({
+                className: '',
+                html: `<div style="white-space:nowrap;font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,0.85);padding:2px 8px;border-radius:4px;border:1px solid #ec7427;text-transform:uppercase;letter-spacing:0.5px;text-shadow:0 1px 2px rgba(0,0,0,0.9);transform:translate(-50%, 14px);">◆ ${labelText}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
+            }),
+            interactive: false,
+            zIndexOffset: 1000
+        }).addTo(crewTrailMap);
+        trailMapMarkers.push(label);
     }
 
     // Auto-fit ALWAYS includes the antipode so the captain can see where they're headed.
