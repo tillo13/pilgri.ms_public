@@ -609,6 +609,15 @@
       "rebalance_progressive — Rebalance using progressive system based on expedition number"
     ]
   },
+  "tools/rebuild_chains_with_oversize_fix.py": {
+    "description": "TRAILS v3 — recompute chains with the one-oversize-max Dijkstra fix.",
+    "exports": [
+      "snapshot_user_chain_state — Capture per-direction km totals + per-source attribution before reset.",
+      "reallocate_into_chain — Greedy inward-to-outward allocate the snapshot km into the new chain segments.",
+      "rebuild_user — Full rebuild: snapshot → delete → recompute → reallocate → conservation check.",
+      "main"
+    ]
+  },
   "tools/regenerate_depot_images.py": {
     "description": "Regenerate Depot Images - PILGRIMS Style Guide Compliant",
     "exports": [

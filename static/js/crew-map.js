@@ -10,7 +10,10 @@ async function loadActiveTrailDirection() {
             window.activeTrailDirection = data.active_direction || 'N';
             window.allChainSegments = data.all_segments || [];
             if (typeof updateTopTrails === 'function') updateTopTrails();
-            if (typeof drawGhostChainRoutes === 'function') drawGhostChainRoutes();
+            // If the map is already up, re-draw markers + ghost routes with the new chain data.
+            if (typeof crewTrailMap !== 'undefined' && crewTrailMap && typeof updateCrewTrailMapMarkers === 'function') {
+                updateCrewTrailMapMarkers();
+            }
         }
     } catch (e) { /* silent */ }
 }
@@ -109,32 +112,37 @@ function updateCrewTrailMapMarkers() {
         const fromLat = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_latitude) ? t.from_latitude : baseCoords.latitude;
         const fromLon = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_longitude) ? t.from_longitude : baseCoords.longitude;
 
+        // v3: cardinal-color the line for ALL segments that are on a chain.
+        // Built portion = bright solid in chain color. Unbuilt portion = same color, dashed + dimmed.
+        // Fully complete = thick solid in chain color. Pre-v3 (no chain_direction) keeps old
+        // gold/white visualization as a fallback for any legacy rows that snuck through.
+        const onChain = !!(t.chain_direction && dirColor[t.chain_direction]);
         if (percent > 0 && percent < 100) {
-            // Interpolate the midpoint where built portion ends
             const frac = percent / 100;
             const midLat = fromLat + (t.latitude - fromLat) * frac;
             const midLon = fromLon + (t.longitude - fromLon) * frac;
-
-            // Solid line: HOME → built point (thick, bright)
-            const solidLine = L.polyline(
+            // Built portion
+            trailMapMarkers.push(L.polyline(
                 [[fromLat, fromLon], [midLat, midLon]],
-                { color: color, weight: 4, opacity: 1.0 }
-            ).addTo(crewTrailMap);
-            trailMapMarkers.push(solidLine);
-
-            // Dashed line: built point → destination (white, high contrast for colorblind)
-            const dashedLine = L.polyline(
+                { color: color, weight: 5, opacity: 1.0 }
+            ).addTo(crewTrailMap));
+            // Unbuilt portion: dashed in same color (dimmer) for chain segments; white for legacy
+            trailMapMarkers.push(L.polyline(
                 [[midLat, midLon], [t.latitude, t.longitude]],
-                { color: '#ffffff', weight: 3, opacity: 0.7, dashArray: '8,10' }
-            ).addTo(crewTrailMap);
-            trailMapMarkers.push(dashedLine);
-        } else {
-            // Fully complete (solid gold) or not started (white dashed, high contrast)
-            const line = L.polyline(
+                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.6 : 0.7, dashArray: '8,10' }
+            ).addTo(crewTrailMap));
+        } else if (percent >= 100) {
+            // Fully complete: thick solid in chain color (v3) or gold (legacy)
+            trailMapMarkers.push(L.polyline(
                 [[fromLat, fromLon], [t.latitude, t.longitude]],
-                { color: percent >= 100 ? '#ffdc32' : '#ffffff', weight: percent >= 100 ? 4 : 3, opacity: percent >= 100 ? 0.9 : 0.7, dashArray: percent < 100 ? '8,10' : null }
-            ).addTo(crewTrailMap);
-            trailMapMarkers.push(line);
+                { color: onChain ? color : '#ffdc32', weight: 5, opacity: 0.95 }
+            ).addTo(crewTrailMap));
+        } else {
+            // Not started: dashed line in chain color (v3) or white (legacy)
+            trailMapMarkers.push(L.polyline(
+                [[fromLat, fromLon], [t.latitude, t.longitude]],
+                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.55 : 0.7, dashArray: '8,10' }
+            ).addTo(crewTrailMap));
         }
 
         // Add destination marker - CLICK opens the Chart Trail modal
