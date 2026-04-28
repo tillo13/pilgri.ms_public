@@ -218,19 +218,36 @@
 @keyframes dash { to { stroke-dashoffset: -1000; } }
 
 /* TRAILS v3 (#1414) — throbbing antipode beacon on the crew page map */
+.antipode-beacon-wrap {
+    position: relative;
+    cursor: pointer;
+    width: 32px; height: 32px;
+}
 .antipode-beacon {
-    width: 22px; height: 22px;
-    background: linear-gradient(135deg, #ec7427, #ff9c4a);
+    width: 32px; height: 32px;
+    background: radial-gradient(circle, #ffd166 0%, #ec7427 60%, #b04010 100%);
     border-radius: 50%;
     border: 3px solid #ffffff;
-    box-shadow: 0 0 0 rgba(236, 116, 39, 0.9);
+    box-shadow: 0 0 0 rgba(236, 116, 39, 1.0), 0 0 12px rgba(0,0,0,0.6);
     animation: pulse-antipode 1.6s ease-out infinite;
-    cursor: pointer;
+}
+.antipode-beacon-label {
+    position: absolute;
+    top: 36px; left: 50%; transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 11px; font-weight: 700;
+    color: #fff; background: rgba(0,0,0,0.85);
+    padding: 2px 8px; border-radius: 4px;
+    border: 1px solid #ec7427;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 @keyframes pulse-antipode {
-    0%   { box-shadow: 0 0 0 0 rgba(236, 116, 39, 0.9); transform: scale(1); }
-    70%  { box-shadow: 0 0 0 18px rgba(236, 116, 39, 0); transform: scale(1.08); }
-    100% { box-shadow: 0 0 0 0 rgba(236, 116, 39, 0); transform: scale(1); }
+    0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.95), 0 0 12px rgba(0,0,0,0.6); transform: scale(1); }
+    70%  { box-shadow: 0 0 0 24px rgba(255, 193, 7, 0), 0 0 12px rgba(0,0,0,0.6); transform: scale(1.12); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0), 0 0 12px rgba(0,0,0,0.6); transform: scale(1); }
 }
 
 /* Signal → Map deep-link pulse (Bug #1275) */

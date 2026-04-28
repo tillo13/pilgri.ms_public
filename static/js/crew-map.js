@@ -179,24 +179,38 @@ function updateCrewTrailMapMarkers() {
         }
     }
     if (antipodeCoords) {
+        const labelText = (antipodeName || 'ANTIPODE').toUpperCase();
         const beacon = L.marker(antipodeCoords, {
             icon: L.divIcon({
                 className: '',
-                html: '<div class="antipode-beacon" title="Click for chain progress"></div>',
-                iconSize: [22, 22],
-                iconAnchor: [11, 11]
-            })
+                html: `<div class="antipode-beacon-wrap"><div class="antipode-beacon"></div><div class="antipode-beacon-label">◆ ${labelText}</div></div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            }),
+            zIndexOffset: 1000   // float above all chain lines/dots
         }).addTo(crewTrailMap);
         beacon.on('click', () => openAntipodeModal(antipodeName));
-        beacon.bindTooltip(`Antipode: ${antipodeName} — click for chain progress`, { direction: 'top', offset: [0, -8] });
         trailMapMarkers.push(beacon);
     }
 
-    // Auto-fit to base + antipode so the planet-scale view fits in one frame
+    // Auto-fit ALWAYS includes the antipode so the captain can see where they're headed.
     const points = [[baseCoords.latitude, baseCoords.longitude]];
     if (antipodeCoords) points.push(antipodeCoords);
+    // Also include the current build tip of every direction so users see the plus shape
+    if (window.allChainSegments) {
+        const byDir = { N: [], E: [], S: [], W: [] };
+        window.allChainSegments.forEach(s => { if (byDir[s.direction]) byDir[s.direction].push(s); });
+        Object.keys(byDir).forEach(d => byDir[d].sort((a, b) => a.segment_index - b.segment_index));
+        for (const d of ['N','E','S','W']) {
+            for (const s of byDir[d] || []) {
+                if ((parseFloat(s.km_built) || 0) > 0 && s.to_latitude != null) {
+                    points.push([s.to_latitude, s.to_longitude]);
+                }
+            }
+        }
+    }
     if (points.length > 1) {
-        crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 3 });
+        crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 3 });
     }
 }
 
