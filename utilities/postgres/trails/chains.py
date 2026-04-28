@@ -184,7 +184,15 @@ def dijkstra_chain(
         lm = by_name.get(name)
         return (float(lm['latitude']), float(lm['longitude']))
 
-    def _neighbors(from_name: str, cap: float) -> List[Tuple[Dict, float]]:
+    def _neighbors(from_name: str, cap: float, transited: bool = False) -> List[Tuple[Dict, float]]:
+        """Eligible next-hops from `from_name` within `cap` km.
+
+        v3 plus-sign refinement (#1414): pre-transit, every candidate landmark must
+        also have its BEARING-FROM-BASE inside the cardinal window. This keeps the
+        chain hugging the cardinal meridian/parallel before it wraps over the pole
+        (or opposite meridian for E/W), producing a clean + shape on the map.
+        Post-transit, no bearing constraint — chain routes freely to the antipode.
+        """
         from_lat, from_lon = _coords(from_name)
         is_first_hop = (from_name == 'HOME')
         out = []
@@ -201,6 +209,12 @@ def dijkstra_chain(
             if is_first_hop:
                 b = bearing_deg(from_lat, from_lon, lat, lon)
                 if not _bearing_in_window(b, bearing_window):
+                    continue
+            # Plus-sign constraint: pre-transit, the candidate's bearing FROM BASE must stay
+            # in the cardinal corridor. Once transit landmark visited, this drops.
+            if not transited and not is_first_hop:
+                bearing_from_base = bearing_deg(base_lat, base_lon, lat, lon)
+                if not _bearing_in_window(bearing_from_base, bearing_window):
                     continue
             out.append((lm, d))
         return out
@@ -240,7 +254,7 @@ def dijkstra_chain(
             # Use oversize_cap as the neighborhood radius so we don't miss long edges,
             # but restrict actually USING those long edges to oversize-allowed transitions.
             search_cap = oversize_cap if (oversize_cap > strict_cap and not cur_o) else strict_cap
-            for lm, edge_d in _neighbors(cur_name, search_cap):
+            for lm, edge_d in _neighbors(cur_name, search_cap, transited=cur_t):
                 is_oversize = edge_d > strict_cap
                 # Block oversize edges if budget already spent
                 if is_oversize and cur_o:

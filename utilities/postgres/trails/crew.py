@@ -703,11 +703,21 @@ def get_crew_nearby_payload(user_id: int) -> dict:
             'captain_km': round(float(t.get('captain_km') or 0), 3),
             'scientist_km': round(float(t.get('scientist_km') or 0), 3),
             'aria_km': round(float(t.get('aria_km') or 0), 3),
+            'drone_km': round(float(t.get('drone_km') or 0), 3),
+            'robot_km': round(float(t.get('robot_km') or 0), 3),
             'trip_count': t.get('trip_count', 0),
             'trail_level': t.get('trail_level', 'none'),
             'latitude': float(t['latitude']) if t.get('latitude') else None,
             'longitude': float(t['longitude']) if t.get('longitude') else None,
             'is_complete': bool(t.get('is_complete', False)),
+            # v3 (#1414) chain metadata — REQUIRED by frontend Top Trails NSEW rendering + cardinal-color map lines
+            'chain_direction': t.get('chain_direction'),
+            'segment_index': t.get('segment_index'),
+            'chain_total_km': t.get('chain_total_km'),
+            'chain_km_built': t.get('chain_km_built'),
+            'chain_completed_segments': t.get('chain_completed_segments'),
+            'chain_total_segments': t.get('chain_total_segments'),
+            'chain_prestige_tier': t.get('chain_prestige_tier'),
         })
 
     return {'success': True, 'trails': formatted, 'base_coords': base_coords}
