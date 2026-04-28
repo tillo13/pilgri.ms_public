@@ -169,15 +169,22 @@ function updateCrewTrailMapMarkers() {
     // v3 (#1414): draw the ghost route — full antipode chain path lightly behind the colored built portions
     drawGhostChainRoutes();
 
-    // Auto-fit map to show base + all trail markers with padding
-    if (nearbyTrails.length > 0) {
-        const points = [[baseCoords.latitude, baseCoords.longitude]];
-        nearbyTrails.forEach(t => {
-            if (t.latitude && t.longitude) points.push([t.latitude, t.longitude]);
+    // v3 (#1414): auto-fit to encompass base + ALL chain antipodes (so all 4 trails are visible),
+    // not just the built portions. Captains should see the full planet-spanning scope of their journey.
+    const points = [[baseCoords.latitude, baseCoords.longitude]];
+    nearbyTrails.forEach(t => {
+        if (t.latitude && t.longitude) points.push([t.latitude, t.longitude]);
+    });
+    if (window.allChainSegments) {
+        window.allChainSegments.forEach(s => {
+            if (s.to_latitude != null && s.to_longitude != null) {
+                points.push([s.to_latitude, s.to_longitude]);
+            }
         });
-        if (points.length > 1) {
-            crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [30, 30], maxZoom: 7 });
-        }
+    }
+    if (points.length > 1) {
+        // Tighter padding + lower maxZoom (3) so the whole planet view fits
+        crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 3 });
     }
 }
 
