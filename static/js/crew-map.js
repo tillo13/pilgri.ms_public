@@ -91,7 +91,11 @@ function updateCrewTrailMapMarkers() {
     const chainCovered = getChainCoveredDestinations();
 
     // v3 cardinal colors — N=blue, E=green, S=red, W=yellow
-    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
+    // Colorblind-safe palette (Okabe-Ito): blue / bluish-green / vermilion-magenta / yellow.
+    // Distinct under deuteranopia, protanopia, tritanopia. Keep Andy + Luke able to tell them apart.
+    const dirColor = { N: '#0072B2', E: '#009E73', S: '#CC79A7', W: '#F0E442' };
+    // Plus per-direction dash patterns so direction is also encoded by line shape, not color alone.
+    const dirDash  = { N: null,      E: '14,6',    S: '3,6',     W: '10,4,3,4' };
 
     nearbyTrails.forEach(t => {
         if (!t.latitude || !t.longitude) return;
@@ -112,24 +116,24 @@ function updateCrewTrailMapMarkers() {
         const fromLat = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_latitude) ? t.from_latitude : baseCoords.latitude;
         const fromLon = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_longitude) ? t.from_longitude : baseCoords.longitude;
 
-        // v3: cardinal-color the line for ALL segments that are on a chain.
-        // Built portion = bright solid in chain color. Unbuilt portion = same color, dashed + dimmed.
-        // Fully complete = thick solid in chain color. Pre-v3 (no chain_direction) keeps old
-        // gold/white visualization as a fallback for any legacy rows that snuck through.
+        // v3: cardinal-color + per-direction dash pattern so chains are distinguishable
+        // for colorblind captains (Andy + Luke). Built segments are bright solid; unbuilt
+        // and not-started use the chain's signature dash pattern at full color.
         const onChain = !!(t.chain_direction && dirColor[t.chain_direction]);
+        const chainDash = onChain ? dirDash[t.chain_direction] : null;
         if (percent > 0 && percent < 100) {
             const frac = percent / 100;
             const midLat = fromLat + (t.latitude - fromLat) * frac;
             const midLon = fromLon + (t.longitude - fromLon) * frac;
-            // Built portion
+            // Built portion: solid (no dash) in chain color
             trailMapMarkers.push(L.polyline(
                 [[fromLat, fromLon], [midLat, midLon]],
                 { color: color, weight: 5, opacity: 1.0 }
             ).addTo(crewTrailMap));
-            // Unbuilt portion: dashed in same color (dimmer) for chain segments; white for legacy
+            // Unbuilt portion: same color but using direction's signature dash
             trailMapMarkers.push(L.polyline(
                 [[midLat, midLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.6 : 0.7, dashArray: '8,10' }
+                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.7 : 0.7, dashArray: chainDash || '8,10' }
             ).addTo(crewTrailMap));
         } else if (percent >= 100) {
             // Fully complete: thick solid in chain color (v3) or gold (legacy)
@@ -138,10 +142,10 @@ function updateCrewTrailMapMarkers() {
                 { color: onChain ? color : '#ffdc32', weight: 5, opacity: 0.95 }
             ).addTo(crewTrailMap));
         } else {
-            // Not started: dashed line in chain color (v3) or white (legacy)
+            // Not started: dashed in chain color with signature pattern (v3) or white (legacy)
             trailMapMarkers.push(L.polyline(
                 [[fromLat, fromLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.55 : 0.7, dashArray: '8,10' }
+                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.65 : 0.7, dashArray: chainDash || '8,10' }
             ).addTo(crewTrailMap));
         }
 
@@ -197,7 +201,11 @@ function drawGhostChainRoutes() {
     ghostRouteLines.forEach(l => crewTrailMap.removeLayer(l));
     ghostRouteLines = [];
 
-    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
+    // Colorblind-safe palette (Okabe-Ito): blue / bluish-green / vermilion-magenta / yellow.
+    // Distinct under deuteranopia, protanopia, tritanopia. Keep Andy + Luke able to tell them apart.
+    const dirColor = { N: '#0072B2', E: '#009E73', S: '#CC79A7', W: '#F0E442' };
+    // Plus per-direction dash patterns so direction is also encoded by line shape, not color alone.
+    const dirDash  = { N: null,      E: '14,6',    S: '3,6',     W: '10,4,3,4' };
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
 
     // Build a from_landmark → coords lookup using nearbyTrails (which has lat/lon for built segments)
@@ -220,26 +228,28 @@ function drawGhostChainRoutes() {
             }
         }
         if (pts.length < 2) continue;
+        // Ghost route — visible enough to read the round-the-world arc, faint enough not to fight
+        // with the bright built portion. Each direction's ghost uses its signature dash pattern.
         const ghost = L.polyline(pts, {
             color: dirColor[d],
-            weight: 2,
-            opacity: 0.25,         // faint — let the bright built portion stand out
-            dashArray: '4,8'
+            weight: 3,
+            opacity: 0.55,
+            dashArray: dirDash[d] || '6,10'
         }).addTo(crewTrailMap);
         ghostRouteLines.push(ghost);
 
-        // Antipode beacon — a circle at the final to_landmark of each chain
+        // Antipode beacon — bigger + brighter so the arrival point is visible at any zoom
         const antipode = segs[segs.length - 1];
         const ac = (antipode.to_latitude != null && antipode.to_longitude != null)
             ? [antipode.to_latitude, antipode.to_longitude] : null;
         if (ac) {
             const beacon = L.circleMarker(ac, {
-                radius: 6,
+                radius: 9,
                 fillColor: dirColor[d],
-                color: '#fff',
-                weight: 1,
-                fillOpacity: 0.4,
-                opacity: 0.6
+                color: '#000',
+                weight: 2,
+                fillOpacity: 0.85,
+                opacity: 1.0
             }).addTo(crewTrailMap).bindTooltip(`${d} chain antipode → ${antipode.to_landmark}`, { direction: 'top' });
             ghostRouteLines.push(beacon);
         }
@@ -310,7 +320,11 @@ function updateTopTrails() {
     // Group nearbyTrails by chain_direction. The backend returns one row per direction
     // for the next unbuilt segment + completed segment rows.
     const dirOrder = ['N', 'E', 'S', 'W'];
-    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
+    // Colorblind-safe palette (Okabe-Ito): blue / bluish-green / vermilion-magenta / yellow.
+    // Distinct under deuteranopia, protanopia, tritanopia. Keep Andy + Luke able to tell them apart.
+    const dirColor = { N: '#0072B2', E: '#009E73', S: '#CC79A7', W: '#F0E442' };
+    // Plus per-direction dash patterns so direction is also encoded by line shape, not color alone.
+    const dirDash  = { N: null,      E: '14,6',    S: '3,6',     W: '10,4,3,4' };
     const dirIcon  = { N: '⬆', E: '➡', S: '⬇', W: '⬅' };
     const byDir = { N: [], E: [], S: [], W: [] };
     for (const t of nearbyTrails) {

@@ -120,106 +120,76 @@
     <div class="card-bg-overlay"></div>
     <div class="relative z-2">
         <div class="flex items-center justify-between mb-16">
-            <div class="text-xs uppercase tracking-wide" style="color: var(--color-sepolia);"><img src="{{ icons.tab_map }}" alt="" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; opacity: 0.9;"> Trail Missions</div>
-            <a href="/brainstorm/trail-network#april-2026-update" target="_blank" style="text-decoration: none; color: #22c55e; font-size: 12px; font-weight: 600; padding: 4px 10px; border: 1px solid rgba(34,197,94,0.3); border-radius: 6px; background: rgba(34,197,94,0.08);">Trail Math &amp; Upgrades →</a>
+            <div class="text-xs uppercase tracking-wide" style="color: var(--color-sepolia);"><img src="{{ icons.tab_map }}" alt="" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; opacity: 0.9;"> Trails — Antipode Chains</div>
         </div>
 
-        <!-- First-time intro (hidden once dismissed) -->
-        <div id="trail-missions-intro" class="mb-16 p-16" style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), transparent); border-radius: 8px; border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
-            <div class="font-semibold mb-8" style="color: var(--color-sepolia); font-size: 15px;"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Trail Construction</div>
-            <p class="m-0 mb-16" style="color: var(--text-primary); font-size: 13px;">
-                Build permanent trails to visited sites. Completed trails speed up future expeditions — <strong style="color: #FFD700;">100% trail = +50% faster!</strong>
-            </p>
-
-            <div class="grid gap-16 mb-16" style="grid-template-columns: repeat(3, 1fr);">
-                <div style="text-align: center; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px;">
-                    <div class="font-semibold mb-4" style="color: #4ade80; font-size: 13px;">Captain</div>
-                    <div style="color: var(--text-secondary); font-size: 12px;">Logistics XP</div>
-                    <div class="opacity-70" style="font-size: 11px;">Survey & mark routes</div>
-                </div>
-                <div style="text-align: center; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px;">
-                    <div class="font-semibold mb-4" style="color: var(--color-sepolia); font-size: 13px;">Scientist</div>
-                    <div style="color: var(--text-secondary); font-size: 12px;">Specialty + Geology</div>
-                    <div class="opacity-70" style="font-size: 11px;">Terrain analysis</div>
-                </div>
-                <div style="text-align: center; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px;">
-                    <div class="font-semibold mb-4" style="color: #c084fc; font-size: 13px;">ARIA</div>
-                    <div style="color: var(--text-secondary); font-size: 12px;">Ancient Knowledge</div>
-                    <div class="opacity-70" style="font-size: 11px;">Remembers the terrain</div>
-                </div>
-            </div>
-
-            <!-- Trail Speed Math (Luke loves math!) -->
-            {% set skills = aria_skills or {} %}
-            {% set cmd_stats = commander_stats or {} %}
-            {% set cmd_log = cmd_stats.get('logistics', 0)|float %}
-            {% set log_xp = (commander or {}).get('captain_logistics_xp', 0)|default(0)|int %}
-            {% set capt_mult = 1.0 + (cmd_log / 30) + (log_xp / 2000) %}
-            <div class="p-12 mb-12" style="background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid var(--color-sepolia);">
-                <div class="font-semibold mb-8" style="color: var(--text-primary); font-size: 13px;"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Trail Speed Math</div>
-                <div style="color: var(--text-secondary); font-size: 12px; line-height: 1.8;">
-                    <div class="mb-4">Base rate: <strong style="color: #FFD700;">0.75 km/hr</strong></div>
-                    <div class="mb-8 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                        <div class="font-semibold mb-4" style="color: var(--color-success);">Crew Multipliers (your stats):</div>
-                        <div class="mb-4">Captain: Logistics {{ cmd_log|int }} + {{ log_xp }} XP → <strong style="color: var(--color-success);">{{ "%.1f"|format(capt_mult) }}x</strong></div>
-                        <div class="mb-4">Scientist: Nav XP + {{ (scientist or {}).get('specialty', 'Specialty') }} → <strong style="color: var(--color-sepolia);">stat-dependent</strong></div>
-                        <div class="mb-4">ARIA: Resonance Lv{{ (skills.get('resonance_level', 1)) }} + Lore Lv{{ (skills.get('lore_memory_level', 1)) }} → <strong style="color: #a855f7;">{{ "%.1f"|format(1.0 + (skills.get('resonance_level', 1)) / 20 + (skills.get('lore_memory_level', 1)) / 200) }}x</strong></div>
-                    </div>
-                    <div class="mb-8 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                        <div class="font-semibold mb-4" style="color: var(--color-sepolia);">Equipment Bonuses (stack on top):</div>
-                        <div class="mb-4">Scanner: <strong>+1-10%</strong> per level</div>
-                        <div class="mb-4">EVA Suit: <strong style="color: var(--color-success);">+5%</strong> per level</div>
-                        <div class="mb-4">Consumables: <strong>+6-15%</strong> (one-use items)</div>
-                    </div>
-                    <div class="mb-8 pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                        <div class="font-semibold mb-4" style="color: #FFD700;">Session Duration:</div>
-                        <div class="mb-4">Higher multiplier = longer session (15→30 min)</div>
-                        <div class="mb-4">Double benefit: faster rate AND more time</div>
-                    </div>
-                    <div class="pt-4" style="border-top: 1px solid rgba(255,255,255,0.1);">
-                        <div class="font-semibold mb-4" style="color: var(--color-success);">Automation Drone (passive 24/7):</div>
-                        <div class="mb-4">Lv1: 0.5 km/hr → Lv5: 2.0 km/hr → Lv10: 8.0 km/hr</div>
-                        <div class="opacity-70">Builds trails while you're away</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-10" style="background: rgba(0,0,0,0.2); border-radius: 6px; color: var(--text-secondary); font-size: 12px;">
-                <strong style="color: var(--text-primary);">Session:</strong> 15-30 min based on total multiplier. <strong style="color: var(--text-primary);">Formula:</strong> 0.75 × crew_mult × scanner × suit × consumable × (duration/60) = km per session.
-            </div>
-        </div>
-
-        <!-- v3 (#1414) Trails explainer — what captains see on the page + the rules -->
-        <details class="mb-16" style="background: linear-gradient(135deg, rgba(96,165,250,0.08), rgba(34,197,94,0.08), rgba(239,68,68,0.08), rgba(251,191,36,0.08)); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px;">
-            <summary style="cursor: pointer; font-weight: 700; font-size: 14px; color: var(--text-primary); list-style: none;">
-                <span style="display: inline-block; transform: translateY(-1px); margin-right: 6px;">▸</span>
-                The 4 Trails — what you're looking at
-            </summary>
-            <div class="mt-12 text-xs" style="line-height: 1.65; color: var(--text-secondary);">
-                <p class="mb-8"><strong style="color: var(--text-primary);">Every captain on Mars has exactly 4 trails — one per cardinal direction.</strong> Each trail is a deterministic chain of landmark hops from your base out to your <em>antipode</em> — the single landmark on the opposite side of Mars from you. All 4 of your chains terminate at the same antipode, just from different routes.</p>
-
-                <div class="grid mb-8" style="grid-template-columns: repeat(4, 1fr); gap: 6px;">
-                    <div style="border-left: 3px solid #60a5fa; padding-left: 8px;"><strong style="color: #60a5fa;">⬆ N CHAIN</strong><br><span class="opacity-70">Routes via the North Pole</span></div>
-                    <div style="border-left: 3px solid #22c55e; padding-left: 8px;"><strong style="color: #22c55e;">➡ E CHAIN</strong><br><span class="opacity-70">Routes east through the equator</span></div>
-                    <div style="border-left: 3px solid #ef4444; padding-left: 8px;"><strong style="color: #ef4444;">⬇ S CHAIN</strong><br><span class="opacity-70">Routes via the South Pole</span></div>
-                    <div style="border-left: 3px solid #fbbf24; padding-left: 8px;"><strong style="color: #fbbf24;">⬅ W CHAIN</strong><br><span class="opacity-70">Routes west through the equator</span></div>
-                </div>
-
-                <p class="mb-8"><strong style="color: var(--text-primary);">The map:</strong> each chain shows as a faint dashed line tracing the FULL planned route from base to antipode. Bright colored segments = built portions. White dashed = the next-up segment your crew/drones are working on. A circle at the end of each line marks the antipode (the same landmark for all 4 of your chains).</p>
-
-                <p class="mb-8"><strong style="color: var(--text-primary);">Top Trails below:</strong> always 4 rows (N/E/S/W), even if you haven't started one yet. The row outlined in your chain's color is your <strong>active direction</strong> — that's the chain your drones, your Robot, and ARIA Resonance build passively. Click any row to switch active direction (free, anytime).</p>
-
-                <p class="mb-8"><strong style="color: var(--text-primary);">Building:</strong> Captain / Scientist / ARIA missions ALL build the next unbuilt segment of your active chain. Drones contribute 24/7 via the cron. Trail-level speed bonus (1.0× → 1.5×) applies to expeditions that land ON one of your chain segments — off-chain expeditions get baseline speed (no bonus).</p>
-
-                <p class="mb-0"><strong style="color: var(--text-primary);">Why this matters:</strong> chains are the only trail system. Roughly 10,500–12,000 km per direction, 18–20 segments. At ~20–25 km/day baseline (drones + crew combined), one chain takes 12–18 months. All 4 chains is the grand journey — Mars circumnavigation in your name. Speed it up with depot upgrades, scientist Engineering stat, captain Logistics stat, and tech research.</p>
-            </div>
-        </details>
-
-        <!-- Trail Map - Shows ALL visited sites + ghost antipode routes -->
-        <div id="crew-trail-map-container" class="mb-16" style="height: 800px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-default); background: var(--bg-primary);">
+        <!-- Trail Map FIRST (per UX feedback): captains want to see the chains immediately -->
+        <div id="crew-trail-map-container" class="mb-12" style="height: 720px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-default); background: var(--bg-primary);">
             <div id="crew-trail-map" style="height: 100%; width: 100%;"></div>
         </div>
-        <p class="text-xs opacity-60 mb-16">Faint dashed lines show your full antipode routes; bright colored segments are what you've built so far.</p>
+
+        <!-- ONE merged dropdown — closed by default. Math + colors + how chains work, all in one place. -->
+        {% set skills = aria_skills or {} %}
+        {% set cmd_stats = commander_stats or {} %}
+        {% set cmd_log = cmd_stats.get('logistics', 0)|float %}
+        {% set log_xp = (commander or {}).get('captain_logistics_xp', 0)|default(0)|int %}
+        {% set capt_mult = 1.0 + (cmd_log / 30) + (log_xp / 2000) %}
+        <details class="mb-16" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+            <summary style="cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 13px; color: var(--text-primary); list-style: none; display: flex; align-items: center; justify-content: space-between;">
+                <span><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> How trails work — the 4 chains, colors, math</span>
+                <span class="opacity-50" style="font-size: 11px;">click to expand</span>
+            </summary>
+            <div style="padding: 0 16px 16px 16px; color: var(--text-secondary); font-size: 12px; line-height: 1.6;">
+
+                <!-- The 4 chains (cardinal legend, colorblind-safe) -->
+                <p class="mt-12 mb-8"><strong style="color: var(--text-primary);">Every captain has exactly 4 trails — one per cardinal direction (N / E / S / W).</strong> Each is a chain of landmark hops from your base out to your <em>antipode</em> — the landmark on the opposite side of Mars. All 4 chains terminate at the same antipode, just routed through different hemispheres.</p>
+                <div class="grid mb-12" style="grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                    <div style="border-left: 4px solid #0072B2; padding: 6px 10px; background: rgba(0,114,178,0.08); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #0072B2;">⬆ N CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— solid line</span><br>
+                        <span class="opacity-70">Routes via the North Pole</span>
+                    </div>
+                    <div style="border-left: 4px solid #009E73; padding: 6px 10px; background: rgba(0,158,115,0.08); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #009E73;">➡ E CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— long-dashed</span><br>
+                        <span class="opacity-70">Routes east through the equator</span>
+                    </div>
+                    <div style="border-left: 4px solid #CC79A7; padding: 6px 10px; background: rgba(204,121,167,0.10); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #CC79A7;">⬇ S CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— dotted</span><br>
+                        <span class="opacity-70">Routes via the South Pole</span>
+                    </div>
+                    <div style="border-left: 4px solid #F0E442; padding: 6px 10px; background: rgba(240,228,66,0.10); border-radius: 0 6px 6px 0;">
+                        <strong style="color: #F0E442;">⬅ W CHAIN</strong> <span class="opacity-50" style="font-family: monospace;">— dash-dot</span><br>
+                        <span class="opacity-70">Routes west through the equator</span>
+                    </div>
+                </div>
+                <p class="mb-12 opacity-70" style="font-size: 11px;">Colors use the Okabe-Ito colorblind-safe palette + a unique line pattern per direction so you can tell chains apart even without color.</p>
+
+                <!-- The map legend -->
+                <p class="mb-12"><strong style="color: var(--text-primary);">On the map:</strong> each chain shows as a dashed line in its signature color tracing the FULL route from base to antipode. Bright thick segments = what you've built. The color circle at the end of each line is the antipode beacon (same landmark, four routes). Click + Build / drone cron / ARIA Resonance all advance whichever direction is set as active (highlighted in Top Trails below).</p>
+
+                <!-- Math (per crew session) -->
+                <div class="p-10 mb-12" style="background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid var(--color-sepolia);">
+                    <div class="font-semibold mb-6" style="color: var(--text-primary);">Per-session km formula</div>
+                    <code style="color: var(--text-secondary); font-size: 11px;">0.75 × crew_mult × scanner × eva_suit × consumable × (duration/60)</code>
+                    <div class="mt-8 mb-4 font-semibold" style="color: var(--color-success);">Crew multipliers (your current stats):</div>
+                    <div class="mb-2">Captain: Logistics {{ cmd_log|int }} + {{ log_xp }} XP → <strong style="color: var(--color-success);">{{ "%.1f"|format(capt_mult) }}×</strong></div>
+                    <div class="mb-2">Scientist: Nav XP + {{ (scientist or {}).get('specialty', 'Specialty') }} → <strong style="color: var(--color-sepolia);">stat-dependent</strong></div>
+                    <div class="mb-8">ARIA: Resonance Lv{{ (skills.get('resonance_level', 1)) }} + Lore Lv{{ (skills.get('lore_memory_level', 1)) }} → <strong style="color: #a855f7;">{{ "%.1f"|format(1.0 + (skills.get('resonance_level', 1)) / 20 + (skills.get('lore_memory_level', 1)) / 200) }}×</strong></div>
+                    <div class="font-semibold mb-4" style="color: var(--color-sepolia);">Equipment (stacks):</div>
+                    <div>Scanner +1-10%/lv · EVA Suit +5%/lv · Consumables +6-15%</div>
+                </div>
+
+                <!-- Drones / passive -->
+                <div class="p-10 mb-12" style="background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid var(--color-success);">
+                    <div class="font-semibold mb-4" style="color: var(--color-success);">Passive (24/7) — runs every 30 min via cron</div>
+                    <div class="mb-2">Maintenance Drone: Lv1 0.5 km/hr → Lv3 1.0 km/hr</div>
+                    <div class="mb-2">Mining Drone: Lv1 1.5 km/hr → Lv7 8.0 km/hr</div>
+                    <div>Robot Crew: dial[exploration] × stage × Robotics Lab × scientist Nav</div>
+                </div>
+
+                <!-- Why -->
+                <p class="mb-0"><strong style="color: var(--text-primary);">Why this matters:</strong> chains are the only trail system. ~10,500–12,000 km per direction, 18–20 segments. At ~20–25 km/day baseline you finish one chain in 12–18 months — all four is the grand circumnavigation. Speed it up with depot upgrades, scientist Engineering stat, captain Logistics stat, and tech research. Off-chain expeditions get no trail bonus.</p>
+            </div>
+        </details>
 
         <!-- Top Trails Section - Shows best trails to continue -->
         <div id="top-trails-section" class="mb-16" style="display: none;">
