@@ -618,6 +618,13 @@
       "main"
     ]
   },
+  "tools/redistribute_chains_equal.py": {
+    "description": "TRAILS v3 — equal-distribute existing chain km across all 4 N/E/S/W directions.",
+    "exports": [
+      "redistribute_user",
+      "main"
+    ]
+  },
   "tools/regenerate_depot_images.py": {
     "description": "Regenerate Depot Images - PILGRIMS Style Guide Compliant",
     "exports": [
@@ -3322,7 +3329,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

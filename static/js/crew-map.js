@@ -239,10 +239,11 @@ function updateCrewTrailMapMarkers() {
         window._antipodePulseTimer = null;
     }
 
-    // Auto-fit ALWAYS includes the antipode so the captain can see where they're headed.
+    // v3: auto-fit to base + BUILT segment tips only (NOT the antipode — it's literally on the
+    // far side of the planet, including it forces Mars to render tiled multiple times).
+    // The antipode beacon remains in the data; users can zoom out or click "Fly to Antipode"
+    // (button below the map) to pan to it.
     const points = [[baseCoords.latitude, baseCoords.longitude]];
-    if (antipodeCoords) points.push(antipodeCoords);
-    // Also include the current build tip of every direction so users see the plus shape
     if (window.allChainSegments) {
         const byDir = { N: [], E: [], S: [], W: [] };
         window.allChainSegments.forEach(s => { if (byDir[s.direction]) byDir[s.direction].push(s); });
@@ -256,9 +257,28 @@ function updateCrewTrailMapMarkers() {
         }
     }
     if (points.length > 1) {
-        crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 3 });
+        crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 5 });
+    } else {
+        // No built segments yet — center on base with a moderate zoom
+        crewTrailMap.setView([baseCoords.latitude, baseCoords.longitude], 4);
     }
+    // Stash the antipode coords on the map for the "Fly to Antipode" button below
+    crewTrailMap._antipodeCoords = antipodeCoords;
+    crewTrailMap._antipodeName = antipodeName;
 }
+
+// Pan the map smoothly to the captain's antipode (called by the "Fly to Antipode" button)
+window.flyToAntipode = function() {
+    if (!crewTrailMap || !crewTrailMap._antipodeCoords) return;
+    crewTrailMap.flyTo(crewTrailMap._antipodeCoords, 5, { duration: 1.5 });
+};
+
+// Pan back to the captain's base
+window.flyToBase = function() {
+    if (!crewTrailMap) return;
+    const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
+    crewTrailMap.flyTo([baseCoords.latitude, baseCoords.longitude], 4, { duration: 1.5 });
+};
 
 // v3 (#1414): click handler for the throbbing antipode beacon.
 // Pulls live data from /api/trails/chains and opens a MarsModal with all 4 chain progress.

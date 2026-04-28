@@ -124,8 +124,14 @@
         </div>
 
         <!-- Trail Map FIRST (per UX feedback): captains want to see the chains immediately -->
-        <div id="crew-trail-map-container" class="mb-12" style="height: 720px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-default); background: var(--bg-primary);">
+        <div id="crew-trail-map-container" class="mb-8" style="height: 720px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-default); background: var(--bg-primary);">
             <div id="crew-trail-map" style="height: 100%; width: 100%;"></div>
+        </div>
+        <!-- Map pan controls — antipode is on the far side of the planet, so jump-to buttons are needed -->
+        <div class="flex justify-between items-center mb-12" style="gap: 8px;">
+            <button onclick="flyToBase()" class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;"><img src="{{ icons.tab_map }}" alt="" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"> View Base</button>
+            <span class="text-xs opacity-60" style="text-align: center; flex: 1;">Map centers on your base. The antipode (where chains converge) is on the far side of the planet — click below to jump there.</span>
+            <button onclick="flyToAntipode()" class="btn btn-primary" style="font-size: 11px; padding: 6px 12px; background: linear-gradient(135deg, #ec7427, #ffb060);">◆ Fly to Antipode</button>
         </div>
 
         <!-- ONE merged dropdown — closed by default. Math + colors + how chains work, all in one place. -->
