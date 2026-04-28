@@ -2934,6 +2934,8 @@
       "getChainCoveredDestinations",
       "updateCrewTrailMapMarkers",
       "labelText",
+      "makeRing",
+      "animateRing",
       "chains",
       "info",
       "isActive",
@@ -2941,9 +2943,7 @@
       "drawGhostChainRoutes",
       "ac",
       "updateCrewTrailContributions",
-      "captainPct",
-      "scientistPct",
-      "ariaPct"
+      "captainPct"
     ]
   },
   "static/js/crew-missions.js": {

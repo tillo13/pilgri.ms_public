@@ -180,19 +180,37 @@ function updateCrewTrailMapMarkers() {
     }
     if (antipodeCoords) {
         const labelText = (antipodeName || 'ANTIPODE').toUpperCase();
-        // Outer pulsing ring (SVG, animated via .deep-link-pulse like expedition signals)
-        const pulseRing = L.circleMarker(antipodeCoords, {
-            radius: 22,
+        // Sonar-ping rings — TWO outer rings at different phases so a pulse is always visible.
+        // We grow each ring from radius 12 → 36, fade opacity, then reset, with offset timing.
+        const makeRing = () => L.circleMarker(antipodeCoords, {
+            radius: 12,
             fillColor: '#fbbf24',
             color: '#fbbf24',
-            weight: 2,
-            opacity: 0.7,
-            fillOpacity: 0.12,
-            className: 'deep-link-pulse',
+            weight: 3,
+            opacity: 0.95,
+            fillOpacity: 0.0,
             interactive: false
         }).addTo(crewTrailMap);
-        trailMapMarkers.push(pulseRing);
-        // Inner solid marker (clickable)
+        const ringA = makeRing();
+        const ringB = makeRing();
+        trailMapMarkers.push(ringA);
+        trailMapMarkers.push(ringB);
+        // Animate via setInterval — direct radius/opacity changes (more reliable than CSS on SVG)
+        const animateRing = (ring, phase) => {
+            // phase 0..1
+            const r = 12 + phase * 28;
+            const o = 0.95 * (1 - phase);
+            ring.setRadius(r);
+            ring.setStyle({ opacity: o });
+        };
+        let t = 0;
+        if (window._antipodePulseTimer) clearInterval(window._antipodePulseTimer);
+        window._antipodePulseTimer = setInterval(() => {
+            t = (t + 0.025) % 1.0;
+            animateRing(ringA, t);
+            animateRing(ringB, (t + 0.5) % 1.0);
+        }, 50);
+        // Inner solid marker (clickable, always at fixed size)
         const beacon = L.circleMarker(antipodeCoords, {
             radius: 11,
             fillColor: '#ec7427',
@@ -204,7 +222,7 @@ function updateCrewTrailMapMarkers() {
         beacon.bindTooltip(`◆ ${labelText} — antipode (click for chain progress)`, { direction: 'top', offset: [0, -8] });
         beacon.on('click', () => openAntipodeModal(antipodeName));
         trailMapMarkers.push(beacon);
-        // Permanent label below the marker so it's always identifiable
+        // Permanent label below the beacon so it's always identifiable
         const label = L.marker(antipodeCoords, {
             icon: L.divIcon({
                 className: '',
@@ -216,6 +234,9 @@ function updateCrewTrailMapMarkers() {
             zIndexOffset: 1000
         }).addTo(crewTrailMap);
         trailMapMarkers.push(label);
+    } else if (window._antipodePulseTimer) {
+        clearInterval(window._antipodePulseTimer);
+        window._antipodePulseTimer = null;
     }
 
     // Auto-fit ALWAYS includes the antipode so the captain can see where they're headed.
