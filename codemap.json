@@ -2927,14 +2927,14 @@
       "color",
       "fromLat",
       "fromLon",
+      "drawGhostChainRoutes",
+      "ac",
       "updateCrewTrailContributions",
       "captainPct",
       "scientistPct",
       "ariaPct",
       "marsPct",
-      "updateTopTrails",
-      "isActive",
-      "setActiveChainOnly"
+      "updateTopTrails"
     ]
   },
   "static/js/crew-missions.js": {
@@ -3313,7 +3313,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

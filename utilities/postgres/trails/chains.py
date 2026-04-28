@@ -205,47 +205,56 @@ def dijkstra_chain(
             out.append((lm, d))
         return out
 
-    def _run_dijkstra(cap: float) -> Optional[List[str]]:
-        """State = (name, transited_bool). Returns ordered name path or None."""
-        # heap entries: (cum_distance, tiebreak, name, transited)
-        heap = [(0.0, 0, 'HOME', False)]
-        # parent[(name, transited)] = (prev_name, prev_transited, edge_d)
-        parent: Dict[Tuple[str, bool], Tuple[str, bool, float]] = {}
-        best_dist: Dict[Tuple[str, bool], float] = {('HOME', False): 0.0}
+    def _run_dijkstra(strict_cap: float, oversize_cap: float = 0.0) -> Optional[List[str]]:
+        """State-space Dijkstra. State = (name, transited, oversize_used).
+
+        - All hops must be ≤ `strict_cap` UNLESS we use the one allowed oversize hop.
+        - Oversize hops must be ≤ `oversize_cap` (set to 0 to disable oversize).
+        - Goal: reach antipode_name with transited=True.
+        """
+        heap = [(0.0, 0, 'HOME', False, False)]
+        # parent[(name, transited, oversize_used)] = (prev tuple, edge_d)
+        parent: Dict[Tuple[str, bool, bool], Tuple[Tuple[str, bool, bool], float]] = {}
+        best_dist: Dict[Tuple[str, bool, bool], float] = {('HOME', False, False): 0.0}
         counter = 0
         while heap:
-            cum_d, _, cur_name, cur_t = heapq.heappop(heap)
+            cum_d, _, cur_name, cur_t, cur_o = heapq.heappop(heap)
             if cur_name == antipode_name and cur_t:
                 # Reconstruct path
                 path = [cur_name]
-                key = (cur_name, cur_t)
-                while True:
-                    if key not in parent:
-                        break
-                    prev_name, prev_t, _e = parent[key]
-                    path.append(prev_name)
-                    key = (prev_name, prev_t)
+                key = (cur_name, cur_t, cur_o)
+                while key in parent:
+                    prev_key, _e = parent[key]
+                    path.append(prev_key[0])
+                    key = prev_key
                 path.reverse()
                 return path
-            if cum_d > best_dist.get((cur_name, cur_t), float('inf')):
+            if cum_d > best_dist.get((cur_name, cur_t, cur_o), float('inf')):
                 continue
-            for lm, edge_d in _neighbors(cur_name, cap):
-                nxt_name = lm['name']
+            # Use oversize_cap as the neighborhood radius so we don't miss long edges,
+            # but restrict actually USING those long edges to oversize-allowed transitions.
+            search_cap = oversize_cap if (oversize_cap > strict_cap and not cur_o) else strict_cap
+            for lm, edge_d in _neighbors(cur_name, search_cap):
+                is_oversize = edge_d > strict_cap
+                # Block oversize edges if budget already spent
+                if is_oversize and cur_o:
+                    continue
+                nxt_o = cur_o or is_oversize
                 nxt_t = cur_t or _is_transit_landmark(direction, base_lon, lm)
                 new_cum = cum_d + edge_d
-                key = (nxt_name, nxt_t)
+                key = (lm['name'], nxt_t, nxt_o)
                 if new_cum < best_dist.get(key, float('inf')):
                     best_dist[key] = new_cum
                     counter += 1
-                    parent[key] = (cur_name, cur_t, edge_d)
-                    heapq.heappush(heap, (new_cum, counter, nxt_name, nxt_t))
+                    parent[key] = ((cur_name, cur_t, cur_o), edge_d)
+                    heapq.heappush(heap, (new_cum, counter, lm['name'], nxt_t, nxt_o))
         return None
 
-    # First attempt at hop_cap
-    path_names = _run_dijkstra(hop_cap)
-    # Fallback: oversize cap if strict cap didn't reach
+    # First attempt: strict cap, no oversize allowed.
+    path_names = _run_dijkstra(hop_cap, oversize_cap=0.0)
+    # Fallback: strict cap + ONE oversize hop allowed up to OVERSIZE_MAX_KM.
     if not path_names:
-        path_names = _run_dijkstra(OVERSIZE_MAX_KM)
+        path_names = _run_dijkstra(hop_cap, oversize_cap=OVERSIZE_MAX_KM)
     if not path_names:
         logger.warning(f"Dijkstra failed direction={direction} base=({base_lat:.3f},{base_lon:.3f}) → {antipode_name}")
         return []

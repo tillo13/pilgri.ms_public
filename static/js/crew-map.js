@@ -2,13 +2,15 @@
 // CREW-MAP.JS - Trail Map, Chart Trail Modal, Crew Selection
 // ============================================================================
 
-// v3 (#1414): hydrate window.activeTrailDirection from server on page load
+// v3 (#1414): hydrate active_direction + ALL chain segments (for ghost route lines)
 async function loadActiveTrailDirection() {
     try {
         const data = await apiGet('/api/trails/chains');
         if (data && data.success) {
             window.activeTrailDirection = data.active_direction || 'N';
+            window.allChainSegments = data.all_segments || [];
             if (typeof updateTopTrails === 'function') updateTopTrails();
+            if (typeof drawGhostChainRoutes === 'function') drawGhostChainRoutes();
         }
     } catch (e) { /* silent */ }
 }
@@ -156,6 +158,9 @@ function updateCrewTrailMapMarkers() {
         trailMapMarkers.push(marker);
     });
 
+    // v3 (#1414): draw the ghost route — full antipode chain path lightly behind the colored built portions
+    drawGhostChainRoutes();
+
     // Auto-fit map to show base + all trail markers with padding
     if (nearbyTrails.length > 0) {
         const points = [[baseCoords.latitude, baseCoords.longitude]];
@@ -164,6 +169,64 @@ function updateCrewTrailMapMarkers() {
         });
         if (points.length > 1) {
             crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [30, 30], maxZoom: 7 });
+        }
+    }
+}
+
+// v3 (#1414): draw a faint full-antipode-route line behind the bright built portion,
+// so captains can see WHERE their N/E/S/W chains are headed before they're built.
+let ghostRouteLines = [];
+function drawGhostChainRoutes() {
+    if (!crewTrailMap || !window.allChainSegments) return;
+    // Clear any prior ghost
+    ghostRouteLines.forEach(l => crewTrailMap.removeLayer(l));
+    ghostRouteLines = [];
+
+    const dirColor = { N: '#60a5fa', E: '#22c55e', S: '#ef4444', W: '#fbbf24' };
+    const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
+
+    // Build a from_landmark → coords lookup using nearbyTrails (which has lat/lon for built segments)
+    // and fall back to a separate landmark lookup we'll need server-side. For now: greedy lookup
+    // through nearbyTrails AND chain segments (which have to_landmark only).
+    // Group segments by direction in segment_index order, draw per-direction polyline through to_landmarks.
+    // /api/trails/chains now returns to_latitude/to_longitude on each segment, so we can plot every hop
+    // including unbuilt future ones.
+    const byDir = { N: [], E: [], S: [], W: [] };
+    (window.allChainSegments || []).forEach(s => { if (byDir[s.direction]) byDir[s.direction].push(s); });
+    Object.keys(byDir).forEach(d => byDir[d].sort((a, b) => a.segment_index - b.segment_index));
+
+    for (const d of ['N', 'E', 'S', 'W']) {
+        const segs = byDir[d];
+        if (!segs || !segs.length) continue;
+        const pts = [[baseCoords.latitude, baseCoords.longitude]];
+        for (const seg of segs) {
+            if (seg.to_latitude != null && seg.to_longitude != null) {
+                pts.push([seg.to_latitude, seg.to_longitude]);
+            }
+        }
+        if (pts.length < 2) continue;
+        const ghost = L.polyline(pts, {
+            color: dirColor[d],
+            weight: 2,
+            opacity: 0.25,         // faint — let the bright built portion stand out
+            dashArray: '4,8'
+        }).addTo(crewTrailMap);
+        ghostRouteLines.push(ghost);
+
+        // Antipode beacon — a circle at the final to_landmark of each chain
+        const antipode = segs[segs.length - 1];
+        const ac = (antipode.to_latitude != null && antipode.to_longitude != null)
+            ? [antipode.to_latitude, antipode.to_longitude] : null;
+        if (ac) {
+            const beacon = L.circleMarker(ac, {
+                radius: 6,
+                fillColor: dirColor[d],
+                color: '#fff',
+                weight: 1,
+                fillOpacity: 0.4,
+                opacity: 0.6
+            }).addTo(crewTrailMap).bindTooltip(`${d} chain antipode → ${antipode.to_landmark}`, { direction: 'top' });
+            ghostRouteLines.push(beacon);
         }
     }
 }

@@ -1509,15 +1509,34 @@ def api_trails_active_direction():
 @login_required
 @handle_api_error
 def api_trails_chains():
-    """v3 (#1414): full chain state for the captain — used by Crew page + Chain Math modal."""
+    """v3 (#1414): full chain state for the captain — used by Crew page + Chain Math modal.
+
+    `all_segments` includes lat/lon per to_landmark so the frontend can draw the
+    ghost antipode route behind the built portion.
+    """
     from utilities.postgres.trails.chains import (
         get_active_chain_segments, get_user_active_direction, get_all_user_chains,
     )
+    from utilities.postgres.map import get_mars_mappings_by_name
+
+    segs = get_all_user_chains(g.user_id)
+    landmarks_by_name = get_mars_mappings_by_name()
+    enriched = []
+    for s in segs:
+        lm = landmarks_by_name.get(s['to_landmark'])
+        from_lm = landmarks_by_name.get(s['from_landmark']) if s['from_landmark'] != 'HOME' else None
+        d = dict(s)
+        d['to_latitude'] = float(lm['latitude']) if lm else None
+        d['to_longitude'] = float(lm['longitude']) if lm else None
+        d['from_latitude'] = float(from_lm['latitude']) if from_lm else None
+        d['from_longitude'] = float(from_lm['longitude']) if from_lm else None
+        enriched.append(d)
+
     return jsonify({
         'success': True,
         'active_direction': get_user_active_direction(g.user_id),
         'chains': get_active_chain_segments(g.user_id),
-        'all_segments': get_all_user_chains(g.user_id),
+        'all_segments': enriched,
     })
 
 
