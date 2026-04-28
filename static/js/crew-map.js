@@ -2,15 +2,15 @@
 // CREW-MAP.JS - Trail Map, Chart Trail Modal, Crew Selection
 // ============================================================================
 
-// v3 (#1414): hydrate active_direction + ALL chain segments (for ghost route lines)
+// v3 (#1414): hydrate active_direction + chain segments + chain progress for the modal.
 async function loadActiveTrailDirection() {
     try {
         const data = await apiGet('/api/trails/chains');
         if (data && data.success) {
             window.activeTrailDirection = data.active_direction || 'N';
             window.allChainSegments = data.all_segments || [];
+            window.lastChainState = data;
             if (typeof updateTopTrails === 'function') updateTopTrails();
-            // If the map is already up, re-draw markers + ghost routes with the new chain data.
             if (typeof crewTrailMap !== 'undefined' && crewTrailMap && typeof updateCrewTrailMapMarkers === 'function') {
                 updateCrewTrailMapMarkers();
             }
@@ -92,119 +92,103 @@ function updateCrewTrailMapMarkers() {
     trailMapMarkers = [];
 
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
-    const chainCovered = getChainCoveredDestinations();
 
-    // v3 cardinal colors — N=blue, E=green, S=red, W=yellow
-    // High-contrast palette tuned for severe colorblind viewers on the orange-red Mars terrain.
-    // Each color sits at the OPPOSITE end of the color wheel from Mars red — and pairs with
-    // a unique dash pattern so direction is encoded by SHAPE too, not color alone.
-    // Tested against deuteranopia, protanopia, tritanopia simulators.
-    const dirColor = {
-        N: '#FFFFFF',  // pure white — max luminance contrast on red, reads at any size
-        E: '#00FFFF',  // bright cyan — Mars-red's complementary color, can't be confused with terrain
-        S: '#FF1493',  // hot pink/magenta — high saturation against orange, distinct from red
-        W: '#000000'   // pure black — minimum luminance contrast on red
-    };
-    // Per-direction dash pattern (so colorblind viewers can tell chains apart by shape too)
-    const dirDash  = { N: null,      E: '16,8',     S: '4,6',     W: '12,4,4,4' };
-    // Every chain line gets drawn TWICE — first a dark halo underneath (for high contrast on any bg),
-    // then the bright color on top. Halo color picks the opposite luminance of the chain color.
-    const dirHalo  = { N: '#000000', E: '#000000',  S: '#000000', W: '#FFFFFF' };
-
-    nearbyTrails.forEach(t => {
-        if (!t.latitude || !t.longitude) return;
-
-        // Skip HOME→X when a chain Y→X exists (dedup gold-line clutter)
-        const isHomeLeg = !t.from_landmark || t.from_landmark === 'HOME';
-        if (isHomeLeg && chainCovered.has(t.name)) return;
-
-        // Color based on chain direction (v3) — fall back to completion-based for legacy rows
-        const kmBuilt = t.km_built || 0;
-        const totalKm = t.segment_distance_km || t.distance_km || 1;
-        const percent = Math.min(100, (kmBuilt / totalKm) * 100);
-        const color = (t.chain_direction && dirColor[t.chain_direction])
-            ? dirColor[t.chain_direction]
-            : (percent >= 100 ? '#ffdc32' : percent >= 50 ? '#64dc96' : percent > 0 ? '#f0a860' : '#888');
-
-        // Draw trail line: solid portion = built, dashed = remaining
-        const fromLat = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_latitude) ? t.from_latitude : baseCoords.latitude;
-        const fromLon = (t.from_landmark && t.from_landmark !== 'HOME' && t.from_longitude) ? t.from_longitude : baseCoords.longitude;
-
-        // v3: cardinal-color + dash pattern + halo for colorblind contrast.
-        // Built segments draw thick on top of a halo. Unbuilt portions use the same color
-        // with the direction's signature dash so chains are distinguishable even without color.
-        const onChain = !!(t.chain_direction && dirColor[t.chain_direction]);
-        const chainDash = onChain ? dirDash[t.chain_direction] : null;
-        const chainHalo = onChain ? dirHalo[t.chain_direction] : '#000000';
-        const drawWithHalo = (latlngs, opts) => {
-            // Halo: thick line in opposite-luminance color underneath
-            trailMapMarkers.push(L.polyline(latlngs, {
-                color: chainHalo, weight: (opts.weight || 4) + 3,
-                opacity: 0.55, dashArray: opts.dashArray || null
-            }).addTo(crewTrailMap));
-            // Bright line on top
-            trailMapMarkers.push(L.polyline(latlngs, opts).addTo(crewTrailMap));
-        };
-        if (percent > 0 && percent < 100) {
-            const frac = percent / 100;
-            const midLat = fromLat + (t.latitude - fromLat) * frac;
-            const midLon = fromLon + (t.longitude - fromLon) * frac;
-            // Built portion: solid (no dash) in chain color, with halo
-            drawWithHalo([[fromLat, fromLon], [midLat, midLon]],
-                { color: color, weight: 5, opacity: 1.0 });
-            // Unbuilt portion: chain color with signature dash, with halo
-            drawWithHalo([[midLat, midLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.85 : 0.7, dashArray: chainDash || '8,10' });
-        } else if (percent >= 100) {
-            drawWithHalo([[fromLat, fromLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffdc32', weight: 5, opacity: 0.95 });
-        } else {
-            drawWithHalo([[fromLat, fromLon], [t.latitude, t.longitude]],
-                { color: onChain ? color : '#ffffff', weight: 3, opacity: onChain ? 0.85 : 0.7, dashArray: chainDash || '8,10' });
+    // v3 (#1414) — minimal map: NO chain lines. Just one throbbing antipode beacon
+    // showing where all 4 chains converge. Click → modal with full chain data.
+    // Top Trails section below the map shows per-direction NSEW progress.
+    let antipodeCoords = null;
+    let antipodeName = null;
+    if (window.allChainSegments && window.allChainSegments.length) {
+        // All 4 chains terminate at the same antipode landmark. Use the highest segment_index of any direction.
+        const final = window.allChainSegments.reduce((best, s) =>
+            (s.to_latitude != null && s.segment_index > (best ? best.segment_index : -1)) ? s : best, null);
+        if (final) {
+            antipodeCoords = [final.to_latitude, final.to_longitude];
+            antipodeName = final.to_landmark;
         }
-
-        // Add destination marker - CLICK opens the Chart Trail modal
-        const marker = L.circleMarker([t.latitude, t.longitude], {
-            radius: 8,
-            fillColor: color,
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 0.9
-        }).addTo(crewTrailMap);
-
-        // Store trail data on marker for click handler
-        marker.trailData = t;
-        marker.on('click', function() {
-            openChartTrailModal(this.trailData);
-        });
-
-        // Simple tooltip on hover
-        marker.bindTooltip(`<strong>${t.name}</strong><br>${percent.toFixed(1)}% trail`, { direction: 'top' });
-
-        trailMapMarkers.push(marker);
-    });
-
-    // v3 (#1414): draw the ghost route — full antipode chain path lightly behind the colored built portions
-    drawGhostChainRoutes();
-
-    // v3 (#1414): auto-fit to encompass base + ALL chain antipodes (so all 4 trails are visible),
-    // not just the built portions. Captains should see the full planet-spanning scope of their journey.
-    const points = [[baseCoords.latitude, baseCoords.longitude]];
-    nearbyTrails.forEach(t => {
-        if (t.latitude && t.longitude) points.push([t.latitude, t.longitude]);
-    });
-    if (window.allChainSegments) {
-        window.allChainSegments.forEach(s => {
-            if (s.to_latitude != null && s.to_longitude != null) {
-                points.push([s.to_latitude, s.to_longitude]);
-            }
-        });
     }
+    if (antipodeCoords) {
+        const beacon = L.marker(antipodeCoords, {
+            icon: L.divIcon({
+                className: '',
+                html: '<div class="antipode-beacon" title="Click for chain progress"></div>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
+            })
+        }).addTo(crewTrailMap);
+        beacon.on('click', () => openAntipodeModal(antipodeName));
+        beacon.bindTooltip(`Antipode: ${antipodeName} — click for chain progress`, { direction: 'top', offset: [0, -8] });
+        trailMapMarkers.push(beacon);
+    }
+
+    // Auto-fit to base + antipode so the planet-scale view fits in one frame
+    const points = [[baseCoords.latitude, baseCoords.longitude]];
+    if (antipodeCoords) points.push(antipodeCoords);
     if (points.length > 1) {
-        // Tighter padding + lower maxZoom (3) so the whole planet view fits
         crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 3 });
     }
 }
+
+// v3 (#1414): click handler for the throbbing antipode beacon.
+// Pulls live data from /api/trails/chains and opens a MarsModal with all 4 chain progress.
+window.openAntipodeModal = async function(antipodeName) {
+    if (typeof MarsModal === 'undefined') return;
+    // Andy's preferred 4-color palette: blue/red/black/white (per 2026-04-28 feedback)
+    const dirStyle = {
+        N: { color: '#3b82f6', label: '⬆ N CHAIN', desc: 'via the North Pole' },
+        E: { color: '#ef4444', label: '➡ E CHAIN', desc: 'east through the equator' },
+        S: { color: '#000000', label: '⬇ S CHAIN', desc: 'via the South Pole' },
+        W: { color: '#ffffff', label: '⬅ W CHAIN', desc: 'west through the equator' }
+    };
+    let chains = (window.lastChainState && window.lastChainState.chains) || null;
+    let activeDir = window.activeTrailDirection || 'N';
+    if (!chains) {
+        try {
+            const data = await apiGet('/api/trails/chains');
+            if (data && data.success) {
+                chains = data.chains;
+                activeDir = data.active_direction || activeDir;
+                window.lastChainState = data;
+            }
+        } catch (e) { /* show stub */ }
+    }
+    let body = `<div class="mm-card-accent" style="text-align:center;">
+        <div class="mm-section-label">Antipode</div>
+        <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${antipodeName || '—'}</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">All 4 of your chains terminate here</div>
+    </div>`;
+    body += `<div class="grid" style="grid-template-columns: 1fr; gap: 6px;">`;
+    for (const d of ['N', 'E', 'S', 'W']) {
+        const info = (chains && chains[d]) || {};
+        const pct = info.percent_complete || 0;
+        const total = info.total_km || 0;
+        const built = info.km_built_total || 0;
+        const segs = info.completed_segments || 0;
+        const totalSegs = info.total_segments || 0;
+        const tier = info.prestige_tier || 'none';
+        const isActive = (d === activeDir);
+        const ds = dirStyle[d];
+        const textColor = (d === 'W') ? '#000000' : '#ffffff';
+        const activeBadge = isActive ? `<span style="background:${ds.color};color:${textColor};padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;margin-left:6px;border:1px solid rgba(255,255,255,0.3);">● ACTIVE</span>` : '';
+        body += `<div style="border-left: 4px solid ${ds.color}; padding: 8px 12px; background: rgba(0,0,0,0.25); border-radius: 0 6px 6px 0;">
+            <div style="font-weight:600; color: ${ds.color === '#ffffff' ? '#fff' : ds.color}; font-size: 13px;">${ds.label}${activeBadge}</div>
+            <div style="font-size: 11px; opacity: 0.8; margin: 2px 0;">${ds.desc} · ${tier}</div>
+            <div style="font-size: 12px;">${built.toFixed(0)} / ${total.toFixed(0)} km · ${segs}/${totalSegs} segments · ${pct.toFixed(1)}%</div>
+            <div style="background: rgba(255,255,255,0.08); height: 4px; border-radius: 2px; margin-top: 4px; overflow: hidden;">
+                <div style="background: ${ds.color}; height: 100%; width: ${Math.min(100, pct)}%; transition: width 0.3s;"></div>
+            </div>
+        </div>`;
+    }
+    body += `</div>`;
+    MarsModal.show({
+        title: 'Your 4 Antipode Chains',
+        subtitle: `<span style="color:var(--color-sepolia)">All terminate at ${antipodeName || 'your antipode'}</span>`,
+        icon: '🎯',
+        width: 'md',
+        body: body,
+        footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Got it</button>`
+    });
+};
 
 // v3 (#1414): draw a faint full-antipode-route line behind the bright built portion,
 // so captains can see WHERE their N/E/S/W chains are headed before they're built.

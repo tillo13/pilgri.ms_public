@@ -302,7 +302,8 @@ function renderTrailList() {
         container.innerHTML = '<div class="text-xs opacity-60">No active chain segments — your chains may all be complete.</div>';
         return;
     }
-    const dirColor = { N: '#FFFFFF', E: '#00FFFF', S: '#FF1493', W: '#000000' };
+    // v3 NSEW palette (Andy 2026-04-28): blue / red / black / white
+    const dirColor = { N: '#3b82f6', E: '#ef4444', S: '#000000', W: '#ffffff' };
     container.innerHTML = buildable.map(t => {
         const kmBuilt = t.km_built || 0;
         const segKm = t.segment_distance_km || 1;
