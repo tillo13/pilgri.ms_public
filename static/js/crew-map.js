@@ -100,7 +100,9 @@ function updateCrewTrailMapMarkers() {
     // Halo opposite-luminance so each color stands out on Mars terrain
     const dirHalo  = { N: '#000000', E: '#000000', S: '#ffffff', W: '#000000' };
 
-    // Draw built segments only (where km_built > 0) for each direction, in chain order.
+    // Per direction: draw the line through every built segment + a marker DOT at each
+    // traveled-through landmark. The first marker in each direction is the first NSEW
+    // location (e.g., for N it's the first hop from base going north). No ghost / unbuilt.
     if (window.allChainSegments && window.allChainSegments.length) {
         const byDir = { N: [], E: [], S: [], W: [] };
         window.allChainSegments.forEach(s => { if (byDir[s.direction]) byDir[s.direction].push(s); });
@@ -110,32 +112,58 @@ function updateCrewTrailMapMarkers() {
             const segs = byDir[d];
             const color = dirColor[d];
             const halo = dirHalo[d];
-            // Build a polyline through every fully-built segment + the partial portion of the current segment.
-            // Stop drawing as soon as we hit a fully-unbuilt segment.
+            // Walk the chain accumulating built portions. Drop a marker at each fully-built
+            // to_landmark. Stop at the first unbuilt segment (or partial-built tip).
             let pts = [[baseCoords.latitude, baseCoords.longitude]];
+            const markerStops = [];
+            let accumulatedKm = 0;
+            const totalChainKm = segs.reduce((sum, s) => sum + (parseFloat(s.segment_distance_km) || 0), 0);
             for (const s of segs) {
                 const segDist = parseFloat(s.segment_distance_km) || 0;
                 const built = parseFloat(s.km_built) || 0;
-                if (built <= 0 || segDist <= 0) break; // unbuilt segment — stop drawing
+                if (built <= 0 || segDist <= 0) break;
                 if (s.to_latitude == null || s.to_longitude == null) break;
                 if (built >= segDist - 1e-6) {
-                    // fully built — add the full segment
                     pts.push([s.to_latitude, s.to_longitude]);
+                    markerStops.push({ lat: s.to_latitude, lon: s.to_longitude, name: s.to_landmark, segIdx: s.segment_index, segDist });
+                    accumulatedKm += segDist;
                 } else {
-                    // partial — interpolate to the built fraction and stop
+                    // Partial — interpolate, mark as the current "in-progress" tip, stop.
                     const frac = built / segDist;
                     const fromCoords = pts[pts.length - 1];
                     const midLat = fromCoords[0] + (s.to_latitude - fromCoords[0]) * frac;
                     const midLon = fromCoords[1] + (s.to_longitude - fromCoords[1]) * frac;
                     pts.push([midLat, midLon]);
+                    accumulatedKm += built;
+                    markerStops.push({
+                        lat: midLat, lon: midLon, name: `${s.to_landmark} (in progress)`,
+                        segIdx: s.segment_index, segDist, partial: true,
+                        partialPct: (built / segDist * 100).toFixed(1) + '%'
+                    });
                     break;
                 }
             }
             if (pts.length < 2) continue;
-            // Halo underneath
+            const kmLeft = Math.max(0, totalChainKm - accumulatedKm);
+            // Line: halo underneath + bright color on top
             trailMapMarkers.push(L.polyline(pts, { color: halo, weight: 7, opacity: 0.55 }).addTo(crewTrailMap));
-            // Bright color on top
             trailMapMarkers.push(L.polyline(pts, { color: color, weight: 4, opacity: 1.0 }).addTo(crewTrailMap));
+            // Dot at every traveled-through landmark
+            markerStops.forEach((stop, i) => {
+                const isCurrent = !!stop.partial;
+                const marker = L.circleMarker([stop.lat, stop.lon], {
+                    radius: isCurrent ? 7 : 5,
+                    fillColor: color,
+                    color: halo,
+                    weight: 2,
+                    fillOpacity: isCurrent ? 0.95 : 0.85
+                }).addTo(crewTrailMap);
+                const tooltip = isCurrent
+                    ? `<strong>${d} CHAIN — current build</strong><br>${stop.name}<br>seg ${stop.segIdx} ${stop.partialPct} built<br>${kmLeft.toFixed(0)} km left to antipode`
+                    : `<strong>${d} CHAIN — passed through</strong><br>${stop.name}<br>seg ${stop.segIdx} complete<br>${kmLeft.toFixed(0)} km left to antipode`;
+                marker.bindTooltip(tooltip, { direction: 'top' });
+                trailMapMarkers.push(marker);
+            });
         }
     }
 
