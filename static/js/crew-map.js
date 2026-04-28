@@ -93,9 +93,52 @@ function updateCrewTrailMapMarkers() {
 
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
 
-    // v3 (#1414) — minimal map: NO chain lines. Just one throbbing antipode beacon
-    // showing where all 4 chains converge. Click → modal with full chain data.
-    // Top Trails section below the map shows per-direction NSEW progress.
+    // v3 (#1414) — show ONLY what the captain has actually built (the "plus sign" of
+    // traveled distance), plus a throbbing antipode beacon. NO ghost/unbuilt lines.
+    // Andy's preferred NSEW palette: blue / red / black / white.
+    const dirColor = { N: '#3b82f6', E: '#ef4444', S: '#000000', W: '#ffffff' };
+    // Halo opposite-luminance so each color stands out on Mars terrain
+    const dirHalo  = { N: '#000000', E: '#000000', S: '#ffffff', W: '#000000' };
+
+    // Draw built segments only (where km_built > 0) for each direction, in chain order.
+    if (window.allChainSegments && window.allChainSegments.length) {
+        const byDir = { N: [], E: [], S: [], W: [] };
+        window.allChainSegments.forEach(s => { if (byDir[s.direction]) byDir[s.direction].push(s); });
+        Object.keys(byDir).forEach(d => byDir[d].sort((a, b) => a.segment_index - b.segment_index));
+
+        for (const d of ['N', 'E', 'S', 'W']) {
+            const segs = byDir[d];
+            const color = dirColor[d];
+            const halo = dirHalo[d];
+            // Build a polyline through every fully-built segment + the partial portion of the current segment.
+            // Stop drawing as soon as we hit a fully-unbuilt segment.
+            let pts = [[baseCoords.latitude, baseCoords.longitude]];
+            for (const s of segs) {
+                const segDist = parseFloat(s.segment_distance_km) || 0;
+                const built = parseFloat(s.km_built) || 0;
+                if (built <= 0 || segDist <= 0) break; // unbuilt segment — stop drawing
+                if (s.to_latitude == null || s.to_longitude == null) break;
+                if (built >= segDist - 1e-6) {
+                    // fully built — add the full segment
+                    pts.push([s.to_latitude, s.to_longitude]);
+                } else {
+                    // partial — interpolate to the built fraction and stop
+                    const frac = built / segDist;
+                    const fromCoords = pts[pts.length - 1];
+                    const midLat = fromCoords[0] + (s.to_latitude - fromCoords[0]) * frac;
+                    const midLon = fromCoords[1] + (s.to_longitude - fromCoords[1]) * frac;
+                    pts.push([midLat, midLon]);
+                    break;
+                }
+            }
+            if (pts.length < 2) continue;
+            // Halo underneath
+            trailMapMarkers.push(L.polyline(pts, { color: halo, weight: 7, opacity: 0.55 }).addTo(crewTrailMap));
+            // Bright color on top
+            trailMapMarkers.push(L.polyline(pts, { color: color, weight: 4, opacity: 1.0 }).addTo(crewTrailMap));
+        }
+    }
+
     let antipodeCoords = null;
     let antipodeName = null;
     if (window.allChainSegments && window.allChainSegments.length) {
