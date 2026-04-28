@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Claim — {{ cinematic.site_code }}</title>
+    <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/core-aria.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/core-mars-bar.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/core-utilities.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/first-contact.css?v={{ static_v }}">
+    <link rel="stylesheet" href="/static/css/signal-claim-cinematic.css?v={{ static_v }}">
+    <link rel="icon" type="image/png" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/favicon_crystal_1768501259.png">
+    <style>body { margin: 0; background: #000; }</style>
+</head>
+<body>
+
+<script type="application/json" id="scPageData">
+{
+    "claim": {
+        "expedition_id": {{ cinematic.expedition_id | tojson }},
+        "site_id": {{ cinematic.site_id | tojson }},
+        "site_code": {{ cinematic.site_code | tojson }},
+        "mission_name": {{ cinematic.mission_name | tojson }},
+        "memory_text": {{ cinematic.memory_text | tojson }},
+        "legendary_item_name": {{ cinematic.legendary_item_name | tojson }},
+        "legendary_item_image_url": {{ cinematic.legendary_item_image_url | tojson }},
+        "outcome": {{ cinematic.outcome | tojson }},
+        "tier": {{ cinematic.tier | tojson }},
+        "founder_name": {{ cinematic.founder_name | tojson }},
+        "captain_name": {{ cinematic.captain_name | tojson }}
+    },
+    "approachLines": {{ approach_lines | tojson }},
+    "replay": {{ (replay | default(false)) | tojson }}
+}
+</script>
+
+<!-- ═══════ SCREEN 1: Approach ═══════ -->
+<div class="fc-container fc-screen sc-approach" id="screen1" style="display:none;">
+    <div class="sc-dust"></div>
+    <div class="sc-horizon"></div>
+    <div class="sc-vehicle-silhouette"></div>
+    <button class="fc-skip" id="btn-skip">Skip to discovery</button>
+    <div class="fc-text-area"></div>
+    <button class="fc-continue" id="btn-to-screen2" style="opacity:0;pointer-events:none;">Reach the Source</button>
+</div>
+
+<!-- ═══════ SCREEN 2: Discovery ═══════ -->
+<div class="fc-container fc-screen" id="screen2" style="display:none;">
+    <div class="sc-dust visible"></div>
+    <div class="sc-horizon visible"></div>
+    <div class="fc-screen-content">
+        <div class="fc-screen-label">
+            {% if cinematic.outcome == 'founder' %}You Are the First.
+            {% elif cinematic.outcome == 'visitor' %}You Walk Where Others Walked.
+            {% elif cinematic.outcome == 'already_visited' %}A Familiar Resonance.
+            {% else %}Signal Reached.{% endif %}
+        </div>
+        <div class="fc-screen-title sc-site-title">{{ cinematic.mission_name or cinematic.site_code }}</div>
+        <div class="fc-screen-subtitle">{{ cinematic.site_code }}</div>
+
+        {% if cinematic.legendary_item_image_url %}
+        <img src="{{ cinematic.legendary_item_image_url }}" alt="Origin Artifact" class="fc-artifact-large">
+        {% else %}
+        <div class="fc-bond-image-placeholder">Artifact materializing...</div>
+        {% endif %}
+
+        {% if cinematic.memory_text %}
+        <div class="fc-flavor-text">"{{ cinematic.memory_text }}"</div>
+        {% endif %}
+
+        <div class="fc-detail-grid">
+            {% if cinematic.outcome == 'founder' %}
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Founder</span>
+                <span class="fc-detail-value sc-founder">{{ cinematic.captain_name }}</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Tier</span>
+                <span class="fc-detail-value sc-tier-legendary">Legendary</span>
+            </div>
+            {% elif cinematic.outcome == 'visitor' %}
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Founder</span>
+                <span class="fc-detail-value">{{ cinematic.founder_name or '—' }}</span>
+            </div>
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Your Tier</span>
+                <span class="fc-detail-value sc-tier-{{ cinematic.tier or 'visitor' }}">{{ (cinematic.tier or 'visitor') | upper }}</span>
+            </div>
+            {% else %}
+            <div class="fc-detail-row">
+                <span class="fc-detail-label">Status</span>
+                <span class="fc-detail-value">Returned to a place already visited</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <button class="fc-continue" id="btn-to-screen3" style="opacity:1;">What Happens Now</button>
+</div>
+
+<!-- ═══════ SCREEN 3: Aftermath ═══════ -->
+<div class="fc-container fc-screen" id="screen3" style="display:none;">
+    <div class="sc-dust visible"></div>
+    <div class="sc-horizon visible"></div>
+    <div class="fc-screen-content" style="max-width: 520px;">
+        <div class="fc-orb-wrapper visible" style="margin-bottom: 32px;">
+            <div class="fc-orb" style="width: 80px; height: 80px;"></div>
+        </div>
+        <div class="fc-screen-title" style="font-size: 22px; margin-bottom: 24px;">
+            {% if cinematic.outcome == 'founder' %}The site remembers you now.
+            {% elif cinematic.outcome == 'visitor' %}You joined the visitor ledger.
+            {% else %}The signal still resonates.{% endif %}
+        </div>
+        <div class="fc-aria-aftermath">
+            {% if cinematic.outcome == 'founder' %}
+            <p>You were first. That can never be taken from you.</p>
+            <p>The legendary artifact is being forged in the workshops as we speak. Check your inventory in a few hours.</p>
+            <p>The Signal Network now carries your name. Other captains who pass through here will see what you did.</p>
+            {% elif cinematic.outcome == 'visitor' %}
+            <p>{{ cinematic.founder_name or 'Another captain' }} stood here first, but you were here too.</p>
+            <p>Your name is now on the visitor ledger. The Signal page shows it. Future captains will see your tier.</p>
+            <p>A visitor reward is being prepared. Watch your inventory.</p>
+            {% else %}
+            <p>The signal is unchanged. The record holds.</p>
+            <p>Talk to ARIA — she may have noticed something this time you didn't.</p>
+            {% endif %}
+        </div>
+    </div>
+    <button class="fc-continue" id="btn-final" style="opacity:1;">Continue to Colony</button>
+</div>
+
+<script src="/static/js/first-contact-audio.js?v={{ static_v }}" defer></script>
+<script src="/static/js/signal-claim-cinematic.js?v={{ static_v }}" defer></script>
+</body>
+</html>

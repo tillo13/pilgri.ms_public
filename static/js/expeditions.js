@@ -309,24 +309,34 @@ async function fetchLandmarkCost(landmarkIndex) {
     }
 }
 
-// Update costs for all expedition cards (new structure)
+// Update costs for all expedition cards — single bulk request
 async function updateAllExpeditionCosts() {
     const cards = $$('.exp-card');
+    const entries = [];
     for (const card of cards) {
         const landmarkIndex = parseInt(card.dataset.landmarkIndex);
-        if (!isNaN(landmarkIndex) && landmarksData[landmarkIndex]) {
-            await updateExpeditionCost(card, landmarksData[landmarkIndex]);
-        }
+        const l = !isNaN(landmarkIndex) ? landmarksData[landmarkIndex] : null;
+        if (l) entries.push({ card, l });
     }
-}
+    if (!entries.length) return;
 
-async function updateExpeditionCost(card, l) {
     try {
-        const data = await apiPost('/api/expeditions/calculate_cost', { distance_km: l.distance_km, destination_type: l.type });
-        if (data.success) updateCostDisplay(card, data, l);
-        else card.querySelector('.expedition-total-cost').textContent = 'Error';
+        const payload = { items: entries.map(e => ({ distance_km: e.l.distance_km, destination_type: e.l.type })) };
+        const resp = await apiPost('/api/expeditions/calculate_costs_bulk', payload);
+        if (!resp.success || !Array.isArray(resp.results)) {
+            entries.forEach(e => { const el = e.card.querySelector('.expedition-total-cost'); if (el) el.textContent = '--'; });
+            return;
+        }
+        resp.results.forEach((data, i) => {
+            const { card, l } = entries[i];
+            if (data && data.success) updateCostDisplay(card, data, l);
+            else {
+                const el = card.querySelector('.expedition-total-cost');
+                if (el) el.textContent = 'Error';
+            }
+        });
     } catch {
-        card.querySelector('.expedition-total-cost').textContent = '--';
+        entries.forEach(e => { const el = e.card.querySelector('.expedition-total-cost'); if (el) el.textContent = '--'; });
     }
 }
 

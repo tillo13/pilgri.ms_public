@@ -167,7 +167,9 @@ def load_colony_snapshot(user_id: int) -> dict:
         'signal': {
             'origin_claims': [],
             'detected_sites': [],
-            'bonds': []
+            'bonds': [],
+            'pending_claim_cinematic': None,
+            'active_signal_claim_expedition': None
         },
         'chat_history': {
             'total_messages': 0,
@@ -578,6 +580,36 @@ def load_colony_snapshot(user_id: int) -> dict:
                     'shards_per_hour': 0, 'sv_per_hour': 0, 'sites_count': 0, 'per_tier': {}
                 }
 
+            # Phase 2.3b — pending signal-claim cinematic + active in-flight claim trip
+            try:
+                from utilities.postgres.expeditions import get_pending_signal_cinematic
+                pending = get_pending_signal_cinematic(user_id)
+                if pending:
+                    snapshot['signal']['pending_claim_cinematic'] = {
+                        'expedition_id': pending['id'],
+                        'destination': pending.get('destination_name'),
+                    }
+            except Exception:
+                pass
+            try:
+                cur.execute("""
+                    SELECT id, destination_name, return_arrives_at, status
+                    FROM pilgrim.expeditions
+                    WHERE user_id = %s AND expedition_type = 'signal_claim'
+                      AND status IN ('traveling', 'recalled')
+                    ORDER BY return_arrives_at ASC NULLS LAST
+                    LIMIT 1
+                """, (user_id,))
+                active_sc = cur.fetchone()
+                if active_sc:
+                    snapshot['signal']['active_signal_claim_expedition'] = {
+                        'expedition_id': active_sc['id'],
+                        'destination': active_sc['destination_name'],
+                        'returns_at': str(active_sc['return_arrives_at']) if active_sc['return_arrives_at'] else None,
+                    }
+            except Exception:
+                pass
+
             # ARIA Bonds
             cur.execute("""
                 SELECT ab.landmark_name, ab.status, ab.bonded_at,
@@ -932,6 +964,18 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
     if signal_bonus.get('sites_count', 0) > 0:
         parts.append(
             f"SIGNAL NETWORK INCOME: +{signal_bonus['shards_per_hour']:.1f} shards/hr, +{signal_bonus['sv_per_hour']:.1f} SV/hr from {signal_bonus['sites_count']} claimed Origin Site(s). This passive bonus stacks on top of building income and is included in the Base page shard_rate."
+        )
+
+    # Phase 2.3b — Two-step signal claim flow awareness
+    pending_cin = snapshot['signal'].get('pending_claim_cinematic')
+    if pending_cin:
+        parts.append(
+            f"PENDING SIGNAL CLAIM CINEMATIC: expedition {pending_cin['expedition_id']} to {pending_cin['destination']} returned but the captain hasn't seen the cinematic yet. They'll be auto-redirected to /signal-claim/{pending_cin['expedition_id']} on next page load."
+        )
+    active_sc = snapshot['signal'].get('active_signal_claim_expedition')
+    if active_sc:
+        parts.append(
+            f"ACTIVE SIGNAL CLAIM EXPEDITION: a dedicated claim trip is in flight to {active_sc['destination']} — returns {active_sc['returns_at']}. The cinematic plays on arrival. Two-step flow: detect → plan claim expedition → cinematic on return."
         )
 
     # Decoder / Eternal Ledger awareness

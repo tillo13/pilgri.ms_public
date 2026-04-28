@@ -396,6 +396,14 @@ def query_player_data(category, user_id):
                     WHERE user_id_1 = %s OR user_id_2 = %s
                 """, (user_id, user_id))
                 bonds = cur.fetchall()
+                # Phase 2.3b — pending + active signal_claim expeditions
+                cur.execute("""
+                    SELECT id, destination_name, status, return_arrives_at, cinematic_shown_at
+                    FROM pilgrim.expeditions
+                    WHERE user_id = %s AND expedition_type = 'signal_claim'
+                    ORDER BY id DESC LIMIT 5
+                """, (user_id,))
+                signal_trips = cur.fetchall()
             lines = []
             if claims:
                 lines.append(f"Origin claims ({len(claims)}):")
@@ -407,6 +415,12 @@ def query_player_data(category, user_id):
                 lines.append(f"ARIA bonds ({len(bonds)}):")
                 for b in bonds:
                     lines.append(f"  {b['landmark_name']}: {b['status']}")
+            if signal_trips:
+                lines.append(f"Signal-claim expeditions ({len(signal_trips)}, Phase 2.3b two-step flow):")
+                for t in signal_trips:
+                    cin = 'cinematic_seen' if t['cinematic_shown_at'] else 'cinematic_pending'
+                    lines.append(f"  exp#{t['id']} → {t['destination_name']}: {t['status']} ({cin})")
+            lines.append("Two-step claim flow (Phase 2.3b): detect on a normal expedition → click 'Plan Claim Expedition' on /signal or the map → dedicated signal_claim trip launches → cinematic plays on arrival → site claimed.")
             return "\n".join(lines)
 
         elif category == 'robot':

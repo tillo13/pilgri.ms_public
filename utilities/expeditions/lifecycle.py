@@ -9,7 +9,7 @@ fast-UI / background-blockchain pattern.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from utilities.expeditions.config import (
     BASE_SPEED_KM_PER_HOUR,
@@ -28,7 +28,9 @@ def launch_expedition(
     destination_lat: float,
     destination_lon: float,
     distance_km: float,
-    vehicle_type: str = 'rover'
+    vehicle_type: str = 'rover',
+    expedition_type: str = 'standard',
+    signal_site_id: Optional[int] = None
 ) -> dict:
     """
     Launch expedition - handles all business logic:
@@ -58,6 +60,35 @@ def launch_expedition(
     # Validate vehicle type
     if vehicle_type not in ('rover', 'drone', 'buggy'):
         vehicle_type = 'rover'
+
+    # Phase 2.3b: signal_claim trips must reference a real, detected, unclaimed-by-this-user site.
+    # Coords from the client are ignored — we re-source them from pilgrim.origin_sites to prevent spoofing.
+    if expedition_type == 'signal_claim':
+        if not signal_site_id:
+            return {'success': False, 'error': 'signal_claim expedition requires signal_site_id'}
+        from utilities.signal.claims import get_user_origin_site_eligibility
+        eligibility = get_user_origin_site_eligibility(user_id)
+        site = next((s for s in eligibility if s['id'] == signal_site_id), None)
+        if not site:
+            return {'success': False, 'error': 'Origin Site not found'}
+        # Detection gate: captain must be within unlock_radius_km on some past expedition path.
+        # This is the same can_claim / can_visit flag the Signal page renders.
+        if site.get('has_visited'):
+            return {'success': False, 'error': "You've already visited this site — the signal is yours."}
+        if not (site.get('can_claim') or site.get('can_visit')):
+            return {'success': False, 'error': "You haven't detected this signal yet — run a normal expedition near it first."}
+        # Allow visits too — the site can be already-claimed; visitor flow plays the same cinematic.
+        # Override destination coords/name with authoritative site row.
+        destination_name = site['site_code']
+        destination_type = 'OriginSite'
+        destination_lat = float(site['latitude'])
+        destination_lon = float(site['longitude'])
+        # Recompute distance from base for cost honesty.
+        from utilities.postgres.map import get_or_set_user_mars_home
+        from utilities.mars_math import haversine_distance
+        _home = get_or_set_user_mars_home(user_id)
+        distance_km = haversine_distance(float(_home['latitude']), float(_home['longitude']),
+                                          destination_lat, destination_lon)
 
     # Check vehicle is owned and get vehicle-specific stats
     from utilities.upgrades_utils import get_vehicle_for_expedition
@@ -245,53 +276,58 @@ def launch_expedition(
             travel_time_seconds=travel_time_seconds,
             commander_stats=commander_stats,
             vehicle_type=vehicle_type,
-            cargo_capacity=cargo_capacity
+            cargo_capacity=cargo_capacity,
+            expedition_type=expedition_type,
+            signal_site_id=signal_site_id
         )
 
-        try:
-            from utilities.discovery_utils import generate_expedition_discoveries
-            from utilities.postgres.expeditions import get_total_discovery_count
+        # signal_claim expeditions skip discovery generation entirely — they return 0 finds.
+        # The reward is the founder/visitor slot, awarded at completion via _complete_signal_claim_expedition.
+        if expedition_type != 'signal_claim':
+            try:
+                from utilities.discovery_utils import generate_expedition_discoveries
+                from utilities.postgres.expeditions import get_total_discovery_count
 
-            # Storage capacity check - counts ALL inventory (claimed + unclaimed, not analyzed)
-            storage_capacity = upgrade_effects.get('storage_capacity', 300)
-            current_total = get_total_discovery_count(user_id)
-            remaining_capacity = max(0, storage_capacity - current_total)
+                # Storage capacity check - counts ALL inventory (claimed + unclaimed, not analyzed)
+                storage_capacity = upgrade_effects.get('storage_capacity', 300)
+                current_total = get_total_discovery_count(user_id)
+                remaining_capacity = max(0, storage_capacity - current_total)
 
-            if remaining_capacity == 0:
-                logger.warning(f"⚠️ Storage full: {current_total}/{storage_capacity} discoveries. Limiting to minimum cargo.")
-                cargo_capacity = min(cargo_capacity, 3)  # Still get SOME finds
-            elif remaining_capacity < cargo_capacity:
-                logger.info(f"📦 Storage nearly full: {current_total}/{storage_capacity}. Limiting cargo to {remaining_capacity}.")
-                cargo_capacity = max(3, remaining_capacity)  # Never below 3
+                if remaining_capacity == 0:
+                    logger.warning(f"⚠️ Storage full: {current_total}/{storage_capacity} discoveries. Limiting to minimum cargo.")
+                    cargo_capacity = min(cargo_capacity, 3)  # Still get SOME finds
+                elif remaining_capacity < cargo_capacity:
+                    logger.info(f"📦 Storage nearly full: {current_total}/{storage_capacity}. Limiting cargo to {remaining_capacity}.")
+                    cargo_capacity = max(3, remaining_capacity)  # Never below 3
 
-            all_items = get_discovery_items_catalog()
-            nearby_features = get_nearest_mars_landmarks(
-                base_coords['latitude'], base_coords['longitude'], limit=20
-            )
+                all_items = get_discovery_items_catalog()
+                nearby_features = get_nearest_mars_landmarks(
+                    base_coords['latitude'], base_coords['longitude'], limit=20
+                )
 
-            discoveries = generate_expedition_discoveries(
-                expedition_id=expedition_id,
-                expedition_data={
-                    'distance_km': distance_km,
-                    'commander_stats': commander_stats,
-                    'scientist_stats': sci_stats,
-                    'base_lat': base_coords['latitude'],
-                    'base_lon': base_coords['longitude'],
-                    'destination_lat': destination_lat,
-                    'destination_lon': destination_lon,
-                    'equipment_effects': upgrade_effects or {}
-                },
-                available_items=all_items,
-                nearby_features=nearby_features,
-                travel_time_seconds=travel_time_seconds,
-                user_expedition_count=user_expedition_count,
-                cargo_capacity=cargo_capacity
-            )
+                discoveries = generate_expedition_discoveries(
+                    expedition_id=expedition_id,
+                    expedition_data={
+                        'distance_km': distance_km,
+                        'commander_stats': commander_stats,
+                        'scientist_stats': sci_stats,
+                        'base_lat': base_coords['latitude'],
+                        'base_lon': base_coords['longitude'],
+                        'destination_lat': destination_lat,
+                        'destination_lon': destination_lon,
+                        'equipment_effects': upgrade_effects or {}
+                    },
+                    available_items=all_items,
+                    nearby_features=nearby_features,
+                    travel_time_seconds=travel_time_seconds,
+                    user_expedition_count=user_expedition_count,
+                    cargo_capacity=cargo_capacity
+                )
 
-            create_expedition_discoveries(discoveries)
-            logger.info(f"✅ Created {len(discoveries)} discoveries for expedition {expedition_id}")
-        except Exception as e:
-            logger.error(f"Failed to generate discoveries: {e}")
+                create_expedition_discoveries(discoveries)
+                logger.info(f"✅ Created {len(discoveries)} discoveries for expedition {expedition_id}")
+            except Exception as e:
+                logger.error(f"Failed to generate discoveries: {e}")
 
         # Update activity timestamp for ARIA photo generation
         from utilities.postgres.users import update_user_activity
@@ -385,6 +421,10 @@ def recall_expedition(user_id: int, expedition_id: int) -> dict:
 
     if expedition['status'] != 'traveling':
         return {'success': False, 'error': 'Can only recall active expeditions'}
+
+    # Phase 2.3b: signal_claim trips can't fail (Luke: "why would it? so you can just go back and lose 5 days?").
+    if expedition.get('expedition_type') == 'signal_claim':
+        return {'success': False, 'error': 'Signal claim expeditions cannot be recalled — the cinematic awaits.'}
 
     now = datetime.now()
     arrives_at = expedition['arrives_at']
@@ -537,6 +577,13 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
             'discovery_message': f'Vehicle recalled from {expedition["destination_name"]}'
         }
 
+    # Phase 2.3b: signal_claim expeditions take a dedicated path — no random discovery roll,
+    # no SV grant via the standard formula, no trail increment, no Echo-Site spawn, no ARIA
+    # bond check. They run claim/visit at the site and stash the cinematic payload for
+    # before_request to redirect on the next page load.
+    if expedition.get('expedition_type') == 'signal_claim':
+        return _complete_signal_claim_expedition(expedition, user_id)
+
     discovery = calculate_expedition_discovery(expedition)
 
     # LOCAL DB FIRST: credit shards immediately, blockchain in background
@@ -661,6 +708,18 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     except Exception as e:
         logger.error(f"ARIA bond check failed: {e}")
 
+    # ========================================================================
+    # PHASE 2.3c: PUZZLE FRAGMENTS — roll for a Signal puzzle fragment drop.
+    # Each carries an ARIA whisper that fires the moment it's picked up.
+    # Skipped for signal_claim (their cinematic IS the discovery moment).
+    # ========================================================================
+    puzzle_fragment = None
+    try:
+        from utilities.signal.puzzle_fragments import maybe_drop_fragment
+        puzzle_fragment = maybe_drop_fragment(user_id, expedition_id)
+    except Exception as e:
+        logger.error(f"Puzzle fragment roll failed: {e}")
+
     return {
         'success': True,
         'complete': True,
@@ -668,7 +727,84 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
         'sepolia_earned': eth_to_display(discovery['sepolia_earned']),
         'discovery_message': discovery['message'],
         'signal_events': signal_events,  # Origin/Echo site discoveries
-        'aria_fragment': aria_fragment  # Entangled crystal fragment if found
+        'aria_fragment': aria_fragment,  # Entangled crystal fragment (ARIA bond)
+        'puzzle_fragment': puzzle_fragment,  # Phase 2.3c: Signal puzzle fragment + whisper
+    }
+
+
+def _complete_signal_claim_expedition(expedition: dict, user_id: int) -> dict:
+    """Phase 2.3b: complete a signal_claim expedition. NO-FAIL.
+
+    Tries to claim as Founder; if site is already claimed, falls back to a visitor
+    record. Records cinematic_payload on the expedition so the cinematic page can
+    render even hours later, and marks the expedition complete. before_request
+    will redirect the captain to /signal-claim/<id> on the next page load.
+    """
+    from utilities.postgres.expeditions import (
+        update_expedition_complete,
+        write_signal_cinematic_payload,
+    )
+    from utilities.signal.handlers import (
+        handle_origin_site_claim,
+        handle_origin_site_visit,
+    )
+
+    expedition_id = expedition['id']
+    site_id = expedition.get('signal_site_id')
+    destination = expedition.get('destination_name') or 'Unknown Site'
+
+    payload = {'site_id': site_id, 'expedition_id': expedition_id, 'tier': None, 'outcome': None}
+
+    if not site_id:
+        # Defensive: should never happen — launch validation requires signal_site_id.
+        payload['outcome'] = 'error'
+        payload['error'] = 'Signal claim expedition missing signal_site_id'
+        write_signal_cinematic_payload(expedition_id, payload)
+        update_expedition_complete(
+            expedition_id, 'signal_claim', 0.0,
+            f'Signal claim to {destination} completed (data error)'
+        )
+        return {'success': True, 'complete': True, 'discovery_type': 'signal_claim',
+                'sepolia_earned': 0, 'discovery_message': payload['error']}
+
+    # Try claim first — if the site is unclaimed, this captain becomes Founder.
+    claim_result = handle_origin_site_claim(user_id, site_id, session=None)
+
+    if claim_result.get('success'):
+        payload['outcome'] = 'founder'
+        payload['tier'] = 'legendary'
+        payload['result'] = claim_result
+    else:
+        # Already claimed (or other error) — fall back to a visit. No-fail: even if
+        # visit also returns success=False (e.g., already visited this site), we still
+        # mark the expedition complete with an "already_visited" cinematic variant.
+        visit_result = handle_origin_site_visit(user_id, site_id, session=None)
+        if visit_result.get('success'):
+            payload['outcome'] = 'visitor'
+            payload['tier'] = visit_result.get('claim_tier') or visit_result.get('tier')
+            payload['result'] = visit_result
+        else:
+            payload['outcome'] = 'already_visited'
+            payload['result'] = {'claim_error': claim_result.get('error'),
+                                 'visit_error': visit_result.get('error')}
+
+    write_signal_cinematic_payload(expedition_id, payload)
+
+    update_expedition_complete(
+        expedition_id, 'signal_claim', 0.0,
+        f'Signal claim to {destination} ({payload["outcome"]})'
+    )
+
+    logger.info(f"📡 Signal claim complete: expedition={expedition_id} user={user_id} "
+                f"site={site_id} outcome={payload['outcome']}")
+
+    return {
+        'success': True,
+        'complete': True,
+        'discovery_type': 'signal_claim',
+        'sepolia_earned': 0,
+        'discovery_message': f'Signal claim complete — cinematic awaits.',
+        'signal_claim_pending_cinematic': True,
     }
 
 
@@ -797,7 +933,9 @@ def start_expedition_from_request(user_id, data, session=None):
         destination_lat=data.get('latitude'),
         destination_lon=data.get('longitude'),
         distance_km=data.get('distance_km'),
-        vehicle_type=data.get('vehicle_type', 'rover')
+        vehicle_type=data.get('vehicle_type', 'rover'),
+        expedition_type=data.get('expedition_type', 'standard'),
+        signal_site_id=data.get('signal_site_id'),
     )
 
     # Invalidate cached balance since we spent Sepolia

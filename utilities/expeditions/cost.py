@@ -239,6 +239,7 @@ def sort_landmarks_by_cost(
     user_expeditions_completed: int,
     base_coords: dict,
     user_id: int = None,
+    upgrade_effects: dict = None,
 ) -> List[Dict]:
     """Enrich each landmark with its expedition pricing, sort cheapest-first."""
     safe_stats = {
@@ -249,8 +250,7 @@ def sort_landmarks_by_cost(
         'charisma': commander_stats.get('charisma') or 50,
     }
 
-    upgrade_effects = None
-    if user_id:
+    if upgrade_effects is None and user_id:
         try:
             from utilities.upgrades_utils import get_user_upgrade_effects
             upgrade_effects = get_user_upgrade_effects(user_id)

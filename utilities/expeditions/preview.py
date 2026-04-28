@@ -455,3 +455,120 @@ def get_expedition_cost_preview_formatted(user_id, distance_km, destination_type
         'estimated_return': est,
         'note': 'Preview pricing - actual costs calculated at launch with live network conditions'
     }
+
+
+def get_expedition_cost_preview_bulk_formatted(user_id, items):
+    """Bulk preview for N landmarks in a single user-data fetch.
+
+    items: list of {distance_km, destination_type} dicts.
+    Returns: list of per-item results matching get_expedition_cost_preview_formatted.
+
+    Avoids the N×(wallet + coords + completed_count + upgrade_effects) round trips
+    the page-load loop was doing — does each lookup once, runs cost math per item.
+    """
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet
+    from utilities.postgres.map import get_or_set_user_mars_home
+    from utilities.postgres.expeditions import get_user_completed_expeditions_count
+    from utilities.depot_utils import calculate_cached_transaction_cost, eth_to_display
+    from utilities.onboarding_utils import generate_commander_stats
+
+    if not items:
+        return {'success': True, 'results': []}
+
+    wallet = get_user_primary_sepolia_wallet(user_id)
+    if not wallet:
+        return {'success': False, 'error': 'No wallet found'}
+
+    base_coords = get_or_set_user_mars_home(user_id)
+    commander_stats = generate_commander_stats()
+    expeditions_completed = get_user_completed_expeditions_count(user_id)
+    current_balance_eth = float(wallet.get('current_balance_eth', 0) or 0)
+
+    upgrade_effects = None
+    try:
+        from utilities.upgrades_utils import get_user_upgrade_effects
+        upgrade_effects = get_user_upgrade_effects(user_id)
+    except ImportError:
+        pass
+
+    is_first_mission = expeditions_completed == 0
+    results = []
+
+    for item in items:
+        distance_km = item.get('distance_km')
+        destination_type = item.get('destination_type', 'Unknown')
+
+        if not distance_km:
+            results.append({'success': False, 'error': 'Missing distance'})
+            continue
+
+        expedition_pricing = calculate_expedition_cost(
+            distance_km=distance_km,
+            destination_type=destination_type,
+            commander_stats=commander_stats,
+            user_expeditions_completed=expeditions_completed,
+            base_coords=base_coords,
+            upgrade_effects=upgrade_effects
+        )
+
+        base_expedition_cost_eth = expedition_pricing['base_expedition_cost'] / 10000000
+        cached_pricing = calculate_cached_transaction_cost(
+            base_expedition_cost_eth,
+            user_balance_eth=current_balance_eth,
+            message_length=250
+        )
+
+        gas_cost_eth = cached_pricing['gas_cost_eth']
+        atmospheric_fee_eth = cached_pricing['atmospheric_fee_eth']
+        atmospheric_fee_multiplier = cached_pricing['conditions']['fee_multiplier']
+        total_cost_eth = cached_pricing['total_cost_eth']
+        first_mission_cap_applied = False
+
+        if is_first_mission and current_balance_eth > 0:
+            max_first_mission_cost_eth = current_balance_eth * 0.5
+            if total_cost_eth > max_first_mission_cost_eth:
+                remaining_for_base = max_first_mission_cost_eth - gas_cost_eth
+                if remaining_for_base > 0:
+                    base_expedition_cost_eth = remaining_for_base / (1 + (atmospheric_fee_multiplier - 1.0))
+                    atmospheric_fee_eth = base_expedition_cost_eth * (atmospheric_fee_multiplier - 1.0)
+                    total_cost_eth = base_expedition_cost_eth + atmospheric_fee_eth + gas_cost_eth
+                    first_mission_cap_applied = True
+                else:
+                    results.append({
+                        'success': False,
+                        'error': f'Insufficient balance. Need at least {eth_to_display(gas_cost_eth * 2)} shards to cover operations.'
+                    })
+                    continue
+
+        can_afford = current_balance_eth >= total_cost_eth
+        total_pricing = {
+            'base_cost_eth': base_expedition_cost_eth,
+            'base_cost_display': base_expedition_cost_eth * 10000000,
+            'atmospheric_fee_eth': atmospheric_fee_eth,
+            'atmospheric_fee_display': atmospheric_fee_eth * 10000000,
+            'gas_cost_eth': gas_cost_eth,
+            'gas_cost_display': gas_cost_eth * 10000000,
+            'total_cost_eth': total_cost_eth,
+            'total_cost_display': total_cost_eth * 10000000,
+            'conditions': cached_pricing['conditions'],
+            'can_afford': can_afford,
+            'current_balance_eth': current_balance_eth,
+            'current_balance_display': current_balance_eth * 10000000,
+            'shortfall_eth': max(0, total_cost_eth - current_balance_eth),
+            'shortfall_display': max(0, (total_cost_eth - current_balance_eth) * 10000000),
+            'first_mission_cap_applied': first_mission_cap_applied,
+            'is_first_mission': is_first_mission,
+        }
+        est = estimate_expedition_return(
+            total_pricing['total_cost_display'], float(distance_km), destination_type, commander_stats
+        )
+        results.append({
+            'success': True,
+            'expedition_pricing': expedition_pricing,
+            'total_pricing': total_pricing,
+            'commander_stats': commander_stats,
+            'expeditions_completed': expeditions_completed,
+            'estimated_return': est,
+        })
+
+    return {'success': True, 'results': results}

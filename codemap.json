@@ -55,6 +55,7 @@
       "start_timer — Start timing the request + reset per-request DB-call counter.",
       "check_apikey_auth — Allow ?apikey=SECRET&user_id=X to bypass OAuth (Playwright/admin testing).",
       "check_first_contact — Intercept page loads for pending ARIA bond first-contact cinematic.",
+      "check_signal_cinematic — Phase 2.3b: intercept page loads for pending signal-claim cinematic.",
       "log_request_time — Log request duration to console for performance monitoring.",
       "set_security_headers — Add security headers including HSTS to force HTTPS.",
       "inject_global_stats — Inject global user stats into all templates. Delegates to utilities.session.user_hydration.",
@@ -63,8 +64,7 @@
       "cron_only — Reject non-cron traffic. GAE adds the X-Appengine-Cron header on all cron.yaml calls.",
       "indexnow_key — Serve IndexNow verification key.",
       "sitemap",
-      "robots",
-      "atom_feed — Atom feed of changelog entries for search engine discovery."
+      "robots"
     ]
   },
   "config.py": {
@@ -1906,7 +1906,11 @@
   "utilities/postgres/expeditions.py": {
     "description": "Expedition and discovery item database operations.",
     "exports": [
+      "ensure_signal_claim_columns — Idempotently add Phase 2.3b columns to pilgrim.expeditions.",
       "create_expedition — Create expedition record with round-trip timing.",
+      "get_pending_signal_cinematic — Return the oldest completed signal_claim expedition awaiting its cinematic.",
+      "mark_signal_cinematic_shown — One-shot: mark cinematic as shown so before_request stops redirecting.",
+      "write_signal_cinematic_payload — Persist the claim/visit result so the cinematic page can render it.",
       "get_user_active_expeditions — Get active expeditions for user with destination link from mars_mappings.",
       "get_expedition_by_id — Get expedition by ID",
       "update_expedition_complete — Mark expedition as complete",
@@ -1916,11 +1920,7 @@
       "get_last_completed_buggy_expedition — Get most recent completed buggy expedition with aggregated discovery stats.",
       "get_user_expedition_history — Get expedition history with discoveries for user.",
       "get_expedition_discovery_items — Get all discovery items for a specific expedition with item details.",
-      "record_landmark_discovery — Record landmark discovery",
-      "get_user_discovered_landmarks — Get all landmarks user has discovered. Memoized per-request.",
-      "get_discovery_items_catalog — Get all active discovery items WITH MISSION DATA",
-      "create_expedition_discoveries — Bulk insert expedition discoveries",
-      "get_expedition_discoveries — Get discoveries for expedition"
+      "record_landmark_discovery — Record landmark discovery"
     ]
   },
   "utilities/postgres/map.py": {
@@ -2135,7 +2135,8 @@
       "get_expedition_cost_preview — Calculate full expedition cost preview including gas and atmospheric fees.",
       "get_expedition_preview — Comprehensive pre-launch preview for the expedition modal.",
       "estimate_expedition_return — Pre-launch estimate of shard return range (display units). Same formula as calculate_expedition_discovery minus luck.",
-      "get_expedition_cost_preview_formatted — Get expedition cost preview with UI formatting."
+      "get_expedition_cost_preview_formatted — Get expedition cost preview with UI formatting.",
+      "get_expedition_cost_preview_bulk_formatted — Bulk preview for N landmarks in a single user-data fetch."
     ],
     "keywords": "get_expedition_cost_preview, get_expedition_cost_preview_formatted, charisma/logistics/experience discounts"
   },
@@ -2252,6 +2253,16 @@
     "exports": [
       "get_aria_relationship_tier — Calculate relationship tier based on account age, activity, and chat history.",
       "get_spatial_hints — Calculate nearby interesting things for ARIA to hint about mysteriously."
+    ]
+  },
+  "utilities/aria/signal_cinematic.py": {
+    "description": "Signal-claim cinematic data — Phase 2.3b.",
+    "exports": [
+      "check_pending_signal_cinematic — Before-request hook logic: returns True if caller should redirect to /signal-claim/<id>.",
+      "get_pending_redirect_id — Helper for the redirect handler — returns the expedition_id to redirect to, or None.",
+      "build_signal_cinematic_render_data — Render data for /signal-claim/<expedition_id>. Marks one-shot.",
+      "build_signal_cinematic_replay_render_data — Replay variant — no DB writes, no session mutation.",
+      "build_admin_preview_render_data — Admin preview — synthesize a payload from any signal_claim expedition, or fall back"
     ]
   },
   "utilities/aria/signal_hints.py": {
@@ -2554,6 +2565,15 @@
     ],
     "keywords": "handle_origin_site_claim, handle_origin_site_visit, commander name lookup"
   },
+  "utilities/signal/puzzle_fragments.py": {
+    "description": "Phase 2.3c: Puzzle fragments + ARIA whispers.",
+    "exports": [
+      "ensure_puzzle_fragment_tables — Idempotent migration: tables + catalog seeding.",
+      "maybe_drop_fragment — Roll for a puzzle-fragment drop. Returns the fragment dict or None.",
+      "get_user_fragments — Return collected + uncollected fragments for /signal page rendering.",
+      "mark_whisper_seen — Mark the ARIA whisper as seen so it doesn't replay on /signal."
+    ]
+  },
   "utilities/signal/rewards.py": {
     "description": "Legendary item + visitor reward image generation (Flux).",
     "exports": [
@@ -2711,6 +2731,12 @@
   },
   "static/css/pilgrimbot.css": {
     "description": "PilgrimBot — Codebase Q&A chat interface"
+  },
+  "static/css/signal-claim-cinematic.css": {
+    "description": "Signal Claim Cinematic — Phase 2.3b"
+  },
+  "static/css/signal-fragments.css": {
+    "description": "Phase 2.3c: Puzzle fragment grid + locked silhouettes for /signal page."
   },
   "static/css/signal.css": {
     "description": "Signal page styles — decoder terminal, solver list, origin site cards"
@@ -3093,7 +3119,10 @@
       "confirmOriginClaim",
       "await",
       "claimOriginSite",
-      "showOriginClaimModal"
+      "previewAndLaunchSignalClaim",
+      "totalCost",
+      "days",
+      "balance"
     ]
   },
   "static/js/expeditions-page.js": {
@@ -3120,6 +3149,7 @@
       "checkExpeditionCompletion",
       "showAriaFragmentDiscovery",
       "claimAllExpeditionDiscoveries",
+      "showPuzzleFragmentWhisper",
       "showExpeditionCostHelp",
       "showExpeditionRewardsSummary",
       "closeExpeditionRewardsModal",
@@ -3161,9 +3191,9 @@
       "slotsAvailable",
       "fetchLandmarkCost",
       "updateAllExpeditionCosts",
-      "updateExpeditionCost",
       "updateCostDisplay",
-      "discount"
+      "discount",
+      "initializeSolarConditions"
     ],
     "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
   },
@@ -3224,9 +3254,23 @@
       "resetStreamTimeout"
     ]
   },
+  "static/js/signal-claim-cinematic.js": {
+    "description": "Signal Claim Cinematic — Phase 2.3b",
+    "exports": [
+      "delay",
+      "skipCinematic",
+      "showScreen",
+      "runCinematic"
+    ]
+  },
   "static/js/signal.js": {
     "description": "Signal Page - Decoder Terminal & Solvers",
     "exports": [
+      "showFragmentWhisper",
+      "pending",
+      "totalCost",
+      "days",
+      "balance",
       "decodedLines",
       "loadSolvers",
       "showLegendaryModal"
@@ -3241,7 +3285,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3319,11 +3363,19 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
-    "description": "Page: The Signal - Pilgrims"
+    "description": "Page: The Signal - Pilgrims",
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
+  },
+  "templates/signal_claim_cinematic.html": {
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
   },
   "templates/brainstorm/aria_meetings.html": {
     "description": "Page: ARIA Meetings & Outcomes — Brainstorm"

@@ -15,10 +15,14 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/css/signal.css?v={{ static_v }}">
+<link rel="stylesheet" href="/static/css/signal-fragments.css?v={{ static_v }}">
 <script>document.addEventListener('DOMContentLoaded', function(){ document.body.classList.add('page-signal'); });</script>
 {% endblock %}
 
 {% block extra_js %}
+<script type="application/json" id="signalPageData">
+{ "pendingWhispers": {{ (pending_whispers or []) | tojson }} }
+</script>
 <script src="/static/js/signal.js?v={{ static_v }}" defer></script>
 {% endblock %}
 
@@ -124,7 +128,10 @@
                     </div>
                     {% endif %}
                     {% if card.can_claim %}
-                    <div class="signal-claim-hint">◆ Within claim range — visit this site to become its Founder.</div>
+                    <div class="signal-claim-hint">◆ Within claim range — send a dedicated expedition to become its Founder.</div>
+                    <button class="btn btn-primary signal-claim-cta" data-site-id="{{ site.id }}" data-site-code="{{ site.site_code }}">
+                        Plan Claim Expedition
+                    </button>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -195,7 +202,10 @@
                         {% if user_card.has_visited %}
                         <span class="your-visit-badge">◆ You've visited this node</span>
                         {% elif user_card.can_visit %}
-                        <span class="signal-claim-hint">◆ Within range — visit to join the visitor ledger.</span>
+                        <span class="signal-claim-hint">◆ Within range — send a dedicated expedition to join the visitor ledger.</span>
+                        <button class="btn btn-secondary signal-claim-cta" data-site-id="{{ site.id }}" data-site-code="{{ site.site_code }}">
+                            Plan Pilgrimage
+                        </button>
                         {% elif user_card.fuzzy_km is not none %}
                         <span class="fuzzy-arrow">{{ user_card.arrow }} {{ user_card.cardinal }}</span>
                         <span class="fuzzy-km">~{{ user_card.fuzzy_km }} km from your closest expedition</span>
@@ -228,6 +238,56 @@
         {% if not claimed_origins and not unclaimed_origins %}
         <div class="signal-empty">
             <p>[NO SIGNAL DETECTED]</p>
+        </div>
+        {% endif %}
+    </div>
+</details>
+
+<!-- Phase 2.3c: Puzzle Fragments — Collectibles with ARIA Whispers -->
+<details class="signal-section" {% if puzzle_fragments and puzzle_fragments.collected_count > 0 %}open{% endif %}>
+    <summary class="signal-summary">
+        <span class="signal-icon">&#x2756;</span>
+        <span class="signal-section-title">Puzzle Fragments</span>
+        <span class="signal-section-subtitle">{{ puzzle_fragments.collected_count if puzzle_fragments else 0 }} / {{ puzzle_fragments.total if puzzle_fragments else 14 }} collected</span>
+    </summary>
+    <div class="signal-content">
+        <p class="signal-intro aria-voice">
+            <em>"Captain... not everything you find on these expeditions belongs to Mars.
+            Some of these fragments are older than the planet you're standing on. Hold them close —
+            each one tells me something I didn't know before."</em>
+        </p>
+
+        {% if puzzle_fragments and puzzle_fragments.collected %}
+        <h4 class="signal-h4 text-sepolia mt-16">Collected ({{ puzzle_fragments.collected_count }})</h4>
+        <div class="signal-fragment-grid">
+            {% for f in puzzle_fragments.collected %}
+            <div class="signal-fragment fragment-{{ f.rarity }}" data-fragment-id="{{ f.id }}"
+                 data-whisper="{{ f.whisper_text }}" data-name="{{ f.name }}"
+                 data-description="{{ f.description }}">
+                <div class="signal-fragment-code">{{ f.fragment_code }}</div>
+                <div class="signal-fragment-name">{{ f.name }}</div>
+                <div class="signal-fragment-rarity">{{ f.rarity|upper }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if puzzle_fragments and puzzle_fragments.locked %}
+        <h4 class="signal-h4 text-muted mt-16">Awaiting Discovery ({{ puzzle_fragments.locked|length }})</h4>
+        <div class="signal-fragment-grid">
+            {% for f in puzzle_fragments.locked %}
+            <div class="signal-fragment fragment-locked">
+                <div class="signal-fragment-code">???</div>
+                <div class="signal-fragment-name signal-fragment-locked-name">Hidden in the dust</div>
+                <div class="signal-fragment-rarity">{{ f.rarity|upper }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if not puzzle_fragments or puzzle_fragments.total == 0 %}
+        <div class="signal-empty">
+            <p><em>"Nothing yet. Run more expeditions — they're out there."</em></p>
         </div>
         {% endif %}
     </div>

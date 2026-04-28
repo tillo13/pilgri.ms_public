@@ -48,7 +48,7 @@ from utilities.expeditions.lifecycle import (
 )
 from utilities.expeditions.page_data import get_expeditions_page_data
 from utilities.expeditions.preview import (
-    get_expedition_cost_preview_formatted, get_expedition_preview,
+    get_expedition_cost_preview_formatted, get_expedition_cost_preview_bulk_formatted, get_expedition_preview,
 )
 from utilities.expeditions.trails import handle_trail_build_request, get_trail_consumables_data
 from utilities.discovery_utils import shard_all_discoveries
@@ -143,6 +143,15 @@ def check_first_contact():
     from utilities.aria.first_contact import check_pending_first_contact
     if check_pending_first_contact(request.path, request.method, auth.is_authenticated(), session):
         return redirect('/aria-first-contact')
+
+@app.before_request
+def check_signal_cinematic():
+    """Phase 2.3b: intercept page loads for pending signal-claim cinematic."""
+    from utilities.aria.signal_cinematic import check_pending_signal_cinematic, get_pending_redirect_id
+    if check_pending_signal_cinematic(request.path, request.method, auth.is_authenticated(), session):
+        exp_id = get_pending_redirect_id(session.get('user_id'))
+        if exp_id:
+            return redirect(f'/signal-claim/{exp_id}')
 
 @app.after_request
 def log_request_time(response):
@@ -1038,11 +1047,90 @@ def api_expeditions_calculate_cost():
     data = request.get_json()
     return jsonify(get_expedition_cost_preview_formatted(g.user_id, data.get('distance_km'), data.get('destination_type', 'Unknown')))
 
+@app.route('/api/expeditions/calculate_costs_bulk', methods=['POST'])
+@login_required
+def api_expeditions_calculate_costs_bulk():
+    """Bulk cost preview — one round trip for the whole expedition card list."""
+    data = request.get_json() or {}
+    return jsonify(get_expedition_cost_preview_bulk_formatted(g.user_id, data.get('items') or []))
+
 @app.route('/api/expeditions/start', methods=['POST'])
 @login_required
 def api_expeditions_start():
     """Start expedition"""
     return jsonify(start_expedition_from_request(g.user_id, request.get_json(), session))
+
+
+@app.route('/api/expeditions/launch_signal_claim', methods=['POST'])
+@login_required
+@handle_api_error
+def api_launch_signal_claim():
+    """Phase 2.3b: launch a dedicated signal_claim expedition to an Origin Site.
+
+    Body: {site_id: int, vehicle_type: str}
+    Server resolves coords/name from pilgrim.origin_sites — client coords are ignored.
+    """
+    data = request.get_json() or {}
+    payload = {
+        'destination_name': '',  # filled by launch_expedition from site row
+        'destination_type': 'OriginSite',
+        'latitude': 0,
+        'longitude': 0,
+        'distance_km': 1,  # placeholder; recomputed in launch_expedition
+        'vehicle_type': data.get('vehicle_type', 'rover'),
+        'expedition_type': 'signal_claim',
+        'signal_site_id': data.get('site_id'),
+    }
+    return jsonify(start_expedition_from_request(g.user_id, payload, session))
+
+
+@app.route('/api/expeditions/preview_signal_claim', methods=['POST'])
+@login_required
+@handle_api_error
+def api_preview_signal_claim():
+    """Phase 2.3b: cost + travel-time preview for a signal_claim expedition.
+
+    Reuses the standard cost engine — signal_claim trips are full-priced
+    standard expeditions per Luke's brainstorm decision. Resolves site coords
+    server-side so the captain can see exactly what they're committing to
+    before they click Launch.
+    """
+    data = request.get_json() or {}
+    site_id = data.get('site_id')
+    vehicle_type = data.get('vehicle_type', 'rover')
+    if not site_id:
+        return jsonify({'success': False, 'error': 'Missing site_id'})
+
+    from utilities.signal.claims import get_user_origin_site_eligibility
+    from utilities.postgres.map import get_or_set_user_mars_home
+    from utilities.mars_math import haversine_distance
+    from utilities.expeditions.preview import get_expedition_cost_preview_formatted
+
+    eligibility = get_user_origin_site_eligibility(g.user_id)
+    site = next((s for s in eligibility if s['id'] == site_id), None)
+    if not site:
+        return jsonify({'success': False, 'error': 'Origin Site not found'})
+    if site.get('has_visited'):
+        return jsonify({'success': False, 'error': "You've already visited this site."})
+    if not (site.get('can_claim') or site.get('can_visit')):
+        return jsonify({'success': False, 'error': "You haven't detected this signal yet."})
+
+    home = get_or_set_user_mars_home(g.user_id)
+    distance_km = haversine_distance(
+        float(home['latitude']), float(home['longitude']),
+        float(site['latitude']), float(site['longitude'])
+    )
+    preview = get_expedition_cost_preview_formatted(g.user_id, distance_km, 'OriginSite')
+    if not preview.get('success'):
+        return jsonify(preview)
+    preview['site'] = {
+        'id': site['id'],
+        'site_code': site['site_code'],
+        'mission_name': site.get('mission_name'),
+        'distance_km': round(distance_km, 1),
+        'outcome_label': 'Founder' if site.get('can_claim') else 'Visitor',
+    }
+    return jsonify(preview)
 
 @app.route('/api/expedition/preview', methods=['POST'])
 @login_required
@@ -1384,6 +1472,24 @@ def api_get_legendary_item(site_id):
     """Get legendary item status for an Origin Site (poll endpoint)."""
     from utilities.signal.rewards import get_legendary_item_payload
     return jsonify(get_legendary_item_payload(site_id))
+
+
+@app.route('/api/signal/puzzle_fragments', methods=['GET'])
+@login_required
+@handle_api_error
+def api_user_puzzle_fragments():
+    """Phase 2.3c: list collected + locked puzzle fragments for the captain."""
+    from utilities.signal.puzzle_fragments import get_user_fragments
+    return jsonify({'success': True, **get_user_fragments(g.user_id)})
+
+
+@app.route('/api/signal/puzzle_fragments/<int:fragment_id>/whisper_seen', methods=['POST'])
+@login_required
+@handle_api_error
+def api_puzzle_whisper_seen(fragment_id):
+    """Phase 2.3c: mark an ARIA whisper as seen so it stops popping on /signal."""
+    from utilities.signal.puzzle_fragments import mark_whisper_seen
+    return jsonify({'success': mark_whisper_seen(g.user_id, fragment_id)})
 
 
 @app.route('/api/signal/user/claims', methods=['GET'])
@@ -1767,6 +1873,47 @@ def api_aria_bond_complete():
     from utilities.aria.first_contact import complete_bond_from_cinematic
     data = request.get_json() or {}
     return jsonify(complete_bond_from_cinematic(session.get('user_id'), data.get('bond_id'), session))
+
+
+########################################################################
+# SIGNAL CLAIM CINEMATIC — Phase 2.3b
+########################################################################
+
+@app.route('/signal-claim/<int:expedition_id>')
+def signal_claim_cinematic(expedition_id):
+    """Full-screen cinematic for a completed signal_claim expedition. One-shot per expedition."""
+    if not auth.is_authenticated():
+        return redirect(url_for('home'))
+    from utilities.aria.signal_cinematic import build_signal_cinematic_render_data
+    payload, redirect_to = build_signal_cinematic_render_data(session.get('user_id'), expedition_id, session)
+    if redirect_to:
+        return redirect(url_for(redirect_to))
+    return render_template('signal_claim_cinematic.html', static_v=STATIC_V, **payload)
+
+
+@app.route('/signal-claim/<int:expedition_id>/replay')
+def signal_claim_cinematic_replay(expedition_id):
+    """Replay variant — no DB writes, no one-shot mutation."""
+    if not auth.is_authenticated():
+        return redirect(url_for('home'))
+    from utilities.aria.signal_cinematic import build_signal_cinematic_replay_render_data
+    payload, redirect_to = build_signal_cinematic_replay_render_data(session.get('user_id'), expedition_id)
+    if redirect_to:
+        return redirect(url_for(redirect_to))
+    return render_template('signal_claim_cinematic.html', static_v=STATIC_V, **payload)
+
+
+@app.route('/admin/preview-signal-claim')
+def admin_preview_signal_claim():
+    """Admin preview — synthesize a payload (founder outcome) without firing a real claim."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return redirect(url_for('home'))
+    from utilities.aria.signal_cinematic import build_admin_preview_render_data
+    payload, err = build_admin_preview_render_data()
+    if err:
+        return err, 404
+    return render_template('signal_claim_cinematic.html', static_v=STATIC_V, **payload)
 
 
 @app.route('/admin')

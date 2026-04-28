@@ -61,7 +61,14 @@ def get_expeditions_page_data(user_id: int) -> dict:
                 total_balance, _, _ = get_fast_balance_and_wallet_info(user_id)
     expeditions_completed = get_user_completed_expeditions_count(user_id)
 
-    landmarks = sort_landmarks_by_cost(landmarks, commander_stats, expeditions_completed, home_coords, user_id=user_id)
+    # Fetch upgrade effects ONCE — reused by sort_landmarks_by_cost, scanner range, and vehicle enrichment
+    try:
+        from utilities.upgrades_utils import get_user_upgrade_effects
+        upgrade_effects = get_user_upgrade_effects(user_id)
+    except Exception:
+        upgrade_effects = {}
+
+    landmarks = sort_landmarks_by_cost(landmarks, commander_stats, expeditions_completed, home_coords, user_id=user_id, upgrade_effects=upgrade_effects)
 
     # Fetch all user trails for map visualization
     from utilities.postgres.trails import get_user_trails
@@ -117,11 +124,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
     discovery_count = len(discovered_landmarks) if discovered_landmarks else 0
     fog_radius = min(1000, 300 + discovery_count * 50)
     range_mult = fog_radius / 300.0
-    try:
-        from utilities.upgrades_utils import get_user_upgrade_effects
-        scanner_range_mult = get_user_upgrade_effects(user_id).get('vehicle_range_mult', 1.0)
-    except Exception:
-        scanner_range_mult = 1.0
+    scanner_range_mult = upgrade_effects.get('vehicle_range_mult', 1.0)
 
     # Determine which vehicle types are currently on active expeditions
     active_vehicle_types = {e.get('vehicle_type', 'rover') for e in active_expeditions

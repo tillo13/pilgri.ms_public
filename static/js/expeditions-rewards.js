@@ -16,6 +16,11 @@ async function checkExpeditionCompletion(w) {
                 setTimeout(() => showAriaFragmentDiscovery(data.aria_fragment), 1500);
             }
 
+            // Phase 2.3c: Puzzle fragment + ARIA whisper.
+            if (data.puzzle_fragment) {
+                setTimeout(() => showPuzzleFragmentWhisper(data.puzzle_fragment), data.aria_fragment ? 4500 : 1500);
+            }
+
             setTimeout(() => {
                 fetch(`/api/expeditions/discoveries/${id}`)
                     .then(r => r.json())
@@ -102,6 +107,35 @@ window.onbeforeunload = () => {
     expeditionTimers.forEach(t => clearInterval(t));
     discoveryUpdateTimers.forEach(t => clearInterval(t));
 };
+
+// Phase 2.3c: Puzzle fragment whisper modal — fires when an expedition completes
+// and the lifecycle helper rolled a fragment drop. Acks the whisper on close.
+function showPuzzleFragmentWhisper(fragment) {
+    if (typeof MarsModal === 'undefined') return;
+    MarsModal.show({
+        title: fragment.name || 'A Fragment Found',
+        subtitle: '<span style="color:#a855f7">ARIA whispers...</span>',
+        icon: '🧩',
+        width: 'md',
+        body: `
+            ${fragment.description ? `<div class="mm-card-accent" style="text-align:center; font-style:italic; color:var(--text-secondary);">${fragment.description}</div>` : ''}
+            <div class="mm-aria" style="font-size:15px; line-height:1.55;">"${fragment.whisper_text}"</div>
+            <div class="mm-card" style="text-align:center;">
+                <span style="font-size:11px; color:var(--text-muted);">Find more on <a href="/signal" style="color:var(--color-sepolia); font-weight:600;">The Signal</a> page.</span>
+            </div>
+        `,
+        footer: `<button class="btn btn-primary mm-btn-full" id="puzzle-frag-ack">I'll Hold Onto It</button>`,
+        onClose: () => {
+            if (fragment.fragment_id) {
+                apiPost(`/api/signal/puzzle_fragments/${fragment.fragment_id}/whisper_seen`, {}).catch(() => {});
+            }
+        }
+    });
+    setTimeout(() => {
+        const btn = document.getElementById('puzzle-frag-ack');
+        if (btn) btn.addEventListener('click', () => MarsModal.hide());
+    }, 50);
+}
 
 // Expedition Cost Details Modal - explains each cost component
 function showExpeditionCostHelp() {

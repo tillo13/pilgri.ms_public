@@ -151,9 +151,10 @@ def handle_origin_site_claim(user_id: int, site_id: int, session) -> Dict:
         'message': 'Your legendary artifact is being forged...'
     }
 
-    session.pop('_bal', None)
-    session.pop('_org', None)
-    session.modified = True
+    if session is not None:
+        session.pop('_bal', None)
+        session.pop('_org', None)
+        session.modified = True
 
     return result
 
@@ -268,7 +269,8 @@ def handle_origin_site_visit(user_id: int, site_id: int, session) -> Dict:
 
         threading.Thread(target=do_visitor_flux_generation).start()
 
-    session.pop('_org', None)
-    session.modified = True
+    if session is not None:
+        session.pop('_org', None)
+        session.modified = True
 
     return result

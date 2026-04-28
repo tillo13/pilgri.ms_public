@@ -1,6 +1,161 @@
 /* Signal Page - Decoder Terminal & Solvers */
 
+// ── Phase 2.3c: Puzzle fragment ARIA whisper modal ──
+function showFragmentWhisper(fragmentId, name, whisperText, description, isAcknowledge) {
+    if (typeof MarsModal === 'undefined') {
+        alert((name ? name + '\n' : '') + whisperText);
+        return;
+    }
+    MarsModal.show({
+        title: name || 'A Fragment Found',
+        subtitle: '<span style="color:#a855f7">ARIA whispers...</span>',
+        icon: '🧩',
+        width: 'md',
+        body: `
+            ${description ? `<div class="mm-card-accent" style="text-align:center; font-style:italic; color:var(--text-secondary);">${description}</div>` : ''}
+            <div class="mm-aria" style="font-size:15px; line-height:1.55;">"${whisperText}"</div>
+        `,
+        footer: `<button class="btn btn-primary mm-btn-full" id="fragment-ack-btn">I'll Hold Onto It</button>`,
+        onClose: () => {
+            if (isAcknowledge && fragmentId) {
+                apiPost(`/api/signal/puzzle_fragments/${fragmentId}/whisper_seen`, {}).catch(() => {});
+            }
+        }
+    });
+    setTimeout(() => {
+        const btn = document.getElementById('fragment-ack-btn');
+        if (btn) btn.addEventListener('click', () => MarsModal.hide());
+    }, 50);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Phase 2.3c: surface any pending ARIA whispers (fragments dropped on past
+    // expeditions that the captain hasn't acknowledged yet). Plays one at a time
+    // — modal close fires the ack, page reload would re-pull only unseen ones.
+    const pageDataEl = document.getElementById('signalPageData');
+    if (pageDataEl) {
+        try {
+            const sigData = JSON.parse(pageDataEl.textContent);
+            const pending = (sigData.pendingWhispers || []).slice(0, 1);  // Surface oldest unseen.
+            if (pending.length) {
+                const w = pending[0];
+                setTimeout(() => showFragmentWhisper(w.id, w.name, w.whisper_text, null, true), 800);
+            }
+        } catch (e) { console.warn('signalPageData parse failed', e); }
+    }
+
+    // Click any collected fragment card to replay its whisper.
+    document.querySelectorAll('.signal-fragment[data-whisper]').forEach(function(card) {
+        card.addEventListener('click', function() {
+            const fid = parseInt(card.dataset.fragmentId);
+            showFragmentWhisper(fid, card.dataset.name, card.dataset.whisper, card.dataset.description, false);
+        });
+    });
+
+
+    // ── Phase 2.3b: "Plan Claim Expedition" / "Plan Pilgrimage" CTAs on Origin Site cards ──
+    document.querySelectorAll('.signal-claim-cta').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            const siteId = parseInt(btn.dataset.siteId);
+            const siteCode = btn.dataset.siteCode;
+            if (!siteId) return;
+            const originalLabel = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Calculating…';
+            try {
+                const preview = await apiPost('/api/expeditions/preview_signal_claim', {
+                    site_id: siteId, vehicle_type: 'rover'
+                });
+                btn.disabled = false;
+                btn.textContent = originalLabel;
+                if (!preview.success) {
+                    showToast(preview.error || 'Could not preview expedition', 'error');
+                    return;
+                }
+                showSignalClaimConfirm(preview);
+            } catch (e) {
+                console.error('Preview failed:', e);
+                showToast('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = originalLabel;
+            }
+        });
+    });
+
+    // Confirm modal — shows cost + travel before committing
+    window.showSignalClaimConfirm = function(preview) {
+        const tp = preview.total_pricing || {};
+        const ep = preview.expedition_pricing || {};
+        const site = preview.site || {};
+        const totalCost = (tp.total_cost_display || 0).toFixed(1);
+        const days = (ep.round_trip_days || ep.travel_days * 2 || 0).toFixed(1);
+        const balance = (tp.current_balance_display || 0).toFixed(1);
+        const canAfford = !!tp.can_afford;
+        const outcomeLabel = site.outcome_label || 'Visitor';
+        const outcomeColor = outcomeLabel === 'Founder' ? 'var(--color-sepolia)' : '#a855f7';
+        if (typeof MarsModal === 'undefined') {
+            // Fallback if core MarsModal isn't loaded yet
+            if (confirm(`${site.site_code}: ${totalCost} shards, ${days} days round-trip. Launch?`)) {
+                _doLaunchSignalClaim(site.id, site.site_code);
+            }
+            return;
+        }
+        MarsModal.show({
+            title: site.mission_name || site.site_code,
+            subtitle: `<span style="color:${outcomeColor}">If you arrive: ${outcomeLabel}</span>`,
+            icon: '📡',
+            width: 'md',
+            body: `
+                <div class="mm-card-accent" style="text-align:center;">
+                    <div class="mm-section-label">Distance from Base</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${site.distance_km} km</div>
+                </div>
+                <div class="mm-card-accent" style="text-align:center;">
+                    <div class="mm-section-label">Round-trip travel</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${days} days</div>
+                </div>
+                <div class="mm-card${canAfford ? '' : '-mars'}" style="text-align:center;">
+                    <div class="mm-section-label">Total cost</div>
+                    <div style="font-size:22px; font-weight:700; color:${canAfford ? 'var(--color-sepolia)' : '#ef4444'};">${totalCost} shards</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Your balance: ${balance} shards</div>
+                </div>
+                <div class="mm-aria">💫 "Standard expedition. No discoveries — but the moment of arrival is what we go for. Cinematic plays when the rover returns."</div>
+            `,
+            footer: canAfford
+                ? `<button id="sc-launch-btn" class="btn btn-primary mm-btn-full" onclick="_doLaunchSignalClaim(${site.id}, '${(site.site_code || '').replace(/'/g, "\\'")}')">Launch Expedition</button>
+                   <button class="btn btn-secondary" style="flex:1;" onclick="MarsModal.hide()">Not Yet</button>`
+                : `<button class="btn btn-secondary mm-btn-full" onclick="MarsModal.hide()">Insufficient Shards</button>`
+        });
+    };
+
+    window._doLaunchSignalClaim = async function(siteId, siteCode) {
+        const launchBtn = document.getElementById('sc-launch-btn');
+        if (launchBtn) { launchBtn.disabled = true; launchBtn.innerHTML = '⏳ Plotting course…'; }
+        try {
+            const data = await apiPost('/api/expeditions/launch_signal_claim', {
+                site_id: siteId, vehicle_type: 'rover'
+            });
+            if (data.success) {
+                const days = data.travel_time_seconds ? (data.travel_time_seconds * 2 / 86400).toFixed(1) : '?';
+                MarsModal.update({
+                    body: `<div class="mm-card-accent" style="text-align:center;">
+                               <div class="mm-section-label">Course Plotted</div>
+                               <div style="font-size:22px; font-weight:700; color:var(--text-primary);">${siteCode}</div>
+                               <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Round-trip: ${days} days · Return for the cinematic.</div>
+                           </div>`,
+                    footer: `<a href="/expeditions" class="btn btn-primary mm-btn-full">View on Expeditions Page</a>`
+                });
+            } else {
+                showToast(data.error || 'Could not launch expedition', 'error');
+                if (launchBtn) { launchBtn.disabled = false; launchBtn.innerHTML = 'Launch Expedition'; }
+            }
+        } catch (e) {
+            console.error('Launch failed:', e);
+            showToast('Network error.', 'error');
+            if (launchBtn) { launchBtn.disabled = false; launchBtn.innerHTML = 'Launch Expedition'; }
+        }
+    };
+
     const input = document.getElementById('decoderInput');
     const submit = document.getElementById('decoderSubmit');
     const status = document.getElementById('decoderStatus');

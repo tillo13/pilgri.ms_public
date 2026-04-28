@@ -333,18 +333,10 @@ async function attemptOriginVisit(siteId) {
     }
 
     try {
-        const data = await apiPost(`/api/signal/origin/visit/${siteId}`);
-
-        if (data.success) {
-            map.closePopup();
-            showOriginVisitSuccess(data);
-        } else {
-            showToast(data.error || 'Visit failed', 'error');
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'Make Pilgrimage';
-            }
-        }
+        // Phase 2.3b: visits also go through the two-step preview + launch.
+        await previewAndLaunchSignalClaim(siteId);
+        if (btn) { btn.disabled = false; btn.textContent = 'Make Pilgrimage'; }
+        return;
     } catch (err) {
         console.error('Visit error:', err);
         showToast('Connection error. Try again.', 'error');
@@ -393,7 +385,7 @@ function showOriginClaimConfirm() {
 
     MarsModal.show({
         title: 'You Found Something Ancient',
-        subtitle: '<span style="color:var(--color-sepolia)">This changes everything.</span>',
+        subtitle: '<span style="color:var(--color-sepolia)">Time to plan the journey.</span>',
         icon: '🔮',
         width: 'lg',
         body: `
@@ -403,19 +395,19 @@ function showOriginClaimConfirm() {
                 <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">The exact location where Earth first touched Mars</div>
             </div>
             <div class="mm-card-mars" style="text-align:center;">
-                <div class="mm-section-label" style="color:#a855f7;">You Will Receive</div>
+                <div class="mm-section-label" style="color:#a855f7;">If You Are First</div>
                 <div style="font-size:18px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">${site.legendary_item_name || 'Origin Fragment'}</div>
                 <div style="font-size:12px; color:var(--text-secondary); line-height:1.5;">
                     A one-of-a-kind artifact. Your name will be permanently etched into it.
                     No one else can ever claim this. <strong>Only 14 exist.</strong>
                 </div>
             </div>
-            <div class="mm-aria">💫 "Captain... you're about to become the <strong style="color:var(--color-sepolia);">first</strong> to claim this site. Ever.
-                Others may visit after you. But history will remember only one name: yours.
-                After you claim this, visit <a href="/signal" style="color:var(--color-sepolia); font-weight:600;">The Signal</a> to understand what you now possess."</div>
-            <div style="text-align:center; font-size:11px; color:var(--text-muted);">This action cannot be undone. You will become the permanent Founder.</div>
+            <div class="mm-aria">💫 "Captain... I can hear the signal clearly now. But you can't claim it from here.
+                Send a dedicated expedition to its exact coordinates — I'll narrate the approach when you arrive.
+                The discovery moment is something we walk into, not something we click."</div>
+            <div style="text-align:center; font-size:11px; color:var(--text-muted);">This launches a standard expedition. Cinematic plays on arrival.</div>
         `,
-        footer: `<button id="origin-confirm-btn" class="btn btn-primary mm-btn-full" onclick="confirmOriginClaim(${site.id})">Claim as Founder</button>
+        footer: `<button id="origin-confirm-btn" class="btn btn-primary mm-btn-full" onclick="confirmOriginClaim(${site.id})">Plan Claim Expedition</button>
                  <button class="btn btn-secondary" style="flex:1;" onclick="MarsModal.hide()">Not Yet</button>`
     });
 }
@@ -428,7 +420,7 @@ async function confirmOriginClaim(siteId) {
     const btn = document.getElementById('origin-confirm-btn');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '⏳ Claiming...';
+        btn.innerHTML = '⏳ Plotting course...';
     }
 
     // Call the actual claim function
@@ -439,41 +431,114 @@ async function confirmOriginClaim(siteId) {
 }
 
 async function claimOriginSite(siteId) {
+    // Phase 2.3b: claim no longer fires instantly — preview cost first, then launch.
+    return previewAndLaunchSignalClaim(siteId);
+}
+
+async function previewAndLaunchSignalClaim(siteId) {
     try {
-        // Show loading state
+        const preview = await apiPost('/api/expeditions/preview_signal_claim', {
+            site_id: siteId, vehicle_type: 'rover'
+        });
+        if (!preview.success) {
+            showToast(preview.error || 'Could not preview expedition', 'error');
+            return;
+        }
+        const tp = preview.total_pricing || {}, ep = preview.expedition_pricing || {}, site = preview.site || {};
+        const totalCost = (tp.total_cost_display || 0).toFixed(1);
+        const days = (ep.round_trip_days || ep.travel_days * 2 || 0).toFixed(1);
+        const balance = (tp.current_balance_display || 0).toFixed(1);
+        const canAfford = !!tp.can_afford;
+        const outcomeLabel = site.outcome_label || 'Visitor';
+        const outcomeColor = outcomeLabel === 'Founder' ? 'var(--color-sepolia)' : '#a855f7';
+        MarsModal.show({
+            title: site.mission_name || site.site_code,
+            subtitle: `<span style="color:${outcomeColor}">If you arrive: ${outcomeLabel}</span>`,
+            icon: '📡',
+            width: 'md',
+            body: `
+                <div class="mm-card-accent" style="text-align:center;">
+                    <div class="mm-section-label">Distance from Base</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${site.distance_km} km</div>
+                </div>
+                <div class="mm-card-accent" style="text-align:center;">
+                    <div class="mm-section-label">Round-trip travel</div>
+                    <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${days} days</div>
+                </div>
+                <div class="mm-card${canAfford ? '' : '-mars'}" style="text-align:center;">
+                    <div class="mm-section-label">Total cost</div>
+                    <div style="font-size:22px; font-weight:700; color:${canAfford ? 'var(--color-sepolia)' : '#ef4444'};">${totalCost} shards</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Your balance: ${balance} shards</div>
+                </div>
+                <div class="mm-aria">💫 "Standard expedition. No discoveries — but the moment of arrival is what we go for. Cinematic plays when the rover returns."</div>
+            `,
+            footer: canAfford
+                ? `<button id="origin-confirm-btn" class="btn btn-primary mm-btn-full" onclick="launchSignalClaimExpedition(${site.id}, 'rover')">Launch Expedition</button>
+                   <button class="btn btn-secondary" style="flex:1;" onclick="MarsModal.hide()">Not Yet</button>`
+                : `<button class="btn btn-secondary mm-btn-full" onclick="MarsModal.hide()">Insufficient Shards</button>`
+        });
+    } catch (e) {
+        console.error('Preview failed:', e);
+        showToast('Network error.', 'error');
+    }
+}
+
+async function launchSignalClaimExpedition(siteId, vehicleType) {
+    try {
         const btn = document.querySelector('.map-popup-btn');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '⏳ Claiming...';
+            btn.innerHTML = '⏳ Plotting course...';
         }
 
-        const data = await apiPost(`/api/signal/origin/claim/${siteId}`);
+        const data = await apiPost('/api/expeditions/launch_signal_claim', {
+            site_id: siteId,
+            vehicle_type: vehicleType || 'rover'
+        });
 
         if (data.success) {
-            // Close any open popups
             map.closePopup();
-
-            // Show EPIC claim modal!
-            showOriginClaimModal(data);
-
-            // Refresh the origin site markers
+            showSignalClaimLaunchedModal(data);
             originSiteMarkers.forEach(m => map.removeLayer(m));
             originSiteMarkers = [];
             await addOriginSiteMarkers();
-
         } else {
             if (typeof showToast === 'function') {
-                showToast(data.error || 'Failed to claim site', 'error');
+                showToast(data.error || 'Could not launch claim expedition', 'error');
             } else {
-                alert(data.error || 'Failed to claim site');
+                alert(data.error || 'Could not launch claim expedition');
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = 'Plan Claim Expedition';
             }
         }
     } catch (e) {
-        console.error('Failed to claim Origin Site:', e);
+        console.error('Failed to launch signal claim:', e);
         if (typeof showToast === 'function') {
             showToast('Network error. Please try again.', 'error');
         }
     }
+}
+
+function showSignalClaimLaunchedModal(data) {
+    const days = data.travel_time_seconds ? (data.travel_time_seconds * 2 / 86400).toFixed(1) : '?';
+    MarsModal.show({
+        title: 'Course Plotted',
+        subtitle: '<span style="color:var(--color-sepolia)">Your claim expedition is en route.</span>',
+        icon: '📡',
+        width: 'md',
+        body: `
+            <div class="mm-card-accent" style="text-align:center;">
+                <div class="mm-section-label">Round-trip travel</div>
+                <div style="font-size:22px; font-weight:700; color:var(--text-primary);">${days} days</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Standard expedition speed. Return for the cinematic.</div>
+            </div>
+            <div class="mm-aria">💫 "Captain, course locked. The signal stays strong on telemetry —
+                I'll narrate the approach when you arrive. This isn't something you can rush."</div>
+        `,
+        footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Stand By</button>`
+    });
 }
 
 function showOriginClaimModal(data) {

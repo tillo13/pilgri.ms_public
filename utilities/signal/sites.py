@@ -587,11 +587,34 @@ def get_signal_page_render_data(user_id) -> Dict:
             logger.warning(f"Failed to build user signal cards for {user_id}: {e}")
             user_signal_cards = {}
 
+    # Phase 2.3c: Puzzle fragments (collected + locked counts for /signal page)
+    puzzle_fragments_data = {'collected': [], 'locked': [], 'total': 0, 'collected_count': 0}
+    pending_whispers = []
+    if user_id:
+        try:
+            from utilities.signal.puzzle_fragments import get_user_fragments
+            puzzle_fragments_data = get_user_fragments(user_id)
+            # Whispers that haven't been acknowledged yet — page renders an auto-popup
+            from utilities.postgres.core import db_cursor
+            with db_cursor() as cur:
+                cur.execute("""
+                    SELECT pf.id, pf.fragment_code, pf.name, pf.whisper_text, pf.rarity
+                    FROM pilgrim.user_puzzle_fragments upf
+                    JOIN pilgrim.puzzle_fragments pf ON pf.id = upf.fragment_id
+                    WHERE upf.user_id = %s AND upf.whisper_seen_at IS NULL
+                    ORDER BY upf.found_at ASC
+                """, (user_id,))
+                pending_whispers = [dict(r) for r in cur.fetchall()]
+        except Exception as e:
+            logger.warning(f"Puzzle fragments fetch failed for {user_id}: {e}")
+
     return {
         'closest_pilgrim': closest_pilgrim,
         'bond_fragment_hint': bond_fragment_hint,
         'signal_bonds': signal_bonds,
         'user_signal_cards': user_signal_cards,
+        'puzzle_fragments': puzzle_fragments_data,
+        'pending_whispers': pending_whispers,
         **signal_data,
     }
 

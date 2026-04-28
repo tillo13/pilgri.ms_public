@@ -14,16 +14,42 @@ logger = logging.getLogger(__name__)
 # EXPEDITIONS
 # ============================================================================
 
+_SIGNAL_CLAIM_COLUMNS_ENSURED = False
+
+def ensure_signal_claim_columns():
+    """Idempotently add Phase 2.3b columns to pilgrim.expeditions.
+
+    Called lazily before any read/write that depends on these columns.
+    Safe to call repeatedly — module-level guard avoids redundant queries.
+    """
+    global _SIGNAL_CLAIM_COLUMNS_ENSURED
+    if _SIGNAL_CLAIM_COLUMNS_ENSURED:
+        return
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS expedition_type TEXT NOT NULL DEFAULT 'standard'")
+            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS signal_site_id INTEGER")
+            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS cinematic_shown_at TIMESTAMP")
+            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS cinematic_payload JSONB")
+        _SIGNAL_CLAIM_COLUMNS_ENSURED = True
+    except Exception as e:
+        logger.error(f"Failed to ensure signal_claim columns: {e}")
+
+
 def create_expedition(user_id: int, commander_asset_id: int, destination_name: str, destination_type: str,
                       destination_lat: float, destination_lon: float, distance_km: float, fuel_cost_eth: float,
                       travel_time_seconds: int, commander_stats: dict, vehicle_type: str = 'rover',
-                      cargo_capacity: int = 5) -> Optional[int]:
+                      cargo_capacity: int = 5, expedition_type: str = 'standard',
+                      signal_site_id: Optional[int] = None) -> Optional[int]:
     """Create expedition record with round-trip timing.
 
     Vehicles must travel to destination AND return - discoveries only available after return.
     - arrives_at = when vehicle reaches destination
     - return_arrives_at = when vehicle returns to base with cargo
+    - expedition_type: 'standard' or 'signal_claim' (Phase 2.3b — dedicated claim trip, no-fail)
+    - signal_site_id: pilgrim.origin_sites.id when expedition_type='signal_claim'
     """
+    ensure_signal_claim_columns()
     try:
         with db_cursor(commit=True) as cur:
             now = datetime.now()
@@ -34,25 +60,86 @@ def create_expedition(user_id: int, commander_asset_id: int, destination_name: s
                 INSERT INTO pilgrim.expeditions
                 (user_id, commander_asset_id, destination_name, destination_type, destination_lat, destination_lon,
                  distance_km, fuel_cost_eth, arrives_at, return_arrives_at, vehicle_type, cargo_capacity,
-                 commander_exploration, commander_leadership, commander_strategy, commander_logistics, commander_charisma)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                 commander_exploration, commander_leadership, commander_strategy, commander_logistics, commander_charisma,
+                 expedition_type, signal_site_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
             """, (user_id, commander_asset_id, destination_name, destination_type, destination_lat, destination_lon,
                   distance_km, fuel_cost_eth, arrives_at, return_arrives_at, vehicle_type, cargo_capacity,
                   commander_stats.get('exploration', 50), commander_stats.get('leadership', 50),
                   commander_stats.get('strategy', 50), commander_stats.get('logistics', 50),
-                  commander_stats.get('charisma', 50)))
+                  commander_stats.get('charisma', 50), expedition_type, signal_site_id))
             result = cur.fetchone()
             expedition_id = result['id'] if result else None
-            logger.info(f"✅ Created expedition {expedition_id} to {destination_name} (return at {return_arrives_at})")
+            logger.info(f"✅ Created expedition {expedition_id} to {destination_name} (return at {return_arrives_at}, type={expedition_type})")
             from utilities.postgres.activity import log_activity
             log_activity(user_id, 'expedition', 'expedition_launch', f"Expedition to {destination_name}",
                          amount=float(fuel_cost_eth) * 10000000 if fuel_cost_eth else 0,
                          detail=vehicle_type, source_table='expeditions', source_id=expedition_id,
-                         metadata={'distance_km': distance_km, 'vehicle_type': vehicle_type, 'destination': destination_name})
+                         metadata={'distance_km': distance_km, 'vehicle_type': vehicle_type, 'destination': destination_name,
+                                   'expedition_type': expedition_type, 'signal_site_id': signal_site_id})
             return expedition_id
     except Exception as e:
         logger.error(f"❌ Failed to create expedition: {e}")
         return None
+
+
+def get_pending_signal_cinematic(user_id: int) -> Optional[Dict]:
+    """Return the oldest completed signal_claim expedition awaiting its cinematic.
+
+    Returns the row with cinematic_payload populated and cinematic_shown_at NULL,
+    ordered by completed_at ASC so multiple pending claims play in arrival order.
+    """
+    ensure_signal_claim_columns()
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT id, user_id, signal_site_id, destination_name, destination_type,
+                       cinematic_payload, completed_at
+                FROM pilgrim.expeditions
+                WHERE user_id = %s
+                  AND expedition_type = 'signal_claim'
+                  AND status = 'complete'
+                  AND cinematic_shown_at IS NULL
+                  AND cinematic_payload IS NOT NULL
+                ORDER BY completed_at ASC NULLS LAST
+                LIMIT 1
+            """, (user_id,))
+            return cur.fetchone()
+    except Exception as e:
+        logger.error(f"Failed to get pending signal cinematic: {e}")
+        return None
+
+
+def mark_signal_cinematic_shown(expedition_id: int, user_id: int) -> bool:
+    """One-shot: mark cinematic as shown so before_request stops redirecting."""
+    ensure_signal_claim_columns()
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.expeditions
+                SET cinematic_shown_at = NOW()
+                WHERE id = %s AND user_id = %s AND cinematic_shown_at IS NULL
+            """, (expedition_id, user_id))
+            return cur.rowcount > 0
+    except Exception as e:
+        logger.error(f"Failed to mark cinematic shown: {e}")
+        return False
+
+
+def write_signal_cinematic_payload(expedition_id: int, payload: Dict) -> bool:
+    """Persist the claim/visit result so the cinematic page can render it."""
+    ensure_signal_claim_columns()
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.expeditions
+                SET cinematic_payload = %s::jsonb
+                WHERE id = %s
+            """, (json.dumps(payload, default=str), expedition_id))
+            return cur.rowcount > 0
+    except Exception as e:
+        logger.error(f"Failed to write cinematic payload: {e}")
+        return False
 
 def get_user_active_expeditions(user_id: int) -> List[Dict]:
     """Get active expeditions for user with destination link from mars_mappings.
