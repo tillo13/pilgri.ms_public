@@ -205,19 +205,25 @@ def dijkstra_chain(
             out.append((lm, d))
         return out
 
-    def _run_dijkstra(strict_cap: float, oversize_cap: float = 0.0) -> Optional[List[str]]:
+    def _run_dijkstra(strict_cap: float, oversize_cap: float = 0.0, max_expansions: int = 500_000) -> Optional[List[str]]:
         """State-space Dijkstra. State = (name, transited, oversize_used).
 
         - All hops must be ≤ `strict_cap` UNLESS we use the one allowed oversize hop.
         - Oversize hops must be ≤ `oversize_cap` (set to 0 to disable oversize).
         - Goal: reach antipode_name with transited=True.
+        - `max_expansions`: safety cap; returns None if exceeded (fallback handles it).
         """
         heap = [(0.0, 0, 'HOME', False, False)]
         # parent[(name, transited, oversize_used)] = (prev tuple, edge_d)
         parent: Dict[Tuple[str, bool, bool], Tuple[Tuple[str, bool, bool], float]] = {}
         best_dist: Dict[Tuple[str, bool, bool], float] = {('HOME', False, False): 0.0}
         counter = 0
+        expansions = 0
         while heap:
+            expansions += 1
+            if expansions > max_expansions:
+                logger.warning(f"Dijkstra exceeded {max_expansions} expansions for direction={direction} — abandoning")
+                return None
             cum_d, _, cur_name, cur_t, cur_o = heapq.heappop(heap)
             if cur_name == antipode_name and cur_t:
                 # Reconstruct path
@@ -251,10 +257,16 @@ def dijkstra_chain(
         return None
 
     # First attempt: strict cap, no oversize allowed.
-    path_names = _run_dijkstra(hop_cap, oversize_cap=0.0)
-    # Fallback: strict cap + ONE oversize hop allowed up to OVERSIZE_MAX_KM.
+    path_names = _run_dijkstra(hop_cap, oversize_cap=0.0, max_expansions=200_000)
+    # Fallback 1: strict cap + ONE oversize hop allowed up to OVERSIZE_MAX_KM.
     if not path_names:
-        path_names = _run_dijkstra(hop_cap, oversize_cap=OVERSIZE_MAX_KM)
+        path_names = _run_dijkstra(hop_cap, oversize_cap=OVERSIZE_MAX_KM, max_expansions=300_000)
+    # Fallback 2 (degenerate captains): ignore strict cap entirely, allow all hops up to OVERSIZE_MAX_KM.
+    # This always finds a path if one exists at all — used for captains where the constrained search
+    # explodes the state space (e.g. some equatorial bases with sparse landmark density along required transit).
+    if not path_names:
+        logger.warning(f"Dijkstra falling back to all-oversize mode for direction={direction} base=({base_lat:.3f},{base_lon:.3f})")
+        path_names = _run_dijkstra(OVERSIZE_MAX_KM, oversize_cap=0.0, max_expansions=500_000)
     if not path_names:
         logger.warning(f"Dijkstra failed direction={direction} base=({base_lat:.3f},{base_lon:.3f}) → {antipode_name}")
         return []
