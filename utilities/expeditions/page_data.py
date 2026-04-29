@@ -104,10 +104,28 @@ def get_expeditions_page_data(user_id: int) -> dict:
     except Exception:
         infra_effects = {}
 
+    # Bug #1419: surface every meaningful expedition bonus, not just the 3 infrastructure
+    # ones. upgrade_effects already aggregates upgrades + infra + tech + scientist + bond
+    # picks. Cargo capacity comes from the active vehicle list (cargo_slots is summed
+    # across all owned vehicles, but for display we surface the highest single-vehicle slot).
     expedition_bonuses = {
+        # Infrastructure / building bonuses (kept for backwards-compat keys + the
+        # original Comms / Launch Pad / Space Elevator chips)
         'expedition_range_mult': infra_effects.get('expedition_range_mult', 1.0),
-        'legendary_chance_bonus': infra_effects.get('legendary_chance_bonus', 0.0),
-        'discovery_chance_bonus': infra_effects.get('discovery_chance_bonus', 0.0),
+        'legendary_chance_bonus': upgrade_effects.get('legendary_chance_bonus', 0.0),
+        'discovery_chance_bonus': upgrade_effects.get('discovery_chance_bonus', 0.0),
+
+        # Bug #1419 — additional bonuses (all sourced from the universal effects aggregator)
+        'expedition_speed_mult': upgrade_effects.get('expedition_speed_mult', 1.0),
+        'vehicle_range_mult': upgrade_effects.get('vehicle_range_mult', 1.0),
+        'rare_chance_bonus': upgrade_effects.get('rare_chance_bonus', 0.0),
+        'discovery_value_mult': upgrade_effects.get('discovery_value_mult', 1.0),
+        'bio_discovery_value_mult': upgrade_effects.get('bio_discovery_value_mult', 1.0),
+        'fuel_cost_mult': upgrade_effects.get('fuel_cost_mult', 1.0),
+        'life_support_cost_mult': upgrade_effects.get('life_support_cost_mult', 1.0),
+        'cargo_slots': upgrade_effects.get('cargo_slots', 0),
+        'signal_detection_enabled': upgrade_effects.get('signal_detection_enabled', False),
+        'dust_storm_immune': upgrade_effects.get('dust_storm_immune', False),
     }
 
     # Calculate max concurrent expeditions - vehicle-based (max 3)
