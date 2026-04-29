@@ -315,12 +315,30 @@ window.openAntipodeModal = async function(antipodeName) {
             }
         } catch (e) { /* show stub */ }
     }
+    // Chain prestige tiers (must mirror CHAIN_PRESTIGE_TIERS in utilities/postgres/trails/chains.py)
+    const PRESTIGE = [
+        { km: 0,     name: 'none' },
+        { km: 1000,  name: 'Surveying' },
+        { km: 5000,  name: 'Marked' },
+        { km: 11000, name: 'Complete' },
+    ];
+    const fmt = (n) => Number(n).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    const nextTier = (built) => {
+        for (const t of PRESTIGE) { if (built < t.km) return t; }
+        return null;
+    };
+
     let body = `<div class="mm-card-accent" style="text-align:center;">
         <div class="mm-section-label">Antipode</div>
         <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${antipodeName || '—'}</div>
         <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">All 4 of your chains terminate here</div>
     </div>`;
-    body += `<div class="grid" style="grid-template-columns: 1fr; gap: 6px;">`;
+    body += `<div style="font-size:11px;color:var(--text-muted);margin:8px 2px 4px;line-height:1.5;">
+        <strong style="color:var(--text-primary);">How chain % is computed:</strong>
+        sum of <code>km_built</code> across every segment ÷ sum of <code>segment_distance_km</code>.
+        Each segment is one trail leg; km come from Captain + Scientist + ARIA + drones + robots.
+    </div>`;
+    body += `<div class="grid" style="grid-template-columns: 1fr; gap: 8px;">`;
     for (const d of ['N', 'E', 'S', 'W']) {
         const info = (chains && chains[d]) || {};
         const pct = info.percent_complete || 0;
@@ -329,20 +347,49 @@ window.openAntipodeModal = async function(antipodeName) {
         const segs = info.completed_segments || 0;
         const totalSegs = info.total_segments || 0;
         const tier = info.prestige_tier || 'none';
+        const nu = info.next_unbuilt || null;
         const isActive = (d === activeDir);
         const ds = dirStyle[d];
         const textColor = (d === 'W') ? '#000000' : '#ffffff';
         const activeBadge = isActive ? `<span style="background:${ds.color};color:${textColor};padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;margin-left:6px;border:1px solid rgba(255,255,255,0.3);">● ACTIVE</span>` : '';
+        const nt = nextTier(built);
+        const tierLine = nt
+            ? `<span style="opacity:.85">Prestige: <strong>${tier}</strong></span> · next: <strong>${nt.name}</strong> at ${fmt(nt.km)} km <span style="opacity:.7">(${fmt(Math.max(0, nt.km - built))} km to go)</span>`
+            : `<span style="opacity:.85">Prestige: <strong>${tier}</strong></span> · max tier reached`;
+
+        let segBlock = '';
+        if (nu) {
+            const segPct = nu.segment_distance_km ? (Number(nu.km_built || 0) / Number(nu.segment_distance_km) * 100) : 0;
+            const cap = Number(nu.captain_km || 0), sci = Number(nu.scientist_km || 0), ar = Number(nu.aria_km || 0);
+            const dr = Number(nu.drone_km || 0), ro = Number(nu.robot_km || 0);
+            segBlock = `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:11px;line-height:1.55;">
+                <div style="opacity:.9;"><strong>Building seg ${nu.segment_index}/${totalSegs}:</strong> ${nu.from_landmark} → ${nu.to_landmark}</div>
+                <div style="opacity:.85;">${fmt(nu.km_built)} / ${fmt(nu.segment_distance_km)} km (${segPct.toFixed(1)}%) · tier: <strong>${nu.tier || 'none'}</strong></div>
+                <div style="opacity:.7;font-size:10px;">Cap ${fmt(cap)} · Sci ${fmt(sci)} · ARIA ${fmt(ar)} · Drones ${fmt(dr)} · Robots ${fmt(ro)}</div>
+            </div>`;
+        }
+
         body += `<div style="border-left: 4px solid ${ds.color}; padding: 8px 12px; background: rgba(0,0,0,0.25); border-radius: 0 6px 6px 0;">
             <div style="font-weight:600; color: ${ds.color === '#ffffff' ? '#fff' : ds.color}; font-size: 13px;">${ds.label}${activeBadge}</div>
-            <div style="font-size: 11px; opacity: 0.8; margin: 2px 0;">${ds.desc} · ${tier}</div>
-            <div style="font-size: 12px;">${built.toFixed(0)} / ${total.toFixed(0)} km · ${segs}/${totalSegs} segments · ${pct.toFixed(1)}%</div>
+            <div style="font-size: 11px; opacity: 0.8; margin: 2px 0;">${ds.desc}</div>
+            <div style="font-size: 12px;line-height:1.55;">
+                <div><strong>${fmt(built)}</strong> km built ÷ <strong>${fmt(total)}</strong> km total = <strong>${pct.toFixed(2)}%</strong></div>
+                <div style="opacity:.85;">Segments: <strong>${segs}/${totalSegs}</strong> complete · avg leg ≈ ${totalSegs ? fmt(total / totalSegs) : '0'} km</div>
+                <div style="font-size: 11px;opacity:.85;margin-top:2px;">${tierLine}</div>
+            </div>
             <div style="background: rgba(255,255,255,0.08); height: 4px; border-radius: 2px; margin-top: 4px; overflow: hidden;">
                 <div style="background: ${ds.color}; height: 100%; width: ${Math.min(100, pct)}%; transition: width 0.3s;"></div>
             </div>
+            ${segBlock}
         </div>`;
     }
     body += `</div>`;
+    body += `<div style="font-size:10.5px;color:var(--text-muted);margin-top:10px;line-height:1.55;opacity:.85;">
+        <strong style="color:var(--text-primary);">Per-segment tiers</strong> (by % built):
+        Path 25% · Road 50% · Highway 75% · Superhighway 100%.
+        <strong style="color:var(--text-primary);">Chain prestige</strong> (by total km in that direction):
+        Surveying 1,000 · Marked 5,000 · Complete 11,000.
+    </div>`;
     MarsModal.show({
         title: 'Your 4 Antipode Chains',
         subtitle: `<span style="color:var(--color-sepolia)">All terminate at ${antipodeName || 'your antipode'}</span>`,
