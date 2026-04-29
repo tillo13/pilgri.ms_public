@@ -100,8 +100,13 @@ def get_depot_page_data(user_id, auth):
                 b['rush_cost'] = 0
                 b['rush_pct'] = rush_pct
                 continue
-            if b.get('category') == 'infrastructure' and b.get('target_level', 1) == 1:
-                base_cost = _infrastructure_base_cost(b['item_key'], 1)
+            # Bug #1427: infrastructure upgrades Lv2+ live in INFRASTRUCTURE_CATALOG, NOT
+            # UPGRADE_CATALOG. The previous condition only routed Lv1 builds to the right
+            # catalog; everything else (including Xeno Lab Lv3→Lv4) silently returned cost=0
+            # → rush_eligible=False → no button. Now ALL infrastructure rows use the
+            # infrastructure catalog regardless of target level.
+            if b.get('category') == 'infrastructure':
+                base_cost = _infrastructure_base_cost(b['item_key'], b.get('target_level', 1))
             else:
                 base_cost = _upgrade_base_cost(b['category'], b['item_key'], b.get('target_level', 1))
             b['rush_eligible'] = base_cost > 0
