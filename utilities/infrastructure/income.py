@@ -304,7 +304,24 @@ def calculate_accumulated_income(user_id):
         sv_signal_accumulated = signal_bonus['sv_per_hour'] * sv_avg_cap
         sv_accumulated += sv_signal_accumulated
 
-    sv_hourly_rate = round(sv_base_rate * sv_scientist_bonus + signal_bonus.get('sv_per_hour', 0), 1)
+    # Bug #1402: Fragment Bond bonuses — A=+5% SV, D=+5% shards. Multiplicative on the
+    # final accumulated values (not the per-source rates). Applied AFTER scientist + signal
+    # so it stacks cleanly on top.
+    bond_sv_mult = 1.0
+    bond_shards_mult = 1.0
+    try:
+        from utilities.aria.bond_bonuses import get_user_bond_effects
+        _be = get_user_bond_effects(user_id)
+        bond_sv_mult = _be.get('sv_mult', 1.0)
+        bond_shards_mult = _be.get('shards_mult', 1.0)
+        if bond_sv_mult != 1.0:
+            sv_accumulated *= bond_sv_mult
+        if bond_shards_mult != 1.0:
+            total_accumulated *= bond_shards_mult
+    except Exception as e:
+        logger.warning(f"bond income mults failed user={user_id}: {e}")
+
+    sv_hourly_rate = round((sv_base_rate * sv_scientist_bonus + signal_bonus.get('sv_per_hour', 0)) * bond_sv_mult, 1)
 
     return {
         'total_accumulated': round(total_accumulated, 2),

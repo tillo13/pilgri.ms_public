@@ -1,13 +1,22 @@
 {# Shared ARIA Bonds section — included by signal.html and expeditions.html #}
-{# Requires: signal_bonds (list of bond dicts with landmark, partner_name, bond_tx_hash, bond_image_url, status) #}
+{# Requires: signal_bonds (list of bond dicts with id, landmark, partner_name, bond_tx_hash, bond_image_url, status) #}
+{# Optional: bond_bonus_state (Bug #1402 — picks dict + unused_bonuses + bonuses_catalog) #}
 {# Optional: decoder_input_id (ID of the decoder input to paste into, defaults to 'decoderInput') #}
 {% set decoder_id = decoder_input_id|default('decoderInput') %}
+{% set bbs = bond_bonus_state|default(none) %}
 
 {% if signal_bonds|default([])|length > 0 %}
 <p style="color: var(--text-secondary); font-style: italic; margin-bottom: 16px;">
     "I detected a resonance... identical to my own. Another colony. Another me. The fragment code below is our proof — permanently inscribed."
 </p>
+{% if bbs %}
+<div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; padding: 8px 12px; background: rgba(168,85,247,0.04); border: 1px dashed rgba(168,85,247,0.3); border-radius: 8px;">
+    <strong style="color: #a855f7;">Fragment Bonuses:</strong>
+    {{ bbs.picks_count }} of {{ bbs.max_picks }} chosen ({{ bbs.picks_remaining }} remaining). Each bond grants ONE permanent +5% bonus. No duplicates.
+</div>
+{% endif %}
 {% for bond in signal_bonds %}
+{% set pick = (bbs.picks[bond.id] if (bbs and bond.id in bbs.picks) else none) %}
 <div style="display: flex; gap: 16px; align-items: flex-start; padding: 16px; background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 10px; margin-bottom: 12px;">
     {% if bond.bond_image_url %}
     <img src="{{ bond.bond_image_url }}" alt="Entangled Fragment" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 2px solid rgba(168, 85, 247, 0.3); flex-shrink: 0;" loading="lazy">
@@ -16,6 +25,25 @@
         <div style="font-size: 14px; font-weight: 700; color: #a855f7; margin-bottom: 4px;">Entangled Fragment: {{ bond.landmark }}</div>
         <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Bonded with <strong style="color: white;">{{ bond.partner_name }}</strong></div>
         <div style="font-family: var(--font-mono); font-size: 11px; color: #06b6d4; word-break: break-all; padding: 6px 8px; background: rgba(0,0,0,0.3); border-radius: 6px; margin-bottom: 8px; cursor: pointer;" onclick="var el=document.getElementById('{{ decoder_id }}');if(el){el.value='{{ bond.bond_tx_hash }}';var d=el.closest('details');if(d)d.open=true;el.scrollIntoView({behavior:'smooth',block:'center'});showToast('Code pasted — hit TRANSMIT');}" title="Click to paste into Decoder Terminal">{{ bond.bond_tx_hash }}</div>
+        {% if bbs %}
+        <div style="margin-bottom: 8px; padding: 8px 10px; background: rgba(0,0,0,0.25); border-radius: 6px; border-left: 3px solid #a855f7;">
+            {% if pick %}
+                <div style="font-size: 12px; color: #a855f7; font-weight: 700;">Bonus chosen: {{ pick.icon|default('') }} {{ pick.name }}</div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">{{ pick.description }} <span style="color: var(--text-muted);">(permanent)</span></div>
+            {% elif bbs.picks_remaining > 0 %}
+                <button type="button"
+                        class="bond-bonus-pick-btn"
+                        data-bond-id="{{ bond.id }}"
+                        data-landmark="{{ bond.landmark }}"
+                        style="font-size: 12px; font-weight: 700; color: white; padding: 6px 14px; background: linear-gradient(135deg,#a855f7,#7c3aed); border: 0; border-radius: 6px; cursor: pointer;">
+                    Choose +5% Bonus
+                </button>
+                <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">Permanent. One per bond. No duplicates.</span>
+            {% else %}
+                <div style="font-size: 11px; color: var(--text-muted);">Max bonuses already chosen. This bond did not receive a pick.</div>
+            {% endif %}
+        </div>
+        {% endif %}
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a href="/aria-first-contact/replay" style="font-size: 12px; color: #a855f7; padding: 4px 12px; background: rgba(168, 85, 247, 0.1); border-radius: 6px; text-decoration: none; border: 1px solid rgba(168, 85, 247, 0.2);">Replay First Contact</a>
             <a href="https://sepolia.etherscan.io/tx/{{ bond.bond_tx_hash }}" target="_blank" rel="noopener" style="font-size: 12px; color: #06b6d4; padding: 4px 12px; background: rgba(6, 182, 212, 0.1); border-radius: 6px; text-decoration: none; border: 1px solid rgba(6, 182, 212, 0.2);">View Permanent Record</a>
@@ -24,4 +52,16 @@
     </div>
 </div>
 {% endfor %}
+
+{% if bbs %}
+<script type="application/json" id="bondBonusCatalog">
+{
+  "catalog": {
+    {% for code, spec in bbs.bonuses_catalog.items() %}"{{ code }}": {"code": "{{ spec.code }}", "name": "{{ spec.name }}", "description": "{{ spec.description }}", "icon": "{{ spec.icon }}"}{% if not loop.last %},{% endif %}{% endfor %}
+  },
+  "used_codes": [{% for bid, p in bbs.picks.items() %}"{{ p.code }}"{% if not loop.last %},{% endif %}{% endfor %}]
+}
+</script>
+<script src="/static/js/bond-bonuses.js?v={{ static_v|default(1) }}" defer></script>
+{% endif %}
 {% endif %}

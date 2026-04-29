@@ -220,4 +220,25 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
     except Exception:
         pass
 
+    # Bug #1402: ARIA Fragment Bond bonuses. Captain picks up to 3 unique +5% bonuses
+    # across A–F (SV, expedition speed, build speed, shards, vehicle range, discovery).
+    # SV and shards mults are NOT applied here — they live in income.py against the
+    # accumulated income calc. Discovery is additive; the rest are multiplicative.
+    try:
+        from utilities.aria.bond_bonuses import get_user_bond_effects
+        bond_eff = get_user_bond_effects(user_id)
+        for key, value in bond_eff.items():
+            if key in ('sv_mult', 'shards_mult'):
+                # Income-side multipliers — surfaced in effects dict for callers that want them,
+                # but income.py reads them directly from get_user_bond_effects to avoid coupling.
+                effects[key] = effects.get(key, 1.0) * value
+            elif key == 'discovery_chance_bonus':
+                effects[key] = effects.get(key, 0.0) + value
+            elif key == 'build_time_mult':
+                effects[key] = effects.get(key, 1.0) * value  # lower = faster
+            elif key.endswith('_mult'):
+                effects[key] = effects.get(key, 1.0) * value
+    except Exception as e:
+        logger.warning(f"bond effect aggregation failed user={user_id}: {e}")
+
     return effects

@@ -1923,6 +1923,18 @@ def api_aria_bond_complete():
     return jsonify(complete_bond_from_cinematic(session.get('user_id'), data.get('bond_id'), session))
 
 
+@app.route('/api/aria-bond/<int:bond_id>/choose_bonus', methods=['POST'])
+@handle_api_error
+def api_aria_bond_choose_bonus(bond_id):
+    """Pick a Fragment Bond bonus (Bug #1402). Body: {bonus_type: 'A'..'F'}."""
+    if not auth.is_authenticated():
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    from utilities.aria.bond_bonuses import pick_bond_bonus
+    data = request.get_json() or {}
+    bonus_type = (data.get('bonus_type') or '').strip().upper()
+    return jsonify(pick_bond_bonus(session.get('user_id'), bond_id, bonus_type))
+
+
 ########################################################################
 # SIGNAL CLAIM CINEMATIC — Phase 2.3b
 ########################################################################

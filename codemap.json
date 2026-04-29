@@ -2221,6 +2221,16 @@
       "get_contextual_hint — Generate a contextual hint for the user based on their current game state."
     ]
   },
+  "utilities/aria/bond_bonuses.py": {
+    "description": "ARIA Fragment Bond bonuses — per Luke's #1402 spec (2026-04-19).",
+    "exports": [
+      "ensure_bond_bonus_table — Idempotent migration.",
+      "get_user_bond_bonuses — Return {bond_id: bonus_type} for everything this captain has picked.",
+      "get_user_bond_effects — Return effect overrides this captain has earned from bond picks.",
+      "pick_bond_bonus — Validate and persist a bond-bonus pick.",
+      "get_bond_bonus_state_for_user — Render-data for the /signal /expeditions ARIA bond UI."
+    ]
+  },
   "utilities/aria/bonds.py": {
     "description": "ARIA Bond System - Handles bonds between players when scouts visit shared locations.",
     "exports": [
@@ -2846,6 +2856,14 @@
       "selectLeader"
     ]
   },
+  "static/js/bond-bonuses.js": {
+    "description": "Bug #1402 — Fragment Bond bonus picker.",
+    "exports": [
+      "renderPickerBody",
+      "pickBonus",
+      "openPicker"
+    ]
+  },
   "static/js/brainstorm-chat.js": {
     "description": "brainstorm-chat.js - Reusable chat widget for brainstorm pages",
     "exports": [
@@ -3342,7 +3360,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3407,7 +3425,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
@@ -3466,5 +3484,10 @@
   },
   "templates/arrival/deploy.html": {
     "description": "Page: Deploy to Mars - Pilgrims"
+  },
+  "templates/partials/aria_bonds_section.html": {
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
   }
 }

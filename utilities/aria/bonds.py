@@ -587,6 +587,7 @@ def get_bonds_for_display(user_id: int) -> list:
             continue
         partner_id = b.get('user_id_2') if b.get('user_id_1') == user_id else b.get('user_id_1')
         result.append({
+            'id': b['id'],
             'landmark': b['landmark_name'],
             'partner_name': _get_commander_name(partner_id) or f"Captain {partner_id}",
             'bond_tx_hash': b['bond_tx_hash'],

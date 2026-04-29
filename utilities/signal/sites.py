@@ -571,6 +571,7 @@ def get_signal_page_render_data(user_id) -> Dict:
 
     bond_fragment_hint = None
     signal_bonds = []
+    bond_bonus_state = None
     user_signal_cards = {}
     if user_id:
         try:
@@ -580,6 +581,13 @@ def get_signal_page_render_data(user_id) -> Dict:
                 bond_fragment_hint = signal_bonds[0]['bond_tx_hash']
         except Exception:
             pass
+
+        try:
+            from utilities.aria.bond_bonuses import get_bond_bonus_state_for_user
+            bond_bonus_state = get_bond_bonus_state_for_user(user_id)
+        except Exception as e:
+            logger.warning(f"bond_bonus_state failed user={user_id}: {e}")
+            bond_bonus_state = None
 
         try:
             user_signal_cards = _build_user_signal_cards(user_id)
@@ -612,6 +620,7 @@ def get_signal_page_render_data(user_id) -> Dict:
         'closest_pilgrim': closest_pilgrim,
         'bond_fragment_hint': bond_fragment_hint,
         'signal_bonds': signal_bonds,
+        'bond_bonus_state': bond_bonus_state,
         'user_signal_cards': user_signal_cards,
         'puzzle_fragments': puzzle_fragments_data,
         'pending_whispers': pending_whispers,

@@ -158,6 +158,13 @@ def get_expeditions_page_data(user_id: int) -> dict:
     except Exception:
         pass
 
+    bond_bonus_state = None
+    try:
+        from utilities.aria.bond_bonuses import get_bond_bonus_state_for_user
+        bond_bonus_state = get_bond_bonus_state_for_user(user_id)
+    except Exception:
+        pass
+
     return {
         'drop_coords': home_coords,
         'landmarks': landmarks,
@@ -177,4 +184,5 @@ def get_expeditions_page_data(user_id: int) -> dict:
         'discovery_count': discovery_count,  # For range breakdown display
         'range_mult': round(range_mult, 2),  # Discovery-based range multiplier
         'signal_bonds': signal_bonds,  # ARIA bonds for Signal tab
+        'bond_bonus_state': bond_bonus_state,  # Bug #1402 — fragment-bond bonus picker state
     }
