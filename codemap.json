@@ -3282,13 +3282,13 @@
       "setVehicleRange",
       "geodesicCirclePoints",
       "theta",
+      "splitRingAtAntimeridian",
+      "norm",
       "buildMarkerPopup",
       "slotsAvailable",
       "fetchLandmarkCost",
       "updateAllExpeditionCosts",
-      "updateCostDisplay",
-      "discount",
-      "initializeSolarConditions"
+      "updateCostDisplay"
     ],
     "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
   },
@@ -3380,7 +3380,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3393,7 +3393,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

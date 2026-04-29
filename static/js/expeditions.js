@@ -173,30 +173,48 @@ function setVehicleRange(btn, vehicleType) {
 
     const rangeKm = parseInt(btn.dataset.range) || 0;
 
-    // Bug #1394 ReOpen: the earlier geodesic-polygon fix breaks when the angular
-    // radius δ = rangeKm / MARS_RADIUS_KM exceeds π/2 (half a hemisphere). At that
-    // point the ring winds past ±180° longitude; adjacent vertices can jump 339°
-    // and Leaflet draws a straight line across the whole map (Luke's screenshot 3:
-    // two vertical arcs on the edges with horizontal bars). Only the Buggy
-    // (8000km = 135°) hits this; Rover (53°) and Drone (25°) are safe. Fix:
-    // bounded-certainty subset — only render a ring when δ ≤ π/2. When δ > π/2
-    // skip the polygon entirely and let the dot dim/bright classification below
-    // carry the in/out-of-range signal (that logic is unchanged and correct).
+    // Bug #1394 ReOpen v2 (2026-04-29): three issues from Luke's reopen comments —
+    //   (1) Rover ring rendered with a "bell" shape because Leaflet drew a polygon
+    //       fill across antimeridian crossings, smearing edges across the map.
+    //   (2) Some bright (in-range) dots fell outside the rendered ring, even
+    //       though the dim/bright classification was correct.
+    //   (3) Buggy ring (δ ≈ 135°) wasn't drawn at all — earlier fix bailed out
+    //       for δ > π/2 to avoid the polygon-fill artifact.
+    //
+    // Fix:
+    //   - Generate 256 geodesic points (denser, smoother arcs).
+    //   - Normalize longitudes to (-180, 180].
+    //   - Split the closed ring into segments at any antimeridian crossing
+    //     (|Δlon| > 180° between adjacent vertices). Each segment is an open arc
+    //     that enters / exits the map at lon = ±180°.
+    //   - Render every segment as a dashed POLYLINE (no fill). Polylines don't
+    //     have the polygon-fill wraparound artifact and do not require a closed
+    //     boundary on the projected map. Group them so one tooltip covers all.
+    //   - Always draw, regardless of δ. For δ > π/2 (Buggy) the ring legitimately
+    //     wraps the antipode side of the planet; on Mercator this surfaces as
+    //     two arcs entering opposite edges, which is what Luke asked for.
+    //
+    // Mercator distortion at high latitude still squishes/stretches the polyline
+    // (e.g. a southern arc near lat=-80° collapses to a near-horizontal line).
+    // That distortion is a property of the basemap projection, not our math —
+    // dots and ring are projected with the same transformation, so a bright dot
+    // is always inside the closed-on-sphere polyline once antimeridian splitting
+    // is correct. The in/out-of-range classification (haversine ≤ rangeKm) is
+    // unchanged and authoritative — the polyline is purely visual.
     const MARS_RADIUS_KM = 3396;
-    const delta = rangeKm / MARS_RADIUS_KM;
-    if (delta <= Math.PI / 2) {
-        const points = geodesicCirclePoints(
-            baseCoords.latitude, baseCoords.longitude, rangeKm, MARS_RADIUS_KM, 128
-        );
-        rangeCircle = L.polygon(points, {
+    const ringPoints = geodesicCirclePoints(
+        baseCoords.latitude, baseCoords.longitude, rangeKm, MARS_RADIUS_KM, 256
+    );
+    const segments = splitRingAtAntimeridian(ringPoints);
+    if (segments.length) {
+        const lineLayers = segments.map(seg => L.polyline(seg, {
             color: '#ffffff',
-            fillColor: '#ffffff',
-            fillOpacity: 0.04,
             weight: 2,
             opacity: 0.7,
             dashArray: '8, 6',
-            interactive: false
-        }).addTo(map);
+            interactive: false,
+        }));
+        rangeCircle = L.featureGroup(lineLayers).addTo(map);
         // Bug #1283: explicit label on the range circle so Luke can verify visually that
         // a marker labeled "403km" is correctly OUT of a 300km vehicle range.
         rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
@@ -241,6 +259,36 @@ function geodesicCirclePoints(centerLat, centerLon, distanceKm, sphereRadiusKm, 
         pts.push([lat / rad, lon / rad]);
     }
     return pts;
+}
+
+// Bug #1394 ReOpen v2 helper. Walk the closed ring, normalize lons to (-180, 180],
+// and break it into one or more open arcs whenever adjacent vertices straddle the
+// antimeridian (|Δlon| > 180°). Polylines that span the whole map width otherwise
+// render as a horizontal smear connecting the two edges.
+function splitRingAtAntimeridian(pts) {
+    if (!pts || pts.length < 2) return [];
+    const norm = (lon) => {
+        let l = lon;
+        while (l > 180) l -= 360;
+        while (l <= -180) l += 360;
+        return l;
+    };
+    // Append the first vertex at the end so the closing edge is also evaluated.
+    const closed = pts.concat([pts[0]]);
+    const normalized = closed.map(([lat, lon]) => [lat, norm(lon)]);
+    const segments = [];
+    let cur = [normalized[0]];
+    for (let i = 1; i < normalized.length; i++) {
+        const [lat, lon] = normalized[i];
+        const prevLon = normalized[i - 1][1];
+        if (Math.abs(lon - prevLon) > 180) {
+            if (cur.length > 1) segments.push(cur);
+            cur = [];
+        }
+        cur.push([lat, lon]);
+    }
+    if (cur.length > 1) segments.push(cur);
+    return segments;
 }
 
 // Build popup content for a marker (called when popup opens)
