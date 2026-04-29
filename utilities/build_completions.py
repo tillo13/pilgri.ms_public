@@ -6,7 +6,13 @@ Used by:
 - While-You-Were-Away briefing (bug #1397)
 
 Returns structured data (name, old_level → new_level, cost, new bonuses,
-Lv Y image) so the frontend can render rich cards instead of bare names.
+Lv Y image AND Lv X image) so the frontend can render rich before/after cards.
+
+Bug #1397 ReOpen v3 (2026-04-29): replace the localStorage-based modal
+suppression with a server-side `pilgrim.users.depot_completions_seen_at`
+timestamp. localStorage was unreliable across sessions/devices and could be
+silently corrupted into a singleton dismiss key that suppressed every future
+modal (Luke's "shows ~25% of the time"). Server-side is deterministic.
 """
 
 import logging
@@ -15,6 +21,69 @@ from datetime import datetime, timezone
 from utilities.postgres.core import db_cursor
 
 logger = logging.getLogger(__name__)
+
+_SEEN_COLUMN_ENSURED = False
+
+
+def ensure_completions_seen_column() -> bool:
+    """Idempotent migration: pilgrim.users.depot_completions_seen_at TIMESTAMP."""
+    global _SEEN_COLUMN_ENSURED
+    if _SEEN_COLUMN_ENSURED:
+        return True
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'pilgrim' AND table_name = 'users'
+                          AND column_name = 'depot_completions_seen_at'
+                    ) THEN
+                        ALTER TABLE pilgrim.users ADD COLUMN depot_completions_seen_at TIMESTAMP NULL;
+                    END IF;
+                END $$;
+            """)
+        _SEEN_COLUMN_ENSURED = True
+        return True
+    except Exception as e:
+        logger.error(f"ensure_completions_seen_column failed: {e}")
+        return False
+
+
+def mark_completions_seen(user_id: int) -> bool:
+    """Stamp depot_completions_seen_at = NOW() so the modal won't re-fire."""
+    ensure_completions_seen_column()
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.users
+                SET depot_completions_seen_at = NOW(), updated_at = NOW()
+                WHERE id = %s
+            """, (user_id,))
+        return True
+    except Exception as e:
+        logger.error(f"mark_completions_seen failed for user {user_id}: {e}")
+        return False
+
+
+def _get_completions_seen_at(user_id: int):
+    """Returns the user's last-seen timestamp (UTC-aware) or None."""
+    ensure_completions_seen_column()
+    try:
+        with db_cursor() as cur:
+            cur.execute(
+                "SELECT depot_completions_seen_at FROM pilgrim.users WHERE id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+        seen = (row or {}).get('depot_completions_seen_at') if row else None
+        if seen and seen.tzinfo is None:
+            seen = seen.replace(tzinfo=timezone.utc)
+        return seen
+    except Exception as e:
+        logger.warning(f"_get_completions_seen_at failed user={user_id}: {e}")
+        return None
 
 
 _EFFECT_KEYS_SKIP = {
@@ -68,8 +137,16 @@ def _format_effect_diff(old_data: dict, new_data: dict) -> list:
     return diffs
 
 
-def get_recent_build_completions(user_id: int, since_dt=None, limit: int = 10) -> list:
+def get_recent_build_completions(user_id: int, since_dt=None, limit: int = 10,
+                                 use_seen_timestamp: bool = False) -> list:
     """Recently-completed upgrades with catalog detail for display.
+
+    Args:
+        since_dt: explicit lower-bound timestamp. WYWA briefing uses this.
+        use_seen_timestamp: when True, ignore since_dt and instead filter to
+            anything completed AFTER pilgrim.users.depot_completions_seen_at.
+            The depot landing modal uses this so completions never re-show
+            once a captain has dismissed them. Bug #1397 ReOpen v3.
 
     Each item:
         category, item_key, item_name,
@@ -82,9 +159,13 @@ def get_recent_build_completions(user_id: int, since_dt=None, limit: int = 10) -
     from config_upgrades import UPGRADE_CATALOG
     from config_infrastructure import INFRASTRUCTURE_CATALOG
 
-    now = datetime.now(timezone.utc)
     if since_dt is not None and since_dt.tzinfo is None:
         since_dt = since_dt.replace(tzinfo=timezone.utc)
+
+    if use_seen_timestamp:
+        # Server-side suppression: filter to completions newer than the
+        # captain's last "seen" stamp. None == never seen, so show everything.
+        since_dt = _get_completions_seen_at(user_id)
 
     try:
         with db_cursor() as cur:

@@ -129,15 +129,16 @@ def get_depot_page_data(user_id, auth):
     except Exception:
         build_time_mult = 1.0
 
-    # Bug #1397: recent build completions for the depot landing modal. 24h
-    # window (not 7d) — Luke reported a week-old build showing up because
-    # historical upgraded_at values predate the build-complete fix and sort
-    # arbitrarily. WYWA briefing still uses its own 7d window.
-    from datetime import timedelta
+    # Bug #1397 ReOpen v3 (2026-04-29): server-side suppression. Show every
+    # completion newer than the captain's last "seen" stamp. Once they dismiss
+    # the modal (POST /api/depot/completions/mark-seen), the stamp moves
+    # forward and those completions never re-show. localStorage-based
+    # suppression was unreliable across sessions/devices and could collapse
+    # into a singleton dismiss key that suppressed every future modal.
     from utilities.build_completions import get_recent_build_completions
     recent_completions = get_recent_build_completions(
         user_id,
-        since_dt=datetime.now(timezone.utc) - timedelta(hours=24),
+        use_seen_timestamp=True,
         limit=5,
     )
 

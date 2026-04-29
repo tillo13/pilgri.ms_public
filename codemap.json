@@ -1330,6 +1330,8 @@
   "utilities/build_completions.py": {
     "description": "Build completions summary — catalog-enriched detail for recently-finished",
     "exports": [
+      "ensure_completions_seen_column — Idempotent migration: pilgrim.users.depot_completions_seen_at TIMESTAMP.",
+      "mark_completions_seen — Stamp depot_completions_seen_at = NOW() so the modal won't re-fire.",
       "get_recent_build_completions — Recently-completed upgrades with catalog detail for display."
     ]
   },
@@ -3123,12 +3125,12 @@
       "sortCards",
       "maybeShowBuildCompletionsModal",
       "diffLines",
+      "dismiss",
       "escapeHtml",
       "initBuildCountdowns",
       "formatTime",
       "initBuildQueueCountdowns",
-      "formatTime",
-      "initItemDetailModal"
+      "formatTime"
     ],
     "keywords": "shop purchase, upgrade UI, infrastructure building, commander services"
   },
@@ -3380,7 +3382,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3393,7 +3395,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

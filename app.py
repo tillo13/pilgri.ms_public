@@ -1540,6 +1540,18 @@ def api_trails_chains():
     })
 
 
+@app.route('/api/depot/completions/mark-seen', methods=['POST'])
+@login_required
+@handle_api_error
+def api_depot_completions_mark_seen():
+    """Bug #1397 ReOpen v3: mark all current depot build completions as seen by
+    advancing the captain's depot_completions_seen_at stamp. Called when the
+    captain dismisses the build-completion modal on /depot."""
+    from utilities.build_completions import mark_completions_seen
+    ok = mark_completions_seen(g.user_id)
+    return jsonify({'success': bool(ok)})
+
+
 @app.route('/api/upgrade-effects/breakdown', methods=['GET'])
 @login_required
 @handle_api_error

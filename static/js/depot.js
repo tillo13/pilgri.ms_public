@@ -98,24 +98,29 @@ window.addEventListener('DOMContentLoaded', function() {
     maybeShowBuildCompletionsModal();
 });
 
-// Bug #1397: surface recently-completed builds as a rich modal on depot
-// landing, once per completion set. Dismiss-state is keyed on the most-recent
-// completion timestamp so new builds re-trigger the modal.
+// Bug #1397 ReOpen v3 (2026-04-29): comprehensive rewrite addressing Luke's three pains:
+//   (a) "shows ~25% of the time" — fragile localStorage hash-based suppression replaced
+//       with a server-side timestamp (pilgrim.users.depot_completions_seen_at). The
+//       backend filters completions newer than that stamp; we POST to bump it on dismiss.
+//   (b) "disappears after ~2 seconds" — the most likely cause is an accidental click on
+//       the modal's dim backdrop dismissing it. We pass dismissOnBackdrop:false so only
+//       the X button or the explicit Got It button can close this modal. Escape too.
+//   (c) "no old/new building images" — server-side build_completions.py was already
+//       returning prev_image_url; the JS just wasn't using it. Now renders BEFORE → AFTER
+//       side-by-side with an arrow.
 function maybeShowBuildCompletionsModal() {
     const completions = DEPOT_DATA.recentCompletions || [];
     if (!completions.length) return;
-    // Hash the full completion set (not just newest timestamp) so null/duplicate
-    // completed_at values can't collide into a singleton dismiss key that
-    // suppresses every future modal. Bug #1397 reopen.
-    const hash = completions.map(c => `${c.category}:${c.item_key}:${c.new_level}`).join('|');
-    const key = 'depotCompletionsSeen:' + hash;
-    try { if (localStorage.getItem(key) === '1') return; } catch (e) {}
 
     const shardIcon = DEPOT_DATA.shardIcon || '';
     const cards = completions.map(c => {
-        const img = c.image_url
-            ? `<img src="${c.image_url}" alt="" loading="lazy" style="width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,180,50,0.3);">`
-            : '';
+        const beforeImg = c.prev_image_url
+            ? `<img src="${c.prev_image_url}" alt="Lv ${c.old_level}" loading="lazy" style="width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,0.15);opacity:0.7;">`
+            : `<div style="width:72px;height:72px;border-radius:6px;background:rgba(255,255,255,0.05);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-muted);border:1px solid rgba(255,255,255,0.08);">Lv ${c.old_level}</div>`;
+        const arrow = `<div style="display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-success);font-size:20px;font-weight:700;">→</div>`;
+        const afterImg = c.image_url
+            ? `<img src="${c.image_url}" alt="Lv ${c.new_level}" loading="lazy" style="width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,180,50,0.5);box-shadow:0 0 8px rgba(255,180,50,0.2);">`
+            : `<div style="width:72px;height:72px;border-radius:6px;background:rgba(255,180,50,0.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--color-warning);border:1px solid rgba(255,180,50,0.5);">Lv ${c.new_level}</div>`;
         const costLine = c.cost
             ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;"><img src="${shardIcon}" alt="" class="inline-icon-sm"> ${c.cost.toLocaleString()}</div>`
             : '';
@@ -123,28 +128,47 @@ function maybeShowBuildCompletionsModal() {
             `<div style="font-size:11px;color:var(--color-success);line-height:1.4;">${d}</div>`
         ).join('');
         return `
-            <div style="display:flex;gap:12px;padding:10px;background:var(--bg-secondary);border-radius:6px;border:1px solid rgba(255,180,50,0.2);margin-bottom:8px;">
-                ${img}
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:13px;color:var(--text-primary);font-weight:600;">${escapeHtml(c.item_name)}</div>
-                    <div style="font-size:12px;color:var(--color-warning);font-weight:500;margin-top:2px;">Lv ${c.old_level} → ${c.new_level}</div>
-                    ${costLine}
-                    ${diffLines ? `<div style="margin-top:6px;">${diffLines}</div>` : ''}
+            <div style="padding:10px;background:var(--bg-secondary);border-radius:6px;border:1px solid rgba(255,180,50,0.2);margin-bottom:10px;">
+                <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-bottom:8px;">
+                    ${beforeImg}
+                    ${arrow}
+                    ${afterImg}
                 </div>
+                <div style="font-size:13px;color:var(--text-primary);font-weight:600;text-align:center;">${escapeHtml(c.item_name)}</div>
+                <div style="font-size:12px;color:var(--color-warning);font-weight:500;margin-top:2px;text-align:center;">Lv ${c.old_level} → ${c.new_level}</div>
+                ${costLine ? `<div style="text-align:center;">${costLine}</div>` : ''}
+                ${diffLines ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);">${diffLines}</div>` : ''}
             </div>
         `;
     }).join('');
+
+    let dismissed = false;
+    const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        // Fire-and-forget; if the network call fails the modal will simply re-show on
+        // the next /depot load (mild annoyance, not data loss).
+        fetch('/api/depot/completions/mark-seen', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+        }).catch(() => {});
+        MarsModal.hide();
+    };
 
     MarsModal.show({
         title: `${completions.length} build${completions.length > 1 ? 's' : ''} complete`,
         subtitle: 'Ready at the Depot',
         width: 'md',
         body: `<div style="max-height:60vh;overflow-y:auto;padding:4px 2px;">${cards}</div>`,
-        footer: '<button class="btn btn-primary mm-dismiss-completions">Got it</button>',
-        onClose: () => { try { localStorage.setItem(key, '1'); } catch (e) {} }
+        footer: '<button class="btn btn-primary mm-dismiss-completions mm-btn-full">Got it</button>',
+        // Sticky: only the X button or Got It button closes it.
+        dismissOnBackdrop: false,
+        dismissOnEscape: false,
+        onClose: dismiss,
     });
     const btn = document.querySelector('.mm-dismiss-completions');
-    if (btn) btn.addEventListener('click', () => MarsModal.hide());
+    if (btn) btn.addEventListener('click', dismiss);
 }
 
 function escapeHtml(s) {

@@ -275,10 +275,16 @@ const MarsModal = {
         `;
         document.body.appendChild(this._el);
         this._el.querySelector('.mm-close').onclick = () => this.hide();
-        this._el.addEventListener('click', e => { if (e.target === this._el) this.hide(); });
+        // Bug #1397 ReOpen v3: per-modal opt-out for backdrop & Escape dismissal.
+        // Default behavior unchanged (true). Sticky modals (build completion) set
+        // these to false so an accidental click outside the dialog can't kill the
+        // modal before the captain reads it.
+        this._el.addEventListener('click', e => {
+            if (e.target === this._el && this._dismissOnBackdrop !== false) this.hide();
+        });
         document.addEventListener('keydown', e => {
             if (!this._el || !this._el.classList.contains('show')) return;
-            if (e.key === 'Escape') this.hide();
+            if (e.key === 'Escape' && this._dismissOnEscape !== false) this.hide();
             if (this._carousel && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                 e.preventDefault();
                 this._navCarousel(e.key === 'ArrowLeft' ? -1 : 1);
@@ -380,10 +386,14 @@ const MarsModal = {
         this._swipeHandlersAttached = true;
     },
 
-    show({ title, subtitle, icon, body, footer, width, onClose, hero, heroHeight, badge, theme, carousel } = {}) {
+    show({ title, subtitle, icon, body, footer, width, onClose, hero, heroHeight, badge, theme, carousel,
+            dismissOnBackdrop, dismissOnEscape } = {}) {
         this._ensure();
         this._onClose = onClose || null;
         this._carousel = carousel || null;
+        // Default true (existing callers unchanged); explicit false for sticky modals.
+        this._dismissOnBackdrop = dismissOnBackdrop !== false;
+        this._dismissOnEscape = dismissOnEscape !== false;
         const dialog = this._el.querySelector('.mm-dialog');
         let cls = 'mm-dialog' + (width ? ` mm-${width}` : ' mm-md');
         if (theme) cls += ` mm-theme-${theme}`;
