@@ -130,7 +130,7 @@ async function loadCrewMissions() {
             // Store base coords from response and re-center map if needed
             if (trailsData.base_coords) {
                 window.baseCoords = trailsData.base_coords;
-                if (crewTrailMap) {
+                if (crewTrailMap && !crewTrailMap._suppressAutoRecenter) {
                     crewTrailMap.setView([trailsData.base_coords.latitude, trailsData.base_coords.longitude], crewTrailMap.getZoom());
                 }
             }

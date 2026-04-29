@@ -256,27 +256,39 @@ function updateCrewTrailMapMarkers() {
             }
         }
     }
-    if (points.length > 1) {
-        crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 5 });
-    } else {
-        // No built segments yet — center on base with a moderate zoom
-        crewTrailMap.setView([baseCoords.latitude, baseCoords.longitude], 4);
+    // Skip auto-recentering once the captain has flown to the antipode — otherwise the 30s
+    // poll yanks them back to base mid-read.
+    if (!crewTrailMap._suppressAutoRecenter) {
+        if (points.length > 1) {
+            crewTrailMap.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 5 });
+        } else {
+            crewTrailMap.setView([baseCoords.latitude, baseCoords.longitude], 4);
+        }
     }
     // Stash the antipode coords on the map for the "Fly to Antipode" button below
     crewTrailMap._antipodeCoords = antipodeCoords;
     crewTrailMap._antipodeName = antipodeName;
 }
 
-// Pan the map smoothly to the captain's antipode (called by the "Fly to Antipode" button)
+// Pan the map smoothly to the captain's antipode (called by the "Fly to Antipode" button).
+// Suppresses the 30s poll's auto-recenter so the view stays put, then opens the antipode modal
+// once the flight finishes — same UX as clicking the throbbing beacon directly.
 window.flyToAntipode = function() {
     if (!crewTrailMap || !crewTrailMap._antipodeCoords) return;
+    crewTrailMap._suppressAutoRecenter = true;
     crewTrailMap.flyTo(crewTrailMap._antipodeCoords, 5, { duration: 1.5 });
+    crewTrailMap.once('moveend', () => {
+        if (typeof window.openAntipodeModal === 'function') {
+            window.openAntipodeModal(crewTrailMap._antipodeName);
+        }
+    });
 };
 
-// Pan back to the captain's base
+// Pan back to the captain's base — clears the suppression flag so polling resumes normal centering.
 window.flyToBase = function() {
     if (!crewTrailMap) return;
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
+    crewTrailMap._suppressAutoRecenter = false;
     crewTrailMap.flyTo([baseCoords.latitude, baseCoords.longitude], 4, { duration: 1.5 });
 };
 
