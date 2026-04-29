@@ -700,6 +700,77 @@ def test_haversine():
     return True
 
 
+@test("page-data db-call budgets (N+1 guard)", tier=2, features=['api', 'db'], mode='local')
+def test_page_data_db_budgets():
+    """Bug #1431 (perf): every page-data fn has a per-load DB-call budget. Going
+    over means somebody added an N+1. Adjust the budget DOWN as you bulk-fetch;
+    only adjust UP with explicit justification.
+
+    Calibrated against Andy (user 45). Cushion is ~1-3 over post-fix baseline so a
+    single-query addition won't fail the smoke, but a real N+1 (5+ extra) will."""
+    from utilities.postgres.core import reset_db_counter, get_db_counter
+    from utilities.admin.speed_testing import _StubAuth
+    from utilities.page_data_utils import (
+        get_dashboard_page_data, get_command_page_data,
+        get_colony_page_data, get_depot_page_data,
+    )
+    from utilities.expeditions.page_data import get_expeditions_page_data
+    from utilities.tech_utils import get_research_page_data
+    from utilities.admin_utils import get_admin_dashboard_data
+    from utilities.signal_utils import get_signal_page_render_data
+
+    user_id = 45
+    auth = _StubAuth(user_id)
+
+    # Push a Flask request context so page-data fns that read flask.g/session don't blow up.
+    ctx = None
+    try:
+        from flask import has_request_context, session, g
+        if not has_request_context():
+            from app import app as _app
+            ctx = _app.test_request_context('/')
+            ctx.push()
+            session['user'] = auth.get_current_user()
+            session['user_id'] = user_id
+            g.user_id = user_id
+    except Exception:
+        ctx = None
+
+    cases = [
+        ('Home /',         52, lambda: get_dashboard_page_data(user_id, auth)),
+        ('Expeditions',    40, lambda: get_expeditions_page_data(user_id)),
+        ('Crew /crew',     25, lambda: get_command_page_data(user_id)),
+        ('Depot /depot',   25, lambda: get_depot_page_data(user_id, auth)),
+        ('Colony /colony', 25, lambda: get_colony_page_data(user_id, auth)),
+        ('Signal /signal', 20, lambda: get_signal_page_render_data(user_id)),
+        ('Research',       18, lambda: get_research_page_data(user_id)),
+        ('Admin /admin',   15, lambda: get_admin_dashboard_data(user_id)),
+    ]
+
+    breaches = []
+    try:
+        for label, budget, fn in cases:
+            reset_db_counter()
+            try:
+                fn()
+            except Exception as e:
+                breaches.append(f"{label}: errored ({type(e).__name__}: {str(e)[:60]})")
+                continue
+            db_calls = get_db_counter()
+            if db_calls > budget:
+                breaches.append(f"{label}: db:{db_calls} > budget {budget}")
+    finally:
+        if ctx is not None:
+            try:
+                ctx.pop()
+            except Exception:
+                pass
+
+    if breaches:
+        return "Budget exceeded — " + "; ".join(breaches) + ". Fix the N+1 or raise the budget here with a justification comment."
+    return True
+
+
 @test("GCS bucket accessible", tier=3, features=['api'], mode='local')
 def test_gcs_bucket():
     import requests

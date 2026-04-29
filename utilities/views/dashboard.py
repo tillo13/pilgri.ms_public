@@ -98,6 +98,25 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
             """, (user_id,))
             expeditions = cur.fetchall()
 
+            # Bug #1431: bulk-fetch unclaimed discovery breakdowns for every expedition that
+            # might need one, instead of issuing a per-expedition query inside the loop below.
+            # Was N+1 (up to 3 extra queries per dashboard load); now 1 query covers all slots.
+            disc_breakdown_by_exp: Dict[int, list] = {}
+            disc_total_by_exp: Dict[int, int] = {}
+            exp_ids = [e['id'] for e in expeditions]
+            if exp_ids:
+                cur.execute("""
+                    SELECT ed.expedition_id, di.rarity, COUNT(*) as count
+                    FROM pilgrim.expedition_discoveries ed
+                    JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+                    WHERE ed.expedition_id = ANY(%s) AND ed.claimed_by_user = false
+                    GROUP BY ed.expedition_id, di.rarity
+                """, (exp_ids,))
+                for row in cur.fetchall():
+                    eid = row['expedition_id']
+                    disc_breakdown_by_exp.setdefault(eid, []).append({'rarity': row['rarity'], 'count': row['count']})
+                    disc_total_by_exp[eid] = disc_total_by_exp.get(eid, 0) + row['count']
+
             for exp in expeditions:
                 vehicle_type = exp['vehicle_type'] or 'rover'
                 if vehicle_type not in fleet:
@@ -120,19 +139,9 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
 
                     # Check if expedition has actually returned (return_arrives_at passed)
                     if return_arrives_at and now >= return_arrives_at:
-                        # Get discovery breakdown for this expedition
-                        cur.execute("""
-                            SELECT di.rarity, COUNT(*) as count
-                            FROM pilgrim.expedition_discoveries ed
-                            JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
-                            WHERE ed.expedition_id = %s AND ed.claimed_by_user = false
-                            GROUP BY di.rarity
-                        """, (exp['id'],))
-                        discoveries = []
-                        total_disc = 0
-                        for row in cur.fetchall():
-                            discoveries.append({'rarity': row['rarity'], 'count': row['count']})
-                            total_disc += row['count']
+                        # Discovery breakdown was bulk-fetched above (bug #1431)
+                        discoveries = disc_breakdown_by_exp.get(exp['id'], [])
+                        total_disc = disc_total_by_exp.get(exp['id'], 0)
 
                         fleet[vehicle_type] = {
                             'status': 'returned', 'vehicle_name': vehicle_type.title(), 'icon': fleet[vehicle_type]['icon'],
@@ -153,19 +162,9 @@ def get_fleet_status(user_id: int, debug_mode: bool = False) -> Dict[str, Any]:
                         }
 
                 elif exp['status'] == 'complete' and exp['unclaimed_discoveries'] > 0:
-                    # Returned with unclaimed discoveries
-                    cur.execute("""
-                        SELECT di.rarity, COUNT(*) as count
-                        FROM pilgrim.expedition_discoveries ed
-                        JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
-                        WHERE ed.expedition_id = %s AND ed.claimed_by_user = false
-                        GROUP BY di.rarity
-                    """, (exp['id'],))
-                    discoveries = []
-                    total_disc = 0
-                    for row in cur.fetchall():
-                        discoveries.append({'rarity': row['rarity'], 'count': row['count']})
-                        total_disc += row['count']
+                    # Returned with unclaimed discoveries — breakdown bulk-fetched above (bug #1431)
+                    discoveries = disc_breakdown_by_exp.get(exp['id'], [])
+                    total_disc = disc_total_by_exp.get(exp['id'], 0)
 
                     fleet[vehicle_type] = {
                         'status': 'returned', 'vehicle_name': vehicle_type.title(), 'icon': fleet[vehicle_type]['icon'],
@@ -245,9 +244,12 @@ def get_dashboard_page_data(user_id, auth):
     except Exception as e:
         logger.warning(f"Failed to get upgrade builds for dashboard: {e}")
     # Add infrastructure builds
+    # Bug #1431: fetch infrastructure ONCE — was being queried twice per dashboard load
+    # (once here for the building queue, once at the bottom for has_infrastructure).
+    user_infrastructure = get_user_infrastructure(user_id)
     try:
         from config_infrastructure import INFRASTRUCTURE_CATALOG
-        for infra in get_user_infrastructure(user_id):
+        for infra in user_infrastructure:
             if infra.get('status') == 'building' and infra.get('ready_at'):
                 ready_at = infra['ready_at']
                 if hasattr(ready_at, 'tzinfo') and ready_at.tzinfo is None:
@@ -453,7 +455,7 @@ def get_dashboard_page_data(user_id, auth):
         'commander': commander_data, 'commander_stats': commander_stats,
         'recent_activity': build_recent_activity(user_id, 10),
         'active_expeditions': active_expeditions,
-        'has_infrastructure': len(get_user_infrastructure(user_id)) > 0,
+        'has_infrastructure': len(user_infrastructure) > 0,
         'expedition_stats': {
             'total': total_expeditions,
             'completed': completed_expeditions,
