@@ -11,7 +11,7 @@
         const chat = document.getElementById('aria-chat');
         if (chat) {
             chat.dataset.page = 'changelog';
-            chat.dataset.pageContext = 'Captain is viewing the Changelog page showing version history. Latest: v2.1 (Feb 7) - Depot UX, ARIA intelligence, 15+ bug fixes. Previous: v2.0.3 (Feb 6) - Signal & Expeditions; v2.0.2 (Feb 5) - EVA Suit simplification; v2.0.1 (Feb 4) - Depot redesign; v2.0 (Feb 3) - Economy Redesign; v1.5 (Jan 2026) - Codebase refactor; v1.0 (Oct 2025) - Initial launch.';
+            chat.dataset.pageContext = 'Captain is viewing the Changelog page showing version history. Latest: v2.6 (Apr 28, 2026) — TRAILS v3, Fragment Bonds, Signal Phase 2 ship. Previous: v2.5 (Apr 13–19) — Depot Recalibration + Signal Phase 2 spec; v2.4 (Apr 6–12) — UI polish wave; v2.3 (Mar 23–29) — Robot Crew + ARIA improvements; v2.2 (Mar 16–22) — Bug Tracker overhaul + SV economy; v2.1 (Feb 7) — Depot UX & ARIA intelligence; v2.0 (Feb 3) — Economy Redesign; v1.5 (Jan 2026) — Codebase refactor; v1.0 (Oct 2025) — Initial launch.';
         }
     });
 </script>
@@ -21,6 +21,208 @@
 <div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
     <h2 style="color: var(--color-sepolia); margin-bottom: 4px;">Changelog</h2>
     <p class="text-sm text-muted mb-16">What's new in Pilgrims</p>
+
+    <!-- v2.6 — Apr 28, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.6</span>
+            <span class="changelog-date">Apr 28, 2026</span>
+        </div>
+        <h3 class="changelog-title">TRAILS v3, Fragment Bonds, Signal Phase 2 Ship</h3>
+        <p class="changelog-summary">The biggest single-day ship of the year. Trails fully rebuilt, fragment bonds turn into permanent gameplay, signal cinematic lands.</p>
+
+        <div class="changelog-section">
+            <h4>TRAILS v3 — Antipode Methodology</h4>
+            <ul>
+                <li><strong>4 deterministic cardinal chains per base</strong> — every captain now has N/S/E/W chains computed by constrained Dijkstra to their antipode landmark</li>
+                <li><strong>Active direction selector</strong> — pick a chain on /crew; drones, crew, ARIA, and Robot all build segments of your active chain</li>
+                <li><strong>Conservation migration</strong> — every captain's existing trail km migrated with zero drift; nothing lost</li>
+                <li><strong>Off-chain expedition speed bonus removed</strong> — chains are THE trail system now; expeditions use them, never mutate them</li>
+                <li><strong>Per-source attribution</strong> — chain rows track Captain / Scientist / ARIA / Drone / Robot km separately for the trail summary modal</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Fragment Bonds Get Real</h4>
+            <ul>
+                <li><strong>Bond Bonus picker</strong> — every bonded fragment lets you choose ONE permanent +5% bonus from a 6-slot menu (SV, expedition speed, depot build speed, shards/hr, vehicle range, discovery rate)</li>
+                <li><strong>Max 3 picks per captain</strong>, no duplicates, picks survive everything</li>
+                <li><strong>Bonuses flow through the universal effects aggregator</strong> — they stack with upgrades, infra, tech, scientist stats, and bonds</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Signal Phase 2 Cinematic</h4>
+            <ul>
+                <li><strong>Signal Claim cinematic</strong> — full-screen reveal when you complete a signal_claim expedition</li>
+                <li><strong>Puzzle fragments</strong> — collect Origin Site fragments with whisper text + decoder terminal</li>
+                <li><strong>Bond fragment hint</strong> — your first bond's tx hash now seeds the decoder for every Signal entry</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Bug Fixes</h4>
+            <ul>
+                <li><strong>Unlimited SV accumulation</strong> — signal-network SV bonus was riding on shard-building reset clock; now tied to SV-building reset (#1426)</li>
+                <li><strong>Shard Rush button missing</strong> — infrastructure Lv2+ upgrades now route to the right catalog so the rush button shows for ALL builds, not just first builds (#1427)</li>
+                <li><strong>Build Time display mismatch</strong> — modal now shows the same discounted figure as the card row (the build was always discounted, only the display lied) (#1425)</li>
+                <li><strong>Active Bonuses panel</strong> — /expeditions now shows up to 14 active bonus chips, not just Comms Array (#1419)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.5 — Apr 13–19, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.5</span>
+            <span class="changelog-date">Apr 13–19, 2026</span>
+        </div>
+        <h3 class="changelog-title">Depot Recalibration + Signal Phase 2 Spec</h3>
+        <p class="changelog-summary">Mars-realistic build times, Maintenance Drone gets a real job, Base page overhaul, Signal Phase 2 design locked.</p>
+
+        <div class="changelog-section">
+            <h4>Depot Recalibration (#1270)</h4>
+            <ul>
+                <li><strong>Mars-realistic build times</strong> — early tiers in days, mid-game in weeks, late-game in months</li>
+                <li><strong>Maintenance Drone</strong> — now grants passive +5/+10/+15% build speed across all upgrades</li>
+                <li><strong>Scientist Engineering</strong> — high-ENG scientists shave significant time off every build</li>
+                <li><strong>Build complete clarity</strong> — recently-completed builds now surface in a rich modal on /depot landing</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Base Page Overhaul (#1317)</h4>
+            <ul>
+                <li>Refactored into smaller focused panels: shard generation, SV income, building queue, recent activity</li>
+                <li>Record SV button moved to Base for one-click claiming</li>
+                <li>Effective rate breakdown now shows EVERY contributing source</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Foundations</h4>
+            <ul>
+                <li><strong>1000-line file cap (#1328)</strong> — split 17 oversize files into focused modules; codebase is sustainable again</li>
+                <li><strong>Signal Phase 2 design (#1276)</strong> — fragment cinematic + puzzle terminal + decoder spec locked with Luke</li>
+                <li><strong>Trail Take 3 (#1399)</strong> — tipped over into the v3 antipode rewrite that shipped a week later</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.4 — Apr 6–12, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.4</span>
+            <span class="changelog-date">Apr 6–12, 2026</span>
+        </div>
+        <h3 class="changelog-title">UI Polish Wave + Expedition Trust Fixes</h3>
+        <p class="changelog-summary">Decimals out of the ribbon, expedition circle finally accurate, "Shard Some" returns.</p>
+
+        <div class="changelog-section">
+            <h4>UI Polish</h4>
+            <ul>
+                <li><strong>No more decimals on Shard / SV ribbon (#1122)</strong> — clean integer counts</li>
+                <li><strong>SV column on Confirmation buttons (#1131)</strong> — claim/extract now surfaces SV value before you commit</li>
+                <li><strong>Standardized "Shard" vs "Extract" wording (#1327)</strong></li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Expedition Fixes</h4>
+            <ul>
+                <li><strong>Expedition Circle accurate (#1283)</strong> — range ring now matches the actual reachable distance</li>
+                <li><strong>Round-trip required (#1281)</strong> — expeditions complete on RETURN, not on arrival at the destination</li>
+                <li><strong>"Insufficient Funds" message (#1290)</strong> — explicit error instead of silent failure</li>
+                <li><strong>Shard Some items returns (#1125)</strong> — bulk-shard your stash again from the discoveries view</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Workflow</h4>
+            <ul>
+                <li><strong>Brainstorm pages</strong> for Captain Stats (#21), Scientist Stats (#1108), Depot Recalibration (#1270) so design decisions happen in one place</li>
+                <li><strong>Lab summary box (#1286)</strong> — see at a glance what's researched without clicking each branch</li>
+                <li><strong>Tech time consistency (#1285)</strong> — research timers now match across pages</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.3 — Mar 23–29, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.3</span>
+            <span class="changelog-date">Mar 23–29, 2026</span>
+        </div>
+        <h3 class="changelog-title">Robot Crew + ARIA Hype Returns</h3>
+        <p class="changelog-summary">Fourth crew slot unlocked via legendary discoveries. Shard timing nailed down. ARIA gets her hype-man voice back.</p>
+
+        <div class="changelog-section">
+            <h4>Robot Crew Member (#1147)</h4>
+            <ul>
+                <li><strong>Forge a Robot</strong> — your scientist can build a 4th crew member from legendary discoveries</li>
+                <li><strong>Exploration dial</strong> — Robot contributes to expeditions OR trails based on the dial setting</li>
+                <li><strong>ARIA Autopilot brainstorm (#1145)</strong> — design page for AFK colony management started</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Shard Timing Fixed</h4>
+            <ul>
+                <li><strong>Effective rate accuracy (#1109)</strong> — Effective Rate section surfaces every contributing source</li>
+                <li><strong>Discovery generation (#1107)</strong> — long expeditions now find appropriate loot; cargo limits enforced</li>
+                <li><strong>Shard value calibration (#1126)</strong> — discovery values rebalanced for late-game pacing</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>ARIA Improvements</h4>
+            <ul>
+                <li><strong>PilgrimBot timeouts cut (#1110)</strong> — admin chat reliability massively improved</li>
+                <li><strong>Hype-man voice (#1115)</strong> — PilgrimBot's tone restored to celebratory after going flat</li>
+                <li><strong>ARIA knows about trails (#1027)</strong> — chat can answer trail questions accurately</li>
+                <li><strong>Better expedition return message (#1091)</strong></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- v2.2 — Mar 16–22, 2026 -->
+    <div class="changelog-entry">
+        <div class="changelog-header">
+            <span class="changelog-version">v2.2</span>
+            <span class="changelog-date">Mar 16–22, 2026</span>
+        </div>
+        <h3 class="changelog-title">Bug Tracker Overhaul + SV Economy</h3>
+        <p class="changelog-summary">Excel sheet retired. PostgreSQL bug tracker live. SV economy + scientist stats locked in.</p>
+
+        <div class="changelog-section">
+            <h4>Bug Tracker (now in /admin/bugs)</h4>
+            <ul>
+                <li><strong>Native PostgreSQL tracker</strong> — bugs, history, comments, screenshots all in-database</li>
+                <li><strong>Sort by Date Created (#1031)</strong>, <strong>Status labels (#1037)</strong>, <strong>Ready For Dev status (#1086)</strong></li>
+                <li><strong>Rename/retitle bugs (#1040)</strong>, <strong>screenshot port from Google Sheet (#1038)</strong></li>
+                <li><strong>PilgrimBot bug queries (#1074)</strong> — admin chat can pull all your shard generation, bug status, etc.</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>SV Economy + Captain Stats</h4>
+            <ul>
+                <li><strong>Shard Generator math (#1039, #1242)</strong> — generation rate calculation reliable across pages</li>
+                <li><strong>Shard It All credits balance (#7)</strong> — bulk extraction now correctly adds shards AND SV</li>
+                <li><strong>Drone base speed (#1050, #1082)</strong> — vehicle stats restored from the catalog</li>
+                <li><strong>Environmental Impact line (#1030)</strong> — generation rate UI shows env multiplier</li>
+            </ul>
+        </div>
+
+        <div class="changelog-section">
+            <h4>Foundation Fixes</h4>
+            <ul>
+                <li><strong>ARIA Bond stuck in pending (#1046)</strong> — bonds now complete cleanly on landmark visit</li>
+                <li><strong>Expedition discoveries credit balance (#1045)</strong> — shards from claims now hit the wallet</li>
+                <li><strong>Sol number in ARIA photo journal (#4)</strong> — first appearance of in-game time dating</li>
+            </ul>
+        </div>
+    </div>
 
     <!-- v2.1 — Feb 7, 2026 -->
     <div class="changelog-entry">

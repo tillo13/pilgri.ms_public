@@ -1089,6 +1089,17 @@
       "Fetching Bug Screenshots"
     ]
   },
+  "docs/changelog-maintenance.md": {
+    "description": "Changelog Maintenance",
+    "exports": [
+      "When to update",
+      "How to update",
+      "Sourcing content",
+      "Voice rules",
+      "Where the link lives",
+      "Anti-patterns"
+    ]
+  },
   "docs/continuation_cleanup.md": {
     "description": "Continuation Cleanup — app.py Routing-Only Refactor",
     "exports": [
