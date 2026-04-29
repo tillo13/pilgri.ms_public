@@ -280,11 +280,19 @@ function formatEffectValue(key, val) {
 
 function formatBuildTime(seconds) {
     if (!seconds) return 'Instant';
-    if (seconds >= 86400 * 365) return `${(seconds / (86400 * 365)).toFixed(1)} years`;
-    if (seconds >= 86400) return `${(seconds / 86400).toFixed(3)} days`;
-    if (seconds >= 3600) return `${(seconds / 3600).toFixed(1)} hours`;
-    if (seconds >= 60) return `${Math.round(seconds / 60)} min`;
-    return `${seconds}s`;
+    // Bug #1425: apply build_time_mult so the modal matches the card row's
+    // discounted figure. Actual upgrade-start in flow.py / construction.py
+    // already applies the same multiplier — display was the only liar.
+    const mult = (window.DEPOT_DATA && DEPOT_DATA.buildTimeMult) || 1.0;
+    const adjusted = Math.max(60, seconds * mult);
+    const savedPct = mult < 1.0 ? Math.round((1 - mult) * 100) : 0;
+    let label;
+    if (adjusted >= 86400 * 365) label = `${(adjusted / (86400 * 365)).toFixed(1)} years`;
+    else if (adjusted >= 86400) label = `${(adjusted / 86400).toFixed(3)} days`;
+    else if (adjusted >= 3600) label = `${(adjusted / 3600).toFixed(1)} hours`;
+    else if (adjusted >= 60) label = `${Math.round(adjusted / 60)} min`;
+    else label = `${Math.round(adjusted)}s`;
+    return savedPct > 0 ? `${label} (−${savedPct}%)` : label;
 }
 
 function formatReqName(id) { return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }

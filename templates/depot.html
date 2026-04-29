@@ -606,6 +606,7 @@ document.addEventListener('DOMContentLoaded', function() {
     },
     "discoveryCount": {{ discovery_count|default(0) }},
     "rangeMult": {{ range_mult|default(1.0) }},
+    "buildTimeMult": {{ build_time_mult|default(1.0) }},
     "upgradeCatalog": {{ upgrade_catalog|tojson if upgrade_catalog else '{}' }},
     "infraItems": {
         {% for structure in structures|default([]) %}
