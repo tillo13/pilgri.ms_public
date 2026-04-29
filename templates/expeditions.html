@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/static/js/expeditions-launch.js?v={{ static_v }}" defer></script>
 <script src="/static/js/expeditions-rewards.js?v={{ static_v }}" defer></script>
 <script src="/static/js/expeditions-page.js?v={{ static_v }}" defer></script>
+<script src="/static/js/expeditions-bonus-breakdown.js?v={{ static_v }}" defer></script>
 <script src="/static/js/signal.js?v={{ static_v }}" defer></script>
 {% endblock %}
 
@@ -141,8 +142,8 @@ document.addEventListener('DOMContentLoaded', function() {
 {% set has_any_bonus = eb and (eb.expedition_range_mult > 1.0 or eb.expedition_speed_mult > 1.0 or eb.vehicle_range_mult > 1.0 or eb.discovery_chance_bonus > 0 or eb.rare_chance_bonus > 0 or eb.legendary_chance_bonus > 0 or eb.discovery_value_mult > 1.0 or eb.bio_discovery_value_mult > 1.0 or eb.fuel_cost_mult < 1.0 or eb.life_support_cost_mult < 1.0 or eb.cargo_slots > 0 or eb.signal_detection_enabled or eb.dust_storm_immune) %}
 {% if has_any_bonus %}
 {# Reusable chip macro so we don't repeat 14 copies of the same div #}
-{% macro bonus_chip(icon, label, value_html, color_class='text-success', bg_color='var(--color-success-rgb)', highlight='') -%}
-<a href="/colony?tab=assets{% if highlight %}&highlight={{ highlight }}{% endif %}" class="bonus-item-link" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba({{ bg_color }}, 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='rgba({{ bg_color }}, 0.6)'" onmouseout="this.style.borderColor='transparent'">
+{% macro bonus_chip(icon, label, value_html, color_class='text-success', bg_color='var(--color-success-rgb)', highlight='', breakdown_key='') -%}
+<a href="#" data-bonus-key="{{ breakdown_key }}" data-bonus-highlight="{{ highlight }}" class="bonus-item-link" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba({{ bg_color }}, 0.1); border-radius: 8px; text-decoration: none; transition: all 0.2s; border: 1px solid transparent;" onmouseover="this.style.borderColor='rgba({{ bg_color }}, 0.6)'" onmouseout="this.style.borderColor='transparent'" onclick="return openBonusBreakdown(event, this);" title="Click to see where this number comes from">
     <img src="{{ icon }}" alt="" style="width: 20px; height: 20px;">
     <span style="color: var(--text-primary);">{{ label }}</span>
     <span class="{{ color_class }} font-bold">{{ value_html|safe }}</span>
@@ -156,53 +157,53 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="flex gap-16 flex-wrap text-base text-primary" style="row-gap: 8px;">
         {# --- SPEED & RANGE --- #}
         {% if eb.expedition_speed_mult > 1.0 %}
-            {{ bonus_chip(icons.rocket_launch, 'Speed', '+' ~ ((eb.expedition_speed_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)') }}
+            {{ bonus_chip(icons.rocket_launch, 'Speed', '+' ~ ((eb.expedition_speed_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'expedition_speed_mult') }}
         {% endif %}
         {% if eb.vehicle_range_mult > 1.0 %}
-            {{ bonus_chip(icons.tab_map, 'Vehicle Range', '+' ~ ((eb.vehicle_range_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)') }}
+            {{ bonus_chip(icons.tab_map, 'Vehicle Range', '+' ~ ((eb.vehicle_range_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'vehicle_range_mult') }}
         {% endif %}
         {% if eb.expedition_range_mult > 1.0 %}
-            {{ bonus_chip(icons.rocket_launch, 'Launch Pad', '+' ~ ((eb.expedition_range_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', 'launch_pad') }}
+            {{ bonus_chip(icons.rocket_launch, 'Launch Pad', '+' ~ ((eb.expedition_range_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', 'launch_pad', 'expedition_range_mult') }}
         {% endif %}
 
         {# --- DISCOVERY RATES (rarity tiers) --- #}
         {% if eb.discovery_chance_bonus > 0 %}
-            {{ bonus_chip(icons.signal_transmission, 'Discovery (Common)', '+' ~ (eb.discovery_chance_bonus * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', 'comms_array') }}
+            {{ bonus_chip(icons.signal_transmission, 'Discovery (Common)', '+' ~ (eb.discovery_chance_bonus * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', 'comms_array', 'discovery_chance_bonus') }}
         {% endif %}
         {% if eb.rare_chance_bonus > 0 %}
-            {{ bonus_chip(icons.signal_transmission, 'Rare Discovery', '+' ~ (eb.rare_chance_bonus * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)') }}
+            {{ bonus_chip(icons.signal_transmission, 'Rare Discovery', '+' ~ (eb.rare_chance_bonus * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'rare_chance_bonus') }}
         {% endif %}
         {% if eb.legendary_chance_bonus > 0 %}
-            {{ bonus_chip(icons.tower_structures, 'Legendary Chance', '+' ~ (eb.legendary_chance_bonus * 100)|int ~ '%', 'text-mars', 'var(--color-mars-rgb)', 'space_elevator') }}
+            {{ bonus_chip(icons.tower_structures, 'Legendary Chance', '+' ~ (eb.legendary_chance_bonus * 100)|int ~ '%', 'text-mars', 'var(--color-mars-rgb)', 'space_elevator', 'legendary_chance_bonus') }}
         {% endif %}
 
         {# --- DISCOVERY VALUE --- #}
         {% if eb.discovery_value_mult > 1.0 %}
-            {{ bonus_chip(icons.shard_gem, 'Discovery Value', '+' ~ ((eb.discovery_value_mult - 1) * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)') }}
+            {{ bonus_chip(icons.shard_gem, 'Discovery Value', '+' ~ ((eb.discovery_value_mult - 1) * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'discovery_value_mult') }}
         {% endif %}
         {% if eb.bio_discovery_value_mult > 1.0 %}
-            {{ bonus_chip(icons.microscope_lab, 'Bio Discovery Value', '+' ~ ((eb.bio_discovery_value_mult - 1) * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)') }}
+            {{ bonus_chip(icons.microscope_lab, 'Bio Discovery Value', '+' ~ ((eb.bio_discovery_value_mult - 1) * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'bio_discovery_value_mult') }}
         {% endif %}
 
         {# --- COSTS (lower = better) --- #}
         {% if eb.fuel_cost_mult < 1.0 %}
-            {{ bonus_chip(icons.env_sun_power, 'Fuel Cost', '−' ~ ((1 - eb.fuel_cost_mult) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)') }}
+            {{ bonus_chip(icons.env_sun_power, 'Fuel Cost', '−' ~ ((1 - eb.fuel_cost_mult) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'fuel_cost_mult') }}
         {% endif %}
         {% if eb.life_support_cost_mult < 1.0 %}
-            {{ bonus_chip(icons.env_sun_power, 'Life Support Cost', '−' ~ ((1 - eb.life_support_cost_mult) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)') }}
+            {{ bonus_chip(icons.env_sun_power, 'Life Support Cost', '−' ~ ((1 - eb.life_support_cost_mult) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'life_support_cost_mult') }}
         {% endif %}
 
         {# --- CARGO --- #}
         {% if eb.cargo_slots > 0 %}
-            {{ bonus_chip(icons.hammer_building, 'Cargo Bonus', '+' ~ eb.cargo_slots ~ ' slots', 'text-success', 'var(--color-success-rgb)') }}
+            {{ bonus_chip(icons.hammer_building, 'Cargo Bonus', '+' ~ eb.cargo_slots ~ ' slots', 'text-success', 'var(--color-success-rgb)', '', 'cargo_slots') }}
         {% endif %}
 
         {# --- BOOLEAN FLAGS --- #}
         {% if eb.signal_detection_enabled %}
-            {{ bonus_chip(icons.signal_transmission, 'Signal Detection', 'ON', 'text-sepolia', 'var(--color-sepolia-rgb)') }}
+            {{ bonus_chip(icons.signal_transmission, 'Signal Detection', 'ON', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'signal_detection_enabled') }}
         {% endif %}
         {% if eb.dust_storm_immune %}
-            {{ bonus_chip(icons.env_sun_power, 'Dust Storm Immune', 'ON', 'text-success', 'var(--color-success-rgb)') }}
+            {{ bonus_chip(icons.env_sun_power, 'Dust Storm Immune', 'ON', 'text-success', 'var(--color-success-rgb)', '', 'dust_storm_immune') }}
         {% endif %}
     </div>
 </div>

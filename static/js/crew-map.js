@@ -328,15 +328,39 @@ window.openAntipodeModal = async function(antipodeName) {
         return null;
     };
 
+    // Mars-radius haversine for the "X km away" line — matches utilities/postgres/trails/chains.py
+    const marsHaversine = (lat1, lon1, lat2, lon2) => {
+        const R = 3389.5; // km, Mars mean radius
+        const toRad = (x) => x * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+    };
+    const baseC = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
+    const antC = (crewTrailMap && crewTrailMap._antipodeCoords) ? crewTrailMap._antipodeCoords : null;
+    const antDist = antC ? marsHaversine(baseC.latitude, baseC.longitude, antC[0], antC[1]) : null;
+    const baseStr = `(${Number(baseC.latitude).toFixed(2)}°, ${Number(baseC.longitude).toFixed(2)}°)`;
+    const antStr = antC ? `(${Number(antC[0]).toFixed(2)}°, ${Number(antC[1]).toFixed(2)}°)` : '—';
+
     let body = `<div class="mm-card-accent" style="text-align:center;">
         <div class="mm-section-label">Antipode</div>
         <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${antipodeName || '—'}</div>
         <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">All 4 of your chains terminate here</div>
     </div>`;
-    body += `<div style="font-size:11px;color:var(--text-muted);margin:8px 2px 4px;line-height:1.5;">
-        <strong style="color:var(--text-primary);">How chain % is computed:</strong>
+    body += `<div style="font-size:11px;color:var(--text-muted);margin:8px 2px 4px;line-height:1.55;">
+        <div style="margin-bottom:6px;"><strong style="color:var(--text-primary);">What is an antipode?</strong>
+        The point on Mars directly opposite your base — the furthest reachable landmark from where you stand.
+        Mathematically it's <code>(−lat, lon ± 180°)</code>; in-game it's the named landmark with the largest
+        great-circle distance from your base, scanned across every Mars landmark
+        (<code>find_antipode_landmark()</code> in <code>utilities/postgres/trails/chains.py</code>).</div>
+        <div style="margin-bottom:6px;"><strong style="color:var(--text-primary);">Why ${antipodeName || 'this landmark'}?</strong>
+        Your base is at <strong>${baseStr}</strong>. We computed the haversine distance (Mars radius 3,389.5 km)
+        from your base to every landmark and picked the maximum: <strong>${antipodeName || '—'}</strong> at
+        <strong>${antStr}</strong>${antDist ? ` — <strong>${antDist.toFixed(0)} km</strong> away.` : '.'}
+        Every captain gets their own antipode based on where their base sits.</div>
+        <div><strong style="color:var(--text-primary);">How chain % is computed:</strong>
         sum of <code>km_built</code> across every segment ÷ sum of <code>segment_distance_km</code>.
-        Each segment is one trail leg; km come from Captain + Scientist + ARIA + drones + robots.
+        Each segment is one trail leg; km come from Captain + Scientist + ARIA + drones + robots.</div>
     </div>`;
     body += `<div class="grid" style="grid-template-columns: 1fr; gap: 8px;">`;
     for (const d of ['N', 'E', 'S', 'W']) {

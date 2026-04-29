@@ -2412,6 +2412,12 @@
   "utilities/upgrades/__init__.py": {
     "description": "utilities.upgrades — R14 split of utilities/upgrades_utils.py (2026-04-15)."
   },
+  "utilities/upgrades/breakdown.py": {
+    "description": "Per-source contribution breakdown for the Active Bonus chips on /expeditions.",
+    "exports": [
+      "get_user_effect_breakdown — Return {effect_key: [contribution rows]} for the chip-surfaced keys."
+    ]
+  },
   "utilities/upgrades/catalog.py": {
     "description": "Upgrade catalog & cost lookups.",
     "exports": [
@@ -2975,11 +2981,11 @@
       "chains",
       "fmt",
       "nextTier",
+      "marsHaversine",
+      "toRad",
+      "antC",
       "info",
-      "isActive",
-      "textColor",
-      "drawGhostChainRoutes",
-      "ac"
+      "isActive"
     ]
   },
   "static/js/crew-missions.js": {
@@ -3160,6 +3166,21 @@
       "runSequence",
       "show",
       "escHandler"
+    ]
+  },
+  "static/js/expeditions-bonus-breakdown.js": {
+    "description": "EXPEDITIONS-BONUS-BREAKDOWN.JS — Active Bonus chip click handler.",
+    "exports": [
+      "fmt",
+      "formatContribution",
+      "formatFinal",
+      "mergeBlurb",
+      "loadBonusBreakdown",
+      "renderBreakdownBody",
+      "meta",
+      "rows",
+      "finalVal",
+      "meta"
     ]
   },
   "static/js/expeditions-launch.js": {
@@ -3359,7 +3380,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

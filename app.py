@@ -1540,6 +1540,29 @@ def api_trails_chains():
     })
 
 
+@app.route('/api/upgrade-effects/breakdown', methods=['GET'])
+@login_required
+@handle_api_error
+def api_upgrade_effects_breakdown():
+    """Per-source contribution breakdown for the Active Bonus chips on /expeditions.
+
+    Returns {effect_key: [{layer, source, value}, ...]} so the chip-click modal
+    can show captains exactly where each +N% came from.
+    """
+    from utilities.upgrades.breakdown import get_user_effect_breakdown, SURFACED_KEYS
+    from utilities.upgrades.effects import get_user_upgrade_effects
+    breakdown = get_user_effect_breakdown(g.user_id)
+    finals = get_user_upgrade_effects(g.user_id)
+    finals_subset = {k: finals.get(k) for k in SURFACED_KEYS}
+    meta = {k: {'label': lbl, 'op': op} for k, (lbl, op) in SURFACED_KEYS.items()}
+    return jsonify({
+        'success': True,
+        'breakdown': breakdown,
+        'finals': finals_subset,
+        'meta': meta,
+    })
+
+
 @app.route('/api/signal/user/claims', methods=['GET'])
 @login_required
 @handle_api_error
