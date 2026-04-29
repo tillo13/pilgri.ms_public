@@ -247,6 +247,8 @@ def calculate_accumulated_income(user_id):
     sv_accumulated = 0.0
     sv_base_rate = 0.0
     sv_sources = []
+    sv_capped_hours_sum = 0.0
+    sv_capped_hours_count = 0
     for structure in structures:
         if structure['status'] != 'active':
             continue
@@ -270,6 +272,8 @@ def calculate_accumulated_income(user_id):
         hours_elapsed = (datetime.utcnow() - last_payout).total_seconds() / 3600
         capped_hours = min(hours_elapsed, ACCUMULATION_CAP_HOURS)
         sv_accumulated += sv_rate * capped_hours
+        sv_capped_hours_sum += capped_hours
+        sv_capped_hours_count += 1
 
     sv_scientist_name = None
     sv_scientist_bonus = 1.0
@@ -286,9 +290,18 @@ def calculate_accumulated_income(user_id):
     except Exception:
         pass
     sv_signal_accumulated = 0.0
-    if signal_bonus.get('sv_per_hour', 0) > 0 and details:
-        avg_cap = sum(d['capped_hours'] for d in details) / len(details)
-        sv_signal_accumulated = signal_bonus['sv_per_hour'] * avg_cap
+    if signal_bonus.get('sv_per_hour', 0) > 0:
+        # Bug #1426: signal SV used to ride on the SHARD-building avg_cap, which never reset
+        # when SV was claimed (record_science_value only resets SV-generating buildings).
+        # That caused infinite SV re-credit (Luke saw 342 SV recurring every claim).
+        # Fix: tie signal SV to the SV-generating building avg_cap, which IS reset on claim.
+        if sv_capped_hours_count > 0:
+            sv_avg_cap = sv_capped_hours_sum / sv_capped_hours_count
+        elif details:
+            sv_avg_cap = sum(d['capped_hours'] for d in details) / len(details)
+        else:
+            sv_avg_cap = 0.0
+        sv_signal_accumulated = signal_bonus['sv_per_hour'] * sv_avg_cap
         sv_accumulated += sv_signal_accumulated
 
     sv_hourly_rate = round(sv_base_rate * sv_scientist_bonus + signal_bonus.get('sv_per_hour', 0), 1)
