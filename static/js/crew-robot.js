@@ -543,8 +543,8 @@
         expeditions: 'Sends your Narog on solo scout runs while you’re offline — brings back shards + discoveries from beyond your current range.',
     };
 
-    let dialState = null;          // { key: pct } — shared across knobs
-    let knobInstances = {};         // { key: NarogKnob handle }
+    let dialState = null;          // { key: pct } — shared across rows
+    let allocInstances = {};        // { key: NarogAllocator handle }
     let dialSaveTimer = null;
 
     function readDialState() {
@@ -559,15 +559,15 @@
     }
 
     function isUnlocked(key) {
-        const inst = knobInstances[key];
+        const inst = allocInstances[key];
         return inst && inst.el.dataset.locked !== 'true';
     }
 
-    // Apply state to all knob instances + total readout.
+    // Apply state to all allocator instances + total readout.
     function repaint() {
         if (!dialState) return;
         DIAL_KEYS.forEach(k => {
-            if (knobInstances[k]) knobInstances[k].setValue(dialState[k]);
+            if (allocInstances[k]) allocInstances[k].setValue(dialState[k]);
         });
         const status = document.getElementById('robot-dial-status');
         if (status) {
@@ -636,7 +636,7 @@
         };
         const rowsHtml = DIAL_KEYS.map(k => {
             const active = (k === key) ? ' active' : '';
-            return `<div class="nk-modal-row${active}">
+            return `<div class="na-modal-row${active}">
                 <div style="flex:1;">
                     <strong>${k.charAt(0).toUpperCase() + k.slice(1)}</strong>
                     <span style="color:var(--text-muted); font-size:11px; margin-left:6px;">${DIAL_PHASES[k]}</span>
@@ -651,7 +651,7 @@
             title: titleMap[key] || 'Dial info',
             body: `
                 <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">${intro}</div>
-                <div class="nk-modal-list">${rowsHtml}</div>
+                <div class="na-modal-list">${rowsHtml}</div>
                 <div style="font-size:10px; color:var(--text-muted); margin-top:10px; text-align:center;">
                     Phase &amp; bonus formulas: TBD — Luke is finalizing the Depot upgrade matrix.
                 </div>
@@ -659,34 +659,34 @@
         });
     }
 
-    // Spawn a NarogKnob into each .nk-card slot using server-rendered config
-    // (data-key, data-locked, data-unlock-phase). The card already has its
-    // header + description from the template; we only inject the knob widget.
+    // Spawn a NarogAllocator into each .na-card slot using server-rendered
+    // config (data-key, data-locked, data-unlock-phase). The card supplies
+    // header + description; we inject only the bar widget into .na-slot.
     function wireDial() {
         const dialEl = document.getElementById('robot-dial');
-        if (!dialEl || typeof NarogKnob === 'undefined') return;
+        if (!dialEl || typeof NarogAllocator === 'undefined') return;
         dialState = readDialState();
         if (!dialState) return;
 
-        const cards = Array.from(dialEl.querySelectorAll('.nk-card'));
+        const cards = Array.from(dialEl.querySelectorAll('.na-card'));
         const unlockedCount = cards.filter(c => c.dataset.locked !== 'true').length;
         const isSolo = unlockedCount === 1;
 
         cards.forEach(card => {
             const key = card.dataset.key;
-            const slot = card.querySelector('.nk-slot');
+            const slot = card.querySelector('.na-slot');
             if (!slot) return;
             const cardLocked = card.dataset.locked === 'true';
             const isThisSolo = isSolo && !cardLocked;
-            // Solo-pinned knob behaves as locked from the knob's POV (no drag),
+            // Solo-pinned row behaves as locked from the bar's POV (no drag),
             // but visually stays full-color so it doesn't read as broken.
-            const knobLocked = cardLocked || isThisSolo;
+            const widgetLocked = cardLocked || isThisSolo;
 
-            knobInstances[key] = NarogKnob.create({
+            allocInstances[key] = NarogAllocator.create({
                 container: slot,
                 key,
                 value: dialState[key] || 0,
-                locked: knobLocked,
+                locked: widgetLocked,
                 ariaLabel: `${key} role allocation`,
                 onChange: (newPct) => setDialValue(key, newPct),
             });
@@ -694,13 +694,10 @@
             if (isThisSolo) card.classList.add('is-solo');
             if (cardLocked) card.classList.add('is-locked');
 
-            // Locked / solo cards: any click on the card opens the explainer modal
+            // Locked / solo cards: clicking anywhere on the card (incl. the
+            // greyed bar) opens the explainer modal.
             if (cardLocked || isThisSolo) {
-                card.addEventListener('click', (e) => {
-                    // The hidden range input swallows clicks too — so just open
-                    // the modal regardless of where on the card they clicked.
-                    showLockedDialModal(key);
-                });
+                card.addEventListener('click', () => showLockedDialModal(key));
             }
         });
         repaint();

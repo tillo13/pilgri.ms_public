@@ -463,32 +463,48 @@
         <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Role Dial
     </div>
     <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
-        Drag a knob to allocate effort across tasks. Values total 100% — turning one knob rebalances the others. Locked knobs unlock with later upgrades.
+        Drag a bar to allocate effort across tasks. Values total 100% — adjusting one rebalances the others. Locked rows unlock with later upgrades.
     </div>
-    <div id="robot-dial" data-dial='{{ robot.dial | tojson }}' style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:14px;">
+    <div id="robot-dial" data-dial='{{ robot.dial | tojson }}' style="display:flex; flex-direction:column; gap:10px;">
         {# Slot 1: Exploration — UNLOCKED at Phase 1 #}
-        <div class="nk-card" data-key="exploration" data-locked="false" data-unlock-phase="1">
-            <div class="nk-card-head"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">Exploration</div>
-            <div class="nk-slot"></div>{# narog-knob.js renders into here #}
-            <div class="nk-card-desc">Speeds up autonomous trail building while you're away.</div>
+        <div class="na-card" data-key="exploration" data-locked="false" data-unlock-phase="1">
+            <div class="na-row-head">
+                <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Exploration</span>
+                <span class="na-row-pinned-badge">Pinned</span>
+            </div>
+            <div class="na-slot"></div>{# narog-allocator.js renders bar here #}
+            <div class="na-row-desc">Speeds up autonomous trail building while you're away.</div>
         </div>
         {# Slot 2: Logistics — LOCKED until Phase 3 #}
-        <div class="nk-card is-locked" data-key="logistics" data-locked="true" data-unlock-phase="3">
-            <div class="nk-card-head"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm">Logistics<span class="nk-card-lock">🔒</span></div>
-            <div class="nk-slot"></div>
-            <div class="nk-card-desc">Unlocks at Phase 3 — Circuits</div>
+        <div class="na-card is-locked" data-key="logistics" data-locked="true" data-unlock-phase="3">
+            <div class="na-row-head">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Logistics</span>
+                <span class="na-row-lock">🔒</span>
+            </div>
+            <div class="na-slot"></div>
+            <div class="na-row-desc">Unlocks at Phase 3 — Circuits</div>
         </div>
         {# Slot 3: Research — LOCKED until Phase 4 #}
-        <div class="nk-card is-locked" data-key="research" data-locked="true" data-unlock-phase="4">
-            <div class="nk-card-head"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm">Research<span class="nk-card-lock">🔒</span></div>
-            <div class="nk-slot"></div>
-            <div class="nk-card-desc">Unlocks at Phase 4 — Core</div>
+        <div class="na-card is-locked" data-key="research" data-locked="true" data-unlock-phase="4">
+            <div class="na-row-head">
+                <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Research</span>
+                <span class="na-row-lock">🔒</span>
+            </div>
+            <div class="na-slot"></div>
+            <div class="na-row-desc">Unlocks at Phase 4 — Core</div>
         </div>
         {# Slot 4: Expeditions — LOCKED until Phase 5 #}
-        <div class="nk-card is-locked" data-key="expeditions" data-locked="true" data-unlock-phase="5">
-            <div class="nk-card-head"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm">Expeditions<span class="nk-card-lock">🔒</span></div>
-            <div class="nk-slot"></div>
-            <div class="nk-card-desc">Unlocks at Phase 5 — Sepolia Integration</div>
+        <div class="na-card is-locked" data-key="expeditions" data-locked="true" data-unlock-phase="5">
+            <div class="na-row-head">
+                <img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Expeditions</span>
+                <span class="na-row-lock">🔒</span>
+            </div>
+            <div class="na-slot"></div>
+            <div class="na-row-desc">Unlocks at Phase 5 — Sepolia Integration</div>
         </div>
     </div>
     <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Total: 100%</div>

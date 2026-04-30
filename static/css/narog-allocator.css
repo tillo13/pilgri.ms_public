@@ -1,0 +1,193 @@
+/* ============================================================================
+ * narog-allocator.css — Horizontal allocation-bar UI for Narog Role Dial.
+ *
+ * One row per task. Each row has:
+ *   na-card (outer Mars-stone frame)
+ *     na-row-head (icon + name + lock/pinned badge)
+ *     na-bar-wrap (the widget)
+ *       na-range (hidden a11y input)
+ *       na-track (bar background — chiseled stone)
+ *         na-fill (warm gradient fill, width = var(--na-pct))
+ *         na-edge (glowing leading edge marker)
+ *       na-readout (% text)
+ *     na-row-desc (description / unlock hint)
+ *
+ * Locked + solo states driven by data-attribute on .na-card and .na-bar-wrap.
+ * Active-row glow scales with --na-active (0..1).
+ * ========================================================================= */
+
+/* ----- Outer card ----- */
+.na-card {
+    --na-pct: 0;
+    --na-active: 0;
+    position: relative;
+    background: linear-gradient(180deg, rgba(74,32,16,0.18), rgba(0,0,0,0.35));
+    border: 1px solid rgba(110,50,32,0.6);
+    border-radius: 10px;
+    padding: 10px 14px 12px;
+    overflow: hidden;
+}
+.na-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(255,170,90,0.07), transparent 45%),
+        radial-gradient(circle at 95% 100%, rgba(110,50,32,0.18), transparent 50%);
+    pointer-events: none;
+}
+.na-card.is-locked { opacity: 0.7; }
+.na-card.is-locked:hover { opacity: 0.85; cursor: pointer; }
+.na-card.is-solo {}  /* full-color but pinned — see PINNED badge below */
+
+.na-row-head {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    z-index: 1; position: relative;
+}
+.na-row-name { flex: 1; }
+.na-row-lock {
+    font-size: 11px; opacity: 0.85;
+}
+.na-card.is-solo .na-row-pinned-badge {
+    display: inline-block;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    color: #ffc88a;
+    background: rgba(26,8,5,0.75);
+    border: 1px solid rgba(255,200,140,0.5);
+    border-radius: 4px;
+    padding: 2px 6px;
+    text-transform: uppercase;
+}
+.na-row-pinned-badge { display: none; }
+
+.na-row-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.45;
+    margin-top: 6px;
+    z-index: 1; position: relative;
+}
+
+/* ----- Bar widget ----- */
+.na-bar-wrap {
+    display: grid;
+    grid-template-columns: 1fr 60px;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Hidden native range for keyboard A11y */
+.na-range {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+}
+.na-bar-wrap:focus-within .na-track {
+    outline: 2px solid var(--color-sepolia);
+    outline-offset: 2px;
+}
+
+/* Track: chiseled stone groove */
+.na-track {
+    position: relative;
+    height: 22px;
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.5) 100%),
+        linear-gradient(90deg, #2a0e07, #3a1810);
+    border: 1px solid #1a0805;
+    border-radius: 4px;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow:
+        inset 0 2px 4px rgba(0,0,0,0.55),
+        inset 0 -1px 1px rgba(255,170,90,0.08);
+}
+.na-track::before {
+    /* Chiseled inner edge */
+    content: '';
+    position: absolute; inset: 1px;
+    border-radius: 3px;
+    border-top: 1px solid rgba(0,0,0,0.5);
+    border-bottom: 1px solid rgba(255,170,90,0.06);
+    pointer-events: none;
+}
+.na-bar-wrap.is-dragging .na-track { cursor: grabbing; }
+
+/* Fill: warm Mars amber gradient with subtle texture */
+.na-fill {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: calc(var(--na-pct, 0) * 1%);
+    background:
+        linear-gradient(180deg,
+            rgba(255,200,140,0.35) 0%,
+            transparent 35%,
+            transparent 65%,
+            rgba(0,0,0,0.25) 100%),
+        linear-gradient(90deg, #c4521e, #ffc88a);
+    border-right: 1px solid rgba(255,220,170,0.85);
+    box-shadow:
+        inset 0 0 8px rgba(255,180,80,0.4),
+        0 0 calc(var(--na-active, 0) * 8px) rgba(255,180,80,0.55);
+    transition: width 0.18s cubic-bezier(.4,1.4,.6,1);
+}
+.na-bar-wrap.is-dragging .na-fill { transition: none; }
+
+/* Glowing leading edge — sits at the right of the fill */
+.na-edge {
+    position: absolute;
+    top: -2px; bottom: -2px;
+    left: calc(var(--na-pct, 0) * 1%);
+    width: 3px;
+    transform: translateX(-1.5px);
+    background: linear-gradient(180deg, #fff5e0, #ffc88a, #fff5e0);
+    border-radius: 2px;
+    opacity: calc(0.4 + var(--na-active, 0) * 0.55);
+    box-shadow:
+        0 0 6px rgba(255,200,140,0.85),
+        0 0 calc(var(--na-active, 0) * 14px) rgba(255,180,80,0.7);
+    transition: left 0.18s cubic-bezier(.4,1.4,.6,1);
+    pointer-events: none;
+}
+.na-bar-wrap.is-dragging .na-edge { transition: none; }
+
+/* Readout */
+.na-readout {
+    font-size: 14px;
+    font-weight: 800;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    color: #ffc88a;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* Locked widget: greyed track, no fill glow, can't grab */
+.na-bar-wrap[data-locked="true"] .na-track {
+    cursor: not-allowed;
+    filter: grayscale(0.7) brightness(0.8);
+}
+.na-bar-wrap[data-locked="true"] .na-fill { opacity: 0.45; }
+.na-bar-wrap[data-locked="true"] .na-edge { opacity: 0.35; box-shadow: none; }
+.na-bar-wrap[data-locked="true"] .na-readout { color: var(--text-muted); }
+
+/* ----- Modal-row styling (used inside the locked-dial info modal) ----- */
+.na-modal-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0 4px; }
+.na-modal-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.3); border-radius: 8px;
+    border: 1px solid var(--border-default);
+}
+.na-modal-row.active {
+    border-color: var(--color-sepolia);
+    box-shadow: 0 0 12px rgba(168,85,247,0.25);
+}
+.na-modal-row strong { color: var(--text-primary); }

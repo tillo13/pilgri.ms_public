@@ -2829,8 +2829,8 @@
   "static/css/modals.css": {
     "description": "MARS MODAL - Unified modal system"
   },
-  "static/css/narog-knob.css": {
-    "description": "Styles for narog-knob"
+  "static/css/narog-allocator.css": {
+    "description": "Styles for narog-allocator"
   },
   "static/css/pilgrimbot.css": {
     "description": "PilgrimBot — Codebase Q&A chat interface"
@@ -3364,24 +3364,18 @@
       "filterActivity"
     ]
   },
-  "static/js/narog-knob.js": {
+  "static/js/narog-allocator.js": {
     "description": "============================================================================",
     "exports": [
-      "svg",
-      "seedFromString",
-      "mulberry32",
-      "rockyPoly",
-      "a",
       "clamp",
-      "valueToAngle",
-      "angleToValue",
-      "buildBezel",
-      "buildFace",
-      "buildScale",
-      "rad",
-      "major",
-      "arcPath",
-      "startA"
+      "create",
+      "paint",
+      "pctFromEvent",
+      "point",
+      "emit",
+      "handleMove",
+      "handleUp",
+      "handleDown"
     ]
   },
   "static/js/pilgrimbot.js": {
@@ -3513,7 +3507,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
