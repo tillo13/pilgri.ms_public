@@ -839,6 +839,21 @@ def test_narog_sepolia_helpers():
     return True
 
 
+@test("Narog: get_robot_page_data executes without raising for Andy", tier=1, features=['crew', 'db'], mode='local')
+def test_narog_get_robot_page_data_runs():
+    """Catches the SQL syntax + datetime UnboundLocalError class of bugs by
+    actually exercising the function end-to-end against Andy's live row.
+    Before this test was added, the prereq_defs trim broke 'IN (\\'x\\',)' SQL
+    and the local datetime import shadowed the module-level one — both
+    silently passed source-inspection tests but blew up at runtime."""
+    from utilities.postgres.robot import get_robot_page_data
+    data = get_robot_page_data(45)
+    assert 'lab_unlocked' in data, "missing lab_unlocked key"
+    assert 'prereqs' in data, "missing prereqs key"
+    assert isinstance(data['prereqs'], list), "prereqs must be a list"
+    return True
+
+
 @test("Narog: dry-run gate skips Sepolia broadcast for dev users", tier=1, features=['crew', 'blockchain'], mode='local')
 def test_narog_dry_run_gate():
     """Andy (45) is in NAROG_DRY_RUN_USER_IDS by default so dev rehearsal forges

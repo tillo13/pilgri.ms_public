@@ -962,7 +962,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
             cur.execute("""
                 SELECT structure_type, status, ready_at
                 FROM pilgrim.colony_infrastructure
-                WHERE user_id = %s AND structure_type IN ('robotics_lab',)
+                WHERE user_id = %s AND structure_type = 'robotics_lab'
             """, (user_id,))
             for row in cur.fetchall():
                 building_timers[row['structure_type']] = {
@@ -970,7 +970,10 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
                     'ready_at': row['ready_at'].isoformat() if row.get('ready_at') else None,
                 }
 
-        from datetime import datetime
+        # datetime is already imported at module level (line 14). A local
+        # `from datetime import datetime` here would shadow the module import
+        # and trigger UnboundLocalError at line ~1038 if the try-block raised
+        # before reaching this re-import.
         for pd in prereq_defs:
             current_lvl = int(levels.get(pd['key'], 0))
             bld = building_timers.get(pd['key'], {})
