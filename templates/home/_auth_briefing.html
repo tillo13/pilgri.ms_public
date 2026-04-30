@@ -434,6 +434,18 @@
                         <span style="font-size: 13px; font-weight: 600; color: var(--color-success);" id="scientistBonusMult">× 1.0</span>
                     </div>
 
+                    <!-- Bug #1423: Signal Bonus row (origin sites, signal network) -->
+                    <div id="signalBonusRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;"><img src="{{ icons.signal_transmission }}" alt="" class="inline-icon-sm"> Signal Network <span id="signalBonusSites" style="opacity:0.7; font-size:10px;"></span></span>
+                        <span style="font-size: 13px; font-weight: 600; color: #fbbf24;" id="signalBonusRate">+ 0/hr</span>
+                    </div>
+
+                    <!-- Bug #1423: Fragment Bond Bonus row (ARIA bond multiplier on shards) -->
+                    <div id="fragmentBondShardsRow" style="display: none; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-default);">
+                        <span class="card-label" style="font-size: 12px;"><img src="{{ icons.aria_avatar }}" alt="" class="inline-icon-sm"> Fragment Bond <span id="fragmentBondShardsMult" style="opacity:0.7; font-size:10px;"></span></span>
+                        <span style="font-size: 13px; font-weight: 600; color: #06b6d4;" id="fragmentBondShardsRate">+ 0/hr</span>
+                    </div>
+
                     <!-- Environmental Impact (dust, temperature, day/night) -->
                     <div id="envImpactRow" style="display: none; padding: 8px 0; border-bottom: 1px solid var(--border-default);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">

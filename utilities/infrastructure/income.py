@@ -323,6 +323,17 @@ def calculate_accumulated_income(user_id):
 
     sv_hourly_rate = round((sv_base_rate * sv_scientist_bonus + signal_bonus.get('sv_per_hour', 0)) * bond_sv_mult, 1)
 
+    # Bug #1423: surface Signal + Fragment Bond contributions as standalone
+    # per-hour deltas so the Shard / SV generation breakdown UIs can render
+    # them as line items (instead of hiding them in a separate box).
+    signal_shards_per_hour = float(signal_bonus.get('shards_per_hour', 0) or 0)
+    signal_sv_per_hour = float(signal_bonus.get('sv_per_hour', 0) or 0)
+    # Bond shards: effective_rate is computed BEFORE bond_shards_mult lands on
+    # total_accumulated, so the delta = effective_rate × (mult - 1.0).
+    bond_shards_per_hour = round(effective_rate * (bond_shards_mult - 1.0), 2) if bond_shards_mult > 1.0 else 0.0
+    # Bond SV: sv_hourly_rate already includes bond_sv_mult, so back it out.
+    bond_sv_per_hour = round(sv_hourly_rate - (sv_hourly_rate / bond_sv_mult), 2) if bond_sv_mult > 1.0 else 0.0
+
     return {
         'total_accumulated': round(total_accumulated, 2),
         'base_accumulated': round(base_accumulated, 2),
@@ -374,6 +385,13 @@ def calculate_accumulated_income(user_id):
         'sv_scientist_name': sv_scientist_name,
         'sv_scientist_bonus': round(sv_scientist_bonus, 2),
         'sv_scientist_extra': sv_scientist_extra,
+        # Bug #1423: standalone deltas for the breakdown UI
+        'signal_shards_per_hour': signal_shards_per_hour,
+        'signal_sv_per_hour': signal_sv_per_hour,
+        'bond_shards_per_hour': bond_shards_per_hour,
+        'bond_sv_per_hour': bond_sv_per_hour,
+        'bond_shards_mult': bond_shards_mult,
+        'bond_sv_mult': bond_sv_mult,
     }
 
 

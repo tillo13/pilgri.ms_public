@@ -200,29 +200,27 @@ document.addEventListener('DOMContentLoaded', function() {
     {% set signal_shards = signal_bonus.shards_per_hour|default(0) %}
     {% set signal_sv = signal_bonus.sv_per_hour|default(0) %}
     {% set signal_sites = signal_bonus.sites_count|default(0) %}
+    {% set bond_shards_hr = income_data.bond_shards_per_hour|default(0) %}
+    {% set bond_sv_hr = income_data.bond_sv_per_hour|default(0) %}
+    {% set bond_shards_mult = income_data.bond_shards_mult|default(1.0) %}
+    {% set bond_sv_mult = income_data.bond_sv_mult|default(1.0) %}
     {% set total_building = (building_infrastructure|default([])|length) + (building_equipment|default([])|length) %}
 
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; padding: 16px; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-default);">
         <div style="text-align: center;">
             <div style="font-size: 22px; font-weight: 700; color: var(--color-warning);">+{{ "%.0f"|format(effective_rate) }}</div>
             <div style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Shards/hr</div>
-            {% if passive_mult > 1.0 or passive_base > 0 or scientist_mult > 1.0 or signal_shards > 0 %}
-            <div style="font-size: 9px; color: var(--color-success); margin-top: 2px;">
-                {{ "%.0f"|format(base_rate) }} base
-                {% if passive_mult > 1.0 %} &times;{{ "%.2f"|format(passive_mult) }}{% endif %}
-                {% if passive_base > 0 %} +{{ passive_base }}/hr{% endif %}
-                {% if scientist_mult > 1.0 %} &times;{{ "%.2f"|format(scientist_mult) }} sci{% endif %}
-                {% if signal_shards > 0 %} +{{ "%.1f"|format(signal_shards) }}/hr signal{% endif %}
+            {# Bug #1423: explicit per-source breakdown — Infrastructure / Passive / Scientist / Signal / Fragment Bond #}
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; text-align: left; padding: 0 4px;">
+                <div style="display:flex; justify-content:space-between; gap:8px;"><span style="opacity:0.75;">Infrastructure</span><span style="color: var(--text-primary); font-weight:600;">{{ "%.1f"|format(base_rate) }}/hr</span></div>
+                {% if passive_mult > 1.0 %}<div style="display:flex; justify-content:space-between; gap:8px;"><span style="opacity:0.75;">Passive mult</span><span style="color: var(--color-success); font-weight:600;">×{{ "%.2f"|format(passive_mult) }}</span></div>{% endif %}
+                {% if passive_base > 0 %}<div style="display:flex; justify-content:space-between; gap:8px;"><span style="opacity:0.75;">Passive base</span><span style="color: var(--color-success); font-weight:600;">+{{ passive_base }}/hr</span></div>{% endif %}
+                {% if scientist_mult > 1.0 %}<div style="display:flex; justify-content:space-between; gap:8px;"><span style="opacity:0.75;">Scientist</span><span style="color: var(--color-success); font-weight:600;">×{{ "%.2f"|format(scientist_mult) }}</span></div>{% endif %}
+                {% if signal_shards > 0 %}<div style="display:flex; justify-content:space-between; gap:8px;"><span style="opacity:0.75; color:#fbbf24;">Signal Network{% if signal_sites > 0 %} ({{ signal_sites }}){% endif %}</span><span style="color:#fbbf24; font-weight:600;">+{{ "%.1f"|format(signal_shards) }}/hr</span></div>{% endif %}
+                {% if bond_shards_hr > 0 %}<div style="display:flex; justify-content:space-between; gap:8px;"><span style="opacity:0.75; color:#06b6d4;">Fragment Bond ×{{ "%.2f"|format(bond_shards_mult) }}</span><span style="color:#06b6d4; font-weight:600;">+{{ "%.1f"|format(bond_shards_hr) }}/hr</span></div>{% endif %}
             </div>
-            {% endif %}
-            {% if signal_sites > 0 %}
-            <div style="font-size: 9px; color: var(--color-info); margin-top: 2px;" title="Signal Network: {{ signal_sites }} site{{ 's' if signal_sites != 1 else '' }} contributing +{{ '%.1f'|format(signal_shards) }} shards/hr and +{{ '%.1f'|format(signal_sv) }} SV/hr">
-                <img src="{{ icons.signal_transmission }}" alt="" class="inline-icon-sm" style="vertical-align: middle; width: 11px; height: 11px;">
-                Signal Network: {{ signal_sites }} site{{ 's' if signal_sites != 1 else '' }} (+{{ "%.1f"|format(signal_shards) }} shards/hr, +{{ "%.1f"|format(signal_sv) }} SV/hr)
-            </div>
-            {% endif %}
             {% if day_night_pct < 100 or mars_env_pct < 100 %}
-            <div style="font-size: 9px; color: var(--text-muted); margin-top: 2px;" title="Max rate {{ '%.0f'|format(theoretical_max) }}/hr assumes perpetual daylight with no dust. Mars cuts it down.">
+            <div style="font-size: 9px; color: var(--text-muted); margin-top: 4px;" title="Max rate {{ '%.0f'|format(theoretical_max) }}/hr assumes perpetual daylight with no dust. Mars cuts it down.">
                 {% if day_night_pct < 100 %}{{ "%.0f"|format(day_night_pct) }}% day{% endif %}
                 {% if day_night_pct < 100 and mars_env_pct < 100 %} &middot; {% endif %}
                 {% if mars_env_pct < 100 %}{{ "%.0f"|format(mars_env_pct) }}% env{% endif %}

@@ -354,6 +354,36 @@ async function checkInfrastructureIncome() {
                 }
             }
 
+            // Bug #1423: Signal Bonus row (origin sites)
+            const signalRow = $('signalBonusRow');
+            if (signalRow) {
+                const sigShards = data.signal_shards_per_hour || 0;
+                const sigSites = (data.signal_bonus && data.signal_bonus.sites_count) || bonuses.signal_sites_count || 0;
+                if (sigShards > 0) {
+                    signalRow.style.display = 'flex';
+                    $('signalBonusRate').textContent = '+ ' + sigShards.toFixed(1) + '/hr';
+                    const sitesEl = $('signalBonusSites');
+                    if (sitesEl) sitesEl.textContent = sigSites > 0 ? '(' + sigSites + ' site' + (sigSites !== 1 ? 's' : '') + ')' : '';
+                } else {
+                    signalRow.style.display = 'none';
+                }
+            }
+
+            // Bug #1423: Fragment Bond Bonus row (ARIA bond shards mult delta)
+            const fragShardsRow = $('fragmentBondShardsRow');
+            if (fragShardsRow) {
+                const fragShards = data.bond_shards_per_hour || 0;
+                const fragMult = data.bond_shards_mult || 1.0;
+                if (fragShards > 0 || fragMult > 1.0) {
+                    fragShardsRow.style.display = 'flex';
+                    $('fragmentBondShardsRate').textContent = '+ ' + fragShards.toFixed(1) + '/hr';
+                    const mEl = $('fragmentBondShardsMult');
+                    if (mEl) mEl.textContent = fragMult > 1.0 ? '(× ' + fragMult.toFixed(2) + ')' : '';
+                } else {
+                    fragShardsRow.style.display = 'none';
+                }
+            }
+
             // Environmental Impact row (dust, temperature, latitude factors)
             const envRow = $('envImpactRow');
             const envFactors = rb.mars_env_factors;
@@ -408,6 +438,16 @@ async function checkInfrastructureIncome() {
                     }
                     if (data.sv_scientist_name && data.sv_scientist_extra > 0) {
                         html += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);margin-top:2px;padding-top:4px;"><span style="color:var(--text-secondary);">${data.sv_scientist_name} (Analysis) ×${data.sv_scientist_bonus.toFixed(1)}</span><span style="color:var(--color-aria);font-weight:600;">+${data.sv_scientist_extra.toFixed(1)} SV/hr</span></div>`;
+                    }
+                    // Bug #1423: surface Signal + Fragment Bond as their own line items
+                    const sigSv = data.signal_sv_per_hour || 0;
+                    if (sigSv > 0) {
+                        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;"><span style="color:var(--text-secondary);">Signal Network</span><span style="color:#fbbf24;font-weight:600;">+${sigSv.toFixed(1)} SV/hr</span></div>`;
+                    }
+                    const bondSv = data.bond_sv_per_hour || 0;
+                    const bondSvMult = data.bond_sv_mult || 1.0;
+                    if (bondSv > 0 || bondSvMult > 1.0) {
+                        html += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:11px;"><span style="color:var(--text-secondary);">Fragment Bond ${bondSvMult > 1.0 ? '×' + bondSvMult.toFixed(2) : ''}</span><span style="color:#06b6d4;font-weight:600;">+${bondSv.toFixed(1)} SV/hr</span></div>`;
                     }
                     svBreakdownEl.innerHTML = html;
                 }

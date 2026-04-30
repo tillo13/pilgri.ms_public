@@ -314,6 +314,11 @@ def get_colony_page_data(user_id, auth):
             'signal_bonus': income_calc.get('signal_bonus', {
                 'shards_per_hour': 0, 'sv_per_hour': 0, 'sites_count': 0, 'per_tier': {}
             }),
+            # Bug #1423: surface Fragment Bond contributions for the breakdown UI
+            'bond_shards_per_hour': income_calc.get('bond_shards_per_hour', 0),
+            'bond_sv_per_hour': income_calc.get('bond_sv_per_hour', 0),
+            'bond_shards_mult': income_calc.get('bond_shards_mult', 1.0),
+            'bond_sv_mult': income_calc.get('bond_sv_mult', 1.0),
         }
     except Exception as e:
         logger.warning(f"Could not get income calc for colony: {e}")
