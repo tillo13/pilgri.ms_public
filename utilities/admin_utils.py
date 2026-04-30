@@ -58,7 +58,11 @@ def is_app_dev(user_id) -> bool:
 # Removing a user from this set requires a code change + deploy. That's
 # intentional friction — going live with on-chain tx is a deliberate act.
 
-NAROG_DRY_RUN_USER_IDS = {45}
+NAROG_DRY_RUN_USER_IDS = set()  # Andy went live 2026-04-30. Empty set =
+                                 # everyone forges with real Sepolia broadcasts.
+                                 # Re-add a user_id here to put them back in
+                                 # rehearsal mode (item consumption + Flux + Wan
+                                 # all run, but tx_hash stays NULL).
 
 
 def is_narog_dry_run(user_id) -> bool:

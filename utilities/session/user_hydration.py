@@ -253,7 +253,8 @@ def build_global_context(auth, static_v):
             # Narog Sepolia dry-run flag — surfaces the "🧪 Dry-run" banner
             # so dev forges are obviously distinct from canonical on-chain
             # ones. Mirrors utilities.admin_utils.NAROG_DRY_RUN_USER_IDS.
-            'is_narog_dry_run': session.get('user_id') in {45},
+            # 2026-04-30: empty set after Andy went live; everyone is canonical now.
+            'is_narog_dry_run': False,
         }
     except Exception as e:
         logger.warning(f"Failed to inject global stats: {e}")
