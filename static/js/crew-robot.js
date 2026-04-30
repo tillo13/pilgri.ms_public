@@ -313,7 +313,7 @@
             ? (Number(src.lat).toFixed(4) + '°, ' + Number(src.lon).toFixed(4) + '°')
             : '—';
         const mapLink = (src.lat != null && src.lon != null)
-            ? ' <a href="/map?lat=' + src.lat + '&lon=' + src.lon + '" style="color:var(--color-sepolia);font-size:11px">› view on map</a>'
+            ? ' <a href="/expeditions?lat=' + src.lat + '&lon=' + src.lon + '&zoom=6&marker=' + encodeURIComponent(src.landmark_name || '') + '" style="color:var(--color-sepolia);font-size:11px">› view on map</a>'
             : '';
         const imgBlock = src.item_image_url
             ? '<div style="display:flex;justify-content:center;padding:8px 0;"><img src="' + src.item_image_url + '" alt="' + (src.item_name || '') + '" onclick="window.showImageModal && window.showImageModal(this.src)" style="max-width:280px;max-height:280px;border-radius:12px;box-shadow:0 0 32px rgba(168,85,247,0.45);background:rgba(168,85,247,0.06);cursor:pointer;"></div>'
