@@ -336,3 +336,64 @@ body.er-active { overflow: hidden !important; }
     pointer-events: none;
 }
 .er-sound-hint.visible { opacity: 1; }
+
+/* Audio gate — center-stage tap prompt shown when AudioContext is suspended
+   (auto-fire cinematics on page load). Disappears the moment the user
+   clicks/taps/keys anywhere — that gesture also resumes the AudioContext so
+   the rest of the sequence plays with full per-line sound. */
+.er-audio-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    cursor: pointer;
+    animation: er-audio-gate-in 350ms ease-out;
+}
+.er-audio-gate-inner {
+    text-align: center;
+    color: #fff;
+    font-family: inherit;
+    user-select: none;
+    animation: er-audio-gate-pulse 1.6s ease-in-out infinite;
+}
+.er-audio-gate-icon {
+    font-size: 64px;
+    line-height: 1;
+    color: #c084fc;
+    text-shadow: 0 0 32px rgba(168, 85, 247, 0.55);
+    margin-bottom: 12px;
+}
+.er-audio-gate-text {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    color: #c084fc;
+    margin-bottom: 6px;
+}
+.er-audio-gate-sub {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+.er-audio-gate-out {
+    animation: er-audio-gate-out 350ms ease-out forwards;
+    pointer-events: none;
+}
+@keyframes er-audio-gate-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes er-audio-gate-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+@keyframes er-audio-gate-pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.04); }
+}

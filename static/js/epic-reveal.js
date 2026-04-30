@@ -42,6 +42,7 @@ window.EpicReveal = (function() {
 
     var overlay = null;
     var audio = null;
+    var audio_ctx = null;  // hold the AudioContext at module scope so we can resume() on user gesture
     var skipped = false;
     var onCloseCb = null;
 
@@ -55,6 +56,12 @@ window.EpicReveal = (function() {
         // (e.g. golem sounds) and its context may be stale/suspended.
         try {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            audio_ctx = ctx;  // module-scope ref for awaitUserGestureToUnlock
+            // Try to resume immediately — works if user has already gestured
+            // (button-triggered cinematics). For auto-fire cinematics on
+            // page-load, this stays 'suspended' until the gate prompt is
+            // tapped (see awaitUserGestureToUnlock + the show()-side wiring).
+            try { if (ctx.state === 'suspended') ctx.resume(); } catch (e) {}
             var master = ctx.createGain();
             master.gain.value = 0.8;
             master.connect(ctx.destination);
@@ -202,6 +209,37 @@ window.EpicReveal = (function() {
         }, 500);
     }
 
+    // Wait for a user gesture (click / touch / key) anywhere on the document
+    // and resume the AudioContext. Returns when audio is unlocked OR after
+    // maxWaitMs if the user doesn't gesture (sequence then runs silently —
+    // strictly better than blocking the cinematic forever).
+    function awaitUserGestureToUnlock(maxWaitMs) {
+        if (!audio_ctx || audio_ctx.state === 'running') return Promise.resolve(true);
+        return new Promise(function(resolve) {
+            var done = false;
+            function finish(unlocked) {
+                if (done) return;
+                done = true;
+                document.removeEventListener('click', onGesture, true);
+                document.removeEventListener('touchstart', onGesture, true);
+                document.removeEventListener('keydown', onGesture, true);
+                resolve(unlocked);
+            }
+            function onGesture() {
+                if (!audio_ctx) { finish(false); return; }
+                audio_ctx.resume().then(function() {
+                    finish(audio_ctx.state === 'running');
+                }).catch(function() { finish(false); });
+            }
+            document.addEventListener('click', onGesture, true);
+            document.addEventListener('touchstart', onGesture, true);
+            document.addEventListener('keydown', onGesture, true);
+            if (maxWaitMs) {
+                setTimeout(function() { finish(false); }, maxWaitMs);
+            }
+        });
+    }
+
     async function runSequence(opts) {
         var stars = overlay.querySelector('.er-stars');
         var orb = overlay.querySelector('.er-orb');
@@ -210,7 +248,6 @@ window.EpicReveal = (function() {
 
         // Init audio on first interaction
         initAudio();
-        if (audio && audio.startAmbientDrone) audio.startAmbientDrone();
 
         // Stars
         await delay(T.STARS);
@@ -220,6 +257,34 @@ window.EpicReveal = (function() {
         // Orb appears
         await delay(T.ORB);
         orb.classList.add('visible');
+
+        // Audio gate — Chrome's autoplay policy blocks AudioContext until
+        // a user gesture. For button-triggered cinematics (signal bond,
+        // Replay Awakening) the page already has a gesture so audio_ctx
+        // is 'running' and this returns immediately. For auto-fire on
+        // page load (Narog "show_cinematic=true"), audio_ctx is
+        // 'suspended' — show a tap-prompt and pause the sequence until
+        // the user clicks. This is what makes per-line sounds actually
+        // play instead of queuing into a suspended context silently.
+        if (audio_ctx && audio_ctx.state === 'suspended') {
+            // Replace the bottom hint with a prominent center-stage prompt
+            if (hint) hint.classList.remove('visible');
+            var gate = document.createElement('div');
+            gate.className = 'er-audio-gate';
+            gate.innerHTML = '<div class="er-audio-gate-inner">'
+                + '<div class="er-audio-gate-icon">▶</div>'
+                + '<div class="er-audio-gate-text">TAP TO AWAKEN</div>'
+                + '<div class="er-audio-gate-sub">click anywhere to begin · sound on</div>'
+                + '</div>';
+            overlay.appendChild(gate);
+            // 12s ceiling — if the captain walks away or refuses to click,
+            // we still play the cinematic (silently) rather than block forever.
+            await awaitUserGestureToUnlock(12000);
+            gate.classList.add('er-audio-gate-out');
+            setTimeout(function() { if (gate.parentNode) gate.parentNode.removeChild(gate); }, 400);
+        }
+
+        if (audio && audio.startAmbientDrone) audio.startAmbientDrone();
 
         // Type out lines
         await delay(T.FIRST_LINE);
