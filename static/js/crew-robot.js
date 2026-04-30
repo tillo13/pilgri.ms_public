@@ -1283,9 +1283,78 @@
         });
     }
 
+    // ---- Recalibration progress modal -----------------------------------
+    // Stays open during the action. For instant actions (repick) it briefly
+    // shows "Done!" with results. For slow actions (reroll_image, ~30s;
+    // reroll_video, ~60s) it shows a spinner + the current image as anchor
+    // and polls /api/robot/status until the new image lands.
+    function _recalModalShow(opts) {
+        if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
+        MarsModal.show({
+            title: opts.title || 'Recalibrating…',
+            body: opts.body || '',
+        });
+    }
+    function _recalModalUpdate(html) {
+        if (typeof MarsModal === 'undefined' || !MarsModal.update) return;
+        MarsModal.update({ body: html });
+    }
+    function _recalModalHide() {
+        if (typeof MarsModal === 'undefined' || !MarsModal.hide) return;
+        MarsModal.hide();
+    }
+
+    function _spinnerHtml(title, sub) {
+        return `
+            <div style="display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px 8px;">
+                <div style="width:48px; height:48px; border:4px solid rgba(168,85,247,0.25); border-top-color:#d8b4fe; border-radius:50%; animation:recal-spin 1s linear infinite;"></div>
+                <div style="font-size:14px; font-weight:700; color:var(--text-primary);">${title}</div>
+                <div style="font-size:12px; color:var(--text-muted); text-align:center; max-width:300px;">${sub}</div>
+            </div>
+            <style>@keyframes recal-spin { to { transform: rotate(360deg); } }</style>
+        `;
+    }
+
+    function _doneHtml(title, body, navTo) {
+        return `
+            <div style="text-align:center; padding:14px 4px;">
+                <div style="font-size:36px; line-height:1; margin-bottom:10px;">✨</div>
+                <div style="font-size:16px; font-weight:800; color:#ffc88a; margin-bottom:8px;">${title}</div>
+                <div style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">${body}</div>
+                <button class="recal-modal-close-btn" style="background:linear-gradient(135deg,#a855f7,#ec4899); color:white; border:none; border-radius:8px; padding:10px 22px; font-weight:800; cursor:pointer;" data-nav="${navTo || ''}">Continue</button>
+            </div>
+        `;
+    }
+
+    function _wireDoneButton() {
+        // The done button navigates back to /narog so the page state refreshes
+        // cleanly on the robot tab (no Trails redirect).
+        setTimeout(() => {
+            const btn = document.querySelector('.recal-modal-close-btn');
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                _recalModalHide();
+                location.href = btn.dataset.nav || '/narog';
+            });
+        }, 0);
+    }
+
+    async function _pollFor(predicate, interval = 2500, maxMs = 180000) {
+        const start = Date.now();
+        while (Date.now() - start < maxMs) {
+            try {
+                const r = await fetch('/api/robot/status', { credentials: 'same-origin' });
+                const j = await r.json();
+                const robot = j && j.data && j.data.robot;
+                if (predicate(robot)) return robot;
+            } catch (e) {}
+            await new Promise(res => setTimeout(res, interval));
+        }
+        return null;
+    }
+
     async function postRecalAction(action, btn) {
-        // Lock-in needs a final review modal. The 3 reroll actions fire
-        // immediately — their costs are on the button and re-rolls are cheap.
+        // Lock-in: review modal first (existing flow)
         if (action === 'lock_in') {
             const ok = await showLockInReviewModal();
             if (!ok) return;
@@ -1297,6 +1366,27 @@
             reroll_video: '/api/robot/reroll_video',
             lock_in:      '/api/robot/lock_in',
         }[action];
+
+        // Open the progress modal up-front for non-lockin actions so the
+        // captain sees something happening immediately. Lock-in already
+        // showed its own review modal.
+        if (action !== 'lock_in') {
+            const titleMap = {
+                repick:       'Pulling new components…',
+                reroll_image: 'Re-rendering your Narog…',
+                reroll_video: 'Recording the awakening…',
+            };
+            const subMap = {
+                repick:       'The scientist is swapping your 5 source materials.',
+                reroll_image: 'Flux is reimagining your silhouette. About 30 seconds.',
+                reroll_video: 'Wan is animating the new awakening. About 60 seconds.',
+            };
+            _recalModalShow({
+                title: titleMap[action],
+                body: _spinnerHtml(titleMap[action], subMap[action]),
+            });
+        }
+
         try {
             const r = await fetch(endpoint, {
                 method: 'POST',
@@ -1306,22 +1396,66 @@
             });
             const j = await r.json();
             if (!j || !j.success) {
+                _recalModalHide();
                 if (typeof showToast === 'function') showToast(j && j.error ? j.error : 'Recalibration failed.', 'error', 'Narog');
                 return;
             }
-            if (typeof showToast === 'function') {
-                const msg = action === 'lock_in' ? 'Narog locked in.' : 'Recalibration in progress.';
-                showToast(msg, 'success', 'Narog');
-            }
-            // For repick / image / video re-rolls the page needs a fresh
-            // render to show the loading state. Reload, preserving tab=robot.
-            if (action === 'repick' || action === 'reroll_image' || action === 'reroll_video') {
-                setTimeout(() => location.reload(), 500);
+
+            // Lock-in: immediate success
+            if (action === 'lock_in') {
+                if (typeof showToast === 'function') showToast('Narog locked in.', 'success', 'Narog');
+                recalState = j.state;
+                renderRecal();
                 return;
             }
-            // Lock-in: just re-render the card
-            recalState = j.state;
-            renderRecal();
+
+            // Repick: instant success, show new components
+            if (action === 'repick') {
+                const sources = (j.new_sources || []).map(s => {
+                    const r = (s.rarity || 'common').toLowerCase();
+                    return `<span style="display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; margin:2px; background:rgba(255,200,140,0.08); border:1px solid rgba(255,200,140,0.3); color:#ffc88a;">${s.item_name} <em style="color:var(--text-muted); font-style:normal; font-size:10px;">· ${r}</em></span>`;
+                }).join('');
+                _recalModalUpdate(_doneHtml(
+                    'New components pulled!',
+                    `Your Narog will be rebuilt from these 5 materials:<div style="margin-top:10px;">${sources}</div>`,
+                    '/narog',
+                ));
+                _wireDoneButton();
+                return;
+            }
+
+            // Slow actions: poll for completion
+            if (action === 'reroll_image') {
+                const robot = await _pollFor(r => r && r.build_status === 'complete' && r.current_image_url);
+                if (!robot) {
+                    _recalModalUpdate(_doneHtml('Still rendering…', 'It\'s taking longer than usual. Reload the page in a moment to see your new Narog.', '/narog'));
+                    _wireDoneButton();
+                    return;
+                }
+                _recalModalUpdate(_doneHtml(
+                    'New look ready!',
+                    `<img src="${robot.current_image_url}" alt="" style="width:200px; height:200px; object-fit:cover; border-radius:10px; border:2px solid rgba(255,200,140,0.45); margin-top:6px;"/><div style="font-size:11px; color:var(--text-muted); margin-top:8px;">Awakening was reset — render it next if you want a matching cinematic.</div>`,
+                    '/narog',
+                ));
+                _wireDoneButton();
+                return;
+            }
+
+            if (action === 'reroll_video') {
+                const robot = await _pollFor(r => r && r.video_url, 3000);
+                if (!robot) {
+                    _recalModalUpdate(_doneHtml('Still recording…', 'Wan is taking longer than usual. Reload the page in a moment to see the new awakening.', '/narog'));
+                    _wireDoneButton();
+                    return;
+                }
+                _recalModalUpdate(_doneHtml(
+                    'Awakening recorded!',
+                    `<video src="${robot.video_url}" autoplay loop muted playsinline style="width:240px; height:240px; object-fit:cover; border-radius:10px; border:2px solid rgba(255,200,140,0.45); margin-top:6px;"></video>`,
+                    '/narog',
+                ));
+                _wireDoneButton();
+                return;
+            }
         } finally {
             btn.classList.remove('is-busy');
         }
