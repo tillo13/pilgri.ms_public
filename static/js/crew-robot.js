@@ -559,23 +559,122 @@
         return card && card.dataset.locked !== 'true';
     }
 
-    function renderTickRing(svg) {
-        const g = svg.querySelector('.knob-tick-ring');
-        if (!g || g.childElementCount) return;
-        // 21 ticks across the 270° sweep (every 13.5°), every 5th tick is major (10% steps)
+    // Tiny seedable PRNG so each knob's rocky shape is irregular but stable
+    // across re-renders. Seed derived from the knob key string.
+    function _seedFromString(s) {
+        let h = 2166136261;
+        for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return h >>> 0;
+    }
+    function _mulberry32(seed) {
+        let t = seed >>> 0;
+        return function() {
+            t = (t + 0x6D2B79F5) >>> 0;
+            let x = t;
+            x = Math.imul(x ^ (x >>> 15), x | 1);
+            x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+            return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    function _svg(tag, attrs) {
+        const el = document.createElementNS(SVG_NS, tag);
+        for (const k in attrs) el.setAttribute(k, attrs[k]);
+        return el;
+    }
+
+    // Generate a hewn-stone polygon: N points around a circle (cx, cy) with
+    // average radius `r`, each point's radius perturbed by ±`jitter`. Returns
+    // a "x,y x,y ..." string suitable for <polygon points="...">.
+    function _rockyPoly(cx, cy, r, n, jitter, rng) {
+        const pts = [];
+        for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+            const rr = r + (rng() - 0.5) * 2 * jitter;
+            pts.push((cx + Math.cos(a) * rr).toFixed(2) + ',' + (cy + Math.sin(a) * rr).toFixed(2));
+        }
+        return pts.join(' ');
+    }
+
+    // Build the full rocky chrome inside .knob-chrome <g>.
+    // Layers (back to front): outer rock disc → mid rock disc → rim highlight
+    //                         → rock chips (random small polys around rim) →
+    //                         inner stone face → shine ellipse → crystal veins →
+    //                         tick ring.
+    function renderKnobChrome(svg, key) {
+        const chrome = svg.querySelector('.knob-chrome');
+        if (!chrome || chrome.childElementCount) return;
+        const rng = _mulberry32(_seedFromString(key));
+        const cx = 70, cy = 70;
+
+        // 1) Outer hewn polygon (24 points, big jitter)
+        chrome.appendChild(_svg('polygon', {
+            class: 'knob-bezel-outer',
+            points: _rockyPoly(cx, cy, 62, 24, 4, rng),
+        }));
+        // 2) Mid stone ring
+        chrome.appendChild(_svg('polygon', {
+            class: 'knob-bezel-mid',
+            points: _rockyPoly(cx, cy, 56, 22, 2.5, rng),
+        }));
+        // 3) Subtle rim highlight (smooth ring on top of mid)
+        chrome.appendChild(_svg('circle', {
+            cx, cy, r: 53, class: 'knob-bezel-rim-highlight',
+        }));
+        // 4) Rock chips around the rim — 5-7 small irregular polygons
+        const chipCount = 5 + Math.floor(rng() * 3);
+        for (let i = 0; i < chipCount; i++) {
+            const a = rng() * Math.PI * 2;
+            const r = 60 + rng() * 4;
+            const ccx = cx + Math.cos(a) * r;
+            const ccy = cy + Math.sin(a) * r;
+            const chipR = 2.5 + rng() * 2.5;
+            chrome.appendChild(_svg('polygon', {
+                class: rng() < 0.5 ? 'knob-chip' : 'knob-chip-light',
+                points: _rockyPoly(ccx, ccy, chipR, 6, 1.2, rng),
+            }));
+        }
+        // 5) Inner stone face — slightly irregular for hand-hewn feel
+        chrome.appendChild(_svg('polygon', {
+            class: 'knob-face-base',
+            points: _rockyPoly(cx, cy, 47, 28, 1.2, rng),
+        }));
+        // 6) Shine ellipse (top-left light)
+        chrome.appendChild(_svg('ellipse', {
+            cx: cx - 10, cy: cy - 14, rx: 22, ry: 12,
+            class: 'knob-face-shine',
+        }));
+        // 7) Crystal veins — 2-3 thin curves crossing the face
+        const veinCount = 2 + Math.floor(rng() * 2);
+        for (let i = 0; i < veinCount; i++) {
+            const a0 = rng() * Math.PI * 2;
+            const a1 = a0 + Math.PI + (rng() - 0.5) * 0.6;
+            const r0 = 38 + rng() * 6, r1 = 38 + rng() * 6;
+            const x0 = cx + Math.cos(a0) * r0, y0 = cy + Math.sin(a0) * r0;
+            const x1 = cx + Math.cos(a1) * r1, y1 = cy + Math.sin(a1) * r1;
+            const mx = cx + (rng() - 0.5) * 24, my = cy + (rng() - 0.5) * 24;
+            chrome.appendChild(_svg('path', {
+                class: 'knob-vein',
+                d: `M${x0.toFixed(1)} ${y0.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`,
+            }));
+        }
+        // 8) Tick ring (270° sweep, 21 ticks, every 4th major)
+        const tickG = _svg('g', { class: 'knob-tick-group' });
         for (let i = 0; i <= 20; i++) {
             const t = i / 20;
             const angle = KNOB_MIN_ANGLE + t * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
             const rad = (angle - 90) * Math.PI / 180;
-            const r1 = 47, r2 = (i % 4 === 0) ? 41 : 43;
-            const x1 = 60 + Math.cos(rad) * r1, y1 = 60 + Math.sin(rad) * r1;
-            const x2 = 60 + Math.cos(rad) * r2, y2 = 60 + Math.sin(rad) * r2;
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-            line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-            if (i % 4 === 0) line.classList.add('major');
-            g.appendChild(line);
+            const major = (i % 4 === 0);
+            const r1 = 50, r2 = major ? 42 : 45;
+            const x1 = cx + Math.cos(rad) * r1, y1 = cy + Math.sin(rad) * r1;
+            const x2 = cx + Math.cos(rad) * r2, y2 = cy + Math.sin(rad) * r2;
+            tickG.appendChild(_svg('line', {
+                x1, y1, x2, y2,
+                class: major ? 'knob-tick major' : 'knob-tick',
+            }));
         }
+        chrome.appendChild(tickG);
     }
 
     function renderKnob(key) {
@@ -588,7 +687,7 @@
         const angle = KNOB_MIN_ANGLE + (v / 100) * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
         if (pointer) pointer.style.transform = `rotate(${angle}deg)`;
         if (txt) txt.textContent = v + '%';
-        if (svg) renderTickRing(svg);
+        if (svg) renderKnobChrome(svg, key);
     }
 
     function renderDial() {
@@ -659,9 +758,9 @@
     }
 
     function showLockedDialModal(key) {
-        if (typeof MarsModal === 'undefined') return;
+        if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
         const phaseMap = { logistics: 'Phase 3 — Circuits', research: 'Phase 4 — Core', expeditions: 'Phase 5 — Sepolia Integration' };
-        const titleMap = { logistics: 'Logistics (locked)', research: 'Research (locked)', expeditions: 'Expeditions (locked)' };
+        const titleMap = { logistics: 'Logistics (locked)', research: 'Research (locked)', expeditions: 'Expeditions (locked)', exploration: 'Exploration — pinned at 100%' };
         const rowsHtml = DIAL_KEYS.map(k => {
             const phase = k === 'exploration' ? 'Phase 1 — Built' : phaseMap[k];
             const active = (k === key) ? ' active' : '';
@@ -673,18 +772,18 @@
                 </div>
             </div>`;
         }).join('');
-        MarsModal.open({
+        const intro = (key === 'exploration')
+            ? 'Exploration is the only task your Narog can do right now, so the dial is pinned at 100% — there\'s nothing else to redirect effort to. Once Phase 3 (Circuits) ships, you\'ll be able to drag the knobs to split your Narog\'s time across tasks.'
+            : 'Your Narog can only build trails right now. The other three knobs unlock as you upgrade your Robotics Lab and complete later phases. Here\'s what each will do:';
+        MarsModal.show({
             title: titleMap[key] || 'Dial info',
             body: `
-                <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">
-                    Your Narog can only build trails right now. The other three knobs unlock as you upgrade your Robotics Lab and complete later phases. Here's what each will do:
-                </div>
+                <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">${intro}</div>
                 <div class="narog-locked-modal-list">${rowsHtml}</div>
                 <div style="font-size:10px; color:var(--text-muted); margin-top:10px; text-align:center;">
                     Phase &amp; bonus formulas: TBD — Luke is finalizing the Depot upgrade matrix.
                 </div>
             `,
-            buttons: [{ label: 'Got it', style: 'primary' }],
         });
     }
 
@@ -727,7 +826,7 @@
             document.removeEventListener('touchend', onUp);
         }
         function onDown(e) {
-            if (card.dataset.locked === 'true') {
+            if (card.dataset.locked === 'true' || card.classList.contains('solo-pinned')) {
                 showLockedDialModal(key);
                 return;
             }
@@ -753,12 +852,21 @@
         if (!dialEl) return;
         dialState = readDialState();
         if (!dialState) return;
+
+        // Count unlocked dials. With ONLY ONE unlocked (Phase 1: just exploration),
+        // the dial is mechanically pinned at 100% — there's no other unlocked
+        // counterparty to absorb a delta. Mark that knob as "solo" so it gets
+        // a "locked at 100%" tooltip instead of feeling broken.
+        const unlocked = Array.from(dialEl.querySelectorAll('.robot-knob-card[data-locked="false"]'));
+        const isSolo = unlocked.length === 1;
+
         dialEl.querySelectorAll('.robot-knob-card').forEach(card => {
+            const isCardLocked = card.dataset.locked === 'true';
+            if (isSolo && !isCardLocked) card.classList.add('solo-pinned');
             wireKnobDrag(card);
-            // Locked cards: clicking the card body (not just the SVG) opens the modal
-            if (card.dataset.locked === 'true') {
+            if (isCardLocked || (isSolo && !isCardLocked)) {
                 card.addEventListener('click', (e) => {
-                    if (e.target.closest('.robot-knob')) return;  // svg already handled
+                    if (e.target.closest('.robot-knob')) return;
                     showLockedDialModal(card.dataset.key);
                 });
             }

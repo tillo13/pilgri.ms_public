@@ -471,20 +471,12 @@
             <div class="robot-knob-head">
                 <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> <strong>Exploration</strong>
             </div>
-            <svg class="robot-knob" viewBox="0 0 120 120" data-key="exploration">
-                <defs>
-                    <radialGradient id="knob-rock-grad" cx="50%" cy="40%" r="60%">
-                        <stop offset="0%" stop-color="#a8503a"/>
-                        <stop offset="55%" stop-color="#6b2e1f"/>
-                        <stop offset="100%" stop-color="#3d1810"/>
-                    </radialGradient>
-                </defs>
-                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
-                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
-                <g class="knob-tick-ring"></g>
-                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
-                <circle cx="60" cy="60" r="6" class="knob-hub"/>
-                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            <svg class="robot-knob" viewBox="0 0 140 140" data-key="exploration">
+                <g class="knob-chrome"><!-- JS injects rocky bezel + chips + veins + ticks --></g>
+                <line x1="70" y1="70" x2="70" y2="24" class="knob-pointer"/>
+                <circle cx="70" cy="70" r="7" class="knob-hub"/>
+                <circle cx="70" cy="70" r="3" class="knob-hub-bolt"/>
+                <text x="70" y="108" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
             </svg>
             <div class="robot-knob-desc">Speeds up autonomous trail building while you're away.</div>
         </div>
@@ -495,13 +487,12 @@
                 <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> <strong>Logistics</strong>
                 <span class="robot-knob-lock">🔒</span>
             </div>
-            <svg class="robot-knob" viewBox="0 0 120 120" data-key="logistics">
-                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
-                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
-                <g class="knob-tick-ring"></g>
-                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
-                <circle cx="60" cy="60" r="6" class="knob-hub"/>
-                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            <svg class="robot-knob" viewBox="0 0 140 140" data-key="logistics">
+                <g class="knob-chrome"></g>
+                <line x1="70" y1="70" x2="70" y2="24" class="knob-pointer"/>
+                <circle cx="70" cy="70" r="7" class="knob-hub"/>
+                <circle cx="70" cy="70" r="3" class="knob-hub-bolt"/>
+                <text x="70" y="108" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
             </svg>
             <div class="robot-knob-desc">Unlocks at Phase 3 — Circuits</div>
         </div>
@@ -512,13 +503,12 @@
                 <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> <strong>Research</strong>
                 <span class="robot-knob-lock">🔒</span>
             </div>
-            <svg class="robot-knob" viewBox="0 0 120 120" data-key="research">
-                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
-                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
-                <g class="knob-tick-ring"></g>
-                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
-                <circle cx="60" cy="60" r="6" class="knob-hub"/>
-                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            <svg class="robot-knob" viewBox="0 0 140 140" data-key="research">
+                <g class="knob-chrome"></g>
+                <line x1="70" y1="70" x2="70" y2="24" class="knob-pointer"/>
+                <circle cx="70" cy="70" r="7" class="knob-hub"/>
+                <circle cx="70" cy="70" r="3" class="knob-hub-bolt"/>
+                <text x="70" y="108" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
             </svg>
             <div class="robot-knob-desc">Unlocks at Phase 4 — Core</div>
         </div>
@@ -529,13 +519,12 @@
                 <img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> <strong>Expeditions</strong>
                 <span class="robot-knob-lock">🔒</span>
             </div>
-            <svg class="robot-knob" viewBox="0 0 120 120" data-key="expeditions">
-                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
-                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
-                <g class="knob-tick-ring"></g>
-                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
-                <circle cx="60" cy="60" r="6" class="knob-hub"/>
-                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            <svg class="robot-knob" viewBox="0 0 140 140" data-key="expeditions">
+                <g class="knob-chrome"></g>
+                <line x1="70" y1="70" x2="70" y2="24" class="knob-pointer"/>
+                <circle cx="70" cy="70" r="7" class="knob-hub"/>
+                <circle cx="70" cy="70" r="3" class="knob-hub-bolt"/>
+                <text x="70" y="108" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
             </svg>
             <div class="robot-knob-desc">Unlocks at Phase 5 — Sepolia Integration</div>
         </div>

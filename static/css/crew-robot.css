@@ -519,48 +519,104 @@
     margin-left: 4px; font-size: 11px; opacity: 0.85;
 }
 .robot-knob {
-    width: 110px; height: 110px;
+    width: 130px; height: 130px;
     cursor: grab;
     user-select: none; -webkit-user-select: none;
     touch-action: none;
+    overflow: visible;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
 }
 .robot-knob:active { cursor: grabbing; }
 .robot-knob-card.locked .robot-knob { cursor: not-allowed; }
+.robot-knob-card.solo-pinned .robot-knob { cursor: help; }
+.robot-knob-card.solo-pinned::after {
+    content: 'Pinned';
+    position: absolute; top: 8px; right: 10px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+    color: #ffc88a; opacity: 0.75;
+    text-transform: uppercase;
+}
 
-/* Bezel = rough rocky outer ring */
-.knob-bezel {
-    fill: #1a0d08;
-    stroke: #4a2616;
-    stroke-width: 3;
-    /* Faux rocky texture via dashed inner stroke */
-    stroke-dasharray: 4 2 6 3 2 5;
+/* Hewn-stone bezel: irregular polygon JS-injected into .knob-chrome.
+   Each layer is rendered with a different fill to fake depth. */
+.knob-bezel-outer {
+    fill: #2a0e07;
+    stroke: #0a0302;
+    stroke-width: 1.5;
+    stroke-linejoin: miter;
 }
-.knob-face {
-    stroke: rgba(0,0,0,0.7); stroke-width: 1;
+.knob-bezel-mid {
+    fill: #5a2818;
+    stroke: #1a0805;
+    stroke-width: 0.8;
 }
+.knob-bezel-rim-highlight {
+    fill: none;
+    stroke: rgba(255,170,90,0.25);
+    stroke-width: 0.7;
+}
+.knob-chip {
+    fill: #1a0805;
+    stroke: #3a1810;
+    stroke-width: 0.5;
+}
+.knob-chip-light {
+    fill: #6e3220;
+    stroke: none;
+    opacity: 0.8;
+}
+/* Inner stone face — layered for "polished but cracked" look */
+.knob-face-base {
+    fill: #4a2010;
+}
+.knob-face-shine {
+    fill: rgba(255,170,90,0.16);
+}
+.knob-vein {
+    fill: none;
+    stroke: rgba(255,200,140,0.55);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 1.5px rgba(255,180,80,0.55));
+}
+.knob-tick {
+    stroke: rgba(255,200,140,0.45);
+    stroke-width: 1;
+}
+.knob-tick.major {
+    stroke: #ffc88a;
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 1.5px rgba(255,200,140,0.6));
+}
+/* Copper-aged pointer */
 .knob-pointer {
     stroke: #ffd9a8;
-    stroke-width: 4;
+    stroke-width: 5;
     stroke-linecap: round;
-    transform-origin: 60px 60px;
+    transform-origin: 70px 70px;
     transform: rotate(0deg);
     transition: transform 0.18s cubic-bezier(.5,1.4,.5,1);
-    filter: drop-shadow(0 0 3px rgba(255,180,80,0.6));
+    filter: drop-shadow(0 0 4px rgba(255,180,80,0.85)) drop-shadow(0 0 1px #000);
 }
 .robot-knob.dragging .knob-pointer { transition: none; }
 .knob-hub {
-    fill: #6b2e1f; stroke: #2b0e08; stroke-width: 1.5;
+    fill: #1a0805;
+    stroke: #6e3220;
+    stroke-width: 1.5;
 }
-.knob-tick-ring line {
-    stroke: rgba(255,180,80,0.35);
-    stroke-width: 1.2;
+.knob-hub-bolt {
+    fill: #ffc88a;
+    opacity: 0.85;
 }
-.knob-tick-ring line.major { stroke: rgba(255,180,80,0.7); stroke-width: 1.6; }
 .knob-pct-text {
-    fill: var(--color-sepolia);
-    font-size: 14px;
+    fill: #ffc88a;
+    font-size: 15px;
     font-weight: 800;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    paint-order: stroke;
+    stroke: #1a0805;
+    stroke-width: 3;
+    stroke-linejoin: round;
 }
 .robot-knob-desc {
     font-size: 10px;
