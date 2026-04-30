@@ -534,7 +534,7 @@
         exploration: 'Phase 1 — Built',
         logistics:   'Phase 3 — Circuits',
         research:    'Phase 4 — Core',
-        expeditions: 'Phase 5 — Sepolia Integration',
+        expeditions: 'Phase 5 — Crystal Resonance',
     };
     const DIAL_DESCRIPTIONS = {
         exploration: 'Speeds up autonomous trail building while you’re away. The base Exploration stat × this dial % = your Narog’s effective trail bonus.',
