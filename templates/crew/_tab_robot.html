@@ -353,9 +353,14 @@
         {% endif %}
 
         {% if rd.is_complete %}
-        <button id="robot-replay-cinematic" style="font-size: 12px; color: var(--color-sepolia); padding: 6px 14px; background: rgba(168,85,247,0.1); border-radius: 6px; border: 1px solid rgba(168,85,247,0.2); cursor: pointer;">
-            Replay Awakening
-        </button>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px;">
+            <button id="robot-replay-cinematic" style="font-size: 12px; color: var(--color-sepolia); padding: 6px 14px; background: rgba(168,85,247,0.1); border-radius: 6px; border: 1px solid rgba(168,85,247,0.2); cursor: pointer;">
+                Replay Awakening
+            </button>
+            <button id="robot-past-looks-btn" style="font-size: 12px; color: #ffc88a; padding: 6px 14px; background: rgba(255,200,140,0.08); border-radius: 6px; border: 1px solid rgba(255,200,140,0.3); cursor: pointer; display: none;">
+                <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm" style="vertical-align:-3px;"> View Past Looks (<span id="robot-past-looks-count">0</span>)
+            </button>
+        </div>
         {% endif %}
     </div>
 </div>

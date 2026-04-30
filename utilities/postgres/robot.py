@@ -116,6 +116,21 @@ def ensure_robot_tables():
             ADD COLUMN IF NOT EXISTS image_updated_at TIMESTAMP,
             ADD COLUMN IF NOT EXISTS video_updated_at TIMESTAMP
         """)
+        # Past Looks gallery — every paid reroll snapshots the prior state
+        # here before overwriting. Captains can scroll their full visual
+        # evolution. We store the URLs (GCS objects stay in the bucket) +
+        # the kind of event that produced this snapshot.
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pilgrim.robot_history (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                image_url TEXT,
+                video_url TEXT,
+                kind TEXT,  -- 'initial_build' | 'before_image_reroll' | 'before_video_reroll' | 'lock_in'
+                snapshot_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_robot_history_user ON pilgrim.robot_history(user_id, snapshot_at DESC)")
 
 
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
@@ -940,6 +955,53 @@ def get_recalibration_state(user_id: int) -> Dict[str, Any]:
         'window_seconds_remaining': window_seconds_remaining,
         'window_hours_total': NAROG_TEST_WINDOW_HOURS,
     }
+
+
+def snapshot_narog_history(user_id: int, kind: str) -> bool:
+    """Insert a snapshot of the captain's CURRENT robot image+video pair into
+    robot_history before it gets overwritten. `kind` describes what triggered
+    the snapshot ('before_image_reroll', 'before_video_reroll', etc.)."""
+    ensure_robot_tables()
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                INSERT INTO pilgrim.robot_history (user_id, image_url, video_url, kind)
+                SELECT %s, current_image_url, video_url, %s
+                FROM pilgrim.robot
+                WHERE user_id = %s
+                  AND (current_image_url IS NOT NULL OR video_url IS NOT NULL)
+            """, (user_id, kind, user_id))
+            return cur.rowcount > 0
+    except Exception as e:
+        logger.warning(f"snapshot_narog_history failed user={user_id} kind={kind}: {e}")
+        return False
+
+
+def get_narog_history(user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+    """Past Looks gallery feed — chronological history (newest first) of every
+    captured snapshot for this captain. Excludes the CURRENT live state.
+    """
+    ensure_robot_tables()
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT id, image_url, video_url, kind, snapshot_at
+                FROM pilgrim.robot_history
+                WHERE user_id = %s
+                ORDER BY snapshot_at DESC, id DESC
+                LIMIT %s
+            """, (user_id, limit))
+            rows = cur.fetchall() or []
+            return [{
+                'id': r['id'],
+                'image_url': r['image_url'],
+                'video_url': r['video_url'],
+                'kind': r['kind'],
+                'snapshot_at': r['snapshot_at'].isoformat() if r['snapshot_at'] else None,
+            } for r in rows]
+    except Exception as e:
+        logger.error(f"get_narog_history failed user={user_id}: {e}")
+        return []
 
 
 def repick_narog_components(user_id: int) -> Dict[str, Any]:

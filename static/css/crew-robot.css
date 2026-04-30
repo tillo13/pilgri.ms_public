@@ -500,6 +500,66 @@
     gap: 14px;
 }
 
+/* ---------- Past Looks gallery (history modal) ---------- */
+.past-looks-list {
+    display: flex; flex-direction: column;
+    gap: 14px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+.past-look-row {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+}
+.past-look-row:hover { border-color: rgba(255,200,140,0.45); }
+.past-look-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 10px;
+}
+.past-look-kind {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #ffc88a;
+}
+.past-look-when {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.past-look-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.past-look-img, .past-look-vid {
+    width: 100%; aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1.5px solid rgba(255,200,140,0.35);
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+    display: block;
+    background: #1a0805;
+}
+.past-look-img:hover, .past-look-vid:hover {
+    border-color: #ffc88a;
+    transform: scale(1.02);
+}
+.past-look-empty {
+    width: 100%; aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+    font-size: 11px; font-style: italic;
+    border: 1.5px dashed rgba(110,50,32,0.6);
+    border-radius: 8px;
+}
+
 /* ---------- Reusable accordion (Build Manifest, Robot Allocation, etc) ---------- */
 .narog-accordion {
     background: var(--bg-card, var(--bg-secondary));

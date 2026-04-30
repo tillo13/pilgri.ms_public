@@ -1461,6 +1461,109 @@
         }
     }
 
+    // ----- Past Looks gallery -----------------------------------------------
+    // Captains accumulate prior image/video pairs each time they recalibrate.
+    // The button surfaces "(N)" entries and the modal shows them reverse-chrono
+    // with timestamps, kinds, and click-to-expand on each tile.
+    function _kindLabel(kind) {
+        return ({
+            initial_build: 'Initial build',
+            before_image_reroll: 'Before image re-roll',
+            before_video_reroll: 'Before awakening re-roll',
+            lock_in: 'Locked in',
+            backfill: 'Pre-history baseline',
+        })[kind] || (kind || 'Snapshot');
+    }
+    function _fmtRelative(iso) {
+        if (!iso) return '';
+        const t = new Date(iso).getTime();
+        const dt = Date.now() - t;
+        const m = Math.floor(dt / 60000), h = Math.floor(dt / 3600000), d = Math.floor(dt / 86400000);
+        if (d >= 1) return `${d}d ago`;
+        if (h >= 1) return `${h}h ago`;
+        if (m >= 1) return `${m}m ago`;
+        return 'just now';
+    }
+    function _fmtAbsolute(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        } catch (e) { return iso; }
+    }
+
+    let _pastLooks = null;
+    async function loadPastLooks() {
+        try {
+            const r = await fetch('/api/robot/history', { credentials: 'same-origin' });
+            const j = await r.json();
+            _pastLooks = (j && j.success) ? (j.history || []) : [];
+        } catch (e) { _pastLooks = []; }
+        const btn = document.getElementById('robot-past-looks-btn');
+        const cnt = document.getElementById('robot-past-looks-count');
+        if (cnt) cnt.textContent = _pastLooks.length;
+        if (btn) btn.style.display = _pastLooks.length > 0 ? '' : 'none';
+    }
+    function showPastLooksModal() {
+        if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
+        const items = _pastLooks || [];
+        const tilesHtml = items.length === 0
+            ? '<div style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px;">No past looks yet — recalibrate your Narog to start building a gallery.</div>'
+            : items.map(it => {
+                const img = it.image_url
+                    ? `<img src="${it.image_url}" alt="" class="past-look-img" data-url="${it.image_url}" loading="lazy"/>`
+                    : '<div class="past-look-empty">No image</div>';
+                const vid = it.video_url
+                    ? `<video src="${it.video_url}" class="past-look-vid" data-url="${it.video_url}" muted loop playsinline preload="metadata"></video>`
+                    : '<div class="past-look-empty">No video</div>';
+                return `
+                    <div class="past-look-row">
+                        <div class="past-look-meta">
+                            <div class="past-look-kind">${_kindLabel(it.kind)}</div>
+                            <div class="past-look-when">${_fmtAbsolute(it.snapshot_at)} · ${_fmtRelative(it.snapshot_at)}</div>
+                        </div>
+                        <div class="past-look-pair">
+                            ${img}
+                            ${vid}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        MarsModal.show({
+            title: 'Past Looks',
+            body: `
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+                    Every recalibration snapshot — earliest at the bottom. Click any thumbnail to enlarge.
+                </div>
+                <div class="past-looks-list">${tilesHtml}</div>
+            `,
+        });
+
+        // Wire click-to-expand on thumbs (uses existing showImageModal /
+        // showGolemVideoModal exposed by other JS in this page).
+        setTimeout(() => {
+            document.querySelectorAll('.past-look-img').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (typeof showImageModal === 'function') showImageModal(el.dataset.url);
+                });
+            });
+            document.querySelectorAll('.past-look-vid').forEach(el => {
+                // hover-to-play preview
+                el.addEventListener('mouseenter', () => el.play().catch(() => {}));
+                el.addEventListener('mouseleave', () => { el.pause(); el.currentTime = 0; });
+                el.addEventListener('click', () => {
+                    if (typeof showGolemVideoModal === 'function') showGolemVideoModal(el.dataset.url);
+                });
+            });
+        }, 0);
+    }
+    function wirePastLooks() {
+        const btn = document.getElementById('robot-past-looks-btn');
+        if (btn) btn.addEventListener('click', showPastLooksModal);
+        loadPastLooks();
+    }
+
     // ----- Collapsible accordions (Build Manifest, Robot Allocation, ...) ----
     // State persisted in localStorage under key `narog-accordion:{key}`.
     // Defaults from data-default attr (open|closed). Click header to toggle.
@@ -1527,6 +1630,7 @@
         wireManifestClicks();
         wireAccordions();  // collapsible Build Manifest + Robot Allocation
         wireRecalibration();  // 2026-04-30: re-pick / re-roll image / re-roll video / lock-in
+        wirePastLooks();  // history gallery button + modal
         maybeFireRobotCinematic();
     });
 })();

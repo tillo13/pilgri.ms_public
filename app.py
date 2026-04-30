@@ -519,6 +519,15 @@ def api_robot_dial():
     return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
 
 
+@app.route('/api/robot/history')
+@login_required
+@handle_api_error
+def api_robot_history():
+    """Past Looks feed — chronological list of prior image+video snapshots."""
+    from utilities.postgres.robot import get_narog_history
+    return jsonify({'success': True, 'history': get_narog_history(g.user_id)})
+
+
 @app.route('/api/robot/recalibration_state')
 @login_required
 @handle_api_error
@@ -574,6 +583,11 @@ def api_robot_reroll_image():
     if len(sources) != 5:
         return jsonify({'success': False, 'error': 'No source manifest found.'}), 409
 
+    # Snapshot the current image+video pair before re-rendering — captain can
+    # browse it later in Past Looks. This is the prior "look" they're leaving.
+    from utilities.postgres.robot import snapshot_narog_history
+    snapshot_narog_history(g.user_id, 'before_image_reroll')
+
     # Reset visual state so the existing pipeline re-renders all stages.
     # We DO NOT null video_url — keep it for history. Stale-detection in the
     # template compares image_updated_at vs video_updated_at: if the image is
@@ -624,6 +638,12 @@ def api_robot_reroll_video():
         charge = charge_reforge_action(g.user_id, 'reroll_video')
     except ReforgeError as e:
         return jsonify({'success': False, 'error': e.message}), e.status
+
+    # Snapshot the current pair before re-rendering — even though only the
+    # video changes, we capture the full pair so Past Looks shows what state
+    # the awakening was paired with at this moment.
+    from utilities.postgres.robot import snapshot_narog_history
+    snapshot_narog_history(g.user_id, 'before_video_reroll')
 
     # Clear video_url so start_robot_awakening_video regenerates instead of
     # short-circuiting on the existing URL. video_updated_at gets re-set when
