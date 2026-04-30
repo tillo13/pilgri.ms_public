@@ -771,6 +771,172 @@ def test_page_data_db_budgets():
     return True
 
 
+@test("Narog: pilgrim.robot.build_error column exists", tier=1, features=['db', 'crew'], mode='local')
+def test_narog_build_error_column():
+    """The build_error column was added so failed Flux forges don't silently
+    drop a placeholder narog. ensure_robot_tables() should idempotently add it."""
+    from utilities.postgres.robot import ensure_robot_tables
+    from utilities.postgres.core import db_cursor
+    ensure_robot_tables()
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema='pilgrim' AND table_name='robot' AND column_name='build_error'
+        """)
+        row = cur.fetchone()
+        assert row, "pilgrim.robot.build_error column missing — did the migration in ensure_robot_tables run?"
+    return True
+
+
+@test("Narog: prereq cards match Luke's spec (Lab L1 only)", tier=1, features=['crew'], mode='local')
+def test_narog_prereqs_lab_only():
+    """The UI used to over-promise RS L3 + RF L3 alongside Lab L1. The server
+    gate only enforces Lab L1 (matches Luke's brainstorm robot-crew §2). The
+    UI was fixed to match the gate. Smoke-check the source list directly."""
+    import inspect
+    from utilities.postgres import robot as robot_mod
+    src = inspect.getsource(robot_mod.get_robot_page_data)
+    # Should reference robotics_lab; should NOT reference research_station/regolith_forge
+    # in the prereq_defs list.
+    assert "'robotics_lab'" in src, "robotics_lab missing from prereq_defs"
+    # Find the prereq_defs literal
+    pre_idx = src.find("prereq_defs = [")
+    end_idx = src.find("]", pre_idx)
+    block = src[pre_idx:end_idx]
+    assert "research_station" not in block, "research_station still in prereq_defs (UI over-promise)"
+    assert "regolith_forge" not in block, "regolith_forge still in prereq_defs (UI over-promise)"
+    return True
+
+
+@test("Narog: _load_claimed_inventory excludes consumed items", tier=1, features=['db', 'crew'], mode='local')
+def test_narog_inventory_excludes_consumed():
+    """Once a discovery is consumed (analyzed=true) it must leave the narog
+    source pool, otherwise a captain could re-roll the same legendary forever."""
+    import inspect
+    from utilities.postgres import robot as robot_mod
+    src = inspect.getsource(robot_mod._load_claimed_inventory)
+    assert "analyzed = FALSE" in src or "analyzed=FALSE" in src or "analyzed = false" in src.lower(), \
+        "_load_claimed_inventory must filter out analyzed=true items"
+    return True
+
+
+@test("Narog: real Sepolia broadcast helpers exist", tier=2, features=['crew', 'blockchain'], mode='local')
+def test_narog_sepolia_helpers():
+    """Stage tx writes must go through the real Sepolia broadcast path, not
+    fabricated 0xpending/0xforge strings."""
+    from utilities.postgres.robot import (
+        broadcast_stage_async, _send_narog_stage_transaction,
+        _build_narog_stage_message,
+    )
+    msg = _build_narog_stage_message(45, 3, {
+        'item_name': 'Quantum Crystal',
+        'landmark_name': 'Aethiopis',
+        'lat': 1.234, 'lon': 5.678,
+    })
+    assert 'NAROG_STAGE_3' in msg
+    assert 'Quantum Crystal' in msg
+    assert 'Aethiopis' in msg
+    return True
+
+
+@test("Narog: dry-run gate skips Sepolia broadcast for dev users", tier=1, features=['crew', 'blockchain'], mode='local')
+def test_narog_dry_run_gate():
+    """Andy (45) is in NAROG_DRY_RUN_USER_IDS by default so dev rehearsal forges
+    skip the on-chain broadcast. Luke (112) MUST NOT be in this set — his first
+    forge IS the canonical on-chain one. This is the hard guard against
+    polluting the ARG breadcrumb trail with dev-test transactions."""
+    from utilities.admin_utils import (
+        is_narog_dry_run, NAROG_DRY_RUN_USER_IDS,
+        is_app_dev, APP_DEV_USER_IDS,
+    )
+    assert is_narog_dry_run(45), "Andy (user 45) should be in dry-run by default"
+    assert not is_narog_dry_run(112), "Luke (user 112) MUST NOT be in dry-run — his first forge is canonical"
+    assert not is_narog_dry_run(999), "Random user MUST NOT be in dry-run"
+    assert is_app_dev(45), "Andy should be in APP_DEV_USER_IDS"
+    assert not is_app_dev(112), "Luke (admin but not dev) MUST NOT be in APP_DEV_USER_IDS"
+    return True
+
+
+@test("Narog: admin reset restores consumed discoveries (true reversibility)", tier=1, features=['crew', 'db'], mode='local')
+def test_narog_reset_restore_pattern():
+    """api_robot_reset must (a) read stage_sources BEFORE deleting the robot
+    row, (b) UPDATE expedition_discoveries to flip analyzed=false on those
+    sources, and (c) gate on is_app_dev (not is_admin — Luke is admin).
+
+    inspect.getsource sees the @handle_api_error wrapper, not the route body,
+    so we read app.py directly and isolate the api_robot_reset function block.
+    """
+    import os
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'app.py'))
+    with open(path) as f:
+        text = f.read()
+    start = text.find('def api_robot_reset(')
+    assert start > 0, "api_robot_reset not found in app.py"
+    # Slice ~80 lines after the def to capture the function body.
+    end = text.find('\n@app.route(', start)
+    body = text[start:end] if end > 0 else text[start:start + 4000]
+    assert 'analyzed = FALSE' in body, "api_robot_reset must restore consumed items via analyzed=FALSE"
+    assert 'stage_sources' in body, "api_robot_reset must read stage_sources before delete"
+    assert 'is_app_dev' in body, "api_robot_reset must use is_app_dev gate, not is_admin"
+    sources_idx = body.find('SELECT stage_sources')
+    delete_idx = body.find('DELETE FROM pilgrim.robot WHERE')
+    assert sources_idx > 0 and delete_idx > 0 and sources_idx < delete_idx, \
+        "stage_sources read must come BEFORE robot DELETE"
+    return True
+
+
+@test("Narog: broadcast_stage_async honors the dry-run guard", tier=2, features=['crew', 'blockchain'], mode='local')
+def test_narog_broadcast_dry_run_guard():
+    """The broadcast helper must early-return for dry-run users — no thread
+    spawned, no chain write."""
+    import inspect
+    from utilities.postgres import robot as robot_mod
+    src = inspect.getsource(robot_mod.broadcast_stage_async)
+    assert 'is_narog_dry_run' in src, "broadcast_stage_async must check is_narog_dry_run"
+    assert 'SKIPPED' in src or 'skip' in src.lower(), "must log skip behavior"
+    return True
+
+
+@test("Narog: no fabricated tx_hash strings remain", tier=2, features=['crew', 'blockchain'], mode='local')
+def test_narog_no_fake_tx_hashes():
+    """Forge code must not write '0xpending...' or '0xforge...' tx_hash
+    placeholders — those would render as fake on-chain receipts."""
+    import os
+    files = [
+        'utilities/postgres/robot.py',
+        'utilities/robot_visuals.py',
+    ]
+    bad_patterns = ['0xpending{', '0xforge{', "0xstub{"]
+    offenders = []
+    for f in files:
+        path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', f))
+        if not os.path.exists(path):
+            continue
+        with open(path) as fp:
+            text = fp.read()
+        for pat in bad_patterns:
+            if pat in text:
+                # Allow them in _stub_advance_one_stage (the legacy helper that's
+                # no longer called from the production happy path) — but flag
+                # any new uses elsewhere.
+                # Simple gate: only allow inside _stub_advance_one_stage body.
+                # If the pattern appears outside that function, flag it.
+                # Quick approximation: count occurrences and require all to be
+                # within ~30 lines of '_stub_advance_one_stage'.
+                pos = 0
+                while True:
+                    pos = text.find(pat, pos)
+                    if pos == -1:
+                        break
+                    window_start = max(0, pos - 800)
+                    window = text[window_start:pos]
+                    if 'def _stub_advance_one_stage' not in window:
+                        offenders.append(f"{f}: {pat} found outside _stub_advance_one_stage")
+                    pos += len(pat)
+    assert not offenders, "Fake tx_hash patterns found:\n  " + "\n  ".join(offenders)
+    return True
+
+
 @test("GCS bucket accessible", tier=3, features=['api'], mode='local')
 def test_gcs_bucket():
     import requests

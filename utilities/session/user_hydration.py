@@ -245,6 +245,15 @@ def build_global_context(auth, static_v):
             'time_on_mars_sols': _calc_time_on_mars(session.get('_fl')),
             'static_v': static_v,
             'mimic_email': session.get('_mimic_email'),
+            'is_admin': session.get('_adm', False),
+            # Dev-grade gate — stricter than is_admin. Hardcoded to user 45
+            # to match utilities.admin_utils.APP_DEV_USER_IDS. If that set
+            # changes, update here too (or import the helper).
+            'is_app_dev': session.get('user_id') in {45},
+            # Narog Sepolia dry-run flag — surfaces the "🧪 Dry-run" banner
+            # so dev forges are obviously distinct from canonical on-chain
+            # ones. Mirrors utilities.admin_utils.NAROG_DRY_RUN_USER_IDS.
+            'is_narog_dry_run': session.get('user_id') in {45},
         }
     except Exception as e:
         logger.warning(f"Failed to inject global stats: {e}")

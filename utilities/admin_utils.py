@@ -20,6 +20,53 @@ def is_admin(user_id):
         return result and result.get('is_admin', False)
 
 
+# ============================================================================
+# DEV-GRADE GATES — stricter than is_admin
+# ============================================================================
+# is_admin includes Luke (QA). For irreversible/dev-only operations where
+# even Luke shouldn't have access (narog Start Over, on-chain debugging,
+# wallet seeding, etc.), use APP_DEV_USER_IDS instead.
+
+APP_DEV_USER_IDS = {45}  # Andy. Luke is admin (=112) but NOT a dev — gate
+                          # Start Over here so Luke can't accidentally wipe
+                          # his own canonical Narog post-May-1.
+
+
+def is_app_dev(user_id) -> bool:
+    """Stricter than is_admin. Use for irreversible/dev-only operations
+    where 'admin' isn't a tight enough fence."""
+    return user_id in APP_DEV_USER_IDS
+
+
+# ============================================================================
+# NAROG DRY-RUN — Sepolia-broadcast-only suppression for dev rehearsal
+# ============================================================================
+# Captains in this set forge Narogs WITHOUT writing to Sepolia. Used
+# exclusively for dev rehearsal so the on-chain history isn't polluted
+# with dev-test breadcrumbs that ARG sleuths might reverse-walk.
+#
+# Workflow:
+#   1. Andy (in this set) admin-Start-Overs his current narog as many
+#      times as he needs. Each forge runs Flux + Wan + cinematic + item
+#      consumption, but stage_log rows stay with tx_hash=NULL.
+#   2. When Andy is satisfied with the experience, he removes user 45
+#      from this set, deploys, and runs ONE final forge — that's the
+#      canonical on-chain Narog with real Sepolia tx.
+#   3. Luke (and every other captain) is NOT in this set. Their first
+#      forge IS the canonical on-chain one — no rehearsal.
+#
+# Removing a user from this set requires a code change + deploy. That's
+# intentional friction — going live with on-chain tx is a deliberate act.
+
+NAROG_DRY_RUN_USER_IDS = {45}
+
+
+def is_narog_dry_run(user_id) -> bool:
+    """True when this captain's forge should skip Sepolia broadcasts.
+    Everything else (item consumption, Flux, Wan, cinematic) still runs."""
+    return user_id in NAROG_DRY_RUN_USER_IDS
+
+
 def get_admin_email(user_id):
     """Get admin's email address."""
     with db_cursor() as cur:

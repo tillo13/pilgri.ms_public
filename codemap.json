@@ -143,6 +143,20 @@
       "The Signal / Shard Network (ARG)"
     ]
   },
+  "tools/analyze_depot_costs.py": {
+    "description": "Bug #1405 — Depot cost rebalance analysis.",
+    "exports": [
+      "get_shards_per_hour",
+      "hours_to_afford",
+      "target_for_level",
+      "calibration_rate_for_level",
+      "analyze_path — Return dict with level rows + proposed bumps. Two-tier proposal:",
+      "render_path_table",
+      "build_report",
+      "post_to_brainstorm",
+      "main"
+    ]
+  },
   "tools/aria_snapshots.py": {
     "description": "ARIA Snapshots CLI — generate Instagram-style colony photos.",
     "exports": [
@@ -711,6 +725,7 @@
       "simulate",
       "fmt_num",
       "build_markdown_report",
+      "build_focused_report — Per Luke #198: 'Can we put this into a more easily readable table? I",
       "post_to_brainstorm",
       "main"
     ]
@@ -1297,6 +1312,8 @@
     "description": "Admin utilities - dashboard data, mimic, email testing, snapshot generation.",
     "exports": [
       "is_admin — Check if user has admin privileges (from is_admin column in users table).",
+      "is_app_dev — Stricter than is_admin. Use for irreversible/dev-only operations",
+      "is_narog_dry_run — True when this captain's forge should skip Sepolia broadcasts.",
       "get_admin_email — Get admin's email address.",
       "get_admin_dashboard_data — Fetch all data needed for the admin dashboard page.",
       "get_speed_page_data — Fetch data for the /admin/speed page — recent runs + pool health.",
@@ -2005,11 +2022,11 @@
       "pick_stage_sources — Pick 5 source manifests for a Narog build using the randomized v2 algorithm.",
       "start_robot_build — Initialize a robot build with the 5 pre-picked source manifests.",
       "log_stage — Append a completed stage to the log AND advance the robot row.",
+      "broadcast_stage_async — Fire-and-forget Sepolia broadcast for one narog stage.",
       "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
-      "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
-      "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image."
+      "save_name_suggestions — Store pre-generated golem name suggestions in the robot row."
     ]
   },
   "utilities/postgres/shop.py": {
@@ -3395,7 +3412,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

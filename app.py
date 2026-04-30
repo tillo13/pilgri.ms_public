@@ -374,16 +374,99 @@ def api_robot_build():
 @login_required
 @handle_api_error
 def api_robot_reset():
-    """QA-only: wipe the caller's robot + stage_log so the preview re-renders
-    from scratch. Used during Narog iteration. Safe because it only affects the
-    caller's own data."""
+    """DEV-ONLY: wipe the caller's robot + stage_log AND restore the consumed
+    source discoveries to claimable state. Used during dry-run rehearsal so
+    each test forge starts with a clean slate.
+
+    Note: Sepolia tx already written cannot be undone — but in dry-run mode
+    none are written (broadcast_stage_async no-ops for NAROG_DRY_RUN_USER_IDS).
+
+    Gated to APP_DEV_USER_IDS (Andy only) — stricter than is_admin so Luke
+    can't accidentally wipe his canonical Narog post-May-1.
+    """
+    from utilities.admin_utils import is_app_dev
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_app_dev(real_user_id):
+        return jsonify({'success': False, 'error': 'forbidden'}), 403
     from utilities.postgres.core import db_cursor
     with db_cursor(commit=True) as cur:
+        # Read stage_sources BEFORE delete so we can restore the consumed
+        # items. The robot row gets DELETEd next, so this read must come
+        # first inside the transaction.
+        cur.execute(
+            "SELECT stage_sources FROM pilgrim.robot WHERE user_id = %s",
+            (g.user_id,),
+        )
+        row = cur.fetchone()
+        sources = (row and row.get('stage_sources')) or []
+        real_ids = [
+            int(s['discovery_id']) for s in sources
+            if s.get('discovery_id') is not None
+        ]
+
+        # Restore consumed items. analyzed=FALSE puts them back into the
+        # narog source pool (and the rest of inventory).
+        restored = 0
+        if real_ids:
+            cur.execute("""
+                UPDATE pilgrim.expedition_discoveries
+                SET analyzed = FALSE, analyzed_at = NULL
+                WHERE id = ANY(%s::int[])
+                  AND expedition_id IN (
+                      SELECT id FROM pilgrim.expeditions WHERE user_id = %s
+                  )
+                RETURNING id
+            """, (real_ids, g.user_id))
+            restored = cur.rowcount
+
         cur.execute('DELETE FROM pilgrim.robot_stage_log WHERE user_id=%s', (g.user_id,))
         stage_rows = cur.rowcount
         cur.execute('DELETE FROM pilgrim.robot WHERE user_id=%s', (g.user_id,))
         robot_rows = cur.rowcount
-    return jsonify({'success': True, 'stage_log_deleted': stage_rows, 'robot_deleted': robot_rows})
+
+    return jsonify({
+        'success': True,
+        'stage_log_deleted': stage_rows,
+        'robot_deleted': robot_rows,
+        'discoveries_restored': restored,
+    })
+
+
+@app.route('/api/robot/retry_forge', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_retry_forge():
+    """Retry the stage-5 oneshot forge after a Flux failure. Available to ANY
+    captain whose robot row has build_error set — the items are already consumed
+    so the captain isn't getting a free re-roll, just a do-over of the image
+    that should have come back the first time. Stages 1-4 + their tx hashes
+    stay intact."""
+    from utilities.postgres.core import db_cursor
+    from utilities.postgres.robot import get_robot
+    from utilities.robot_visuals import start_background_full_build
+    robot = get_robot(g.user_id)
+    if not robot:
+        return jsonify({'success': False, 'error': 'No Narog build in progress.'}), 400
+    if not robot.get('build_error'):
+        return jsonify({'success': False, 'error': 'No forge error to retry.'}), 400
+    sources = robot.get('stage_sources') or []
+    if not sources or len(sources) < 5:
+        return jsonify({'success': False, 'error': 'Source manifest missing — contact admin.'}), 500
+    # Clear the error + delete the failed stage-5 row (if any) so the worker
+    # re-runs the oneshot. Stages 1-4 stay; their on-chain tx still resolves.
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE pilgrim.robot SET build_error = NULL, build_status = 'in_progress', updated_at = NOW() WHERE user_id = %s",
+            (g.user_id,),
+        )
+        cur.execute(
+            "DELETE FROM pilgrim.robot_stage_log WHERE user_id = %s AND stage_idx = 5",
+            (g.user_id,),
+        )
+    # Re-fire the worker. _full_build_worker will re-do stages 1-4 placeholder
+    # logging (idempotent on user_id+stage_idx via ON CONFLICT) and the forge.
+    start_background_full_build(g.user_id, sources)
+    return jsonify({'success': True, 'retrying': True})
 
 
 @app.route('/api/robot/name', methods=['POST'])
@@ -445,8 +528,14 @@ def api_robot_video_status():
 @login_required
 @handle_api_error
 def api_robot_reset_video():
-    """QA: clear video_url so generation can re-fire. Keeps the forged narog +
-    stage log intact — the expensive 5-Flux forge doesn't repeat."""
+    """DEV-ONLY: clear video_url so generation can re-fire. Keeps the forged
+    narog + stage log intact — the expensive Flux forge doesn't repeat. Gated
+    to APP_DEV_USER_IDS so even Luke (admin) can't spam Wan thread leaks
+    (#1403 Item 3)."""
+    from utilities.admin_utils import is_app_dev
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_app_dev(real_user_id):
+        return jsonify({'success': False, 'error': 'forbidden'}), 403
     from utilities.postgres.core import db_cursor
     from utilities.postgres.robot import start_robot_awakening_video
     with db_cursor(commit=True) as cur:

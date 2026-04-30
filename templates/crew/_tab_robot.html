@@ -181,6 +181,42 @@
 <!-- ═════════ STATE 3+4: ACTIVE BUILD or COMPLETE ═════════ -->
 {% set robot = rd.robot %}
 
+{% if is_narog_dry_run %}
+<!-- Dry-run banner: Andy is rehearsing the forge. Sepolia broadcasts are
+     skipped, all stage_log rows have tx_hash=NULL, items WILL still be
+     consumed (and restored on Start Over). -->
+<div style="background: rgba(168,85,247,0.12); border: 2px dashed rgba(168,85,247,0.55); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; text-align: center;">
+    <div style="font-size: 11px; font-weight: 800; color: var(--color-sepolia); letter-spacing: 0.12em; text-transform: uppercase;">
+        🧪 Dry-run mode — no Sepolia broadcast
+    </div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.5;">
+        This forge runs Flux + Wan + cinematic but writes nothing on-chain. Stage tx hashes will stay <code>NULL</code>. Admin reset will restore consumed items. Remove user from <code>NAROG_DRY_RUN_USER_IDS</code> + deploy to go live.
+    </div>
+</div>
+{% endif %}
+
+{% if robot.build_error %}
+<!-- Forge failure banner: shown when the oneshot Flux call returned None or
+     stage-5 log_stage crashed. Items have already been consumed (analyzed=true)
+     so the captain cannot start over from scratch — the Retry button re-runs
+     ONLY the stage-5 forge using the already-locked sources, leaving
+     stages 1-4 + their tx hashes intact. -->
+<div class="dashboard-card mb-16" style="border: 2px solid rgba(239,68,68,0.55); background: rgba(239,68,68,0.06); padding: 16px 20px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <img src="{{ icons.rare_sparkle }}" alt="" style="width:32px;height:32px;flex-shrink:0;opacity:0.85;">
+        <div style="flex:1;min-width:240px;">
+            <div class="text-xs uppercase tracking-wide" style="color:#fca5a5;font-weight:700;letter-spacing:0.08em;">Forge interrupted</div>
+            <div class="text-sm" style="color:var(--text-primary);font-weight:600;margin-top:4px;">The image-gen step couldn't complete. Your component picks are locked in — only the final assembly needs to re-fire.</div>
+            <div class="text-xs" style="color:var(--text-muted);margin-top:6px;font-family:ui-monospace,Menlo,monospace;">{{ robot.build_error }}</div>
+        </div>
+        <button id="robot-retry-forge-btn" type="button"
+                style="background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.55); border-radius: 10px; padding: 12px 24px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;">
+            ↻ Retry Forge
+        </button>
+    </div>
+</div>
+{% endif %}
+
 <!-- Hero card: current robot image + name + status -->
 <div class="dashboard-card relative overflow-hidden p-20 mb-16">
     <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
@@ -210,10 +246,12 @@
                            class="rounded-lg cursor-pointer"
                            style="width: 240px; height: 240px; object-fit: cover; border: 3px solid var(--color-sepolia); box-shadow: 0 0 24px rgba(168,85,247,0.35);"></video>
                     <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · click to expand</div>
+                    {% if is_app_dev %}
                     <button id="robot-regen-video-btn" type="button"
                             style="margin-top: 8px; background: rgba(168,85,247,0.12); color: var(--color-sepolia); border: 1px solid rgba(168,85,247,0.45); border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;">
-                        ↻ Regenerate Video
+                        ↻ Regenerate Video (dev)
                     </button>
+                    {% endif %}
                     {% else %}
                     <div class="robot-hero-video-placeholder robot-hero-forging">
                         <img src="{{ icons.rare_sparkle }}" alt="" style="width: 36px; height: 36px; opacity: 0.8; margin-bottom: 8px;">
@@ -347,15 +385,24 @@
     </div>
 </div>
 
-<!-- QA: Start Over — wipes this captain's Narog + stage_log so the preview
-     re-renders from scratch. Positioned right under the build manifest so
-     Luke can reset quickly during QA. -->
+{% if is_app_dev %}
+<!-- DEV-ONLY: Start Over wipes this captain's Narog + stage_log AND restores
+     the 5 consumed source discoveries. NEVER shown to regular captains or to
+     Luke (admin but not dev) — once Luke's Narog is forged, his items are
+     consumed and the on-chain tx is permanent. Future paid re-forge (#1400,
+     10% shard cost) is the captain-facing path. Server endpoint is also
+     is_app_dev gated; this is the UI half of the same gate. -->
 <div class="dashboard-card p-20 mb-16" style="border: 1px dashed rgba(239,68,68,0.35); background: rgba(239,68,68,0.04);">
     <div class="text-xs uppercase tracking-wide mb-8" style="color: #fca5a5; font-weight: 600; letter-spacing: 0.08em;">
-        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> QA — Start Over
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> DEV — Start Over
     </div>
     <div class="text-sm mb-12" style="color: var(--text-secondary);">
-        Wipe this Narog and re-forge from scratch. The Kontext image chain will regenerate with fresh picks. Used during QA / iteration.
+        Wipe this Narog + stage log AND restore the 5 source discoveries to inventory (<code>analyzed→false</code>). Safe to repeat as many times as needed during dry-run.
+        {% if is_narog_dry_run %}
+        <strong style="color: var(--color-sepolia);">In dry-run — no Sepolia tx were written.</strong>
+        {% else %}
+        <strong style="color: #fca5a5;">LIVE mode: Sepolia tx already written cannot be undone.</strong>
+        {% endif %}
     </div>
     <div style="text-align: center;">
         <button id="robot-reset-btn" type="button"
@@ -364,6 +411,7 @@
         </button>
     </div>
 </div>
+{% endif %}
 
 <!-- What does the Narog do? -->
 <div class="dashboard-card p-20 mb-16">

@@ -25,15 +25,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from utilities.postgres.core import db_cursor
 from utilities.mars_environment_utils import get_mars_sol_number
 
-# Progression formulas from captain-stats brainstorm section 2
-# (PilgrimBot proposals reacted to by Luke; ARIA/chat gains REMOVED per Luke)
-FORMULAS = {
+# Progression formulas from captain-stats brainstorm section 2.
+# ARIA/chat gains removed per Luke #170.
+FORMULAS_V1 = {
     'leadership':  [('sols_survived',  0.1), ('crew_missions',   0.5)],
     'strategy':    [('expeditions',    0.2), ('legendaries',     1.0)],
     'exploration': [('km_traveled',    0.01), ('landmarks',      2.0)],
     'logistics':   [('trail_segments', 0.5), ('depot_upgrades',  1.0)],
-    'charisma':    [('aria_bonds',     2.0)],  # conversation gains cut
+    'charisma':    [('aria_bonds',     2.0)],
 }
+
+# Simulation 2 (rebalanced) — what Luke asked to see in #198. Top-end pegs
+# under V1 because km × 0.01 and crew_missions × 0.5 saturate the cap; these
+# multipliers shrink the high-activity contributions to ~10% of V1.
+FORMULAS_V2 = {
+    'leadership':  [('sols_survived',  0.1),  ('crew_missions',   0.05)],
+    'strategy':    [('expeditions',    0.2),  ('legendaries',     1.0)],
+    'exploration': [('km_traveled',    0.001), ('landmarks',      1.0)],
+    'logistics':   [('trail_segments', 0.05), ('depot_upgrades',  1.0)],
+    # Luke #198: keep Charisma as placeholder, "do something minor for the
+    # time being, like +1% Depot Build Time". So growth formula stays simple
+    # (just aria_bonds) — signal_claims add deferred until Charisma earns a
+    # second growth term in a future ticket.
+    'charisma':    [('aria_bonds',     2.0)],
+}
+
+# Default to V2 going forward; FORMULAS preserved for back-compat callers.
+FORMULAS = FORMULAS_V2
+
 WORLD_1_CAP = 75
 
 
@@ -217,6 +236,105 @@ def build_markdown_report(results):
     return "\n".join(lines)
 
 
+def build_focused_report(target_user_ids):
+    """Per Luke #198: 'Can we put this into a more easily readable table? I
+    would like to see the current Captain Stats for User 112, User 45, User
+    250, User 267, User 271, and then what the new values would be using
+    Simulation 2.'
+
+    Output: one COMPACT block per captain showing baseline → simulated for
+    every stat at-a-glance. Plus a Simulation 2 multiplier reference so Luke
+    can see the math. Per-stat rows beat the wide single-row format from
+    comment #197.
+    """
+    captains_by_id = {c['user_id']: c for c in fetch_all_captains()}
+    lines = []
+    lines.append("**Captain Stats — Simulation 2 (rebalanced) — for the 5 users you flagged**")
+    lines.append("")
+    lines.append("Per Luke #198: cleaner per-captain table, Simulation 2 only, users 112 / 45 / 250 / 267 / 271. "
+                 "Other Luke decisions baked in: bots allowed to cap (#198 pt 2), "
+                 "Charisma kept as placeholder with growth driven by ARIA bonds only (#198 pt 3).")
+    lines.append("")
+    lines.append("**Simulation 2 multipliers** (vs V1 in comment #197):")
+    lines.append("")
+    lines.append("| Stat | V1 formula | **V2 formula** | Why changed |")
+    lines.append("|---|---|---|---|")
+    lines.append("| Leadership | 0.1·sols + **0.5**·crew | 0.1·sols + **0.05**·crew | crew × 0.5 saturated cap at ~150 missions |")
+    lines.append("| Strategy | 0.2·exped + 1.0·legendary | 0.2·exped + 1.0·legendary | already balanced |")
+    lines.append("| Exploration | **0.01**·km + **2.0**·landmarks | **0.001**·km + **1.0**·landmarks | km × 0.01 saturated at ~7,500 km |")
+    lines.append("| Logistics | **0.5**·trail_seg + 1.0·upg | **0.05**·trail_seg + 1.0·upg | trail × 0.5 saturated at ~150 segments |")
+    lines.append("| Charisma | 2.0·bonds | 2.0·bonds *(unchanged)* | Luke #198: keep as placeholder for now |")
+    lines.append("")
+    lines.append("World 1 cap = 75. Capped values shown with ★.")
+    lines.append("")
+
+    for uid in target_user_ids:
+        cap = captains_by_id.get(uid)
+        if not cap:
+            lines.append(f"### User {uid} — not found in captains-with-stats query")
+            lines.append("")
+            continue
+        activity = fetch_activity(uid, cap['first_login'])
+        sim = simulate(cap, activity)
+        name = cap['captain_name']
+        lines.append(f"### {name}  (#{uid})")
+        lines.append("")
+        lines.append("**Activity:** "
+                     f"sols={activity['sols_survived']:,} · "
+                     f"crew_missions={activity['crew_missions']:,} · "
+                     f"expeditions={activity['expeditions']:,} · "
+                     f"km={int(activity['km_traveled']):,} · "
+                     f"legendaries={activity['legendaries']} · "
+                     f"landmarks={activity['landmarks']} · "
+                     f"trail_segments={activity['trail_segments']:,} · "
+                     f"upgrades={activity['depot_upgrades']} · "
+                     f"bonds={activity['aria_bonds']}")
+        lines.append("")
+        lines.append("| Stat | Current | + Growth | Simulated | Capped at 75 |")
+        lines.append("|---|--:|--:|--:|---|")
+        for stat in ['leadership', 'strategy', 'exploration', 'logistics', 'charisma']:
+            s = sim[stat]
+            base = int(s['base'])
+            growth = s['growth']
+            raw = s['new_raw']
+            capped = int(s['new_capped'])
+            cap_marker = '★ capped' if raw > WORLD_1_CAP else f'{capped}'
+            lines.append(f"| {stat.title()} | {base} | +{fmt_num(growth)} | {fmt_num(raw)} | {cap_marker} |")
+        lines.append("")
+
+    lines.append("---")
+    lines.append("")
+    lines.append("**Honest read on V2: still too aggressive for high-activity captains.**")
+    lines.append("")
+    lines.append("- Luke (#112) caps 3 of 5 stats. Exploration hits +305 from 188k km alone (0.001·km coefficient is still oversized at your scale).")
+    lines.append("- Andy (#45) caps 4 of 5 stats. Leadership +56 from 712 crew missions, Logistics +66 from 25 trail × 0.05 + 65 upgrades × 1.0.")
+    lines.append("- Mid-tier captains (Lilla, Prof Andy) cap at most 1 stat — that part feels right.")
+    lines.append("- Bots (Trusty #250) overshoot massively, but per #198 pt 2 we let them cap and move on.")
+    lines.append("")
+    lines.append("If you want top-tier captains to NOT peg most stats on retroactive credit, V3 needs another haircut:")
+    lines.append("")
+    lines.append("| Stat | V2 formula | **V3 proposal** | Effect on Luke / Andy |")
+    lines.append("|---|---|---|---|")
+    lines.append("| Leadership | 0.1·sols + 0.05·crew | 0.05·sols + 0.025·crew | Luke +27 (was +54) · Andy +28 (was +56) |")
+    lines.append("| Strategy | 0.2·exped + 1.0·legendary | 0.1·exped + 1.0·legendary *(unchanged)* | Luke +26 (was +41) · Andy +21 (was +34) |")
+    lines.append("| Exploration | 0.001·km + 1.0·landmarks | **0.0002**·km + **0.5**·landmarks | Luke +96 (was +305) · Andy +36 (was +110) |")
+    lines.append("| Logistics | 0.05·trail_seg + 1.0·upg | 0.05·trail_seg + **0.5**·upg | Luke +47 (was +91) · Andy +34 (was +66) |")
+    lines.append("| Charisma | 2.0·bonds | 2.0·bonds *(still placeholder per #198 pt 3)* | unchanged |")
+    lines.append("")
+    lines.append("Under V3, Luke pegs ~1 stat (Exploration 27+96=123→cap 75, still over but lower) and Andy pegs ~2 (Leadership 51+28=79→cap, Strategy 69+21=90→cap). Mid-tier captains stay healthy.")
+    lines.append("")
+    lines.append("**Three explicit choices for you to make:**")
+    lines.append("")
+    lines.append("1. **Ship V2 as-is** — accepting that top players cap at 75 on most stats from retro credit. World 2/3 caps (90/105) eventually give them headroom; the cap is a feature, not a bug.")
+    lines.append("2. **Ship V3** (cooler haircut above) — top players cap on 1-2 stats, mid-tier still feels growth, room to grow into World 2 cap.")
+    lines.append("3. **Tell me a different shape** — e.g., 'crew_missions/sol rate-limit' instead of raw count, or 'cap retroactive credit at 50% of stat cap'.")
+    lines.append("")
+    lines.append("Once you pick (or propose your own numbers), I'll lock the formulas, build the schema migration (`captain_stat_events`), wire the toast UI, and run the retro-credit migration in a single shot.")
+    lines.append("")
+    lines.append("Script: `tools/simulate_captain_stats.py` — re-runnable with `--focused 112,45,250,267,271`.")
+    return "\n".join(lines)
+
+
 def post_to_brainstorm(markdown_text, section_idx=2):
     with db_cursor(commit=True) as cur:
         cur.execute("""
@@ -231,7 +349,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--post', action='store_true', help='Post the report as a PilgrimBot brainstorm comment')
     parser.add_argument('--limit', type=int, help='Only simulate the top N captains by activity')
+    parser.add_argument('--focused', type=str, help='Comma-separated user_ids for the focused per-captain table (e.g., 112,45,250,267,271). Uses Simulation 2 multipliers per Luke #198.')
     args = parser.parse_args()
+
+    if args.focused:
+        target_ids = [int(x.strip()) for x in args.focused.split(',') if x.strip()]
+        report = build_focused_report(target_ids)
+        print(report)
+        if args.post:
+            comment_id = post_to_brainstorm(report)
+            print(f"\n✅ Posted as brainstorm comment #{comment_id} on page 'captain-stats' section 2.")
+        else:
+            print("\n(Dry run — use --post to write to brainstorm_comments.)")
+        return
 
     print("Fetching captains...")
     captains = fetch_all_captains()

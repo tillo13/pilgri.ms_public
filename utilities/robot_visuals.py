@@ -41,6 +41,7 @@ from utilities.postgres.robot import (
     STAGE_PLACEHOLDER_IMAGES,
     log_stage,
     _stub_advance_one_stage,
+    broadcast_stage_async,
 )
 
 logger = logging.getLogger(__name__)
@@ -342,7 +343,14 @@ def _gather_prior_item_urls(user_id: int, up_to_stage: int) -> list:
 def _log_placeholder_stage(user_id: int, stage_idx: int,
                            source: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Log one stage's placeholder icon — no Flux call. Used for the fake
-    progression that plays while the real oneshot forge runs in parallel."""
+    progression that plays while the real oneshot forge runs in parallel.
+
+    Inserts the row with tx_hash=NULL/data_hex=NULL, then fires the real
+    Sepolia broadcast in a daemon thread. The chain write UPDATEs the row
+    on success; on failure the row stays with NULL hashes (the manifest
+    modal then renders "Sepolia broadcast pending" instead of a fabricated
+    placeholder).
+    """
     tag = f"[robot user={user_id} placeholder stage={stage_idx}]"
     stage = ROBOT_STAGES[stage_idx - 1]
     placeholder_img = STAGE_PLACEHOLDER_IMAGES.get(
@@ -351,14 +359,19 @@ def _log_placeholder_stage(user_id: int, stage_idx: int,
     manifest = _build_base_manifest(stage_idx, source)
     manifest['kind'] = 'placeholder'
     try:
-        return log_stage(
+        result = log_stage(
             user_id=user_id,
             stage_idx=stage_idx,
             source_manifest=manifest,
             image_url=placeholder_img,
-            data_hex=f"0xstaging_{stage['key']}",
-            tx_hash=f"0xpending{user_id:08x}{stage_idx:02d}",
+            data_hex=None,
+            tx_hash=None,
         )
+        # Fire real Sepolia broadcast for stages 1-4. Stage 5 broadcasts
+        # from _full_build_worker after the oneshot forge image is uploaded
+        # so the on-chain payload references the real GCS URL.
+        broadcast_stage_async(user_id, stage_idx, manifest)
+        return result
     except Exception as e:
         logger.exception(f"{tag} log_stage failed: {e}")
         return None
@@ -436,15 +449,18 @@ def _run_stage(user_id: int, stage_idx: int, source: Dict[str, Any]) -> Optional
     stage = ROBOT_STAGES[4]
     manifest = _build_base_manifest(5, source)
     manifest['kind'] = 'oneshot_flux2'
+    manifest['gcs_url'] = gcs_url
     try:
-        return log_stage(
+        result = log_stage(
             user_id=user_id,
             stage_idx=5,
             source_manifest=manifest,
             image_url=gcs_url,
-            data_hex="0xoneshot_forge_pending_sepolia",
-            tx_hash=f"0xforge{user_id:08x}",
+            data_hex=None,
+            tx_hash=None,
         )
+        broadcast_stage_async(user_id, 5, manifest)
+        return result
     except Exception as e:
         logger.exception(f"{tag} log_stage failed: {e}")
         return None
@@ -474,16 +490,28 @@ def _full_build_worker(user_id: int, sources: list) -> None:
     """Theater vs reality: ONE real Flux 2 Pro call happens in a child thread,
     while the main thread fakes stages 1–4 by logging placeholder icons at a
     steady cadence so the UI poller sees visual_stage tick up. When the Flux
-    call finishes, stage 5 gets logged with the real GCS URL. Total wall
-    clock ≈ one Flux call (~30–40s)."""
+    call finishes, stage 5 gets logged with the real GCS URL.
+
+    Production semantics:
+      - Each stage row is logged with tx_hash=NULL and a real Sepolia
+        broadcast fires in a daemon thread (writes back tx_hash on success).
+      - If the oneshot forge returns None, pilgrim.robot.build_error is set
+        and build_status stays 'in_progress'. The captain sees a red banner
+        + Retry button instead of a silent placeholder Narog.
+      - On stage-5 success, kick off the awakening video auto-generation so
+        the captain doesn't have to click anything.
+    """
     tag = f"[robot user={user_id} full-build]"
-    result_holder: Dict[str, Optional[str]] = {'url': None}
+    result_holder: Dict[str, Optional[str]] = {'url': None, 'error': None}
 
     def _forge():
         try:
             result_holder['url'] = _run_oneshot_forge(user_id, sources)
+            if not result_holder['url']:
+                result_holder['error'] = "Flux 2 Pro forge returned no image"
         except Exception as e:
             logger.exception(f"{tag} forge thread crash: {e}")
+            result_holder['error'] = f"Forge thread crashed: {e}"
 
     forge_thread = threading.Thread(
         target=_forge,
@@ -494,13 +522,13 @@ def _full_build_worker(user_id: int, sources: list) -> None:
 
     try:
         # Fake stages 1–4 at a steady cadence so the poller advances.
+        # Each placeholder log triggers its own real Sepolia broadcast.
         for stage_idx in range(1, 5):
             if stage_idx - 1 >= len(sources):
                 logger.error(f"{tag} missing source for stage {stage_idx}")
                 continue
             source = sources[stage_idx - 1]
-            if _log_placeholder_stage(user_id, stage_idx, source) is None:
-                _stub_advance_one_stage(user_id, stage_idx, source)
+            _log_placeholder_stage(user_id, stage_idx, source)
             time.sleep(_FAKE_STAGE_INTERVAL_SECONDS)
 
         # Wait for the real Flux call to finish (may already be done).
@@ -508,25 +536,55 @@ def _full_build_worker(user_id: int, sources: list) -> None:
         gcs_url = result_holder['url']
 
         stage5_source = sources[4] if len(sources) >= 5 else (sources[-1] if sources else {})
+
         if not gcs_url:
-            logger.error(f"{tag} oneshot forge returned None — stubbing stage 5")
-            _stub_advance_one_stage(user_id, 5, stage5_source)
+            err = result_holder['error'] or "Forge returned no image"
+            logger.error(f"{tag} oneshot forge failed — setting build_error: {err}")
+            try:
+                with db_cursor(commit=True) as cur:
+                    cur.execute("""
+                        UPDATE pilgrim.robot
+                        SET build_error = %s, updated_at = NOW()
+                        WHERE user_id = %s
+                    """, (err, user_id))
+            except Exception as ex:
+                logger.exception(f"{tag} failed to set build_error: {ex}")
             return
 
         manifest = _build_base_manifest(5, stage5_source)
         manifest['kind'] = 'oneshot_flux2'
+        manifest['gcs_url'] = gcs_url
         try:
             log_stage(
                 user_id=user_id,
                 stage_idx=5,
                 source_manifest=manifest,
                 image_url=gcs_url,
-                data_hex="0xoneshot_forge_pending_sepolia",
-                tx_hash=f"0xforge{user_id:08x}",
+                data_hex=None,
+                tx_hash=None,
             )
+            # Real Sepolia tx for stage 5 (after the GCS image lands so the
+            # on-chain payload references the final URL).
+            broadcast_stage_async(user_id, 5, manifest)
         except Exception as e:
             logger.exception(f"{tag} stage 5 log_stage failed: {e}")
-            _stub_advance_one_stage(user_id, 5, stage5_source)
+            try:
+                with db_cursor(commit=True) as cur:
+                    cur.execute("""
+                        UPDATE pilgrim.robot
+                        SET build_error = %s, updated_at = NOW()
+                        WHERE user_id = %s
+                    """, (f"Stage 5 log_stage failed: {e}", user_id))
+            except Exception:
+                pass
+            return
+
+        # Awakening video auto-fires from the frontend: when the captain hits
+        # the page with build_status='complete' AND video_url IS NULL, the JS
+        # calls /api/robot/generate_video on first paint (see static/js/crew-
+        # robot.js:autoStartVideoGen). No daemon-thread call needed here —
+        # avoids the Flask current_app context issue from background threads.
+        logger.info(f"{tag} stage 5 complete; frontend will auto-fire video gen")
     except Exception as e:
         logger.exception(f"{tag} crash: {e}")
     finally:

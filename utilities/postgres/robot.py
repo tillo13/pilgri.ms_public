@@ -79,6 +79,13 @@ def ensure_robot_tables():
             ALTER TABLE pilgrim.robot
             ADD COLUMN IF NOT EXISTS craftsmanship_score INTEGER NOT NULL DEFAULT 0
         """)
+        # Holds the most recent forge failure message so the UI can render a
+        # red banner + Retry button instead of silently completing with a
+        # placeholder image. Cleared on successful retry.
+        cur.execute("""
+            ALTER TABLE pilgrim.robot
+            ADD COLUMN IF NOT EXISTS build_error TEXT
+        """)
 
 
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
@@ -229,7 +236,12 @@ def _pick_with_diversity(items: List[Dict[str, Any]], n: int) -> List[Dict[str, 
 
 
 def _load_claimed_inventory(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
-    """Return every claimed, not-yet-consumed discovery for a captain, grouped by rarity."""
+    """Return every claimed, not-yet-consumed discovery for a captain, grouped by rarity.
+
+    `analyzed=true` is the canonical "consumed" flag (also used by trail
+    consumption — utilities/postgres/trails/crew.py:436). Items consumed by a
+    prior Narog forge stay out of the pool here so they can't be picked twice.
+    """
     inv: Dict[str, List[Dict[str, Any]]] = {
         'legendary': [], 'rare': [], 'uncommon': [], 'common': []
     }
@@ -249,6 +261,7 @@ def _load_claimed_inventory(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
             LEFT JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
             WHERE e.user_id = %s
               AND ed.claimed_by_user = TRUE
+              AND (ed.analyzed = FALSE OR ed.analyzed IS NULL)
               AND di.item_name IS NOT NULL
             ORDER BY ed.id DESC
         """, (user_id,))
@@ -348,18 +361,37 @@ def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
 def start_robot_build(user_id: int, sources: List[Dict[str, Any]],
                       initial_image_url: Optional[str] = None) -> Dict[str, Any]:
     """Initialize a robot build with the 5 pre-picked source manifests.
+
+    PRODUCTION SEMANTICS:
+      - The 5 source `discovery_id`s are marked `analyzed=true` in the SAME
+        transaction as the robot row INSERT. If any source has already been
+        consumed (by a prior forge or trail use), the whole transaction
+        rolls back and a RobotGateError is raised — the captain is told to
+        re-roll. This guarantees a forged Narog always corresponds to 5
+        real consumed items.
+      - Synthetic 'home_base' sources (from pick_stage_sources fallback)
+        carry discovery_id=None and are NOT marked consumed. They're free
+        filler when the captain has < 5 real items.
+
     Stage 1's stage_ready_at is set to NOW + STAGE_DURATION_SECONDS so the
-    auto-tick can advance it on the next page load."""
+    auto-tick can advance it on the next page load.
+    """
     ensure_robot_tables()
     score = compute_craftsmanship_score(sources)
+    real_ids = [int(s['discovery_id']) for s in (sources or [])
+                if s.get('discovery_id') is not None]
     with db_cursor(commit=True) as cur:
+        # Insert/upsert the robot row first so we have something to roll back
+        # if consumption fails.
         cur.execute("""
             INSERT INTO pilgrim.robot
                 (user_id, build_status, visual_stage, current_image_url,
                  stage_images, stage_sources, craftsmanship_score,
-                 started_at, stage_started_at, stage_ready_at, updated_at)
+                 started_at, stage_started_at, stage_ready_at, updated_at,
+                 build_error)
             VALUES (%s, 'in_progress', 0, %s, '[]'::jsonb, %s::jsonb, %s,
-                    NOW(), NOW(), NOW() + (%s * INTERVAL '1 second'), NOW())
+                    NOW(), NOW(), NOW() + (%s * INTERVAL '1 second'), NOW(),
+                    NULL)
             ON CONFLICT (user_id) DO UPDATE SET
                 build_status = 'in_progress',
                 visual_stage = 0,
@@ -372,6 +404,7 @@ def start_robot_build(user_id: int, sources: List[Dict[str, Any]],
                 stage_ready_at = NOW() + (%s * INTERVAL '1 second'),
                 completed_at = NULL,
                 cinematic_played = FALSE,
+                build_error = NULL,
                 updated_at = NOW()
             RETURNING *
         """, (user_id, initial_image_url, json.dumps(sources), score,
@@ -379,6 +412,33 @@ def start_robot_build(user_id: int, sources: List[Dict[str, Any]],
         row = cur.fetchone()
         # Wipe any prior stage log so re-builds start fresh
         cur.execute("DELETE FROM pilgrim.robot_stage_log WHERE user_id = %s", (user_id,))
+
+        # Consume the 5 real source discoveries in the same transaction.
+        # Re-validates ownership + unconsumed state at the moment of the
+        # INSERT (paranoia against stale lock-in client state).
+        if real_ids:
+            cur.execute("""
+                UPDATE pilgrim.expedition_discoveries
+                SET analyzed = TRUE, analyzed_at = NOW()
+                WHERE id = ANY(%s::int[])
+                  AND (analyzed = FALSE OR analyzed IS NULL)
+                  AND claimed_by_user = TRUE
+                  AND expedition_id IN (
+                      SELECT id FROM pilgrim.expeditions WHERE user_id = %s
+                  )
+                RETURNING id
+            """, (real_ids, user_id))
+            consumed_ids = [r['id'] for r in cur.fetchall() or []]
+            if len(consumed_ids) != len(real_ids):
+                missing = set(real_ids) - set(consumed_ids)
+                raise RobotGateError(
+                    f"One or more source items are no longer available "
+                    f"(IDs: {sorted(missing)}). Please re-roll."
+                )
+            logger.info(
+                f"narog: user {user_id} consumed {len(consumed_ids)} discoveries "
+                f"for forge: {consumed_ids}"
+            )
         return dict(row)
 
 
@@ -440,6 +500,163 @@ def log_stage(user_id: int, stage_idx: int, source_manifest: Dict[str, Any],
               STAGE_DURATION_SECONDS, stage_idx, stage_idx, user_id))
         robot_row = cur.fetchone()
         return {'log': log_row, 'robot': dict(robot_row) if robot_row else None}
+
+
+# ============================================================================
+# SEPOLIA BROADCAST — one real on-chain tx per stage
+# ============================================================================
+# Mirrors the bond pattern at utilities/aria/bonds.py:142-221. Each stage row
+# is INSERTed with tx_hash=NULL; this background worker writes the message
+# (hex-encoded) to Sepolia and UPDATEs the row when the chain returns. Failures
+# log + leave tx_hash=NULL so the manifest modal renders "Sepolia broadcast
+# pending" instead of a fabricated hash.
+
+def _build_narog_stage_message(user_id: int, stage_idx: int,
+                               source_manifest: Dict[str, Any]) -> str:
+    """Compose the human-readable on-chain message embedded in tx data.
+
+    Format: NAROG_STAGE_{n} | uid:{user_id} | {item_name} | {landmark} | {lat,lon}
+    Length is bounded (~200 bytes max) so a 50000-gas tx with EIP-1559 gas
+    headroom comfortably fits the data field. The cryptic Mars-mission
+    suffix is added by sepolia_utils.append_cryptic_mars_message in the
+    transaction manager — this function only builds the prefix.
+    """
+    stage_meta = ROBOT_STAGES[stage_idx - 1]
+    item = (source_manifest.get('item_name') or 'unknown_item')[:48]
+    landmark = (source_manifest.get('landmark_name') or 'unknown_site')[:48]
+    lat = source_manifest.get('lat')
+    lon = source_manifest.get('lon')
+    coord = f"{lat:.4f},{lon:.4f}" if (lat is not None and lon is not None) else "?"
+    return (
+        f"NAROG_STAGE_{stage_idx}_{stage_meta['key']} | uid:{user_id} | "
+        f"{item} | {landmark} | {coord}"
+    )
+
+
+def _send_narog_stage_transaction(miner, wallet_address: str,
+                                  private_key: str, message: str) -> Optional[str]:
+    """Send a Sepolia tx with the narog stage message embedded.
+
+    Mirrors utilities/aria/bonds.py:_send_bond_transaction. Returns the tx
+    hash on success, None on failure. 0.0000001 ETH minimal-value tx — the
+    payload is the data field, not the value transfer.
+    """
+    try:
+        input_data = '0x' + message.encode('utf-8').hex() if message else '0x'
+        gas_config = miner.gas_estimator.get_optimal_gas_price(
+            use_dynamic=True, manual_gwei=1, speed='standard'
+        )
+        nonce = miner.w3.eth.get_transaction_count(wallet_address)
+        value_wei = miner.w3.to_wei(0.0000001, 'ether')
+
+        if gas_config['type'] == 'eip1559':
+            tx = {
+                'to': wallet_address,
+                'value': value_wei,
+                'gas': 50000,
+                'maxFeePerGas': gas_config['maxFeePerGas'],
+                'maxPriorityFeePerGas': gas_config['maxPriorityFeePerGas'],
+                'nonce': nonce,
+                'chainId': 11155111,
+                'data': input_data,
+            }
+        else:
+            tx = {
+                'to': wallet_address,
+                'value': value_wei,
+                'gas': 50000,
+                'gasPrice': gas_config['gasPrice'],
+                'nonce': nonce,
+                'chainId': 11155111,
+                'data': input_data,
+            }
+        return miner.transaction_manager.sign_and_send_transaction(
+            tx, private_key, context="narog_stage"
+        )
+    except Exception as e:
+        logger.error(f"Narog stage tx failed: {e}")
+        return None
+
+
+def broadcast_stage_async(user_id: int, stage_idx: int,
+                          source_manifest: Dict[str, Any]) -> None:
+    """Fire-and-forget Sepolia broadcast for one narog stage.
+
+    Dry-run users (utilities.admin_utils.NAROG_DRY_RUN_USER_IDS) skip the
+    broadcast entirely — no thread spawned, no chain write, no nonce
+    burn. The stage_log row stays with tx_hash=NULL forever for that
+    captain's dry-run forge. This keeps the on-chain history pristine
+    for the canonical run; Andy can rehearse the cinematic infinitely
+    without polluting the ARG breadcrumb trail.
+
+    Spawns a daemon thread that connects to Sepolia, sends the tx, and
+    UPDATEs pilgrim.robot_stage_log.tx_hash + data_hex on success. Safe to
+    call from any context — failures only log; the stage row stays
+    intact with tx_hash=NULL.
+    """
+    from utilities.admin_utils import is_narog_dry_run
+    if is_narog_dry_run(user_id):
+        logger.info(
+            f"narog stage {stage_idx} broadcast SKIPPED (dry-run): "
+            f"user {user_id} | {source_manifest.get('item_name')} | "
+            f"{source_manifest.get('landmark_name')}"
+        )
+        return
+
+    import threading
+
+    def _worker():
+        try:
+            from utilities.sepolia_utils import MarsAsteroidMiner
+            from utilities.postgres.wallets import get_user_primary_sepolia_wallet
+            wallet = get_user_primary_sepolia_wallet(user_id)
+            if not wallet or not wallet.get('wallet_address') or not wallet.get('wallet_private_key'):
+                logger.warning(
+                    f"narog stage {stage_idx} broadcast: user {user_id} has no "
+                    f"primary Sepolia wallet; tx_hash will remain NULL"
+                )
+                return
+
+            miner = MarsAsteroidMiner()
+            if not miner.connect():
+                logger.error(
+                    f"narog stage {stage_idx} broadcast: miner.connect() failed "
+                    f"for user {user_id}"
+                )
+                return
+
+            message = _build_narog_stage_message(user_id, stage_idx, source_manifest)
+            tx_hash = _send_narog_stage_transaction(
+                miner, wallet['wallet_address'], wallet['wallet_private_key'], message
+            )
+            if not tx_hash:
+                logger.error(
+                    f"narog stage {stage_idx} broadcast: tx send returned None "
+                    f"for user {user_id}"
+                )
+                return
+
+            data_hex = '0x' + message.encode('utf-8').hex()
+            with db_cursor(commit=True) as cur:
+                cur.execute("""
+                    UPDATE pilgrim.robot_stage_log
+                    SET tx_hash = %s, data_hex = %s
+                    WHERE user_id = %s AND stage_idx = %s
+                """, (tx_hash, data_hex, user_id, stage_idx))
+            logger.info(
+                f"✅ narog stage {stage_idx} tx broadcast: {tx_hash[:20]}... "
+                f"for user {user_id}"
+            )
+        except Exception as e:
+            logger.exception(
+                f"narog stage {stage_idx} broadcast crashed for user {user_id}: {e}"
+            )
+
+    threading.Thread(
+        target=_worker,
+        name=f"narog-stage-tx-{user_id}-{stage_idx}",
+        daemon=True,
+    ).start()
 
 
 def set_robot_name(user_id: int, name: str) -> bool:
@@ -581,7 +798,14 @@ def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
             'error': 'Insufficient expedition history to source robot parts.',
         }, 400
 
-    start_robot_build(user_id, sources, initial_image_url=PLACEHOLDER_STAGE_IMAGE)
+    # start_robot_build consumes the 5 source discoveries atomically. If any
+    # has been used since the captain saw them in the preview (e.g., consumed
+    # by trail-building in another tab), it raises RobotGateError and the
+    # whole transaction rolls back — captain re-rolls.
+    try:
+        start_robot_build(user_id, sources, initial_image_url=PLACEHOLDER_STAGE_IMAGE)
+    except RobotGateError as e:
+        return {'success': False, 'error': str(e)}, 409
 
     import threading
 
@@ -720,9 +944,12 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         # Build prerequisite status cards for template
         # Pull real building images from infrastructure catalog
         from config_infrastructure import INFRASTRUCTURE_CATALOG
+        # Prereq matches Luke's brainstorm spec (robot-crew §2, 2026-04-10):
+        # "Robot cannot begin construction until you get a Level 1 Robotics Lab."
+        # The server gate at start_build_with_name_prefetch enforces this exact
+        # rule. RS+RF over-promises were UI-only drift; removed to keep card
+        # and gate consistent.
         prereq_defs = [
-            {'key': 'research_station', 'name': 'Research Station', 'required_level': 3},
-            {'key': 'regolith_forge', 'name': 'Regolith Forge', 'required_level': 3},
             {'key': 'robotics_lab', 'name': 'Narog Lab', 'required_level': 1},
         ]
         for pd in prereq_defs:
@@ -735,7 +962,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
             cur.execute("""
                 SELECT structure_type, status, ready_at
                 FROM pilgrim.colony_infrastructure
-                WHERE user_id = %s AND structure_type IN ('robotics_lab', 'research_station', 'regolith_forge')
+                WHERE user_id = %s AND structure_type IN ('robotics_lab',)
             """, (user_id,))
             for row in cur.fetchall():
                 building_timers[row['structure_type']] = {

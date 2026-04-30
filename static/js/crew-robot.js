@@ -947,6 +947,41 @@
         });
     }
 
+    function wireRetryForgeButton() {
+        const btn = document.getElementById('robot-retry-forge-btn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.textContent = 'Retrying…';
+            try {
+                const r = await fetch('/api/robot/retry_forge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}',
+                });
+                const data = await r.json();
+                if (data && data.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('Forge retrying — image-gen running again.', 'info', 'Narog');
+                    }
+                    setTimeout(() => { window.location.href = '/crew?tab=robot'; }, 400);
+                } else {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.textContent = '↻ Retry Forge';
+                    if (typeof showToast === 'function') {
+                        showToast(data.error || 'Retry failed', 'error', 'Narog');
+                    }
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.textContent = '↻ Retry Forge';
+            }
+        });
+    }
+
     // ----- INIT -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
@@ -959,6 +994,7 @@
         wireReplayButton();
         autoStartVideoGen();
         wireRegenVideoButton();
+        wireRetryForgeButton();
         wireManifestClicks();
         maybeFireRobotCinematic();
     });
