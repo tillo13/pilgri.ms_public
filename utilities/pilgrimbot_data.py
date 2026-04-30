@@ -448,7 +448,7 @@ def query_player_data(category, user_id):
                     lines.append(f"Next stage ready in: {secs}s")
             dial = robot.get('dial') or {}
             if dial:
-                lines.append(f"Role dial: exploration {dial.get('exploration', 0)}% · logistics {dial.get('logistics', 0)}% · research {dial.get('research', 0)}% · expeditions {dial.get('expeditions', 0)}%")
+                lines.append(f"Robot Allocation: exploration {dial.get('exploration', 0)}% · logistics {dial.get('logistics', 0)}% · research {dial.get('research', 0)}% · expeditions {dial.get('expeditions', 0)}%")
             if data.get('is_complete'):
                 lines.append("CONSTRUCTION COMPLETE — robot is ready to deploy.")
                 lines.append(f"Cinematic played: {'yes' if robot.get('cinematic_played') else 'NO (build-complete celebration pending)'}")

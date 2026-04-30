@@ -563,7 +563,7 @@
         return inst && inst.el.dataset.locked !== 'true';
     }
 
-    // Apply state to all allocator instances + total/idle readout.
+    // Apply state to all allocator instances + active/idle summary.
     function repaint() {
         if (!dialState) return;
         DIAL_KEYS.forEach(k => {
@@ -573,9 +573,7 @@
         if (status) {
             const total = DIAL_KEYS.reduce((s, k) => s + dialState[k], 0);
             const idle = Math.max(0, 100 - total);
-            status.textContent = idle > 0
-                ? `Active: ${total}% · Idle: ${idle}%`
-                : `Active: ${total}%`;
+            status.textContent = `Active ${total}% · Idle ${idle}%`;
             status.style.color = 'var(--text-secondary)';
         }
     }

@@ -50,13 +50,16 @@
                 <div class="na-fill"></div>
                 <div class="na-edge"></div>
             </div>
-            <div class="na-readout">0%</div>
+            <div class="na-readout"><div class="na-readout-pct">0%</div></div>
         `;
         container.appendChild(wrap);
 
         const range = wrap.querySelector('.na-range');
         const track = wrap.querySelector('.na-track');
-        const readout = wrap.querySelector('.na-readout');
+        const readoutPct = wrap.querySelector('.na-readout-pct');
+        const card = wrap.closest('.na-card');
+        const baseStat = card ? parseFloat(card.dataset.baseStat || '5') : 5;
+        const activeEl = card ? card.querySelector('.na-row-active') : null;
 
         let currentValue = value;       // last value applied by the controller
         let lastEmitted = value;        // last value we asked the controller about
@@ -68,9 +71,15 @@
         // calls setValue() back to confirm.
         function visualPaint(v) {
             const cv = clamp(v, min, max);
+            const stepped = Math.round(cv / step) * step;
             wrap.style.setProperty('--na-pct', cv);
             wrap.style.setProperty('--na-active', cv > 0 ? 1 : 0);
-            readout.textContent = Math.round(cv) + '%';
+            if (readoutPct) readoutPct.textContent = stepped + '%';
+            // Active = base stat × allocation %, surfaced in the row header
+            if (activeEl) {
+                const active = (baseStat * cv / 100);
+                activeEl.textContent = active.toFixed(1);
+            }
             range.value = cv;
         }
 
