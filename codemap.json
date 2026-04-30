@@ -2019,7 +2019,7 @@
       "get_stage_log — Return all logged stages for a captain in order.",
       "class RobotGateError — Captain doesn't have the minimum components to start a Narog build.",
       "check_robot_gate — Inventory summary + gate-met flag. Used by the preview endpoint and the UI",
-      "pick_stage_sources — Pick 5 source manifests for a Narog build using the randomized v2 algorithm.",
+      "pick_stage_sources — Pick 5 source manifests for a Narog build — 100% from real claimed inventory.",
       "start_robot_build — Initialize a robot build with the 5 pre-picked source manifests.",
       "log_stage — Append a completed stage to the log AND advance the robot row.",
       "broadcast_stage_async — Fire-and-forget Sepolia broadcast for one narog stage.",
@@ -3402,7 +3402,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3415,7 +3415,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

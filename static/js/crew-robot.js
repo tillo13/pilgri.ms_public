@@ -927,14 +927,17 @@
     // ----- Manifest card clicks (post-forge Build Manifest) -----------------
     function wireManifestClicks() {
         // Build Manifest cards are rendered server-side with data-source JSON +
-        // stage context. Clicking anywhere on the card opens the rich modal.
+        // stage context. Each card has TWO clickable icons:
+        //   • base icon (data-role="base") → stage info modal (what this stage builds)
+        //   • item icon (data-role="item") → source modal (which discovery + ledger tx)
+        // Clicks on the label / source text / card chrome default to the source modal
+        // because that's what captains expect from the prior single-click behavior.
         const cards = document.querySelectorAll('.robot-stage-card[data-source]');
         cards.forEach(card => {
             if (card.closest('#robot-preview-grid')) return;  // pre-build grid has its own handler
-            card.addEventListener('click', () => {
+            card.addEventListener('click', (e) => {
                 let src = null;
-                try { src = JSON.parse(card.dataset.source || '{}'); } catch (e) { /* noop */ }
-                if (!src || !src.item_name) return;
+                try { src = JSON.parse(card.dataset.source || '{}'); } catch (err) { /* noop */ }
                 const stageCtx = {
                     idx: card.dataset.stageIdx,
                     key: card.dataset.stageKey,
@@ -942,6 +945,13 @@
                     part: card.dataset.stagePart,
                     tx_hash: card.dataset.txHash || '',
                 };
+                const role = e.target && e.target.dataset ? e.target.dataset.role : null;
+                if (role === 'base') {
+                    showStageInfoModal(card);
+                    return;
+                }
+                // role === 'item' OR any other click on the card → source modal
+                if (!src || !src.item_name) return;
                 showSourceModal(src, stageCtx);
             });
         });

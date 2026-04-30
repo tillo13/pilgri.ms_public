@@ -298,57 +298,75 @@ def check_robot_gate(user_id: int) -> Dict[str, Any]:
 
 
 def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
-    """Pick 5 source manifests for a Narog build using the randomized v2 algorithm.
+    """Pick 5 source manifests for a Narog build — 100% from real claimed inventory.
 
-    Composition: 1-3 legendaries (randomized, capped at inventory) + 2-4 rares
-    (randomized, capped, such that total ≤ 5). Remainder filled with uncommons
-    then commons from the captain's claimed inventory; finally padded with a
-    synthetic home-base stub if the captain literally has nothing else.
+    Composition: 1-3 legendaries (randomized, capped at MAX_LEGENDARY and at
+    inventory) + the remaining slots filled from rare → uncommon → common in
+    that priority order. If a tier runs out, fall through to the next. If
+    everything-but-legendary is exhausted, use spare legendaries past the
+    soft cap. NEVER fabricates synthetic items — gate check guarantees the
+    captain has ≥ 5 real items before this is called.
 
     Diversity bias inside each tier (see _pick_with_diversity). Final list is
     shuffled so the same inputs produce a different stage→item mapping each roll.
 
-    Raises RobotGateError if the gate isn't met. Caller should surface the
-    message verbatim to the captain.
+    Raises RobotGateError if the gate isn't met or the captain has < 5 real
+    items. Caller should surface the message verbatim to the captain.
     """
     import random
     inv = _load_claimed_inventory(user_id)
-    n_leg_avail = len(inv['legendary'])
-    n_rare_avail = len(inv['rare'])
-    if n_leg_avail < ROBOT_GATE_MIN_LEGENDARY or n_rare_avail < ROBOT_GATE_MIN_RARE:
+    n_leg = len(inv['legendary'])
+    n_rare = len(inv['rare'])
+    n_unc = len(inv['uncommon'])
+    n_com = len(inv['common'])
+    n_total = n_leg + n_rare + n_unc + n_com
+
+    if n_leg < ROBOT_GATE_MIN_LEGENDARY or n_rare < ROBOT_GATE_MIN_RARE:
         raise RobotGateError(
             f"Narog construction requires at least {ROBOT_GATE_MIN_LEGENDARY} "
             f"legendary and {ROBOT_GATE_MIN_RARE} rare discoveries. "
-            f"You have {n_leg_avail} legendary and {n_rare_avail} rare."
+            f"You have {n_leg} legendary and {n_rare} rare."
+        )
+    if n_total < ROBOT_BUILD_TOTAL_ITEMS:
+        raise RobotGateError(
+            f"Narog construction requires at least {ROBOT_BUILD_TOTAL_ITEMS} "
+            f"claimed discoveries total. You have {n_total}."
         )
 
+    # 1) Pick legendaries (1-3, capped at inventory)
     n_legendary = random.randint(
         ROBOT_GATE_MIN_LEGENDARY,
-        min(ROBOT_BUILD_MAX_LEGENDARY, n_leg_avail),
+        min(ROBOT_BUILD_MAX_LEGENDARY, n_leg),
     )
-    unique_rare_types = len({it['item_name'] for it in inv['rare']})
-    rare_upper = min(ROBOT_BUILD_MAX_RARE, n_rare_avail, ROBOT_BUILD_TOTAL_ITEMS - n_legendary)
-    rare_upper = max(ROBOT_GATE_MIN_RARE, min(rare_upper, unique_rare_types or ROBOT_GATE_MIN_RARE))
-    n_rare = random.randint(ROBOT_GATE_MIN_RARE, max(ROBOT_GATE_MIN_RARE, rare_upper))
-    n_fill = max(0, ROBOT_BUILD_TOTAL_ITEMS - n_legendary - n_rare)
+    chosen: List[Dict[str, Any]] = list(_pick_with_diversity(inv['legendary'], n_legendary))
 
-    chosen: List[Dict[str, Any]] = []
-    chosen.extend(_pick_with_diversity(inv['legendary'], n_legendary))
-    chosen.extend(_pick_with_diversity(inv['rare'], n_rare))
-    fill_pool = list(inv.get('uncommon', [])) + list(inv.get('common', []))
-    chosen.extend(_pick_with_diversity(fill_pool, n_fill))
+    # 2) Fill remaining slots with rare → uncommon → common, in that priority
+    #    order. Cap rare picks at MAX_RARE; if rare runs out, fall through.
+    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
+    n_rare_pick = min(ROBOT_BUILD_MAX_RARE, n_rare, remaining)
+    chosen.extend(_pick_with_diversity(inv['rare'], n_rare_pick))
 
-    while len(chosen) < ROBOT_BUILD_TOTAL_ITEMS:
-        chosen.append({
-            'kind': 'home_base',
-            'discovery_id': None,
-            'item_name': 'Salvaged habitat strut',
-            'rarity': 'common',
-            'landmark_name': 'Home Base',
-            'lat': 18.65,
-            'lon': 77.43,
-            'recovered_at': None,
-        })
+    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
+    if remaining > 0 and n_unc:
+        chosen.extend(_pick_with_diversity(inv['uncommon'], min(remaining, n_unc)))
+    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
+    if remaining > 0 and n_com:
+        chosen.extend(_pick_with_diversity(inv['common'], min(remaining, n_com)))
+
+    # 3) Ultra-rare fallback: still short? Captain has tons of legendary/rare
+    #    but no commons/uncommons (e.g. Andy: 9L+55R+0U+0C with n_legendary=1
+    #    and only 4 rares would fall here, but rare cap of 4 means we already
+    #    picked enough). This block exists so future inventory weirdness can't
+    #    re-introduce synthetic struts.
+    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
+    if remaining > 0:
+        used_ids = {c.get('discovery_id') for c in chosen if c.get('discovery_id') is not None}
+        spare = [
+            it for it in (inv['legendary'] + inv['rare'] + inv['uncommon'] + inv['common'])
+            if it['discovery_id'] not in used_ids
+        ]
+        random.shuffle(spare)
+        chosen.extend(spare[:remaining])
 
     random.shuffle(chosen)
     return chosen[:ROBOT_BUILD_TOTAL_ITEMS]

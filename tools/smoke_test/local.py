@@ -874,8 +874,14 @@ def test_narog_dry_run_gate():
     assert not is_narog_dry_run(45), "Andy (45) MUST NOT be in dry-run — canonical forge fired 2026-04-30"
     assert not is_narog_dry_run(112), "Luke (user 112) MUST NOT be in dry-run — his first forge is canonical"
     assert not is_narog_dry_run(999), "Random user MUST NOT be in dry-run"
-    assert is_app_dev(45), "Andy should be in APP_DEV_USER_IDS (Start Over still gated to him)"
-    assert not is_app_dev(112), "Luke (admin but not dev) MUST NOT be in APP_DEV_USER_IDS"
+    # APP_DEV_USER_IDS is empty in production after Andy's canonical forge
+    # 2026-04-30. Start Over is gone for everyone — captains' Narogs are
+    # permanent. This invariant prevents the destructive endpoint from being
+    # silently re-enabled by a typo.
+    assert APP_DEV_USER_IDS == set(), \
+        f"APP_DEV_USER_IDS must be empty in production, got {APP_DEV_USER_IDS}"
+    assert not is_app_dev(45), "Andy MUST NOT be in APP_DEV_USER_IDS post-canonical-forge"
+    assert not is_app_dev(112), "Luke MUST NOT be in APP_DEV_USER_IDS"
     return True
 
 

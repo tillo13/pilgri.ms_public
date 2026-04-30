@@ -356,12 +356,12 @@
              data-source='{{ (stage.source or {}) | tojson }}'>
             <div class="robot-stage-num">{{ stage.idx }}</div>
             <div class="robot-stage-composite">
-                <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon">
+                <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon" data-role="base">
                 <span class="robot-stage-plus">+</span>
                 {% if stage.source and stage.source.item_image_url %}
-                <img src="{{ stage.source.item_image_url }}" alt="{{ stage.source.item_name }}" class="robot-stage-item-icon" loading="lazy">
+                <img src="{{ stage.source.item_image_url }}" alt="{{ stage.source.item_name }}" class="robot-stage-item-icon" data-role="item" loading="lazy">
                 {% else %}
-                <img src="{{ icons.shard_gem }}" alt="" class="robot-stage-item-icon">
+                <img src="{{ icons.shard_gem }}" alt="" class="robot-stage-item-icon" data-role="item">
                 {% endif %}
                 {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
             </div>

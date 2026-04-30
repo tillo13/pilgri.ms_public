@@ -27,9 +27,11 @@ def is_admin(user_id):
 # even Luke shouldn't have access (narog Start Over, on-chain debugging,
 # wallet seeding, etc.), use APP_DEV_USER_IDS instead.
 
-APP_DEV_USER_IDS = {45}  # Andy. Luke is admin (=112) but NOT a dev — gate
-                          # Start Over here so Luke can't accidentally wipe
-                          # his own canonical Narog post-May-1.
+APP_DEV_USER_IDS = set()  # Empty after Andy's canonical Narog forge
+                           # (2026-04-30). Start Over is gone for everyone —
+                           # captains' Narogs are permanent. Re-add a user_id
+                           # here only for explicit one-off destructive
+                           # operations (and never live in this state).
 
 
 def is_app_dev(user_id) -> bool:
