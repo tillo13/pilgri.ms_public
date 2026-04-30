@@ -152,7 +152,15 @@ document.addEventListener('DOMContentLoaded', function() {
     <span id="tab-desc-captain" style="display: none;"><img src="{{ icons.astronaut_avatar }}" alt="" class="inline-icon-sm"> <strong>Captain:</strong> Your expedition leader. Stats affect discovery chances, costs, and efficiency. Boost stats via Shard Infusion on the Services tab.</span>
     <span id="tab-desc-scientist" style="display: none;"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> <strong>Scientist:</strong> Extracts Sepolia shards from your discoveries. Higher skill = faster extraction and bonus yields.</span>
     <span id="tab-desc-aria" style="display: none;"><img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> <strong>ARIA:</strong> Found waiting on Mars when the first Pilgrims arrived. She doesn't remember why.</span>
-    <span id="tab-desc-robot" style="display: none;"><img src="{{ icons.robot_avatar }}" alt="" class="inline-icon-sm"> <strong>Narog:</strong> Not A Robot Or Golem — your scientist and captain couldn't agree, so they compromised. Your fourth crew member, fused from Martian rock and Sepolia crystal. Built from the land itself.</span>
+    <span id="tab-desc-robot" style="display: none; font-size: 14px; line-height: 1.6; opacity: 1; color: var(--text-primary);">
+        <img src="{{ icons.robot_avatar }}" alt="" style="width:24px; height:24px; vertical-align:-6px; margin-right:6px;">
+        <strong style="color: var(--color-sepolia); font-size: 16px; letter-spacing: 0.04em;">NAROG</strong>
+        <span style="color: var(--text-muted); font-style: italic;"> · Not A Robot Or Golem</span>
+        —
+        {% set _cap = (commander and commander.commander_name) or 'your captain' %}
+        {% set _sci = (scientist and scientist.name) or 'your scientist' %}
+        <strong style="color: var(--text-primary);">{{ _cap }}</strong> and <strong style="color: var(--text-primary);">{{ _sci }}</strong> couldn't agree on what to call this thing, so they compromised. Your fourth crew member, fused from Martian rock and Sepolia crystal. <em style="color:#ffc88a;">Built from the land itself.</em>
+    </span>
     <span id="tab-desc-services" style="display: none;"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> <strong>Services:</strong> One-off services to modify your captain. Reroll stats, change appearance, or generate a mission briefing video.</span>
 </div>
 
