@@ -170,6 +170,22 @@
       "backfill"
     ]
   },
+  "tools/backfill_narog_history.py": {
+    "description": "One-shot backfill of pilgrim.robot_history from existing GCS narog images.",
+    "exports": [
+      "list_user_blobs — Returns list of (timestamp_str, https_url) for every narog_*.png in",
+      "parse_ts",
+      "backfill_user"
+    ]
+  },
+  "tools/backfill_narog_videos.py": {
+    "description": "Match each historical Narog still in robot_history with the closest",
+    "exports": [
+      "list_user_videos — Returns list of (epoch_seconds, https_url), sorted by epoch.",
+      "find_video_for — Closest video within [-WINDOW_BEFORE, +WINDOW_AFTER]. Returns None if",
+      "backfill_user"
+    ]
+  },
   "tools/backfill_snapshot_thumbnails.py": {
     "description": "Backfill thumbnails for existing ARIA snapshots that don't have them.",
     "exports": [
@@ -206,6 +222,12 @@
       "cmd_ideas — List ideas from parking lot.",
       "cmd_idea — Add idea to parking lot.",
       "cmd_note — Add note to an idea (parking lot bug)."
+    ]
+  },
+  "tools/bump_vehicle_speeds.py": {
+    "description": "One-shot tuning bump per Luke's #1413 latest comments (04-29):",
+    "exports": [
+      "bump"
     ]
   },
   "tools/cleanup_unclaimed_discoveries.py": {
@@ -3445,7 +3467,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3510,7 +3532,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
