@@ -1327,6 +1327,29 @@
         }
     }
 
+    // ----- Collapsible accordions (Build Manifest, Robot Allocation, ...) ----
+    // State persisted in localStorage under key `narog-accordion:{key}`.
+    // Defaults from data-default attr (open|closed). Click header to toggle.
+    function wireAccordions() {
+        document.querySelectorAll('.narog-accordion').forEach(acc => {
+            const key = acc.dataset.accordionKey;
+            if (!key) return;
+            const storageKey = `narog-accordion:${key}`;
+            const saved = localStorage.getItem(storageKey);
+            const defaultState = acc.dataset.default || 'closed';
+            const shouldOpen = saved === null ? (defaultState === 'open') : (saved === 'open');
+            acc.classList.toggle('is-open', shouldOpen);
+            const head = acc.querySelector('.narog-accordion-head');
+            if (head) {
+                head.addEventListener('click', () => {
+                    const open = !acc.classList.contains('is-open');
+                    acc.classList.toggle('is-open', open);
+                    localStorage.setItem(storageKey, open ? 'open' : 'closed');
+                });
+            }
+        });
+    }
+
     function wireRecalibration() {
         const card = document.getElementById('narog-recal-card');
         if (card) {
@@ -1368,6 +1391,7 @@
         wireRegenVideoButton();
         wireRetryForgeButton();
         wireManifestClicks();
+        wireAccordions();  // collapsible Build Manifest + Robot Allocation
         wireRecalibration();  // 2026-04-30: re-pick / re-roll image / re-roll video / lock-in
         maybeFireRobotCinematic();
     });

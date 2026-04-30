@@ -218,6 +218,60 @@
 </div>
 {% endif %}
 
+{# ============================================================================ #}
+{# Recalibration — TOP of the page (above hero) so it's the first thing during  #}
+{# the 72hr test window. Hidden via JS when locked + test window unavailable.   #}
+{# Test mode: 1% pricing for Andy + Luke (NAROG_REFORGE_TEST_MULTIPLIER).       #}
+{# ============================================================================ #}
+<div class="dashboard-card p-20 mb-16" id="narog-recal-card" style="display:none;">
+    <div class="text-xs uppercase tracking-wide mb-4" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Recalibration
+    </div>
+    <div class="text-xs mb-4" style="color: var(--text-secondary); opacity: 0.75; line-height: 1.55;">
+        The scientist can rebuild your Narog. Each adjustment costs energy — the more often you recalibrate, the harder the resonance fields are to stabilize.
+    </div>
+    <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
+        <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
+    </div>
+    <div id="narog-recal-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <button class="narog-recal-action" data-action="repick" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
+            <div class="narog-recal-name">New Components</div>
+            <div class="narog-recal-desc">Pull 5 new materials from your inventory. Image &amp; awakening stay until you re-roll them.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+        <button class="narog-recal-action" data-action="reroll_image" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
+            <div class="narog-recal-name">New Look</div>
+            <div class="narog-recal-desc">Re-render the silhouette from the current components. Awakening is reset — render it again separately.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+    </div>
+
+    {# Lock In — the WOW moment. #}
+    <button class="narog-recal-lockin-big" data-action="lock_in" type="button">
+        <div class="narog-recal-lockin-glow"></div>
+        <div class="narog-recal-lockin-content">
+            <div class="narog-recal-lockin-icon"><img src="{{ icons.star_milestone }}" alt=""></div>
+            <div class="narog-recal-lockin-text">
+                <div class="narog-recal-lockin-eyebrow">When you're ready</div>
+                <div class="narog-recal-lockin-name">Lock In Your Narog</div>
+                <div class="narog-recal-lockin-desc">
+                    Commit your Narog to the colony record forever. The scientist will document the awakening, your Narog comes fully online, and passive bonuses start ticking the moment you confirm.
+                </div>
+            </div>
+            <div class="narog-recal-lockin-cta">
+                <span class="narog-recal-lockin-cost">Free</span>
+                <span class="narog-recal-lockin-arrow">→</span>
+            </div>
+        </div>
+    </button>
+
+    <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
+        Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
+    </div>
+</div>
+
 <!-- Hero card: current robot image + name + status -->
 <div class="dashboard-card relative overflow-hidden p-20 mb-16">
     <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
@@ -339,10 +393,6 @@
         {% endif %}
 
         {% if rd.is_complete %}
-        <div class="text-sm mb-8" style="color: var(--color-success);">
-            <img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm">
-            Construction complete — your Narog is ready to deploy.
-        </div>
         <button id="robot-replay-cinematic" style="font-size: 12px; color: var(--color-sepolia); padding: 6px 14px; background: rgba(168,85,247,0.1); border-radius: 6px; border: 1px solid rgba(168,85,247,0.2); cursor: pointer;">
             Replay Awakening
         </button>
@@ -350,51 +400,56 @@
     </div>
 </div>
 
-<!-- Stage cards: 5 components -->
-<div class="dashboard-card p-20 mb-16">
-    <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
-        <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm"> Build Manifest
-    </div>
-    <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
-        Each component was forged from a real item you recovered on an expedition.
-    </div>
-    <div class="robot-stage-grid">
-        {% for stage in rd.stages %}
-        <div class="robot-stage-card clickable {{ stage.status }}"
-             data-stage-idx="{{ stage.idx }}"
-             data-stage-key="{{ stage.key }}"
-             data-stage-label="{{ stage.label }}"
-             data-stage-part="{{ stage.part }}"
-             data-tx-hash="{{ stage.tx_hash or '' }}"
-             data-source='{{ (stage.source or {}) | tojson }}'>
-            <div class="robot-stage-num">{{ stage.idx }}</div>
-            <div class="robot-stage-composite">
-                <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon" data-role="base">
-                <span class="robot-stage-plus">+</span>
-                {% if stage.source and stage.source.item_image_url %}
-                <img src="{{ stage.source.item_image_url }}" alt="{{ stage.source.item_name }}" class="robot-stage-item-icon" data-role="item" loading="lazy">
-                {% else %}
-                <img src="{{ icons.shard_gem }}" alt="" class="robot-stage-item-icon" data-role="item">
-                {% endif %}
-                {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
-            </div>
-            <div class="robot-stage-label">{{ stage.label }}</div>
-            {% if stage.source %}
-            <div class="robot-stage-source" title="{{ stage.source.lat }}, {{ stage.source.lon }}">
-                Forged from <strong>{{ stage.source.item_name }}</strong><br>
-                recovered at <em>{{ stage.source.landmark_name }}</em>
-            </div>
-            {% if stage.source.rarity %}
-            <div class="robot-stage-rarity rarity-{{ stage.source.rarity }}">{{ stage.source.rarity }}</div>
-            {% endif %}
-            {% endif %}
-            {% if stage.tx_hash %}
-            <div class="robot-stage-tx text-xs" style="color: var(--text-secondary); opacity: 0.5;">
-                tx: {{ stage.tx_hash[:14] }}...
-            </div>
-            {% endif %}
+<!-- Build Manifest — collapsible accordion (state persisted in localStorage) -->
+<div class="narog-accordion mb-16" data-accordion-key="manifest" data-default="closed">
+    <button type="button" class="narog-accordion-head">
+        <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm">
+        <span class="narog-accordion-title">Build Manifest</span>
+        <span class="narog-accordion-meta">5 components</span>
+        <span class="narog-accordion-caret">▾</span>
+    </button>
+    <div class="narog-accordion-body">
+        <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
+            Each component was forged from a real item you recovered on an expedition.
         </div>
-        {% endfor %}
+        <div class="robot-stage-grid">
+            {% for stage in rd.stages %}
+            <div class="robot-stage-card clickable {{ stage.status }}"
+                 data-stage-idx="{{ stage.idx }}"
+                 data-stage-key="{{ stage.key }}"
+                 data-stage-label="{{ stage.label }}"
+                 data-stage-part="{{ stage.part }}"
+                 data-tx-hash="{{ stage.tx_hash or '' }}"
+                 data-source='{{ (stage.source or {}) | tojson }}'>
+                <div class="robot-stage-num">{{ stage.idx }}</div>
+                <div class="robot-stage-composite">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon" data-role="base">
+                    <span class="robot-stage-plus">+</span>
+                    {% if stage.source and stage.source.item_image_url %}
+                    <img src="{{ stage.source.item_image_url }}" alt="{{ stage.source.item_name }}" class="robot-stage-item-icon" data-role="item" loading="lazy">
+                    {% else %}
+                    <img src="{{ icons.shard_gem }}" alt="" class="robot-stage-item-icon" data-role="item">
+                    {% endif %}
+                    {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
+                </div>
+                <div class="robot-stage-label">{{ stage.label }}</div>
+                {% if stage.source %}
+                <div class="robot-stage-source" title="{{ stage.source.lat }}, {{ stage.source.lon }}">
+                    Forged from <strong>{{ stage.source.item_name }}</strong><br>
+                    recovered at <em>{{ stage.source.landmark_name }}</em>
+                </div>
+                {% if stage.source.rarity %}
+                <div class="robot-stage-rarity rarity-{{ stage.source.rarity }}">{{ stage.source.rarity }}</div>
+                {% endif %}
+                {% endif %}
+                {% if stage.tx_hash %}
+                <div class="robot-stage-tx text-xs" style="color: var(--text-secondary); opacity: 0.5;">
+                    tx: {{ stage.tx_hash[:14] }}...
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
@@ -426,88 +481,28 @@
 </div>
 {% endif %}
 
-{# ============================================================================ #}
-{# Recalibration — TOP of the page so it's the first thing captains see during  #}
-{# the 72hr test window. Test mode: 1% pricing for Andy + Luke.                 #}
-{# Flip NAROG_REFORGE_TEST_MULTIPLIER to 1.0 in config.py before going live.   #}
-{# ============================================================================ #}
-<div class="dashboard-card p-20 mb-16" id="narog-recal-card" style="display:none;">
-    <div class="text-xs uppercase tracking-wide mb-4" style="color: var(--color-sepolia); font-weight: 600;">
-        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Recalibration
-    </div>
-    <div class="text-xs mb-4" style="color: var(--text-secondary); opacity: 0.75; line-height: 1.55;">
-        The scientist can rebuild your Narog. Each adjustment costs energy — the more often you recalibrate, the harder the resonance fields are to stabilize.
-    </div>
-    <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
-        <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
-    </div>
-    <div id="narog-recal-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-        <button class="narog-recal-action" data-action="repick" type="button">
-            <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
-            <div class="narog-recal-name">New Components</div>
-            <div class="narog-recal-desc">Pull 5 new materials from your inventory. Image &amp; awakening stay until you re-roll them.</div>
-            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
-        </button>
-        <button class="narog-recal-action" data-action="reroll_image" type="button">
-            <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
-            <div class="narog-recal-name">New Look</div>
-            <div class="narog-recal-desc">Re-render the silhouette from the current components. Awakening is reset — render it again separately.</div>
-            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
-        </button>
-    </div>
+{# Recalibration card moved to ABOVE the hero — see top of this template #}
 
-    {# Lock In — the WOW moment. Bigger, louder, dramatic glow. #}
-    <button class="narog-recal-lockin-big" data-action="lock_in" type="button">
-        <div class="narog-recal-lockin-glow"></div>
-        <div class="narog-recal-lockin-content">
-            <div class="narog-recal-lockin-icon">
-                <img src="{{ icons.star_milestone }}" alt="">
-            </div>
-            <div class="narog-recal-lockin-text">
-                <div class="narog-recal-lockin-eyebrow">When you're ready</div>
-                <div class="narog-recal-lockin-name">Lock In Your Narog</div>
-                <div class="narog-recal-lockin-desc">
-                    Commit your Narog to the colony record forever. The scientist will document the awakening, your Narog comes fully online, and passive bonuses start ticking the moment you confirm.
-                </div>
-            </div>
-            <div class="narog-recal-lockin-cta">
-                <span class="narog-recal-lockin-cost">Free</span>
-                <span class="narog-recal-lockin-arrow">→</span>
-            </div>
-        </div>
-    </button>
-
-    <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
-        Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
-    </div>
-</div>
-
-<!-- What does the Narog do? -->
+{# Stat shortcuts used by the Robot Allocation accordion below #}
 {% set se = robot.stat_exploration | default(5) %}
 {% set sl = robot.stat_logistics   | default(5) %}
 {% set sr = robot.stat_research    | default(5) %}
 {% set sx = robot.stat_expeditions | default(5) %}
-<div class="dashboard-card p-20 mb-16">
-    <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">
-        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Your Narog's Purpose
-    </div>
-    <div class="text-sm" style="color: var(--text-secondary); line-height: 1.7;">
-        Your Narog works autonomously while you're away — a tireless fourth crew member that generates passive bonuses every colony tick.
-        Use <strong style="color: var(--text-primary);">Robot Allocation</strong> below to split its effort across tasks.
-    </div>
-</div>
 
-{# Robot Allocation — Luke's §4 "% Based System" rebranded. Each row merges the #}
-{# base stat (5/100, raised by Depot/Lab upgrades) with the % allocation, showing #}
-{# the resulting Active value live. Unallocated effort is idle. #}
-<div class="dashboard-card p-20">
-    <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
-        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Robot Allocation
-    </div>
-    <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
-        Split your Narog's effort across tasks. Effective bonus = <strong>Base × %</strong>. Unallocated effort is idle. Locked rows unlock with later upgrades.
-    </div>
-    <div id="robot-dial" data-dial='{{ robot.dial | tojson }}' style="display:flex; flex-direction:column; gap:10px;">
+{# Robot Allocation — Luke's §4 "% Based System" rebranded. Wrapped in a       #}
+{# collapsible accordion (state persisted in localStorage; collapsed by default).#}
+<div class="narog-accordion mb-16" data-accordion-key="allocation" data-default="closed">
+    <button type="button" class="narog-accordion-head">
+        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">
+        <span class="narog-accordion-title">Robot Allocation</span>
+        <span class="narog-accordion-meta">Split effort across tasks</span>
+        <span class="narog-accordion-caret">▾</span>
+    </button>
+    <div class="narog-accordion-body">
+        <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
+            Split your Narog's effort across tasks. Effective bonus = <strong>Base × %</strong>. Unallocated effort is idle. Locked rows unlock with later upgrades.
+        </div>
+        <div id="robot-dial" data-dial='{{ robot.dial | tojson }}' style="display:flex; flex-direction:column; gap:10px;">
         {# Slot 1: Exploration — UNLOCKED at Phase 1 #}
         <div class="na-card" data-key="exploration" data-locked="false" data-unlock-phase="1" data-base-stat="{{ se }}">
             <div class="na-row-head">
@@ -551,9 +546,10 @@
             <div class="na-slot"></div>
             <div class="na-row-desc">Unlocks at Phase 5 — Crystal Resonance</div>
         </div>
-    </div>
-    <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Active 100% · Idle 0%</div>
-</div>
+        </div>
+        <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Active 100% · Idle 0%</div>
+    </div>{# /accordion-body #}
+</div>{# /narog-accordion (allocation) #}
 
 {% endif %}
 

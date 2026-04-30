@@ -500,6 +500,72 @@
     gap: 14px;
 }
 
+/* ---------- Reusable accordion (Build Manifest, Robot Allocation, etc) ---------- */
+.narog-accordion {
+    background: var(--bg-card, var(--bg-secondary));
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.narog-accordion.is-open {
+    border-color: rgba(168,85,247,0.45);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.narog-accordion-head {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    background: transparent;
+    border: 0;
+    padding: 16px 20px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-family: inherit;
+    text-align: left;
+    transition: background 0.15s;
+}
+.narog-accordion-head:hover {
+    background: rgba(255,200,140,0.04);
+}
+.narog-accordion-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-sepolia);
+}
+.narog-accordion-meta {
+    flex: 1;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 8px;
+    letter-spacing: 0.02em;
+}
+.narog-accordion-caret {
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: transform 0.25s ease;
+    transform: rotate(-90deg);
+}
+.narog-accordion.is-open .narog-accordion-caret {
+    transform: rotate(0deg);
+}
+.narog-accordion-body {
+    display: none;
+    padding: 0 20px 20px;
+    border-top: 1px solid var(--border-default);
+    padding-top: 16px;
+}
+.narog-accordion.is-open .narog-accordion-body {
+    display: block;
+    animation: accordion-fade 0.25s ease;
+}
+@keyframes accordion-fade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ---------- Recalibration card ---------- */
 .narog-recal-action {
     background: linear-gradient(180deg, rgba(74,32,16,0.18), rgba(0,0,0,0.4));
