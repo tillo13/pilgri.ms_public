@@ -563,7 +563,7 @@
         return inst && inst.el.dataset.locked !== 'true';
     }
 
-    // Apply state to all allocator instances + total readout.
+    // Apply state to all allocator instances + total/idle readout.
     function repaint() {
         if (!dialState) return;
         DIAL_KEYS.forEach(k => {
@@ -572,33 +572,40 @@
         const status = document.getElementById('robot-dial-status');
         if (status) {
             const total = DIAL_KEYS.reduce((s, k) => s + dialState[k], 0);
-            status.textContent = 'Total: ' + total + '%';
-            status.style.color = (total === DIAL_TOTAL) ? 'var(--text-secondary)' : 'var(--color-error, #f87171)';
+            const idle = Math.max(0, 100 - total);
+            status.textContent = idle > 0
+                ? `Active: ${total}% · Idle: ${idle}%`
+                : `Active: ${total}%`;
+            status.style.color = 'var(--text-secondary)';
         }
     }
 
-    // Set `key` to `newVal` and rebalance the delta across other UNLOCKED keys.
-    // Caller has already mod-5'd the value. Bails if locked / no counterparty.
+    // Set `key` to `newVal`. Two regimes:
+    //   1. Solo mode (only this row unlocked): set freely 0-100, no rebalance.
+    //      Unallocated time is "idle" — the robot just doesn't burn cycles.
+    //      Lets captains preview the mechanic at Phase 1 (e.g. set 38% to see
+    //      ~1.9% effective trail bonus on a 5/100 base).
+    //   2. Multi-row mode (2+ unlocked): rebalance across other unlocked rows
+    //      to keep sum ≤ 100. Adding to this row steals from largest others;
+    //      subtracting donates to smallest. Sum can stay below 100 (idle time).
     function setDialValue(key, newVal) {
         if (!dialState || !isUnlocked(key)) return;
         newVal = Math.max(0, Math.min(100, Math.round(newVal / DIAL_STEP) * DIAL_STEP));
         const cur = dialState[key];
         if (newVal === cur) return;
         const others = DIAL_KEYS.filter(k => k !== key && isUnlocked(k));
-        if (!others.length) return;  // no counterparty
-        const otherSum = others.reduce((s, k) => s + dialState[k], 0);
-        if (newVal > cur && otherSum < (newVal - cur)) {
-            newVal = cur + otherSum;  // clamp to available headroom
-        }
-        dialState[key] = newVal;
-        let remaining = newVal - cur;
-        while (remaining !== 0) {
-            const dir = remaining > 0 ? -1 : 1;
-            others.sort((a, b) => dir < 0 ? dialState[b] - dialState[a] : dialState[a] - dialState[b]);
-            const target = others.find(k => dir > 0 || dialState[k] >= DIAL_STEP);
-            if (!target) break;
-            dialState[target] += dir * DIAL_STEP;
-            remaining += dir * DIAL_STEP;
+
+        if (!others.length) {
+            // Solo mode: freely settable 0-100. No rebalance, no clamp on total.
+            dialState[key] = newVal;
+        } else {
+            // Multi-row mode: enforce sum-across-unlocked ≤ 100.
+            const otherSum = others.reduce((s, k) => s + dialState[k], 0);
+            const headroom = 100 - otherSum;
+            if (newVal > headroom) newVal = headroom;
+            dialState[key] = newVal;
+            // No auto-redistribute when subtracting — let the freed % stay idle.
+            // Captain can manually pull it into another row if they want it used.
         }
         repaint();
         scheduleDialSave();
@@ -629,7 +636,6 @@
     function showLockedDialModal(key) {
         if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
         const titleMap = {
-            exploration: 'Exploration — pinned at 100%',
             logistics:   'Logistics (locked)',
             research:    'Research (locked)',
             expeditions: 'Expeditions (locked)',
@@ -644,13 +650,12 @@
                 </div>
             </div>`;
         }).join('');
-        const intro = (key === 'exploration')
-            ? 'Exploration is the only task your Narog can do right now, so the dial is pinned at 100% — there\'s nothing else to redirect effort to. Once Phase 3 (Circuits) ships, you\'ll be able to drag the knobs to split your Narog\'s time across tasks.'
-            : 'Your Narog can only build trails right now. The other three knobs unlock as you upgrade your Robotics Lab and complete later phases. Here\'s what each will do:';
         MarsModal.show({
             title: titleMap[key] || 'Dial info',
             body: `
-                <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">${intro}</div>
+                <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">
+                    Your Narog can only build trails right now. The other three rows unlock as you upgrade your Robotics Lab and complete later phases. Here's what each will do:
+                </div>
                 <div class="na-modal-list">${rowsHtml}</div>
                 <div style="font-size:10px; color:var(--text-muted); margin-top:10px; text-align:center;">
                     Phase &amp; bonus formulas: TBD — Luke is finalizing the Depot upgrade matrix.
@@ -669,34 +674,25 @@
         if (!dialState) return;
 
         const cards = Array.from(dialEl.querySelectorAll('.na-card'));
-        const unlockedCount = cards.filter(c => c.dataset.locked !== 'true').length;
-        const isSolo = unlockedCount === 1;
 
         cards.forEach(card => {
             const key = card.dataset.key;
             const slot = card.querySelector('.na-slot');
             if (!slot) return;
             const cardLocked = card.dataset.locked === 'true';
-            const isThisSolo = isSolo && !cardLocked;
-            // Solo-pinned row behaves as locked from the bar's POV (no drag),
-            // but visually stays full-color so it doesn't read as broken.
-            const widgetLocked = cardLocked || isThisSolo;
 
             allocInstances[key] = NarogAllocator.create({
                 container: slot,
                 key,
                 value: dialState[key] || 0,
-                locked: widgetLocked,
+                locked: cardLocked,
                 ariaLabel: `${key} role allocation`,
                 onChange: (newPct) => setDialValue(key, newPct),
             });
 
-            if (isThisSolo) card.classList.add('is-solo');
-            if (cardLocked) card.classList.add('is-locked');
-
-            // Locked / solo cards: clicking anywhere on the card (incl. the
-            // greyed bar) opens the explainer modal.
-            if (cardLocked || isThisSolo) {
+            if (cardLocked) {
+                card.classList.add('is-locked');
+                // Click anywhere on a locked card opens the explainer modal
                 card.addEventListener('click', () => showLockedDialModal(key));
             }
         });
