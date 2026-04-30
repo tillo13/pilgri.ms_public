@@ -412,7 +412,10 @@ def _run_oneshot_forge(user_id: int, sources: list) -> Optional[str]:
     logger.info(f"{tag} Flux2 ok -> {str(replicate_url)[:80]}")
 
     ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    blob_name = f"robots/{user_id}/narog_{ts}.png"
+    # 2026-04-30: include user_id in the FILENAME (not just the directory) so
+    # blobs are self-identifying even if downloaded / moved / re-pathed. Defense
+    # in depth — directory namespacing alone could be lost in transit.
+    blob_name = f"robots/{user_id}/narog_u{user_id}_{ts}.png"
     try:
         gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
     except Exception as e:
