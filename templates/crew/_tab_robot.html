@@ -219,58 +219,7 @@
 {% endif %}
 
 {# ============================================================================ #}
-{# Recalibration — TOP of the page (above hero) so it's the first thing during  #}
-{# the 72hr test window. Hidden via JS when locked + test window unavailable.   #}
-{# Test mode: 1% pricing for Andy + Luke (NAROG_REFORGE_TEST_MULTIPLIER).       #}
-{# ============================================================================ #}
-<div class="dashboard-card p-20 mb-16" id="narog-recal-card" style="display:none;">
-    <div class="text-xs uppercase tracking-wide mb-4" style="color: var(--color-sepolia); font-weight: 600;">
-        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Recalibration
-    </div>
-    <div class="text-xs mb-4" style="color: var(--text-secondary); opacity: 0.75; line-height: 1.55;">
-        The scientist can rebuild your Narog. Each adjustment costs energy — the more often you recalibrate, the harder the resonance fields are to stabilize.
-    </div>
-    <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
-        <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
-    </div>
-    <div id="narog-recal-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-        <button class="narog-recal-action" data-action="repick" type="button">
-            <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
-            <div class="narog-recal-name">New Components</div>
-            <div class="narog-recal-desc">Pull 5 new materials from your inventory. Image &amp; awakening stay until you re-roll them.</div>
-            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
-        </button>
-        <button class="narog-recal-action" data-action="reroll_image" type="button">
-            <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
-            <div class="narog-recal-name">New Look</div>
-            <div class="narog-recal-desc">Re-render the silhouette from the current components. Awakening is reset — render it again separately.</div>
-            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
-        </button>
-    </div>
-
-    {# Lock In — the WOW moment. #}
-    <button class="narog-recal-lockin-big" data-action="lock_in" type="button">
-        <div class="narog-recal-lockin-glow"></div>
-        <div class="narog-recal-lockin-content">
-            <div class="narog-recal-lockin-icon"><img src="{{ icons.star_milestone }}" alt=""></div>
-            <div class="narog-recal-lockin-text">
-                <div class="narog-recal-lockin-eyebrow">When you're ready</div>
-                <div class="narog-recal-lockin-name">Lock In Your Narog</div>
-                <div class="narog-recal-lockin-desc">
-                    Commit your Narog to the colony record forever. The scientist will document the awakening, your Narog comes fully online, and passive bonuses start ticking the moment you confirm.
-                </div>
-            </div>
-            <div class="narog-recal-lockin-cta">
-                <span class="narog-recal-lockin-cost">Free</span>
-                <span class="narog-recal-lockin-arrow">→</span>
-            </div>
-        </div>
-    </button>
-
-    <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
-        Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
-    </div>
-</div>
+{# Recalibration moved BELOW hero — see below the hero card. #}
 
 <!-- Hero card: current robot image + name + status -->
 <div class="dashboard-card relative overflow-hidden p-20 mb-16">
@@ -400,12 +349,77 @@
     </div>
 </div>
 
+{# Recalibration — sits BELOW the hero so the captain sees their Narog first, #}
+{# then the recalibration controls. Hidden via JS when locked + window closed. #}
+<div class="dashboard-card p-20 mb-16" id="narog-recal-card" style="display:none;">
+    <div class="text-xs uppercase tracking-wide mb-4" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Recalibration
+    </div>
+    <div class="text-xs mb-4" style="color: var(--text-secondary); opacity: 0.75; line-height: 1.55;">
+        The scientist can rebuild your Narog. Each adjustment costs energy — the more often you recalibrate, the harder the resonance fields are to stabilize.
+    </div>
+    <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
+        <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
+    </div>
+    <div id="narog-recal-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <button class="narog-recal-action" data-action="repick" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
+            <div class="narog-recal-name">New Components</div>
+            <div class="narog-recal-desc">Pull 5 new materials from your inventory. Image &amp; awakening stay until you re-roll them.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+        <button class="narog-recal-action" data-action="reroll_image" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
+            <div class="narog-recal-name">New Look</div>
+            <div class="narog-recal-desc">Re-render the silhouette from the current components. Awakening is reset — render it again separately.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+    </div>
+
+    {# Lock In — the WOW moment. #}
+    <button class="narog-recal-lockin-big" data-action="lock_in" type="button">
+        <div class="narog-recal-lockin-glow"></div>
+        <div class="narog-recal-lockin-content">
+            <div class="narog-recal-lockin-icon"><img src="{{ icons.star_milestone }}" alt=""></div>
+            <div class="narog-recal-lockin-text">
+                <div class="narog-recal-lockin-eyebrow">When you're ready</div>
+                <div class="narog-recal-lockin-name">Lock In Your Narog</div>
+                <div class="narog-recal-lockin-desc">
+                    Commit your Narog to the colony record forever. The scientist will document the awakening, your Narog comes fully online, and passive bonuses start ticking the moment you confirm.
+                </div>
+            </div>
+            <div class="narog-recal-lockin-cta">
+                <span class="narog-recal-lockin-arrow">→</span>
+            </div>
+        </div>
+    </button>
+
+    <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
+        Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
+    </div>
+</div>
+
 <!-- Build Manifest — collapsible accordion (state persisted in localStorage) -->
 <div class="narog-accordion mb-16" data-accordion-key="manifest" data-default="closed">
     <button type="button" class="narog-accordion-head">
         <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm">
-        <span class="narog-accordion-title">Build Manifest</span>
-        <span class="narog-accordion-meta">5 components</span>
+        <div class="narog-accordion-titlewrap">
+            <span class="narog-accordion-title">Build Manifest</span>
+            <span class="narog-accordion-meta">
+                {% set _legcount = (rd.stages | selectattr('source.rarity', 'equalto', 'legendary') | list | length) %}
+                {% set _rarecount = (rd.stages | selectattr('source.rarity', 'equalto', 'rare') | list | length) %}
+                {% set _unccount = (rd.stages | selectattr('source.rarity', 'equalto', 'uncommon') | list | length) %}
+                {% set _comcount = (rd.stages | selectattr('source.rarity', 'equalto', 'common') | list | length) %}
+                {{ _legcount }}L · {{ _rarecount }}R · {{ _unccount + _comcount }}C/U
+            </span>
+        </div>
+        <div class="narog-accordion-preview">
+            {% for stage in rd.stages %}
+            {% if stage.source and stage.source.item_image_url %}
+            <img src="{{ stage.source.item_image_url }}" alt="" class="narog-accordion-thumb rarity-{{ stage.source.rarity }}" loading="lazy">
+            {% endif %}
+            {% endfor %}
+        </div>
         <span class="narog-accordion-caret">▾</span>
     </button>
     <div class="narog-accordion-body">
@@ -494,8 +508,16 @@
 <div class="narog-accordion mb-16" data-accordion-key="allocation" data-default="closed">
     <button type="button" class="narog-accordion-head">
         <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">
-        <span class="narog-accordion-title">Robot Allocation</span>
-        <span class="narog-accordion-meta">Split effort across tasks</span>
+        <div class="narog-accordion-titlewrap">
+            <span class="narog-accordion-title">Robot Allocation</span>
+            <span class="narog-accordion-meta">Split effort across tasks</span>
+        </div>
+        <div class="narog-accordion-preview narog-accordion-preview-alloc">
+            <span>Exp <strong>{{ robot.dial.exploration | default(100) }}%</strong></span>
+            <span>Log <strong>{{ robot.dial.logistics | default(0) }}%</strong></span>
+            <span>Res <strong>{{ robot.dial.research | default(0) }}%</strong></span>
+            <span>Exp <strong>{{ robot.dial.expeditions | default(0) }}%</strong></span>
+        </div>
         <span class="narog-accordion-caret">▾</span>
     </button>
     <div class="narog-accordion-body">

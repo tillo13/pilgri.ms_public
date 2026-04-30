@@ -463,10 +463,12 @@ NAROG_REFORGE_BASE_COSTS = {
 }
 
 # Lifetime caps per Narog.
+# 2026-04-30: quadrupled from 5/10/5 → 20/40/20 to give captains real room
+# to iterate during the 72hr test window without bumping the cap.
 NAROG_REFORGE_LIFETIME_CAPS = {
-    'repick':       5,
-    'reroll_image': 10,
-    'reroll_video': 5,
+    'repick':       20,
+    'reroll_image': 40,
+    'reroll_video': 20,
 }
 
 # 72-hour test window. Until the captain hits "Lock In" or this elapses, no

@@ -506,56 +506,106 @@
     border: 1px solid var(--border-default);
     border-radius: 12px;
     overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
+.narog-accordion:hover { transform: translateY(-1px); }
 .narog-accordion.is-open {
     border-color: rgba(168,85,247,0.45);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.45);
 }
 .narog-accordion-head {
     width: 100%;
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 12px;
     background: transparent;
     border: 0;
-    padding: 16px 20px;
+    padding: 14px 18px;
     cursor: pointer;
     color: var(--text-primary);
     font-family: inherit;
     text-align: left;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.2s;
 }
 .narog-accordion-head:hover {
-    background: rgba(255,200,140,0.04);
+    background: rgba(255,200,140,0.05);
+}
+.narog-accordion-titlewrap {
+    display: flex; flex-direction: column; gap: 1px;
+    flex-shrink: 0;
+    min-width: 160px;
 }
 .narog-accordion-title {
     font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-weight: 800;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--color-sepolia);
 }
 .narog-accordion-meta {
-    flex: 1;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
     font-weight: 500;
-    margin-left: 8px;
     letter-spacing: 0.02em;
 }
+.narog-accordion-preview {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    min-width: 0;
+    opacity: 0.95;
+    transition: opacity 0.2s;
+}
+.narog-accordion.is-open .narog-accordion-preview { opacity: 0; pointer-events: none; }
+.narog-accordion-thumb {
+    width: 28px; height: 28px;
+    border-radius: 5px;
+    border: 1.5px solid rgba(255,200,140,0.35);
+    flex-shrink: 0;
+    object-fit: cover;
+}
+.narog-accordion-thumb.rarity-legendary { border-color: #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,0.4); }
+.narog-accordion-thumb.rarity-rare      { border-color: #3b82f6; }
+.narog-accordion-thumb.rarity-uncommon  { border-color: #22c55e; }
+.narog-accordion-thumb.rarity-common    { border-color: #94a3b8; }
+.narog-accordion-preview-alloc {
+    gap: 14px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+.narog-accordion-preview-alloc span { white-space: nowrap; }
+.narog-accordion-preview-alloc strong { color: #ffc88a; font-weight: 800; }
+
+/* Caret — bigger, in a circle so it reads as a control */
 .narog-accordion-caret {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: rgba(168,85,247,0.12);
+    border: 1px solid rgba(168,85,247,0.4);
+    color: #d8b4fe;
     font-size: 14px;
-    color: var(--text-muted);
-    transition: transform 0.25s ease;
+    line-height: 1;
+    transition: transform 0.28s cubic-bezier(.4,1.4,.6,1), background 0.2s, border-color 0.2s;
     transform: rotate(-90deg);
+}
+.narog-accordion-head:hover .narog-accordion-caret {
+    background: rgba(168,85,247,0.25);
+    border-color: rgba(168,85,247,0.7);
 }
 .narog-accordion.is-open .narog-accordion-caret {
     transform: rotate(0deg);
+    background: rgba(245,158,11,0.18);
+    border-color: rgba(245,158,11,0.55);
+    color: #ffc88a;
 }
+
 .narog-accordion-body {
     display: none;
-    padding: 0 20px 20px;
+    padding: 16px 20px 20px;
     border-top: 1px solid var(--border-default);
-    padding-top: 16px;
 }
 .narog-accordion.is-open .narog-accordion-body {
     display: block;
@@ -564,6 +614,12 @@
 @keyframes accordion-fade {
     from { opacity: 0; transform: translateY(-4px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+
+/* On narrow screens, hide the preview row to keep the header readable */
+@media (max-width: 720px) {
+    .narog-accordion-preview { display: none; }
+    .narog-accordion-titlewrap { min-width: 0; flex: 1; }
 }
 
 /* ---------- Recalibration card ---------- */
