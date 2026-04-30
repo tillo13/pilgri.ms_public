@@ -3369,7 +3369,8 @@
     "exports": [
       "clamp",
       "create",
-      "paint",
+      "visualPaint",
+      "committedPaint",
       "pctFromEvent",
       "point",
       "emit",
@@ -3442,7 +3443,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

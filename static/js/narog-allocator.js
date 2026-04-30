@@ -58,15 +58,28 @@
         const track = wrap.querySelector('.na-track');
         const readout = wrap.querySelector('.na-readout');
 
-        let currentValue = value;
+        let currentValue = value;       // last value applied by the controller
+        let lastEmitted = value;        // last value we asked the controller about
         let dragging = false;
 
-        function paint(v) {
+        // visualPaint: pure visual update — the bar follows your cursor
+        // immediately during drag without waiting for the controller round-trip.
+        // Does NOT touch currentValue — that's only set when the controller
+        // calls setValue() back to confirm.
+        function visualPaint(v) {
+            const cv = clamp(v, min, max);
+            wrap.style.setProperty('--na-pct', cv);
+            wrap.style.setProperty('--na-active', cv > 0 ? 1 : 0);
+            readout.textContent = Math.round(cv) + '%';
+            range.value = cv;
+        }
+
+        // committedPaint: called by the controller via setValue() after rebalance.
+        // This is the source of truth for currentValue.
+        function committedPaint(v) {
             currentValue = clamp(v, min, max);
-            wrap.style.setProperty('--na-pct', currentValue);
-            wrap.style.setProperty('--na-active', currentValue > 0 ? 1 : 0);
-            readout.textContent = Math.round(currentValue) + '%';
-            range.value = currentValue;
+            lastEmitted = currentValue;
+            visualPaint(currentValue);
         }
 
         function pctFromEvent(e) {
@@ -78,7 +91,11 @@
 
         function emit(rawPct) {
             const stepped = Math.round(rawPct / step) * step;
-            if (stepped !== currentValue && typeof onChange === 'function') {
+            // Compare against lastEmitted (not currentValue) so we re-emit when
+            // the controller clamps our request — otherwise the next tick at the
+            // same raw value would silently no-op.
+            if (stepped !== lastEmitted && typeof onChange === 'function') {
+                lastEmitted = stepped;
                 onChange(stepped, key);
             }
         }
@@ -87,7 +104,7 @@
             if (!dragging) return;
             e.preventDefault();
             const v = pctFromEvent(e);
-            paint(v);  // immediate visual follow during drag
+            visualPaint(v);  // immediate visual follow during drag
             emit(v);
         }
         function handleUp() {
@@ -109,7 +126,7 @@
             document.addEventListener('touchmove', handleMove, { passive: false });
             document.addEventListener('touchend', handleUp);
             const v = pctFromEvent(e);
-            paint(v);
+            visualPaint(v);
             emit(v);
         }
 
@@ -120,15 +137,17 @@
         range.addEventListener('input', () => {
             if (wrap.dataset.locked === 'true') return;
             const v = parseInt(range.value, 10) || 0;
-            paint(v);
+            visualPaint(v);
             emit(v);
         });
 
-        paint(value);
+        committedPaint(value);
 
         return {
             el: wrap,
-            setValue(v) { paint(v); },
+            // setValue is called by the controller AFTER rebalance — it's the
+            // confirmed value, so it commits both visual + currentValue.
+            setValue(v) { committedPaint(v); },
             setLocked(b) { wrap.dataset.locked = String(!!b); },
             destroy() { handleUp(); wrap.remove(); },
         };
