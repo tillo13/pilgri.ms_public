@@ -695,18 +695,21 @@ def set_robot_name(user_id: int, name: str) -> bool:
 def set_robot_dial(user_id: int, dial: Dict[str, int]) -> Dict[str, Any]:
     """
     Update the robot's role dial. Each value must be a non-negative multiple of 5
-    and the four values must sum to 100. Raises ValueError on invalid input.
+    in [0, 100]. The values represent INDEPENDENT allocations (% of base stat
+    devoted to each task) — sum can be anything in [0, 400]. Unallocated effort
+    is "idle" robot time. The frontend additionally enforces sum ≤ 100 across
+    UNLOCKED dials as a soft cap, but the server doesn't require it (locked
+    captains may have lower-phase dials they can't touch yet).
+    Raises ValueError on invalid per-key input.
     """
     if not isinstance(dial, dict):
         raise ValueError("dial must be a dict")
     cleaned = {}
     for k in DIAL_KEYS:
         v = dial.get(k, 0)
-        if not isinstance(v, int) or v < 0 or v % 5 != 0:
-            raise ValueError(f"dial.{k} must be a non-negative multiple of 5, got {v!r}")
+        if not isinstance(v, int) or v < 0 or v > 100 or v % 5 != 0:
+            raise ValueError(f"dial.{k} must be a non-negative multiple of 5 in [0, 100], got {v!r}")
         cleaned[k] = v
-    if sum(cleaned.values()) != 100:
-        raise ValueError(f"dial values must sum to 100, got {sum(cleaned.values())}")
 
     ensure_robot_tables()
     with db_cursor(commit=True) as cur:
