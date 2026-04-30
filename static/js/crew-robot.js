@@ -625,8 +625,9 @@
             }
             const status = document.getElementById('robot-dial-status');
             if (status) {
-                status.textContent = 'Saved · Total: 100%';
-                setTimeout(() => { if (status) status.textContent = 'Total: 100%'; }, 1500);
+                const orig = status.textContent;
+                status.textContent = 'Saved · ' + orig;
+                setTimeout(() => { if (status) repaint(); }, 1500);
             }
         } catch (e) {
             reloadSoon();
