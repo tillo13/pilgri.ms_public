@@ -458,8 +458,10 @@ def get_dashboard_page_data(user_id, auth):
         robot = get_robot(user_id)
         if robot and robot.get('build_status') == 'complete':
             with db_cursor() as cur:
+                # robot_km lives on user_trail_chains (per-chain lifetime sum),
+                # NOT on trail_segments (which is just the per-segment build state).
                 cur.execute(
-                    "SELECT COALESCE(SUM(robot_km), 0) AS total_km FROM pilgrim.trail_segments WHERE user_id = %s",
+                    "SELECT COALESCE(SUM(robot_km), 0) AS total_km FROM pilgrim.user_trail_chains WHERE user_id = %s",
                     (user_id,))
                 row = cur.fetchone()
                 lifetime_km = float(row['total_km'] or 0) if row else 0.0

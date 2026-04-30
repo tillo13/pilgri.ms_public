@@ -18,59 +18,57 @@
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border-default);">
         {% for slot_key in ['rover', 'drone', 'buggy'] %}
         {% set slot = fleet_status[slot_key] %}
-        <div class="fleet-slot fleet-slot-{{ slot.status }}" style="background: var(--bg-secondary); padding: 16px; {% if slot.status == 'returned' %}border-top: 3px solid var(--color-success);{% endif %}">
+        <div class="fleet-slot fleet-slot-{{ slot.status }}" style="background: var(--bg-secondary); padding: 10px 12px; {% if slot.status == 'returned' %}border-top: 2px solid var(--color-success);{% endif %}">
             <!-- Vehicle Header -->
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <span style="font-size: 20px;">{{ slot.icon }}</span>
-                <span style="font-size: 14px; font-weight: 600; color: var(--text-primary); text-transform: uppercase;">{{ slot.vehicle_name }}</span>
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                <span style="font-size: 16px;">{{ slot.icon }}</span>
+                <span style="font-size: 11px; font-weight: 600; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.06em;">{{ slot.vehicle_name }}</span>
             </div>
 
             {% if slot.status == 'at_base' %}
             <!-- AT BASE -->
-            <div style="text-align: center; padding: 20px 0;">
-                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">🏠 At Base</div>
-                <a href="/expeditions" style="font-size: 11px; color: var(--color-success); text-decoration: none;">Deploy →</a>
+            <div style="text-align: center; padding: 8px 0;">
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">🏠 At Base</div>
+                <a href="/expeditions" style="font-size: 10px; color: var(--color-success); text-decoration: none;">Deploy →</a>
             </div>
 
             {% elif slot.status == 'en_route' %}
             <!-- EN ROUTE -->
             <div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📍 En route to</div>
-                <div style="font-size: 13px; color: var(--text-primary); font-weight: 500; margin-bottom: 8px;">{{ slot.destination }}</div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">{{ '{:,}'.format(slot.distance_km|int) }} km</div>
-                <!-- Progress bar -->
-                <div style="background: rgba(92,184,92,0.2); border-radius: 4px; height: 6px; margin-bottom: 8px; overflow: hidden;">
+                <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 2px;">📍 En route to</div>
+                <div style="font-size: 12px; color: var(--text-primary); font-weight: 500; margin-bottom: 4px;">{{ slot.destination }}</div>
+                <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 6px;">{{ '{:,}'.format(slot.distance_km|int) }} km</div>
+                <div style="background: rgba(92,184,92,0.2); border-radius: 3px; height: 4px; margin-bottom: 4px; overflow: hidden;">
                     <div style="background: var(--color-success); height: 100%; width: {{ slot.progress_pct }}%; transition: width 1s;"></div>
                 </div>
-                <div style="font-size: 10px; color: var(--text-muted);">
-                    ETA: <span class="fleet-eta" data-eta="{{ slot.eta_iso }}">calculating...</span>
+                <div style="font-size: 9px; color: var(--text-muted);">
+                    ETA: <span class="fleet-eta" data-eta="{{ slot.eta_iso }}">…</span>
                 </div>
             </div>
 
             {% elif slot.status == 'returned' %}
             <!-- RETURNED - Needs claim! -->
             <div class="fleet-returned-content" style="animation: fleetPulse 2s ease-in-out infinite;">
-                <div style="font-size: 12px; color: var(--color-success); font-weight: 600; margin-bottom: 8px; text-align: center;">✅ RETURNED!</div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">From: {{ slot.destination }}</div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">{{ '{:,}'.format(slot.distance_km|int) }} km traveled</div>
+                <div style="font-size: 10px; color: var(--color-success); font-weight: 600; margin-bottom: 4px; text-align: center; letter-spacing: 0.06em;">✅ RETURNED</div>
+                <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 2px;">From: <span style="color: var(--text-secondary);">{{ slot.destination }}</span></div>
+                <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 8px;">{{ '{:,}'.format(slot.distance_km|int) }} km</div>
 
                 <!-- Loot Summary -->
-                <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <div style="background: rgba(0,0,0,0.3); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;">
                     {% if slot.shards_earned %}
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 11px; color: var(--text-muted);"><img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> Shards</span>
-                        <span style="font-size: 14px; font-weight: 700; color: var(--color-warning);">{{ '{:,.0f}'.format(slot.shards_earned) }}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 10px; color: var(--text-muted);"><img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> Shards</span>
+                        <span style="font-size: 12px; font-weight: 700; color: var(--color-warning);">{{ '{:,.0f}'.format(slot.shards_earned) }}</span>
                     </div>
                     {% endif %}
                     {% if slot.total_discoveries > 0 %}
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-size: 11px; color: var(--text-muted);"><img src="{{ icons.box_package }}" alt="" class="inline-icon-sm"> Discoveries</span>
-                        <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ slot.total_discoveries }}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 10px; color: var(--text-muted);"><img src="{{ icons.box_package }}" alt="" class="inline-icon-sm"> Discoveries</span>
+                        <span style="font-size: 12px; font-weight: 600; color: var(--text-primary);">{{ slot.total_discoveries }}</span>
                     </div>
-                    <!-- Rarity breakdown -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;">
                         {% for disc in slot.discoveries %}
-                        <span style="font-size: 10px; padding: 2px 6px; border-radius: 3px;
+                        <span style="font-size: 9px; padding: 1px 5px; border-radius: 3px;
                             {% if disc.rarity == 'legendary' %}background: var(--gradient-legendary); color: white;
                             {% elif disc.rarity == 'rare' %}background: var(--gradient-rare); color: white;
                             {% elif disc.rarity == 'uncommon' %}background: rgba(92,184,92,0.25); color: var(--color-success);
@@ -82,10 +80,9 @@
                     {% endif %}
                 </div>
 
-                <!-- Distance Bonus Badge -->
                 {% if slot.distance_bonus and slot.distance_bonus.label %}
-                <div style="text-align: center; margin-bottom: 12px;">
-                    <span style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: linear-gradient(135deg, rgba(255,180,50,0.3), rgba(255,140,50,0.2)); color: var(--color-warning); border: 1px solid rgba(255,180,50,0.4);">
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <span style="font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: linear-gradient(135deg, rgba(255,180,50,0.3), rgba(255,140,50,0.2)); color: var(--color-warning); border: 1px solid rgba(255,180,50,0.4);">
                         🎯 {{ slot.distance_bonus.mult }}× {{ slot.distance_bonus.label }}
                     </span>
                 </div>
@@ -103,7 +100,7 @@
                         data-total-discoveries="{{ slot.total_discoveries|default(0) }}"
                         data-bonus-mult="{{ slot.distance_bonus.mult if slot.distance_bonus else 1 }}"
                         data-bonus-label="{{ slot.distance_bonus.label if slot.distance_bonus and slot.distance_bonus.label else '' }}"
-                        style="width: 100%; background: var(--gradient-success); color: white; font-weight: 600; font-size: 12px; padding: 10px; text-align: center; border: none; cursor: pointer;">
+                        style="width: 100%; background: var(--gradient-success); color: white; font-weight: 600; font-size: 11px; padding: 6px; text-align: center; border: none; cursor: pointer; border-radius: 4px;">
                     Review Haul
                 </button>
             </div>
