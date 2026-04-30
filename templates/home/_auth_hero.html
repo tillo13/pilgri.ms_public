@@ -25,13 +25,13 @@
                     Built <strong style="color:var(--text-primary);">{{ '%.2f'|format(narog_summary.lifetime_km) }} km</strong> lifetime ·
                     {% if narog_summary.km_per_day > 0 %}
                     currently <strong style="color:var(--text-primary);">{{ '%.2f'|format(narog_summary.km_per_day) }} km/day</strong>
-                    at exploration {{ narog_summary.exploration_pct }}%
+                    at <strong style="color:var(--text-primary);">{{ narog_summary.exploration_pct }}%</strong> Exploration allocation
                     {% else %}
-                    <span style="color:var(--text-muted);">idle — set exploration &gt; 0% in the role dial</span>
+                    <span style="color:var(--text-muted);">idle — set Exploration allocation &gt; 0% to start</span>
                     {% endif %}
                 </div>
             </div>
-            <div style="font-size:10px;color:var(--text-muted);">tune dial &rsaquo;</div>
+            <div style="font-size:10px;color:var(--text-muted);">tune allocation &rsaquo;</div>
         </div>
     </div>
 </a>
