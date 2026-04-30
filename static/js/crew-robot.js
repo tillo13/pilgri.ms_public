@@ -632,6 +632,25 @@
         }
     }
 
+    // Modal explaining the Base X/100 stat system — universal, same content
+    // for all 4 rows. Triggered by clicking the "Base X/100" pill on any row.
+    function showBaseStatModal() {
+        if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
+        MarsModal.show({
+            title: 'Narog Base Stats',
+            body: `
+                <div style="font-size:13px; color:var(--text-secondary); line-height:1.7;">
+                    <p style="margin:0 0 12px;">Every Narog starts at <strong style="color:#ffc88a;">5/100</strong> in all four stats — <strong>Exploration</strong>, <strong>Logistics</strong>, <strong>Research</strong>, <strong>Expeditions</strong>. The number is the cap; the allocation % below is how much of that cap is being applied.</p>
+                    <p style="margin:0 0 12px;"><strong style="color:var(--text-primary);">Effective bonus = Base × allocation %.</strong> So 100% of 5/100 = an effective 5; 50% of 5/100 = 2.5. That number drives every passive bonus your Narog produces.</p>
+                    <p style="margin:0 0 12px;">As you upgrade <strong>Depot</strong> and <strong>Robotics Lab</strong> buildings, the base stats rise toward 100. A fully built-out Narog might land near 55/100 in each stat — at which point 100% allocation = 55× the current passive bonus.</p>
+                    <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-default); border-radius:8px; padding:10px 12px; font-size:12px; color:var(--text-muted); margin-top:12px;">
+                        <strong style="color:#ffc88a;">In progress:</strong> Luke is finalizing which buildings raise which stats and by how much (tracked in <code>#1436</code>). Right now every Narog is at 5/100 across the board — the dial mechanic works end-to-end so you can see how an allocation translates to live km/day on the home page.
+                    </div>
+                </div>
+            `,
+        });
+    }
+
     function showLockedDialModal(key) {
         if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
         const titleMap = {
@@ -689,9 +708,20 @@
                 onChange: (newPct) => setDialValue(key, newPct),
             });
 
+            // Base-stat pill is clickable on every row — opens the universal
+            // explainer about the 5/100 system. Stop propagation so it doesn't
+            // also fire the locked-card click handler below.
+            const statPill = card.querySelector('.na-row-stat');
+            if (statPill) {
+                statPill.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showBaseStatModal();
+                });
+            }
+
             if (cardLocked) {
                 card.classList.add('is-locked');
-                // Click anywhere on a locked card opens the explainer modal
+                // Click anywhere ELSE on a locked card opens the locked-row modal
                 card.addEventListener('click', () => showLockedDialModal(key));
             }
         });
