@@ -1,0 +1,249 @@
+/* ============================================================================
+ * narog-knob.css — Visual chrome for the rotary Narog Role Dial knobs.
+ *
+ * Layer order (z-index by paint order in the SVG):
+ *   nk-bezel  → outer hewn polygon, mid ring, rim highlight, rock chips
+ *   nk-face   → inner stone, top-left shine ellipse, crystal veins
+ *   nk-scale  → 21 tick marks (every 4th = major)
+ *   nk-cursor → conic-style filled arc + pointer line + hub
+ *   nk-readout → centered % text in lower face
+ *
+ * Driven by CSS custom property --nk-pct (0-100) which the JS writes on every
+ * paint(). --nk-active is 0 or 1 — gates the active-knob glow + filled arc
+ * intensity. Locked / solo-pinned states are data-attribute driven.
+ * ========================================================================= */
+
+.nk-root {
+    position: relative;
+    width: 130px; height: 154px;  /* 130 svg + 24 readout space */
+    display: inline-block;
+    --nk-pct: 0;
+    --nk-active: 0;
+}
+
+/* Hidden native range for keyboard/screen-reader users — fully invisible
+   but receives focus. Pointer events stay on the SVG. */
+.nk-range {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;  /* SVG handles pointer; range only handles keyboard */
+    margin: 0;
+}
+.nk-root:focus-within .nk-svg {
+    outline: 2px solid var(--color-sepolia);
+    outline-offset: 2px;
+    border-radius: 50%;
+}
+
+.nk-svg {
+    width: 130px; height: 130px;
+    cursor: grab;
+    user-select: none; -webkit-user-select: none;
+    touch-action: none;
+    overflow: visible;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6));
+    transition: filter 0.4s ease;
+}
+.nk-svg:active, .nk-svg.dragging { cursor: grabbing; }
+
+/* Active-knob soft pulse: the more % allocated, the warmer the glow.
+   Fades out completely at 0%. */
+.nk-root[data-locked="false"] .nk-svg {
+    filter:
+        drop-shadow(0 6px 14px rgba(0,0,0,0.6))
+        drop-shadow(0 0 calc(var(--nk-active, 0) * 14px) rgba(255, 180, 80, calc(var(--nk-active, 0) * 0.55)));
+}
+
+/* ---------- Layer 1: hewn-stone bezel ---------- */
+.nk-bezel-outer {
+    fill: #2a0e07;
+    stroke: #0a0302;
+    stroke-width: 1.5;
+    stroke-linejoin: miter;
+}
+.nk-bezel-mid {
+    fill: #5a2818;
+    stroke: #1a0805;
+    stroke-width: 0.8;
+}
+.nk-bezel-rim {
+    fill: none;
+    stroke: rgba(255,170,90,0.25);
+    stroke-width: 0.7;
+}
+.nk-chip {
+    fill: #1a0805;
+    stroke: #3a1810;
+    stroke-width: 0.5;
+}
+.nk-chip-light {
+    fill: #6e3220;
+    stroke: none;
+    opacity: 0.8;
+}
+
+/* ---------- Layer 2: stone face ---------- */
+.nk-face-base {
+    fill: #4a2010;
+}
+.nk-face-shine {
+    fill: rgba(255,170,90,0.16);
+}
+.nk-vein {
+    fill: none;
+    stroke: rgba(255,200,140,0.55);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 1.5px rgba(255,180,80,0.55));
+}
+
+/* ---------- Layer 3: tick scale ---------- */
+.nk-tick {
+    stroke: rgba(255,200,140,0.45);
+    stroke-width: 1;
+}
+.nk-tick-major {
+    stroke: #ffc88a;
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 1.5px rgba(255,200,140,0.6));
+}
+
+/* ---------- Layer 4: cursor (arc + pointer + hub) ---------- */
+/* The filled progress arc — the gauge "filling up" feel that flat dials lack */
+.nk-arc {
+    fill: none;
+    stroke: url(#nk-arc-grad-fallback, #ffc88a);
+    /* fallback solid color when SVG gradient isn't defined inline */
+    stroke: #ffc88a;
+    stroke-width: 5;
+    stroke-linecap: round;
+    opacity: calc(0.45 + var(--nk-active, 0) * 0.35);
+    filter: drop-shadow(0 0 4px rgba(255,200,140,0.7));
+    transition: stroke 0.3s ease, opacity 0.3s ease;
+}
+.nk-pointer {
+    stroke: #ffd9a8;
+    stroke-width: 5;
+    stroke-linecap: round;
+    transform-origin: 70px 70px;
+    transition: transform 0.18s cubic-bezier(.5, 1.4, .5, 1);
+    filter: drop-shadow(0 0 4px rgba(255,180,80,0.85)) drop-shadow(0 0 1px #000);
+}
+.nk-svg.dragging .nk-pointer {
+    transition: none;  /* no easing during active drag — stays under cursor */
+}
+.nk-hub {
+    fill: #1a0805;
+    stroke: #6e3220;
+    stroke-width: 1.5;
+}
+.nk-hub-bolt {
+    fill: #ffc88a;
+    opacity: 0.85;
+}
+
+/* ---------- Layer 5: readout ---------- */
+.nk-readout {
+    fill: #ffc88a;
+    font-size: 15px;
+    font-weight: 800;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    /* paint-order stroke gives the text a dark halo so it stays legible
+       on top of the gauge fill when % is high */
+    paint-order: stroke;
+    stroke: #1a0805;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+/* ---------- State variants ---------- */
+
+/* Locked: greyscale + can't grab + clear visual de-emphasis */
+.nk-root[data-locked="true"] {
+    cursor: pointer;
+}
+.nk-root[data-locked="true"] .nk-svg {
+    filter: grayscale(0.65) brightness(0.7);
+    cursor: not-allowed;
+}
+.nk-root[data-locked="true"] .nk-pointer,
+.nk-root[data-locked="true"] .nk-arc {
+    opacity: 0.4;
+}
+.nk-root[data-locked="true"]:hover .nk-svg {
+    filter: grayscale(0.5) brightness(0.85);
+}
+
+/* Solo-pinned: only one unlocked dial → 100% is mechanically forced.
+   Keep full-color but show "PINNED" badge + can't drag. */
+.nk-root[data-solo="true"] .nk-svg {
+    cursor: help;
+}
+
+/* ---------- Card wrapper (contains knob + header + description) ---------- */
+.nk-card {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px;
+    background: linear-gradient(180deg, rgba(74,32,16,0.18), rgba(0,0,0,0.35));
+    border: 1px solid rgba(110,50,32,0.6);
+    border-radius: 14px;
+    padding: 14px 12px 12px;
+    position: relative;
+    overflow: hidden;
+}
+.nk-card::before {
+    /* Subtle stone-texture overlay via radial gradients */
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(255,170,90,0.06), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(110,50,32,0.18), transparent 50%);
+    pointer-events: none;
+}
+.nk-card.is-locked { opacity: 0.78; }
+.nk-card.is-solo::after {
+    content: 'Pinned';
+    position: absolute; top: 10px; right: 12px;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.1em;
+    color: #ffc88a; opacity: 0.85;
+    text-transform: uppercase;
+    background: rgba(26,8,5,0.75);
+    border: 1px solid rgba(255,200,140,0.4);
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.nk-card-head {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text-primary);
+    font-weight: 700;
+    z-index: 1;
+}
+.nk-card-lock {
+    margin-left: 4px; font-size: 11px; opacity: 0.85;
+}
+.nk-card-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.45;
+    min-height: 28px;
+    z-index: 1;
+}
+
+/* ---------- Locked-dial info modal list rows (rendered into MarsModal) ---------- */
+.nk-modal-list { display: flex; flex-direction: column; gap: 10px; margin: 10px 0 4px; }
+.nk-modal-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.3); border-radius: 8px;
+    border: 1px solid var(--border-default);
+}
+.nk-modal-row.active {
+    border-color: var(--color-sepolia);
+    box-shadow: 0 0 12px rgba(168,85,247,0.25);
+}
+.nk-modal-row strong { color: var(--text-primary); }

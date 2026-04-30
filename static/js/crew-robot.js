@@ -523,24 +523,28 @@
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
     }
 
-    // ----- ROLE DIAL — rotary knobs ----------------------------------------
-    // 2026-04-30: 4 dials map to Luke's brainstorm §4. Only `exploration` is
-    // currently unlocked (Phase 1 = robot built); the other 3 are visible-locked
-    // until Phase 3/4/5 ship. Locked knobs open a tooltip modal explaining what
-    // they'll do when unlocked. Drag to rotate, mod-5 increments, sum locked at 100.
+    // ----- ROLE DIAL — rotary knobs (visual chrome lives in narog-knob.js) --
+    // 4 dials map to Luke's brainstorm §4. Phase 1 unlocks only `exploration`;
+    // Phase 3/4/5 unlock the others. Locked + solo-pinned dials open a modal.
+    // Sum across UNLOCKED dials must always equal 100; rebalancing happens here.
     const DIAL_KEYS = ['exploration', 'logistics', 'research', 'expeditions'];
     const DIAL_STEP = 5;
     const DIAL_TOTAL = 100;
-    // Knob pointer angle range: -135° (0%) → +135° (100%), spans 270°.
-    const KNOB_MIN_ANGLE = -135;
-    const KNOB_MAX_ANGLE = 135;
+    const DIAL_PHASES = {
+        exploration: 'Phase 1 — Built',
+        logistics:   'Phase 3 — Circuits',
+        research:    'Phase 4 — Core',
+        expeditions: 'Phase 5 — Sepolia Integration',
+    };
     const DIAL_DESCRIPTIONS = {
         exploration: 'Speeds up autonomous trail building while you’re away. The base Exploration stat × this dial % = your Narog’s effective trail bonus.',
-        logistics:   'Speeds up Depot &amp; Robotics-Lab build times. Higher allocation = bigger reduction on every active build. Unlocks at Phase 3 — Circuits.',
-        research:    'Helps the Scientist run experiments faster. Boosts SV/hr and accelerates active research. Unlocks at Phase 4 — Core.',
-        expeditions: 'Sends your Narog on solo scout runs while you’re offline — brings back shards + discoveries from beyond your current range. Unlocks at Phase 5 — Sepolia Integration.',
+        logistics:   'Speeds up Depot and Robotics-Lab build times. Higher allocation = bigger reduction on every active build.',
+        research:    'Helps the Scientist run experiments faster. Boosts SV/hr and accelerates active research.',
+        expeditions: 'Sends your Narog on solo scout runs while you’re offline — brings back shards + discoveries from beyond your current range.',
     };
-    let dialState = null;
+
+    let dialState = null;          // { key: pct } — shared across knobs
+    let knobInstances = {};         // { key: NarogKnob handle }
     let dialSaveTimer = null;
 
     function readDialState() {
@@ -555,144 +559,16 @@
     }
 
     function isUnlocked(key) {
-        const card = document.querySelector(`.robot-knob-card[data-key="${key}"]`);
-        return card && card.dataset.locked !== 'true';
+        const inst = knobInstances[key];
+        return inst && inst.el.dataset.locked !== 'true';
     }
 
-    // Tiny seedable PRNG so each knob's rocky shape is irregular but stable
-    // across re-renders. Seed derived from the knob key string.
-    function _seedFromString(s) {
-        let h = 2166136261;
-        for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-        return h >>> 0;
-    }
-    function _mulberry32(seed) {
-        let t = seed >>> 0;
-        return function() {
-            t = (t + 0x6D2B79F5) >>> 0;
-            let x = t;
-            x = Math.imul(x ^ (x >>> 15), x | 1);
-            x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-            return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-        };
-    }
-
-    const SVG_NS = 'http://www.w3.org/2000/svg';
-    function _svg(tag, attrs) {
-        const el = document.createElementNS(SVG_NS, tag);
-        for (const k in attrs) el.setAttribute(k, attrs[k]);
-        return el;
-    }
-
-    // Generate a hewn-stone polygon: N points around a circle (cx, cy) with
-    // average radius `r`, each point's radius perturbed by ±`jitter`. Returns
-    // a "x,y x,y ..." string suitable for <polygon points="...">.
-    function _rockyPoly(cx, cy, r, n, jitter, rng) {
-        const pts = [];
-        for (let i = 0; i < n; i++) {
-            const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-            const rr = r + (rng() - 0.5) * 2 * jitter;
-            pts.push((cx + Math.cos(a) * rr).toFixed(2) + ',' + (cy + Math.sin(a) * rr).toFixed(2));
-        }
-        return pts.join(' ');
-    }
-
-    // Build the full rocky chrome inside .knob-chrome <g>.
-    // Layers (back to front): outer rock disc → mid rock disc → rim highlight
-    //                         → rock chips (random small polys around rim) →
-    //                         inner stone face → shine ellipse → crystal veins →
-    //                         tick ring.
-    function renderKnobChrome(svg, key) {
-        const chrome = svg.querySelector('.knob-chrome');
-        if (!chrome || chrome.childElementCount) return;
-        const rng = _mulberry32(_seedFromString(key));
-        const cx = 70, cy = 70;
-
-        // 1) Outer hewn polygon (24 points, big jitter)
-        chrome.appendChild(_svg('polygon', {
-            class: 'knob-bezel-outer',
-            points: _rockyPoly(cx, cy, 62, 24, 4, rng),
-        }));
-        // 2) Mid stone ring
-        chrome.appendChild(_svg('polygon', {
-            class: 'knob-bezel-mid',
-            points: _rockyPoly(cx, cy, 56, 22, 2.5, rng),
-        }));
-        // 3) Subtle rim highlight (smooth ring on top of mid)
-        chrome.appendChild(_svg('circle', {
-            cx, cy, r: 53, class: 'knob-bezel-rim-highlight',
-        }));
-        // 4) Rock chips around the rim — 5-7 small irregular polygons
-        const chipCount = 5 + Math.floor(rng() * 3);
-        for (let i = 0; i < chipCount; i++) {
-            const a = rng() * Math.PI * 2;
-            const r = 60 + rng() * 4;
-            const ccx = cx + Math.cos(a) * r;
-            const ccy = cy + Math.sin(a) * r;
-            const chipR = 2.5 + rng() * 2.5;
-            chrome.appendChild(_svg('polygon', {
-                class: rng() < 0.5 ? 'knob-chip' : 'knob-chip-light',
-                points: _rockyPoly(ccx, ccy, chipR, 6, 1.2, rng),
-            }));
-        }
-        // 5) Inner stone face — slightly irregular for hand-hewn feel
-        chrome.appendChild(_svg('polygon', {
-            class: 'knob-face-base',
-            points: _rockyPoly(cx, cy, 47, 28, 1.2, rng),
-        }));
-        // 6) Shine ellipse (top-left light)
-        chrome.appendChild(_svg('ellipse', {
-            cx: cx - 10, cy: cy - 14, rx: 22, ry: 12,
-            class: 'knob-face-shine',
-        }));
-        // 7) Crystal veins — 2-3 thin curves crossing the face
-        const veinCount = 2 + Math.floor(rng() * 2);
-        for (let i = 0; i < veinCount; i++) {
-            const a0 = rng() * Math.PI * 2;
-            const a1 = a0 + Math.PI + (rng() - 0.5) * 0.6;
-            const r0 = 38 + rng() * 6, r1 = 38 + rng() * 6;
-            const x0 = cx + Math.cos(a0) * r0, y0 = cy + Math.sin(a0) * r0;
-            const x1 = cx + Math.cos(a1) * r1, y1 = cy + Math.sin(a1) * r1;
-            const mx = cx + (rng() - 0.5) * 24, my = cy + (rng() - 0.5) * 24;
-            chrome.appendChild(_svg('path', {
-                class: 'knob-vein',
-                d: `M${x0.toFixed(1)} ${y0.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${x1.toFixed(1)} ${y1.toFixed(1)}`,
-            }));
-        }
-        // 8) Tick ring (270° sweep, 21 ticks, every 4th major)
-        const tickG = _svg('g', { class: 'knob-tick-group' });
-        for (let i = 0; i <= 20; i++) {
-            const t = i / 20;
-            const angle = KNOB_MIN_ANGLE + t * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
-            const rad = (angle - 90) * Math.PI / 180;
-            const major = (i % 4 === 0);
-            const r1 = 50, r2 = major ? 42 : 45;
-            const x1 = cx + Math.cos(rad) * r1, y1 = cy + Math.sin(rad) * r1;
-            const x2 = cx + Math.cos(rad) * r2, y2 = cy + Math.sin(rad) * r2;
-            tickG.appendChild(_svg('line', {
-                x1, y1, x2, y2,
-                class: major ? 'knob-tick major' : 'knob-tick',
-            }));
-        }
-        chrome.appendChild(tickG);
-    }
-
-    function renderKnob(key) {
-        const v = dialState ? (dialState[key] || 0) : 0;
-        const card = document.querySelector(`.robot-knob-card[data-key="${key}"]`);
-        if (!card) return;
-        const svg = card.querySelector('.robot-knob');
-        const pointer = card.querySelector('.knob-pointer');
-        const txt = card.querySelector('[data-role="pct"]');
-        const angle = KNOB_MIN_ANGLE + (v / 100) * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
-        if (pointer) pointer.style.transform = `rotate(${angle}deg)`;
-        if (txt) txt.textContent = v + '%';
-        if (svg) renderKnobChrome(svg, key);
-    }
-
-    function renderDial() {
+    // Apply state to all knob instances + total readout.
+    function repaint() {
         if (!dialState) return;
-        DIAL_KEYS.forEach(renderKnob);
+        DIAL_KEYS.forEach(k => {
+            if (knobInstances[k]) knobInstances[k].setValue(dialState[k]);
+        });
         const status = document.getElementById('robot-dial-status');
         if (status) {
             const total = DIAL_KEYS.reduce((s, k) => s + dialState[k], 0);
@@ -701,37 +577,30 @@
         }
     }
 
-    // Set `key` to `newVal` (mod-5, 0..100). Rebalance the inverse delta across
-    // OTHER UNLOCKED keys, taking from largest first when adding to `key`,
-    // donating to smallest first when subtracting. Locked keys never change.
+    // Set `key` to `newVal` and rebalance the delta across other UNLOCKED keys.
+    // Caller has already mod-5'd the value. Bails if locked / no counterparty.
     function setDialValue(key, newVal) {
         if (!dialState || !isUnlocked(key)) return;
         newVal = Math.max(0, Math.min(100, Math.round(newVal / DIAL_STEP) * DIAL_STEP));
         const cur = dialState[key];
-        const delta = newVal - cur;
-        if (delta === 0) return;
+        if (newVal === cur) return;
         const others = DIAL_KEYS.filter(k => k !== key && isUnlocked(k));
-        if (!others.length) return;  // no counterparty to balance against
+        if (!others.length) return;  // no counterparty
         const otherSum = others.reduce((s, k) => s + dialState[k], 0);
-        if (delta > 0 && otherSum < delta) {
-            // not enough headroom; clamp to what's available
-            newVal = cur + otherSum;
+        if (newVal > cur && otherSum < (newVal - cur)) {
+            newVal = cur + otherSum;  // clamp to available headroom
         }
         dialState[key] = newVal;
         let remaining = newVal - cur;
-        // Distribute -remaining across `others` proportionally to their weights
-        // (or equally if all zero) — pop one step at a time to respect mod-5.
         while (remaining !== 0) {
-            const dir = remaining > 0 ? -1 : 1;  // dir applied to OTHERS
-            // pick target: when stealing from others (dir=-1), prefer the largest;
-            //              when donating to others (dir=+1), prefer the smallest
+            const dir = remaining > 0 ? -1 : 1;
             others.sort((a, b) => dir < 0 ? dialState[b] - dialState[a] : dialState[a] - dialState[b]);
             const target = others.find(k => dir > 0 || dialState[k] >= DIAL_STEP);
-            if (!target) break;  // can't move further
+            if (!target) break;
             dialState[target] += dir * DIAL_STEP;
             remaining += dir * DIAL_STEP;
         }
-        renderDial();
+        repaint();
         scheduleDialSave();
     }
 
@@ -759,15 +628,18 @@
 
     function showLockedDialModal(key) {
         if (typeof MarsModal === 'undefined' || !MarsModal.show) return;
-        const phaseMap = { logistics: 'Phase 3 — Circuits', research: 'Phase 4 — Core', expeditions: 'Phase 5 — Sepolia Integration' };
-        const titleMap = { logistics: 'Logistics (locked)', research: 'Research (locked)', expeditions: 'Expeditions (locked)', exploration: 'Exploration — pinned at 100%' };
+        const titleMap = {
+            exploration: 'Exploration — pinned at 100%',
+            logistics:   'Logistics (locked)',
+            research:    'Research (locked)',
+            expeditions: 'Expeditions (locked)',
+        };
         const rowsHtml = DIAL_KEYS.map(k => {
-            const phase = k === 'exploration' ? 'Phase 1 — Built' : phaseMap[k];
             const active = (k === key) ? ' active' : '';
-            return `<div class="narog-locked-modal-row${active}">
+            return `<div class="nk-modal-row${active}">
                 <div style="flex:1;">
                     <strong>${k.charAt(0).toUpperCase() + k.slice(1)}</strong>
-                    <span style="color:var(--text-muted); font-size:11px; margin-left:6px;">${phase}</span>
+                    <span style="color:var(--text-muted); font-size:11px; margin-left:6px;">${DIAL_PHASES[k]}</span>
                     <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.5;">${DIAL_DESCRIPTIONS[k] || ''}</div>
                 </div>
             </div>`;
@@ -779,7 +651,7 @@
             title: titleMap[key] || 'Dial info',
             body: `
                 <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">${intro}</div>
-                <div class="narog-locked-modal-list">${rowsHtml}</div>
+                <div class="nk-modal-list">${rowsHtml}</div>
                 <div style="font-size:10px; color:var(--text-muted); margin-top:10px; text-align:center;">
                     Phase &amp; bonus formulas: TBD — Luke is finalizing the Depot upgrade matrix.
                 </div>
@@ -787,91 +659,51 @@
         });
     }
 
-    // Drag-to-rotate interaction. Compute the angle of the pointer from
-    // mouse position relative to knob center, clamped to [-135°, +135°].
-    function wireKnobDrag(card) {
-        const key = card.dataset.key;
-        const svg = card.querySelector('.robot-knob');
-        if (!svg) return;
-        let dragging = false;
-
-        function angleFromEvent(e) {
-            const rect = svg.getBoundingClientRect();
-            const cx = rect.left + rect.width / 2;
-            const cy = rect.top + rect.height / 2;
-            const point = (e.touches && e.touches[0]) ? e.touches[0] : e;
-            const dx = point.clientX - cx, dy = point.clientY - cy;
-            // 0° = up; clockwise positive
-            let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
-            // Clamp to knob's sweep range
-            if (deg < KNOB_MIN_ANGLE) deg = KNOB_MIN_ANGLE;
-            if (deg > KNOB_MAX_ANGLE) deg = KNOB_MAX_ANGLE;
-            return deg;
-        }
-
-        function onMove(e) {
-            if (!dragging) return;
-            e.preventDefault();
-            const deg = angleFromEvent(e);
-            const pct = (deg - KNOB_MIN_ANGLE) / (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE) * 100;
-            setDialValue(key, pct);
-        }
-        function onUp() {
-            if (!dragging) return;
-            dragging = false;
-            svg.classList.remove('dragging');
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('touchend', onUp);
-        }
-        function onDown(e) {
-            if (card.dataset.locked === 'true' || card.classList.contains('solo-pinned')) {
-                showLockedDialModal(key);
-                return;
-            }
-            e.preventDefault();
-            dragging = true;
-            svg.classList.add('dragging');
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-            document.addEventListener('touchmove', onMove, { passive: false });
-            document.addEventListener('touchend', onUp);
-            // Click-to-set even without drag
-            const deg = angleFromEvent(e);
-            const pct = (deg - KNOB_MIN_ANGLE) / (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE) * 100;
-            setDialValue(key, pct);
-        }
-
-        svg.addEventListener('mousedown', onDown);
-        svg.addEventListener('touchstart', onDown, { passive: false });
-    }
-
+    // Spawn a NarogKnob into each .nk-card slot using server-rendered config
+    // (data-key, data-locked, data-unlock-phase). The card already has its
+    // header + description from the template; we only inject the knob widget.
     function wireDial() {
         const dialEl = document.getElementById('robot-dial');
-        if (!dialEl) return;
+        if (!dialEl || typeof NarogKnob === 'undefined') return;
         dialState = readDialState();
         if (!dialState) return;
 
-        // Count unlocked dials. With ONLY ONE unlocked (Phase 1: just exploration),
-        // the dial is mechanically pinned at 100% — there's no other unlocked
-        // counterparty to absorb a delta. Mark that knob as "solo" so it gets
-        // a "locked at 100%" tooltip instead of feeling broken.
-        const unlocked = Array.from(dialEl.querySelectorAll('.robot-knob-card[data-locked="false"]'));
-        const isSolo = unlocked.length === 1;
+        const cards = Array.from(dialEl.querySelectorAll('.nk-card'));
+        const unlockedCount = cards.filter(c => c.dataset.locked !== 'true').length;
+        const isSolo = unlockedCount === 1;
 
-        dialEl.querySelectorAll('.robot-knob-card').forEach(card => {
-            const isCardLocked = card.dataset.locked === 'true';
-            if (isSolo && !isCardLocked) card.classList.add('solo-pinned');
-            wireKnobDrag(card);
-            if (isCardLocked || (isSolo && !isCardLocked)) {
+        cards.forEach(card => {
+            const key = card.dataset.key;
+            const slot = card.querySelector('.nk-slot');
+            if (!slot) return;
+            const cardLocked = card.dataset.locked === 'true';
+            const isThisSolo = isSolo && !cardLocked;
+            // Solo-pinned knob behaves as locked from the knob's POV (no drag),
+            // but visually stays full-color so it doesn't read as broken.
+            const knobLocked = cardLocked || isThisSolo;
+
+            knobInstances[key] = NarogKnob.create({
+                container: slot,
+                key,
+                value: dialState[key] || 0,
+                locked: knobLocked,
+                ariaLabel: `${key} role allocation`,
+                onChange: (newPct) => setDialValue(key, newPct),
+            });
+
+            if (isThisSolo) card.classList.add('is-solo');
+            if (cardLocked) card.classList.add('is-locked');
+
+            // Locked / solo cards: any click on the card opens the explainer modal
+            if (cardLocked || isThisSolo) {
                 card.addEventListener('click', (e) => {
-                    if (e.target.closest('.robot-knob')) return;
-                    showLockedDialModal(card.dataset.key);
+                    // The hidden range input swallows clicks too — so just open
+                    // the modal regardless of where on the card they clicked.
+                    showLockedDialModal(key);
                 });
             }
         });
-        renderDial();
+        repaint();
     }
 
     // ----- CINEMATIC (Step 6) -----------------------------------------------
