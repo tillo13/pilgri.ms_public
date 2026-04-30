@@ -231,12 +231,19 @@
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
             {% if rd.is_complete %}
-            <!-- Completed: still portrait (left) + video or "generating" placeholder (right).
-                 The robot-hero-awaiting-video ID is what triggers JS autoStartVideoGen()
-                 to fire a free Wan render. Only set it when this is genuinely a first-time
-                 build (cinematic_played=false). Post-recalibration captains have video_url=null
-                 too, but they should pay via the "Bring to Life" CTA — never auto-render. -->
-            <div class="robot-hero-pair" {% if not robot.video_url and not robot.cinematic_played %}id="robot-hero-awaiting-video"{% endif %}>
+            {# Stale-detection: video is "fresh" only when video_updated_at exists
+               AND it's >= image_updated_at. Otherwise the captain sees the
+               "Bring to Life" CTA. autoStartVideoGen still fires a free Wan
+               for true first-time captains (video_updated_at IS NULL). #}
+            {% set _video_fresh = robot.video_url
+                                  and robot.video_updated_at
+                                  and (not robot.image_updated_at
+                                       or robot.video_updated_at >= robot.image_updated_at) %}
+            {% set _video_first_time = not robot.video_updated_at %}
+            <!-- Completed: still portrait (left) + video / "generating" / "stale CTA" (right).
+                 The robot-hero-awaiting-video ID triggers autoStartVideoGen() to fire a free
+                 Wan render — only on genuine first-time builds (video_updated_at IS NULL). -->
+            <div class="robot-hero-pair" {% if _video_first_time %}id="robot-hero-awaiting-video"{% endif %}>
                 <div class="robot-hero-slot">
                     <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
                          alt="Narog" id="robot-hero-img"
@@ -247,7 +254,7 @@
                     <div class="text-xs mt-4" style="color: var(--text-muted);">Still portrait · click to expand</div>
                 </div>
                 <div class="robot-hero-slot">
-                    {% if robot.video_url %}
+                    {% if _video_fresh %}
                     <video src="{{ robot.video_url }}" id="robot-hero-video"
                            playsinline muted autoplay loop
                            onclick="showGolemVideoModal('{{ robot.video_url }}')"
@@ -260,19 +267,8 @@
                         ↻ Regenerate Video (dev)
                     </button>
                     {% endif %}
-                    {% elif robot.cinematic_played %}
-                    {# Recalibration mode: image was re-rolled, awakening doesn't match.
-                       Show CTA to pay for a fresh awakening render. #}
-                    <div class="robot-hero-video-cta" id="robot-bring-to-life-cta" style="cursor:pointer;">
-                        <img src="{{ icons.tornado_dust }}" alt="" style="width: 36px; height: 36px; opacity: 0.85; margin-bottom: 8px;">
-                        <div style="font-size: 13px; font-weight: 800; color: #ffc88a; letter-spacing: 0.04em; margin-bottom: 4px;">Bring Your Narog to Life</div>
-                        <div class="text-xs" style="color: var(--text-secondary); opacity: 0.85; line-height: 1.5; max-width: 200px;">
-                            Pay the scientist to render the awakening cinematic.
-                        </div>
-                        <div class="text-xs" style="color: #ffc88a; font-weight: 700; margin-top: 8px;" id="robot-bring-to-life-cost">…</div>
-                    </div>
-                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · awaiting render</div>
-                    {% else %}
+                    {% elif _video_first_time %}
+                    {# First-time: auto-render on page load via autoStartVideoGen #}
                     <div class="robot-hero-video-placeholder robot-hero-forging">
                         <img src="{{ icons.rare_sparkle }}" alt="" style="width: 36px; height: 36px; opacity: 0.8; margin-bottom: 8px;">
                         <div id="robot-video-loading" class="robot-video-loading">
@@ -281,6 +277,17 @@
                         </div>
                     </div>
                     <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video</div>
+                    {% else %}
+                    {# Stale: image is newer than video. Captain pays for a fresh Wan render. #}
+                    <div class="robot-hero-video-cta" id="robot-bring-to-life-cta" style="cursor:pointer;">
+                        <img src="{{ icons.tornado_dust }}" alt="" style="width: 36px; height: 36px; opacity: 0.85; margin-bottom: 8px;">
+                        <div style="font-size: 13px; font-weight: 800; color: #ffc88a; letter-spacing: 0.04em; margin-bottom: 4px;">Bring Your Narog to Life</div>
+                        <div class="text-xs" style="color: var(--text-secondary); opacity: 0.85; line-height: 1.5; max-width: 200px;">
+                            Your image changed — re-render the awakening to match.
+                        </div>
+                        <div class="text-xs" style="color: #ffc88a; font-weight: 700; margin-top: 8px;" id="robot-bring-to-life-cost">…</div>
+                    </div>
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · stale</div>
                     {% endif %}
                 </div>
             </div>

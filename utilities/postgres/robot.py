@@ -107,6 +107,15 @@ def ensure_robot_tables():
             ADD COLUMN IF NOT EXISTS reroll_image_count INTEGER NOT NULL DEFAULT 0,
             ADD COLUMN IF NOT EXISTS reroll_video_count INTEGER NOT NULL DEFAULT 0
         """)
+        # Stale-detection timestamps. video is "stale" when image_updated_at
+        # is newer than video_updated_at — UI hides the stale video and
+        # surfaces the "Bring to Life" CTA for a paid Wan re-render. Never
+        # null current_image_url / video_url; keep them for history.
+        cur.execute("""
+            ALTER TABLE pilgrim.robot
+            ADD COLUMN IF NOT EXISTS image_updated_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS video_updated_at TIMESTAMP
+        """)
 
 
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
@@ -516,6 +525,7 @@ def log_stage(user_id: int, stage_idx: int, source_manifest: Dict[str, Any],
                                    'tx_hash', %s::text
                                )),
                 current_image_url = COALESCE(%s, current_image_url),
+                image_updated_at = CASE WHEN %s IS NOT NULL THEN NOW() ELSE image_updated_at END,
                 visual_stage = GREATEST(visual_stage, %s::int),
                 stage_started_at = NOW(),
                 stage_ready_at = NOW() + (%s * INTERVAL '1 second'),
@@ -524,7 +534,7 @@ def log_stage(user_id: int, stage_idx: int, source_manifest: Dict[str, Any],
                 updated_at = NOW()
             WHERE user_id = %s
             RETURNING *
-        """, (stage_idx, image_url, tx_hash, image_url, stage_idx,
+        """, (stage_idx, image_url, tx_hash, image_url, image_url, stage_idx,
               STAGE_DURATION_SECONDS, stage_idx, stage_idx, user_id))
         robot_row = cur.fetchone()
         return {'log': log_row, 'robot': dict(robot_row) if robot_row else None}
@@ -1051,7 +1061,7 @@ def start_robot_awakening_video(user_id: int, flux_app_config: dict, flux) -> tu
             flux_app_config[status_key].update({'url': video_url, 'generating': False})
             with db_cursor(commit=True) as cur:
                 cur.execute(
-                    "UPDATE pilgrim.robot SET video_url = %s, updated_at = NOW() WHERE user_id = %s",
+                    "UPDATE pilgrim.robot SET video_url = %s, video_updated_at = NOW(), updated_at = NOW() WHERE user_id = %s",
                     (video_url, user_id))
         except Exception as e:
             logger.error(f"Golem video gen failed: {e}")

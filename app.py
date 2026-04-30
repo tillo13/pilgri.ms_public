@@ -575,9 +575,13 @@ def api_robot_reroll_image():
         return jsonify({'success': False, 'error': 'No source manifest found.'}), 409
 
     # Reset visual state so the existing pipeline re-renders all stages.
-    # ALSO clear video_url — the old awakening was animated from the OLD
-    # image and won't match the new one. Captain pays separately for a fresh
-    # awakening render once the new image lands ("Bring your Narog to Life").
+    # We DO NOT null video_url — keep it for history. Stale-detection in the
+    # template compares image_updated_at vs video_updated_at: if the image is
+    # newer, the template hides the (now-mismatched) video and shows the
+    # "Bring to Life" CTA so the captain pays for a fresh Wan render.
+    # image_updated_at is set when the Flux render COMPLETES (in robot_visuals),
+    # but we set it tentatively here too so stale-detection kicks in immediately
+    # — captain shouldn't see the old video while the new image is still rendering.
     from utilities.postgres.core import db_cursor
     with db_cursor(commit=True) as cur:
         cur.execute("""
@@ -589,7 +593,7 @@ def api_robot_reroll_image():
                 stage_ready_at = NOW(),
                 build_error = NULL,
                 cinematic_played = TRUE,
-                video_url = NULL,
+                image_updated_at = NOW(),
                 updated_at = NOW()
             WHERE user_id = %s
         """, (g.user_id,))
@@ -622,7 +626,8 @@ def api_robot_reroll_video():
         return jsonify({'success': False, 'error': e.message}), e.status
 
     # Clear video_url so start_robot_awakening_video regenerates instead of
-    # short-circuiting on the existing URL.
+    # short-circuiting on the existing URL. video_updated_at gets re-set when
+    # the new video lands (in the worker's UPDATE).
     with db_cursor(commit=True) as cur:
         cur.execute("UPDATE pilgrim.robot SET video_url = NULL, updated_at = NOW() WHERE user_id = %s", (g.user_id,))
     payload, status = start_robot_awakening_video(g.user_id, app.config, flux)
