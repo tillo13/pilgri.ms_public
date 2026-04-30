@@ -231,8 +231,12 @@
         </div>
         <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
             {% if rd.is_complete %}
-            <!-- Completed: still portrait (left) + video or "generating" placeholder (right) -->
-            <div class="robot-hero-pair" {% if not robot.video_url %}id="robot-hero-awaiting-video"{% endif %}>
+            <!-- Completed: still portrait (left) + video or "generating" placeholder (right).
+                 The robot-hero-awaiting-video ID is what triggers JS autoStartVideoGen()
+                 to fire a free Wan render. Only set it when this is genuinely a first-time
+                 build (cinematic_played=false). Post-recalibration captains have video_url=null
+                 too, but they should pay via the "Bring to Life" CTA — never auto-render. -->
+            <div class="robot-hero-pair" {% if not robot.video_url and not robot.cinematic_played %}id="robot-hero-awaiting-video"{% endif %}>
                 <div class="robot-hero-slot">
                     <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
                          alt="Narog" id="robot-hero-img"
