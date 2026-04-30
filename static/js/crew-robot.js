@@ -329,7 +329,7 @@
             : '';
         const txBlock = (stageCtx && stageCtx.tx_hash) ? ''
             + '<div><div class="text-xs" style="color:var(--text-muted)">LEDGER TX</div>'
-            + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all">' + stageCtx.tx_hash + '</div></div>'
+            + '<div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:-0.01em;word-break:break-all;line-height:1.4">' + stageCtx.tx_hash + '</div></div>'
             : '';
         const footer = stageCtx
             ? '<div class="text-xs" style="color:var(--text-muted);font-style:italic">This discovery has been consumed and fused into your Narog — it will not appear in your inventory again. Click the item image for a full-screen view.</div>'
