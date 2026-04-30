@@ -1085,18 +1085,8 @@
     // ----- RECALIBRATION (re-pick / re-roll image / re-roll video / lock-in) ----
     // 2026-04-30: post-canonical Narog adjustments. Test-mode pricing (1% of
     // production) lets Andy + Luke iterate cheaply before we open this for
-    // real captains. Each action: confirm modal → POST → re-fetch state →
-    // repaint buttons.
-    const RECAL_LABELS = {
-        repick: { name: 'Pull New Components',
-                  body: 'Your scientist will swap your 5 current materials for 5 fresh ones from your inventory. Same look and awakening — re-render those separately if you want.' },
-        reroll_image: { name: 'Reimagine the Look',
-                        body: 'Same components, new silhouette. The scientist will redraft the build sequence and a new image will render over the next ~30 seconds.' },
-        reroll_video: { name: 'Re-record the Awakening',
-                        body: 'Same image, new awakening sequence. The scientist will re-render the cinematic — you\'ll see a fresh take in ~60 seconds.' },
-        lock_in: { name: 'Lock In Your Narog',
-                   body: 'Make your Narog permanent. After lock-in, you can still recalibrate, but each adjustment costs more energy each time. Are you ready?' },
-    };
+    // real captains. Click = fire (no confirmation modal — cost + counter
+    // already visible on the button itself).
     let recalState = null;
     let recalCountdownTimer = null;
 
@@ -1156,21 +1146,129 @@
         if (!recalState || recalState.window_seconds_remaining == null) return;
         const el = document.getElementById('narog-recal-countdown');
         if (!el) return;
-        // tick down locally between server polls
-        recalState.window_seconds_remaining = Math.max(0, recalState.window_seconds_remaining - 1);
+        // Tick down locally (integer seconds) between server polls
+        recalState.window_seconds_remaining = Math.max(0, Math.floor(recalState.window_seconds_remaining) - 1);
         const s = recalState.window_seconds_remaining;
         const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
         el.textContent = `${h}h ${m}m ${sec}s`;
         if (s <= 0) loadRecalState();  // window expired — re-sync server state
     }
 
-    async function postRecalAction(action, btn) {
-        const a = recalState && recalState.actions[action];
-        const cost = (action === 'lock_in') ? null : (a && a.cost);
-        const meta = RECAL_LABELS[action];
-        const confirm = await confirmRecal(action, meta, cost);
-        if (!confirm) return;
+    // Build a rich "review everything" modal for Lock In — captain sees the
+    // full Narog state (image, components, stats, allocation, video) before
+    // committing. The 3 reroll actions DON'T need this — their costs are on
+    // the button and they're cheap to undo by re-rolling again.
+    async function showLockInReviewModal() {
+        if (typeof MarsModal === 'undefined' || !MarsModal.show) return true;
+        let robot = null;
+        try {
+            const r = await fetch('/api/robot/status', { credentials: 'same-origin' });
+            const j = await r.json();
+            robot = j && j.data && j.data.robot;
+        } catch (e) {}
+        if (!robot) return false;
 
+        const sources = Array.isArray(robot.stage_sources) ? robot.stage_sources : [];
+        const dial = robot.dial || {};
+        const stats = {
+            exploration: robot.stat_exploration ?? 5,
+            logistics:   robot.stat_logistics   ?? 5,
+            research:    robot.stat_research    ?? 5,
+            expeditions: robot.stat_expeditions ?? 5,
+        };
+        const totalAllocation = ['exploration','logistics','research','expeditions']
+            .reduce((s, k) => s + (parseInt(dial[k], 10) || 0), 0);
+        const idle = Math.max(0, 100 - totalAllocation);
+
+        const rarityBadge = (rarity) => {
+            const r = (rarity || 'common').toLowerCase();
+            const colors = { legendary:'#f59e0b', rare:'#3b82f6', uncommon:'#22c55e', common:'#94a3b8' };
+            return `<span style="display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; background:${colors[r] || '#94a3b8'}33; color:${colors[r] || '#94a3b8'}; border:1px solid ${colors[r] || '#94a3b8'}66;">${r}</span>`;
+        };
+
+        const heroImg = robot.current_image_url
+            ? `<img src="${robot.current_image_url}" alt="" style="width:100%; max-width:280px; border-radius:10px; border:1px solid rgba(255,200,140,0.3); display:block; margin:0 auto;"/>`
+            : '<div style="font-size:11px; color:var(--text-muted); text-align:center;">No image yet — re-roll image first to lock in with one.</div>';
+
+        const sourcesList = sources.length
+            ? sources.map(s => `
+                <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid var(--border-default);">
+                    ${s.item_image_url ? `<img src="${s.item_image_url}" alt="" style="width:32px; height:32px; border-radius:4px; flex-shrink:0;"/>` : ''}
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:12px; font-weight:700; color:var(--text-primary);">${s.item_name || 'Unknown'}</div>
+                        <div style="font-size:10px; color:var(--text-muted);">${s.landmark_name || '—'}</div>
+                    </div>
+                    ${rarityBadge(s.rarity)}
+                </div>
+            `).join('')
+            : '<div style="font-size:11px; color:var(--text-muted);">No components.</div>';
+
+        const allocRow = (k, label) => {
+            const pct = parseInt(dial[k], 10) || 0;
+            const stat = stats[k];
+            const active = (stat * pct / 100).toFixed(1);
+            return `<div style="display:flex; justify-content:space-between; font-size:11px; padding:3px 0;">
+                <span style="color:var(--text-secondary);">${label}</span>
+                <span style="color:var(--text-primary); font-variant-numeric:tabular-nums;">${pct}% of ${stat} = <strong style="color:#ffc88a;">${active}</strong></span>
+            </div>`;
+        };
+
+        const videoLine = robot.video_url
+            ? '<span style="color:#22c55e;">✓ rendered</span>'
+            : '<span style="color:#fca5a5;">✗ not yet rendered (re-roll Awakening before lock-in)</span>';
+
+        return new Promise((resolve) => {
+            MarsModal.show({
+                title: 'Lock In Your Narog?',
+                body: `
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">Review everything below — once locked in, the recalibration window closes (you can re-open it later by paying any recalibration cost).</div>
+
+                    <div style="margin-bottom:14px;">${heroImg}</div>
+
+                    <div style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-sepolia); margin:14px 0 6px;">Name</div>
+                    <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:14px;">${robot.name || '(unnamed)'}</div>
+
+                    <div style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-sepolia); margin:14px 0 6px;">Components</div>
+                    <div style="display:flex; flex-direction:column; gap:6px;">${sourcesList}</div>
+
+                    <div style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-sepolia); margin:14px 0 6px;">Stats &amp; Allocation</div>
+                    <div style="background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid var(--border-default); padding:8px 12px;">
+                        ${allocRow('exploration', 'Exploration')}
+                        ${allocRow('logistics',   'Logistics')}
+                        ${allocRow('research',    'Research')}
+                        ${allocRow('expeditions', 'Expeditions')}
+                        <div style="font-size:10px; color:var(--text-muted); border-top:1px dashed rgba(255,200,140,0.2); margin-top:6px; padding-top:6px;">Active ${totalAllocation}% · Idle ${idle}%</div>
+                    </div>
+
+                    <div style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-sepolia); margin:14px 0 6px;">Awakening Video</div>
+                    <div style="font-size:12px; padding:8px 10px; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid var(--border-default);">${videoLine}</div>
+
+                    <div style="border:1px solid rgba(168,85,247,0.4); background:rgba(168,85,247,0.08); border-radius:8px; padding:10px 14px; color:#d8b4fe; font-size:12px; margin-top:14px;">
+                        After lock-in, you can still recalibrate — but every adjustment costs more energy each time.
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+                        <button id="recal-cancel" style="background:var(--bg-secondary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:10px 18px; font-weight:700; cursor:pointer;">Cancel</button>
+                        <button id="recal-confirm" style="background:linear-gradient(135deg, #a855f7, #ec4899); color:white; border:none; border-radius:8px; padding:10px 22px; font-weight:800; cursor:pointer;">Lock In</button>
+                    </div>
+                `,
+            });
+            setTimeout(() => {
+                const cancel = document.getElementById('recal-cancel');
+                const confirm = document.getElementById('recal-confirm');
+                if (cancel) cancel.onclick = () => { MarsModal.hide(); resolve(false); };
+                if (confirm) confirm.onclick = () => { MarsModal.hide(); resolve(true); };
+            }, 0);
+        });
+    }
+
+    async function postRecalAction(action, btn) {
+        // Lock-in needs a final review modal. The 3 reroll actions fire
+        // immediately — their costs are on the button and re-rolls are cheap.
+        if (action === 'lock_in') {
+            const ok = await showLockInReviewModal();
+            if (!ok) return;
+        }
         btn.classList.add('is-busy');
         const endpoint = {
             repick:       '/api/robot/repick',
@@ -1212,39 +1310,6 @@
         } finally {
             btn.classList.remove('is-busy');
         }
-    }
-
-    function confirmRecal(action, meta, cost) {
-        return new Promise((resolve) => {
-            if (typeof MarsModal === 'undefined' || !MarsModal.show) { resolve(true); return; }
-            const costLine = cost
-                ? `<div style="background:rgba(255,200,140,0.08); border:1px solid rgba(255,200,140,0.3); border-radius:8px; padding:10px 14px; font-size:13px; margin:12px 0; color:#ffc88a;"><strong>Cost: ${fmtCost(cost)}</strong></div>`
-                : '';
-            const tone = (action === 'lock_in')
-                ? 'border:1px solid rgba(168,85,247,0.4); background:rgba(168,85,247,0.08); border-radius:8px; padding:10px 14px; color:#d8b4fe; font-size:12px; margin-top:10px;'
-                : '';
-            const lockNote = (action === 'lock_in')
-                ? '<div style="' + tone + '">After lock-in, the recalibration window closes. Future adjustments still work — the costs just keep climbing.</div>'
-                : '';
-            MarsModal.show({
-                title: meta.name + '?',
-                body: `
-                    <div style="font-size:13px; color:var(--text-secondary); line-height:1.7;">${meta.body}</div>
-                    ${costLine}
-                    ${lockNote}
-                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
-                        <button id="recal-cancel" style="background:var(--bg-secondary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:10px 18px; font-weight:700; cursor:pointer;">Cancel</button>
-                        <button id="recal-confirm" style="background:var(--color-sepolia); color:white; border:none; border-radius:8px; padding:10px 22px; font-weight:800; cursor:pointer;">${action === 'lock_in' ? 'Lock In' : 'Confirm'}</button>
-                    </div>
-                `,
-            });
-            setTimeout(() => {
-                const cancel = document.getElementById('recal-cancel');
-                const confirm = document.getElementById('recal-confirm');
-                if (cancel) cancel.onclick = () => { MarsModal.hide(); resolve(false); };
-                if (confirm) confirm.onclick = () => { MarsModal.hide(); resolve(true); };
-            }, 0);
-        });
     }
 
     function wireRecalibration() {

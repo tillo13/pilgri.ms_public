@@ -776,7 +776,8 @@ def charge_reforge_action(user_id: int, action: str) -> Dict[str, Any]:
     """
     from config import (NAROG_REFORGE_LIFETIME_CAPS,
                         narog_reforge_cost)
-    from utilities.sepolia_utils import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance, display_to_eth
+    from utilities.postgres.wallets import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance
+    from utilities.depot_utils import display_to_eth
     from utilities.postgres.users import spend_research_points_for_tech, get_user_research_data
 
     col = COUNTER_COL_BY_ACTION.get(action)
