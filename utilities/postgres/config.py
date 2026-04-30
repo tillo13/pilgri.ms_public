@@ -47,11 +47,14 @@ STAGE_PLACEHOLDER_IMAGES = {
     'finish':  'https://storage.googleapis.com/galactica-pilgrim-assets/ui/icons/robot_stage_finish.png',
 }
 
-# Default dial split (must sum to 100). Captains can rebalance in 5% increments.
+# 2026-04-30: Dial slots align to Luke's brainstorm §4 spec.
+# Phase 1 (robot built) → only `exploration` is interactive.
+# Phase 3/4/5 unlock logistics/research/expeditions respectively.
+# A fresh Narog defaults to 100% exploration since that's the only unlocked slot.
 DEFAULT_DIAL = {
-    'mining': 25,
-    'exploration': 25,
-    'science': 25,
-    'combat': 25,
+    'exploration': 100,
+    'logistics': 0,
+    'research': 0,
+    'expeditions': 0,
 }
-DIAL_KEYS = ['mining', 'exploration', 'science', 'combat']
+DIAL_KEYS = ['exploration', 'logistics', 'research', 'expeditions']

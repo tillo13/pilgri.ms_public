@@ -49,7 +49,7 @@ def ensure_robot_tables():
                 current_image_url TEXT,
                 stage_images JSONB NOT NULL DEFAULT '[]'::jsonb,
                 stage_sources JSONB NOT NULL DEFAULT '[]'::jsonb,
-                dial JSONB NOT NULL DEFAULT '{"mining":25,"exploration":25,"science":25,"combat":25}'::jsonb,
+                dial JSONB NOT NULL DEFAULT '{"exploration":100,"logistics":0,"research":0,"expeditions":0}'::jsonb,
                 started_at TIMESTAMP,
                 stage_started_at TIMESTAMP,
                 stage_ready_at TIMESTAMP,
@@ -86,54 +86,39 @@ def ensure_robot_tables():
             ALTER TABLE pilgrim.robot
             ADD COLUMN IF NOT EXISTS build_error TEXT
         """)
+        # 2026-04-30: 4 base stats per Narog. Every Narog starts at 5/100 in
+        # all four; Depot/Robotics-Lab upgrades will raise these (formula TBD,
+        # tracked in P1 bug filed for Luke). The dial is the % of *this* base
+        # the captain wants applied to each task slot.
+        for col in ('stat_exploration', 'stat_logistics', 'stat_research', 'stat_expeditions'):
+            cur.execute(f"""
+                ALTER TABLE pilgrim.robot
+                ADD COLUMN IF NOT EXISTS {col} INTEGER NOT NULL DEFAULT 5
+            """)
 
 
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
-CRAFTSMANSHIP_MAX = 150  # 5 legendaries = theoretical ceiling
+CRAFTSMANSHIP_MAX = 150  # 2 leg + 2 rare + 1 uncommon = 30+30+10+10+3 = 83 typical
 
-# Keyword → stat mapping. An item_name that matches multiple keywords splits
-# its weight across all matched stats. No match → splits evenly across all 4.
-STAT_KEYWORDS = {
-    'science':     ['crystal', 'quantum', 'core', 'reactor', 'lattice', 'signal'],
-    'mining':      ['obelisk', 'fragment', 'shard', 'ore', 'stone', 'pillar', 'regolith'],
-    'exploration': ['optic', 'lens', 'beacon', 'map', 'compass', 'eye', 'viking'],
-    'combat':      ['sentinel', 'guardian', 'blade', 'armor', 'shell', 'spike', 'claw'],
+# 2026-04-30: dial slots align to Luke's brainstorm §4 spec.
+# Phase-gated: only `exploration` is interactive at Phase 1. logistics/research/
+# expeditions are visible-locked until later upgrades unlock them.
+STAT_KEYS = ['exploration', 'logistics', 'research', 'expeditions']
+STAT_BASE = 5      # every Narog starts at 5/100 per stat
+STAT_MAX = 100
+
+# Each slot's unlock phase. Phase 1 == "robot is built". Phase 3/4/5 are
+# Robotics-Lab upgrade tiers (TBD — see P1 bug for Luke).
+DIAL_UNLOCK_PHASE = {
+    'exploration': 1,
+    'logistics':   3,
+    'research':    4,
+    'expeditions': 5,
 }
-STAT_KEYS = ['combat', 'mining', 'science', 'exploration']
-
-
-def _item_stat_bias(item_name: str) -> Dict[str, float]:
-    """Return unit-weight distribution across STAT_KEYS for an item name."""
-    name = (item_name or '').lower()
-    matched = [k for k, kws in STAT_KEYWORDS.items() if any(kw in name for kw in kws)]
-    if not matched:
-        return {k: 0.25 for k in STAT_KEYS}
-    share = 1.0 / len(matched)
-    return {k: (share if k in matched else 0.0) for k in STAT_KEYS}
 
 
 def compute_craftsmanship_score(sources: List[Dict[str, Any]]) -> int:
     return int(sum(RARITY_WEIGHTS.get((s.get('rarity') or 'common').lower(), 1) for s in (sources or [])))
-
-
-def compute_stat_profile(sources: List[Dict[str, Any]]) -> Dict[str, int]:
-    """Return integer-percent profile across STAT_KEYS, summing to 100."""
-    raw = {k: 0.0 for k in STAT_KEYS}
-    for s in (sources or []):
-        w = RARITY_WEIGHTS.get((s.get('rarity') or 'common').lower(), 1)
-        bias = _item_stat_bias(s.get('item_name', ''))
-        for k in STAT_KEYS:
-            raw[k] += w * bias[k]
-    total = sum(raw.values()) or 1.0
-    pct = {k: raw[k] / total * 100 for k in STAT_KEYS}
-    # Round to ints, fix rounding drift so sum == 100
-    rounded = {k: int(round(v)) for k, v in pct.items()}
-    drift = 100 - sum(rounded.values())
-    if drift != 0:
-        # Adjust the stat with the largest fractional remainder
-        frac = sorted(STAT_KEYS, key=lambda k: (pct[k] - rounded[k]), reverse=(drift > 0))
-        rounded[frac[0]] += drift
-    return rounded
 
 
 # ============================================================================
@@ -189,12 +174,18 @@ def _resolve_coords(coords_jsonb, dest_lat, dest_lon):
     return lat, lon
 
 
-ROBOT_GATE_MIN_LEGENDARY = 1
+# 2026-04-30: Locked recipe — every Narog is forged from EXACTLY this mix:
+#   2 legendary + 2 rare + 1 (common-or-uncommon) = 5 items.
+# Forge no longer derives stats from items; every Narog starts at flat 5/100
+# in all 4 stats. Item rarities still drive craftsmanship_score (cosmetic) and
+# the visual lore of which discoveries built the Narog.
+ROBOT_GATE_MIN_LEGENDARY = 2
 ROBOT_GATE_MIN_RARE = 2
-ROBOT_BUILD_MAX_LEGENDARY = 2  # 2026-04-30: dropped from 3 → keep 1+ slot for non-leg items
-ROBOT_BUILD_MAX_RARE = 4
+ROBOT_GATE_MIN_LOWTIER = 1     # at least one common OR uncommon
+ROBOT_BUILD_LEGENDARY = 2
+ROBOT_BUILD_RARE = 2
+ROBOT_BUILD_LOWTIER = 1        # the 5th slot — 1 common-or-uncommon
 ROBOT_BUILD_PER_NAME_CAP = 3   # max 3 copies of any one item_name in a Narog
-                                # (e.g. Andy with 53 Viking Fragments caps at 3)
 ROBOT_BUILD_TOTAL_ITEMS = 5
 
 
@@ -311,35 +302,36 @@ def check_robot_gate(user_id: int) -> Dict[str, Any]:
     inv = _load_claimed_inventory(user_id)
     n_leg = len(inv['legendary'])
     n_rare = len(inv['rare'])
+    n_lowtier = len(inv['common']) + len(inv['uncommon'])
     return {
-        'met': n_leg >= ROBOT_GATE_MIN_LEGENDARY and n_rare >= ROBOT_GATE_MIN_RARE,
+        'met': (n_leg >= ROBOT_GATE_MIN_LEGENDARY
+                and n_rare >= ROBOT_GATE_MIN_RARE
+                and n_lowtier >= ROBOT_GATE_MIN_LOWTIER),
         'legendary_count': n_leg,
         'rare_count': n_rare,
+        'lowtier_count': n_lowtier,
         'min_legendary': ROBOT_GATE_MIN_LEGENDARY,
         'min_rare': ROBOT_GATE_MIN_RARE,
+        'min_lowtier': ROBOT_GATE_MIN_LOWTIER,
     }
 
 
 def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
-    """Pick 5 source manifests for a Narog build — 100% from real claimed inventory.
+    """Pick 5 source manifests for a Narog build — locked recipe.
 
-    Composition rules (all enforced):
-      • 1-2 legendaries (random, MAX_LEGENDARY cap, capped by inventory)
-      • Up to MAX_RARE (4) rares
-      • Max PER_NAME_CAP (3) copies of any one item_name across the whole
-        manifest. So a captain with 53 Viking Fragments tops out at 3
-        Vikings — the remaining 2 slots fall through to other rarities.
-      • Fill remaining slots with rare → uncommon → common in that priority
-        order. Per-name cap still applies inside each tier (shared counter).
-      • If everything is exhausted (vanishingly rare given the gate check
-        for ≥5 real items), use any spare items past their tier cap. NEVER
-        fabricates synthetic items.
+    Locked composition (2026-04-30):
+      • EXACTLY 2 legendary
+      • EXACTLY 2 rare
+      • EXACTLY 1 (common-or-uncommon) — the 5th slot, biased toward
+        uncommon if available, falls back to common.
+      • Per-name cap: max 3 copies of any one item_name (not relevant
+        with this recipe but kept for safety).
 
     Final list is shuffled so the same inputs produce a different stage→item
     mapping each roll.
 
-    Raises RobotGateError if the gate isn't met or the captain has < 5 real
-    items. Caller should surface the message verbatim to the captain.
+    Raises RobotGateError if the captain doesn't have ≥2 legendary, ≥2 rare,
+    and ≥1 (common-or-uncommon). Caller should surface the message verbatim.
     """
     import random
     from collections import Counter
@@ -348,74 +340,31 @@ def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
     n_rare = len(inv['rare'])
     n_unc = len(inv['uncommon'])
     n_com = len(inv['common'])
-    n_total = n_leg + n_rare + n_unc + n_com
 
-    if n_leg < ROBOT_GATE_MIN_LEGENDARY or n_rare < ROBOT_GATE_MIN_RARE:
+    if n_leg < ROBOT_BUILD_LEGENDARY or n_rare < ROBOT_BUILD_RARE or (n_unc + n_com) < ROBOT_BUILD_LOWTIER:
         raise RobotGateError(
-            f"Narog construction requires at least {ROBOT_GATE_MIN_LEGENDARY} "
-            f"legendary and {ROBOT_GATE_MIN_RARE} rare discoveries. "
-            f"You have {n_leg} legendary and {n_rare} rare."
-        )
-    if n_total < ROBOT_BUILD_TOTAL_ITEMS:
-        raise RobotGateError(
-            f"Narog construction requires at least {ROBOT_BUILD_TOTAL_ITEMS} "
-            f"claimed discoveries total. You have {n_total}."
+            f"Narog construction requires {ROBOT_BUILD_LEGENDARY} legendary + "
+            f"{ROBOT_BUILD_RARE} rare + {ROBOT_BUILD_LOWTIER} common-or-uncommon. "
+            f"You have {n_leg} legendary, {n_rare} rare, "
+            f"{n_unc + n_com} common-or-uncommon."
         )
 
-    # Shared name-counter threaded through every tier pick so the per-name cap
-    # is enforced GLOBALLY across the manifest (not per tier).
     name_counts: Counter = Counter()
 
-    # 1) Legendaries (1-2 by default, MAX_LEGENDARY caps it)
-    n_legendary = random.randint(
-        ROBOT_GATE_MIN_LEGENDARY,
-        min(ROBOT_BUILD_MAX_LEGENDARY, n_leg),
-    )
     chosen: List[Dict[str, Any]] = list(_pick_with_diversity(
-        inv['legendary'], n_legendary,
+        inv['legendary'], ROBOT_BUILD_LEGENDARY,
         per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
     ))
-
-    # 2) Rare next (cap MAX_RARE OR remaining slots, whichever is smaller)
-    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
-    n_rare_pick = min(ROBOT_BUILD_MAX_RARE, n_rare, remaining)
     chosen.extend(_pick_with_diversity(
-        inv['rare'], n_rare_pick,
+        inv['rare'], ROBOT_BUILD_RARE,
         per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
     ))
-
-    # 3) Fall through: uncommon, then common
-    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
-    if remaining > 0 and n_unc:
-        chosen.extend(_pick_with_diversity(
-            inv['uncommon'], min(remaining, n_unc),
-            per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
-        ))
-    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
-    if remaining > 0 and n_com:
-        chosen.extend(_pick_with_diversity(
-            inv['common'], min(remaining, n_com),
-            per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
-        ))
-
-    # 4) Last resort: per-name cap stopped the picker but captain still short
-    #    (e.g. Andy with only 2 item-name types in inventory: 1 leg roll + 3
-    #    Vikings = 4, needs 1 more). Pick from the spare pool but PREFER
-    #    items whose name is least represented so we don't end up with 4
-    #    Vikings — instead we'd add a 2nd Crystal Sentinel (bypassing the
-    #    legendary cap rather than the per-name cap, since "max 3 of one
-    #    name" is the harder UX rule).
-    remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
-    if remaining > 0:
-        used_ids = {c.get('discovery_id') for c in chosen if c.get('discovery_id') is not None}
-        spare = [
-            it for it in (inv['legendary'] + inv['rare'] + inv['uncommon'] + inv['common'])
-            if it['discovery_id'] not in used_ids
-        ]
-        random.shuffle(spare)
-        # Stable sort by current name count → least-represented first
-        spare.sort(key=lambda it: name_counts.get(it['item_name'], 0))
-        chosen.extend(spare[:remaining])
+    # 5th slot: prefer uncommon, fall through to common.
+    lowtier_pool = inv['uncommon'] if n_unc else inv['common']
+    chosen.extend(_pick_with_diversity(
+        lowtier_pool, ROBOT_BUILD_LOWTIER,
+        per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
+    ))
 
     random.shuffle(chosen)
     return chosen[:ROBOT_BUILD_TOTAL_ITEMS]

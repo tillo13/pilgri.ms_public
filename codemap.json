@@ -662,6 +662,16 @@
       "main"
     ]
   },
+  "tools/retrofit_narog_stats.py": {
+    "description": "One-shot retrofit for the Narog dial/stats redesign (2026-04-30).",
+    "exports": [
+      "add_stat_columns",
+      "fetch_full_discovery — Pull the full row needed to build a stage_sources entry for a given eid.",
+      "do_swaps",
+      "reset_dial_for_others — If any other captain ever had a robot built, reset their dial too.",
+      "verify"
+    ]
+  },
   "tools/seed_signal_radii.py": {
     "description": "Seed variable unlock_radius_km per Origin Site — Signal Phase 2.1.",
     "exports": [
@@ -2014,19 +2024,19 @@
     "exports": [
       "ensure_robot_tables — Create robot tables if they don't exist. Idempotent + cached.",
       "compute_craftsmanship_score",
-      "compute_stat_profile — Return integer-percent profile across STAT_KEYS, summing to 100.",
       "get_robot — Return the captain's robot row, or None if they haven't started one.",
       "get_stage_log — Return all logged stages for a captain in order.",
       "class RobotGateError — Captain doesn't have the minimum components to start a Narog build.",
       "check_robot_gate — Inventory summary + gate-met flag. Used by the preview endpoint and the UI",
-      "pick_stage_sources — Pick 5 source manifests for a Narog build — 100% from real claimed inventory.",
+      "pick_stage_sources — Pick 5 source manifests for a Narog build — locked recipe.",
       "start_robot_build — Initialize a robot build with the 5 pre-picked source manifests.",
       "log_stage — Append a completed stage to the log AND advance the robot row.",
       "broadcast_stage_async — Fire-and-forget Sepolia broadcast for one narog stage.",
       "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
       "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
-      "save_name_suggestions — Store pre-generated golem name suggestions in the robot row."
+      "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
+      "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image."
     ]
   },
   "utilities/postgres/shop.py": {
@@ -3402,7 +3412,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3415,7 +3425,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3480,7 +3490,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

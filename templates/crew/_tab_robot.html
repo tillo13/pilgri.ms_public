@@ -102,32 +102,33 @@
             </div>
         </div>
 
-        <!-- Narog profile: 4 dial stats, each roll creates a different shape -->
+        <!-- Narog base stats: every Narog starts at 5/100 across all 4. Depot/Lab
+             upgrades raise these (formula TBD — see P1 bug). -->
         <div class="robot-profile mb-16" id="robot-profile">
-            <div class="robot-profile-label">NAROG PROFILE — this combination will lean:</div>
+            <div class="robot-profile-label">NAROG STARTING STATS — every robot begins here:</div>
             <div class="robot-profile-rows">
-                <div class="robot-profile-row" data-stat="combat">
-                    <div class="robot-profile-name"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Combat</div>
-                    <div class="robot-profile-bar"><div class="robot-profile-fill combat"></div></div>
-                    <div class="robot-profile-pct">—</div>
-                </div>
-                <div class="robot-profile-row" data-stat="mining">
-                    <div class="robot-profile-name"><img src="{{ icons.pickaxe_mining }}" alt="" class="inline-icon-sm"> Mining</div>
-                    <div class="robot-profile-bar"><div class="robot-profile-fill mining"></div></div>
-                    <div class="robot-profile-pct">—</div>
-                </div>
-                <div class="robot-profile-row" data-stat="science">
-                    <div class="robot-profile-name"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Science</div>
-                    <div class="robot-profile-bar"><div class="robot-profile-fill science"></div></div>
-                    <div class="robot-profile-pct">—</div>
-                </div>
                 <div class="robot-profile-row" data-stat="exploration">
                     <div class="robot-profile-name"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration</div>
-                    <div class="robot-profile-bar"><div class="robot-profile-fill exploration"></div></div>
-                    <div class="robot-profile-pct">—</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill exploration" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+                <div class="robot-profile-row" data-stat="logistics">
+                    <div class="robot-profile-name"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Logistics</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill logistics" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+                <div class="robot-profile-row" data-stat="research">
+                    <div class="robot-profile-name"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Research</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill research" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+                <div class="robot-profile-row" data-stat="expeditions">
+                    <div class="robot-profile-name"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Expeditions</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill expeditions" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
                 </div>
             </div>
-            <div class="robot-profile-hint">Re-roll to shape a different Narog. Every combination leans somewhere.</div>
+            <div class="robot-profile-hint">Stats raise as you upgrade Depot &amp; Robotics Lab buildings.</div>
         </div>
 
         <!-- 5 stage previews — JS replaces with real picks from /api/robot/preview -->
@@ -424,53 +425,122 @@
     </div>
 </div>
 
-<!-- Role Dial — 4 categories, must sum to 100, mod-5 increments -->
+<!-- Narog 4-stat panel (mirrors Captain's stat block) -->
+<div class="dashboard-card p-20 mb-16">
+    <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Narog Stats
+    </div>
+    <div class="text-xs mb-12" style="color: var(--text-secondary); opacity: 0.7;">
+        Every Narog starts at 5/100 in all four stats. Upgrade the Depot &amp; Robotics Lab to raise these caps — the dial below applies a % of these stats to each task.
+    </div>
+    <div class="narog-stat-grid">
+        <div class="narog-stat-row" data-stat="exploration">
+            <div class="narog-stat-name"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration</div>
+            <div class="narog-stat-bar"><div class="narog-stat-fill exploration" style="width:{{ robot.stat_exploration | default(5) }}%"></div></div>
+            <div class="narog-stat-val">{{ robot.stat_exploration | default(5) }}/100</div>
+        </div>
+        <div class="narog-stat-row" data-stat="logistics">
+            <div class="narog-stat-name"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Logistics</div>
+            <div class="narog-stat-bar"><div class="narog-stat-fill logistics" style="width:{{ robot.stat_logistics | default(5) }}%"></div></div>
+            <div class="narog-stat-val">{{ robot.stat_logistics | default(5) }}/100</div>
+        </div>
+        <div class="narog-stat-row" data-stat="research">
+            <div class="narog-stat-name"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Research</div>
+            <div class="narog-stat-bar"><div class="narog-stat-fill research" style="width:{{ robot.stat_research | default(5) }}%"></div></div>
+            <div class="narog-stat-val">{{ robot.stat_research | default(5) }}/100</div>
+        </div>
+        <div class="narog-stat-row" data-stat="expeditions">
+            <div class="narog-stat-name"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Expeditions</div>
+            <div class="narog-stat-bar"><div class="narog-stat-fill expeditions" style="width:{{ robot.stat_expeditions | default(5) }}%"></div></div>
+            <div class="narog-stat-val">{{ robot.stat_expeditions | default(5) }}/100</div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Dial — 4 rotary knobs, sum to 100, locked slots show 🔒 + tooltip modal -->
 <div class="dashboard-card p-20">
     <div class="text-xs uppercase tracking-wide mb-12" style="color: var(--color-sepolia); font-weight: 600;">
         <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Role Dial
     </div>
     <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
-        Adjust how your Narog allocates effort. Values must total 100%. Adjusting one rebalances the others.
+        Drag a knob to allocate effort across tasks. Values total 100% — turning one knob rebalances the others. Locked knobs unlock with later upgrades.
     </div>
     <div id="robot-dial" data-dial='{{ robot.dial | tojson }}'>
-        <div class="robot-dial-row" data-key="mining" style="flex-wrap: wrap;">
-            <div class="robot-dial-label">
-                <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> Mining
+        <!-- Slot 1: Exploration — UNLOCKED at Phase 1 -->
+        <div class="robot-knob-card" data-key="exploration" data-locked="false" data-unlock-phase="1">
+            <div class="robot-knob-head">
+                <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> <strong>Exploration</strong>
             </div>
-            <button class="robot-dial-btn" data-action="dec">−</button>
-            <div class="robot-dial-value">{{ robot.dial.mining }}%</div>
-            <button class="robot-dial-btn" data-action="inc">+</button>
-            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Boosts shard yield from expeditions and passive shard generation.</div>
+            <svg class="robot-knob" viewBox="0 0 120 120" data-key="exploration">
+                <defs>
+                    <radialGradient id="knob-rock-grad" cx="50%" cy="40%" r="60%">
+                        <stop offset="0%" stop-color="#a8503a"/>
+                        <stop offset="55%" stop-color="#6b2e1f"/>
+                        <stop offset="100%" stop-color="#3d1810"/>
+                    </radialGradient>
+                </defs>
+                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
+                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
+                <g class="knob-tick-ring"></g>
+                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
+                <circle cx="60" cy="60" r="6" class="knob-hub"/>
+                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            </svg>
+            <div class="robot-knob-desc">Speeds up autonomous trail building while you're away.</div>
         </div>
-        <div class="robot-dial-row" data-key="exploration" style="flex-wrap: wrap;">
-            <div class="robot-dial-label">
-                <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration
+
+        <!-- Slot 2: Logistics — LOCKED until Phase 3 (Circuits) -->
+        <div class="robot-knob-card locked" data-key="logistics" data-locked="true" data-unlock-phase="3">
+            <div class="robot-knob-head">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> <strong>Logistics</strong>
+                <span class="robot-knob-lock">🔒</span>
             </div>
-            <button class="robot-dial-btn" data-action="dec">−</button>
-            <div class="robot-dial-value">{{ robot.dial.exploration }}%</div>
-            <button class="robot-dial-btn" data-action="inc">+</button>
-            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Increases expedition speed and discovery chance at landmarks.</div>
+            <svg class="robot-knob" viewBox="0 0 120 120" data-key="logistics">
+                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
+                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
+                <g class="knob-tick-ring"></g>
+                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
+                <circle cx="60" cy="60" r="6" class="knob-hub"/>
+                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            </svg>
+            <div class="robot-knob-desc">Unlocks at Phase 3 — Circuits</div>
         </div>
-        <div class="robot-dial-row" data-key="science" style="flex-wrap: wrap;">
-            <div class="robot-dial-label">
-                <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Science
+
+        <!-- Slot 3: Research — LOCKED until Phase 4 (Core) -->
+        <div class="robot-knob-card locked" data-key="research" data-locked="true" data-unlock-phase="4">
+            <div class="robot-knob-head">
+                <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> <strong>Research</strong>
+                <span class="robot-knob-lock">🔒</span>
             </div>
-            <button class="robot-dial-btn" data-action="dec">−</button>
-            <div class="robot-dial-value">{{ robot.dial.science }}%</div>
-            <button class="robot-dial-btn" data-action="inc">+</button>
-            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Accelerates research progress and boosts Scientific Value (SV) earned.</div>
+            <svg class="robot-knob" viewBox="0 0 120 120" data-key="research">
+                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
+                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
+                <g class="knob-tick-ring"></g>
+                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
+                <circle cx="60" cy="60" r="6" class="knob-hub"/>
+                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            </svg>
+            <div class="robot-knob-desc">Unlocks at Phase 4 — Core</div>
         </div>
-        <div class="robot-dial-row" data-key="combat" style="flex-wrap: wrap;">
-            <div class="robot-dial-label">
-                <img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Combat
+
+        <!-- Slot 4: Expeditions — LOCKED until Phase 5 (Sepolia) -->
+        <div class="robot-knob-card locked" data-key="expeditions" data-locked="true" data-unlock-phase="5">
+            <div class="robot-knob-head">
+                <img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> <strong>Expeditions</strong>
+                <span class="robot-knob-lock">🔒</span>
             </div>
-            <button class="robot-dial-btn" data-action="dec">−</button>
-            <div class="robot-dial-value">{{ robot.dial.combat }}%</div>
-            <button class="robot-dial-btn" data-action="inc">+</button>
-            <div class="text-xs" style="width: 100%; color: var(--text-muted); padding: 4px 0 2px 24px;">Improves defense rating and encounter success on dangerous terrain.</div>
+            <svg class="robot-knob" viewBox="0 0 120 120" data-key="expeditions">
+                <circle cx="60" cy="60" r="54" class="knob-bezel"/>
+                <circle cx="60" cy="60" r="44" fill="url(#knob-rock-grad)" class="knob-face"/>
+                <g class="knob-tick-ring"></g>
+                <line x1="60" y1="60" x2="60" y2="22" class="knob-pointer"/>
+                <circle cx="60" cy="60" r="6" class="knob-hub"/>
+                <text x="60" y="92" text-anchor="middle" class="knob-pct-text" data-role="pct">0%</text>
+            </svg>
+            <div class="robot-knob-desc">Unlocks at Phase 5 — Sepolia Integration</div>
         </div>
     </div>
-    <div id="robot-dial-status" class="text-xs mt-8" style="color: var(--text-secondary); text-align: center;">Total: 100%</div>
+    <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Total: 100%</div>
 </div>
 
 {% endif %}

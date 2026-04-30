@@ -177,21 +177,10 @@
     }
 
     function setProfile(profile) {
+        // 2026-04-30: stats are flat 5/100 base for every Narog. Preview UI
+        // shows the static baseline; no shape variance per roll. The 4 rows
+        // are pre-rendered server-side at 5%, so this is a no-op now.
         if (!profile) return;
-        const keys = ['combat', 'mining', 'science', 'exploration'];
-        // Find the leading stat for highlight
-        let leader = null, leaderVal = -1;
-        keys.forEach(k => { if ((profile[k] || 0) > leaderVal) { leader = k; leaderVal = profile[k]; } });
-        keys.forEach(k => {
-            const row = document.querySelector('.robot-profile-row[data-stat="' + k + '"]');
-            if (!row) return;
-            const fill = row.querySelector('.robot-profile-fill');
-            const pct = row.querySelector('.robot-profile-pct');
-            const v = profile[k] || 0;
-            if (fill) fill.style.width = v + '%';
-            if (pct) pct.textContent = v + '%';
-            row.classList.toggle('lean', k === leader);
-        });
     }
 
     function renderPreviewGrid(sources) {
@@ -534,13 +523,23 @@
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
     }
 
-    // ----- ROLE DIAL --------------------------------------------------------
-    // Each value is mod-5, all four sum to 100. Adjusting one value rebalances
-    // the others by stealing/donating to whichever currently has the most/least
-    // headroom — keeps the dial honest without forcing the user to do mental math.
-    const DIAL_KEYS = ['mining', 'exploration', 'science', 'combat'];
+    // ----- ROLE DIAL — rotary knobs ----------------------------------------
+    // 2026-04-30: 4 dials map to Luke's brainstorm §4. Only `exploration` is
+    // currently unlocked (Phase 1 = robot built); the other 3 are visible-locked
+    // until Phase 3/4/5 ship. Locked knobs open a tooltip modal explaining what
+    // they'll do when unlocked. Drag to rotate, mod-5 increments, sum locked at 100.
+    const DIAL_KEYS = ['exploration', 'logistics', 'research', 'expeditions'];
     const DIAL_STEP = 5;
     const DIAL_TOTAL = 100;
+    // Knob pointer angle range: -135° (0%) → +135° (100%), spans 270°.
+    const KNOB_MIN_ANGLE = -135;
+    const KNOB_MAX_ANGLE = 135;
+    const DIAL_DESCRIPTIONS = {
+        exploration: 'Speeds up autonomous trail building while you’re away. The base Exploration stat × this dial % = your Narog’s effective trail bonus.',
+        logistics:   'Speeds up Depot &amp; Robotics-Lab build times. Higher allocation = bigger reduction on every active build. Unlocks at Phase 3 — Circuits.',
+        research:    'Helps the Scientist run experiments faster. Boosts SV/hr and accelerates active research. Unlocks at Phase 4 — Core.',
+        expeditions: 'Sends your Narog on solo scout runs while you’re offline — brings back shards + discoveries from beyond your current range. Unlocks at Phase 5 — Sepolia Integration.',
+    };
     let dialState = null;
     let dialSaveTimer = null;
 
@@ -555,20 +554,46 @@
         } catch (e) { return null; }
     }
 
+    function isUnlocked(key) {
+        const card = document.querySelector(`.robot-knob-card[data-key="${key}"]`);
+        return card && card.dataset.locked !== 'true';
+    }
+
+    function renderTickRing(svg) {
+        const g = svg.querySelector('.knob-tick-ring');
+        if (!g || g.childElementCount) return;
+        // 21 ticks across the 270° sweep (every 13.5°), every 5th tick is major (10% steps)
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const angle = KNOB_MIN_ANGLE + t * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
+            const rad = (angle - 90) * Math.PI / 180;
+            const r1 = 47, r2 = (i % 4 === 0) ? 41 : 43;
+            const x1 = 60 + Math.cos(rad) * r1, y1 = 60 + Math.sin(rad) * r1;
+            const x2 = 60 + Math.cos(rad) * r2, y2 = 60 + Math.sin(rad) * r2;
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+            if (i % 4 === 0) line.classList.add('major');
+            g.appendChild(line);
+        }
+    }
+
+    function renderKnob(key) {
+        const v = dialState ? (dialState[key] || 0) : 0;
+        const card = document.querySelector(`.robot-knob-card[data-key="${key}"]`);
+        if (!card) return;
+        const svg = card.querySelector('.robot-knob');
+        const pointer = card.querySelector('.knob-pointer');
+        const txt = card.querySelector('[data-role="pct"]');
+        const angle = KNOB_MIN_ANGLE + (v / 100) * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
+        if (pointer) pointer.style.transform = `rotate(${angle}deg)`;
+        if (txt) txt.textContent = v + '%';
+        if (svg) renderTickRing(svg);
+    }
+
     function renderDial() {
         if (!dialState) return;
-        DIAL_KEYS.forEach(k => {
-            const row = document.querySelector(`.robot-dial-row[data-key="${k}"]`);
-            if (!row) return;
-            const valueEl = row.querySelector('.robot-dial-value');
-            if (valueEl) valueEl.textContent = dialState[k] + '%';
-            const dec = row.querySelector('[data-action="dec"]');
-            const inc = row.querySelector('[data-action="inc"]');
-            if (dec) dec.disabled = dialState[k] <= 0;
-            // Inc is disabled if there's nothing left to steal from the others
-            const others = DIAL_KEYS.filter(x => x !== k).reduce((s, x) => s + dialState[x], 0);
-            if (inc) inc.disabled = others < DIAL_STEP;
-        });
+        DIAL_KEYS.forEach(renderKnob);
         const status = document.getElementById('robot-dial-status');
         if (status) {
             const total = DIAL_KEYS.reduce((s, k) => s + dialState[k], 0);
@@ -577,23 +602,36 @@
         }
     }
 
-    function adjustDial(key, delta) {
-        if (!dialState) return;
-        const next = dialState[key] + delta;
-        if (next < 0) return;
-        // Find a counterparty to absorb the inverse delta. Prefer the largest
-        // for inc (steal from the biggest), the smallest for dec (donate to
-        // the one furthest behind).
-        const others = DIAL_KEYS.filter(k => k !== key);
-        let target;
-        if (delta > 0) {
-            target = others.reduce((best, k) => (dialState[k] > dialState[best] ? k : best), others[0]);
-            if (dialState[target] < delta) return; // not enough to steal
-        } else {
-            target = others.reduce((best, k) => (dialState[k] < dialState[best] ? k : best), others[0]);
+    // Set `key` to `newVal` (mod-5, 0..100). Rebalance the inverse delta across
+    // OTHER UNLOCKED keys, taking from largest first when adding to `key`,
+    // donating to smallest first when subtracting. Locked keys never change.
+    function setDialValue(key, newVal) {
+        if (!dialState || !isUnlocked(key)) return;
+        newVal = Math.max(0, Math.min(100, Math.round(newVal / DIAL_STEP) * DIAL_STEP));
+        const cur = dialState[key];
+        const delta = newVal - cur;
+        if (delta === 0) return;
+        const others = DIAL_KEYS.filter(k => k !== key && isUnlocked(k));
+        if (!others.length) return;  // no counterparty to balance against
+        const otherSum = others.reduce((s, k) => s + dialState[k], 0);
+        if (delta > 0 && otherSum < delta) {
+            // not enough headroom; clamp to what's available
+            newVal = cur + otherSum;
         }
-        dialState[key] = next;
-        dialState[target] -= delta;
+        dialState[key] = newVal;
+        let remaining = newVal - cur;
+        // Distribute -remaining across `others` proportionally to their weights
+        // (or equally if all zero) — pop one step at a time to respect mod-5.
+        while (remaining !== 0) {
+            const dir = remaining > 0 ? -1 : 1;  // dir applied to OTHERS
+            // pick target: when stealing from others (dir=-1), prefer the largest;
+            //              when donating to others (dir=+1), prefer the smallest
+            others.sort((a, b) => dir < 0 ? dialState[b] - dialState[a] : dialState[a] - dialState[b]);
+            const target = others.find(k => dir > 0 || dialState[k] >= DIAL_STEP);
+            if (!target) break;  // can't move further
+            dialState[target] += dir * DIAL_STEP;
+            remaining += dir * DIAL_STEP;
+        }
         renderDial();
         scheduleDialSave();
     }
@@ -616,9 +654,98 @@
                 setTimeout(() => { if (status) status.textContent = 'Total: 100%'; }, 1500);
             }
         } catch (e) {
-            // postJSONSafe already toasted; revert by reloading server state
             reloadSoon();
         }
+    }
+
+    function showLockedDialModal(key) {
+        if (typeof MarsModal === 'undefined') return;
+        const phaseMap = { logistics: 'Phase 3 — Circuits', research: 'Phase 4 — Core', expeditions: 'Phase 5 — Sepolia Integration' };
+        const titleMap = { logistics: 'Logistics (locked)', research: 'Research (locked)', expeditions: 'Expeditions (locked)' };
+        const rowsHtml = DIAL_KEYS.map(k => {
+            const phase = k === 'exploration' ? 'Phase 1 — Built' : phaseMap[k];
+            const active = (k === key) ? ' active' : '';
+            return `<div class="narog-locked-modal-row${active}">
+                <div style="flex:1;">
+                    <strong>${k.charAt(0).toUpperCase() + k.slice(1)}</strong>
+                    <span style="color:var(--text-muted); font-size:11px; margin-left:6px;">${phase}</span>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.5;">${DIAL_DESCRIPTIONS[k] || ''}</div>
+                </div>
+            </div>`;
+        }).join('');
+        MarsModal.open({
+            title: titleMap[key] || 'Dial info',
+            body: `
+                <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">
+                    Your Narog can only build trails right now. The other three knobs unlock as you upgrade your Robotics Lab and complete later phases. Here's what each will do:
+                </div>
+                <div class="narog-locked-modal-list">${rowsHtml}</div>
+                <div style="font-size:10px; color:var(--text-muted); margin-top:10px; text-align:center;">
+                    Phase &amp; bonus formulas: TBD — Luke is finalizing the Depot upgrade matrix.
+                </div>
+            `,
+            buttons: [{ label: 'Got it', style: 'primary' }],
+        });
+    }
+
+    // Drag-to-rotate interaction. Compute the angle of the pointer from
+    // mouse position relative to knob center, clamped to [-135°, +135°].
+    function wireKnobDrag(card) {
+        const key = card.dataset.key;
+        const svg = card.querySelector('.robot-knob');
+        if (!svg) return;
+        let dragging = false;
+
+        function angleFromEvent(e) {
+            const rect = svg.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const point = (e.touches && e.touches[0]) ? e.touches[0] : e;
+            const dx = point.clientX - cx, dy = point.clientY - cy;
+            // 0° = up; clockwise positive
+            let deg = Math.atan2(dx, -dy) * 180 / Math.PI;
+            // Clamp to knob's sweep range
+            if (deg < KNOB_MIN_ANGLE) deg = KNOB_MIN_ANGLE;
+            if (deg > KNOB_MAX_ANGLE) deg = KNOB_MAX_ANGLE;
+            return deg;
+        }
+
+        function onMove(e) {
+            if (!dragging) return;
+            e.preventDefault();
+            const deg = angleFromEvent(e);
+            const pct = (deg - KNOB_MIN_ANGLE) / (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE) * 100;
+            setDialValue(key, pct);
+        }
+        function onUp() {
+            if (!dragging) return;
+            dragging = false;
+            svg.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onUp);
+        }
+        function onDown(e) {
+            if (card.dataset.locked === 'true') {
+                showLockedDialModal(key);
+                return;
+            }
+            e.preventDefault();
+            dragging = true;
+            svg.classList.add('dragging');
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+            document.addEventListener('touchmove', onMove, { passive: false });
+            document.addEventListener('touchend', onUp);
+            // Click-to-set even without drag
+            const deg = angleFromEvent(e);
+            const pct = (deg - KNOB_MIN_ANGLE) / (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE) * 100;
+            setDialValue(key, pct);
+        }
+
+        svg.addEventListener('mousedown', onDown);
+        svg.addEventListener('touchstart', onDown, { passive: false });
     }
 
     function wireDial() {
@@ -626,15 +753,15 @@
         if (!dialEl) return;
         dialState = readDialState();
         if (!dialState) return;
-
-        dialEl.querySelectorAll('.robot-dial-row').forEach(row => {
-            const key = row.dataset.key;
-            row.querySelectorAll('.robot-dial-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const action = btn.dataset.action;
-                    adjustDial(key, action === 'inc' ? DIAL_STEP : -DIAL_STEP);
+        dialEl.querySelectorAll('.robot-knob-card').forEach(card => {
+            wireKnobDrag(card);
+            // Locked cards: clicking the card body (not just the SVG) opens the modal
+            if (card.dataset.locked === 'true') {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.robot-knob')) return;  // svg already handled
+                    showLockedDialModal(card.dataset.key);
                 });
-            });
+            }
         });
         renderDial();
     }

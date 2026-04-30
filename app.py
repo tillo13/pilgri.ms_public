@@ -329,7 +329,7 @@ def api_robot_preview():
     from utilities.postgres.robot import (
         pick_stage_sources, check_robot_gate, RobotGateError,
         compute_craftsmanship_score, CRAFTSMANSHIP_MAX,
-        compute_stat_profile,
+        STAT_KEYS, STAT_BASE,
     )
     from utilities.postgres.users import get_user_scientist
     sci = get_user_scientist(g.user_id) or {}
@@ -344,7 +344,8 @@ def api_robot_preview():
         return jsonify({'success': False, 'gate': gate, 'scientist_name': sci_name,
                         'error': str(e)}), 200
     score = compute_craftsmanship_score(sources)
-    profile = compute_stat_profile(sources)
+    # 2026-04-30: stats are flat 5/100 baseline now, not item-derived.
+    profile = {k: STAT_BASE for k in STAT_KEYS}
     return jsonify({
         'success': True, 'gate': gate, 'scientist_name': sci_name,
         'sources': sources, 'craftsmanship_score': score,
