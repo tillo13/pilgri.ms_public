@@ -496,6 +496,130 @@ def api_robot_dial():
     return jsonify({'success': True, 'data': get_robot_page_data(g.user_id)})
 
 
+@app.route('/api/robot/recalibration_state')
+@login_required
+@handle_api_error
+def api_robot_recalibration_state():
+    """Current counters + caps + costs + 72hr window status for the captain.
+    Powers the Recalibration card render."""
+    from utilities.postgres.robot import get_recalibration_state
+    return jsonify({'success': True, 'state': get_recalibration_state(g.user_id)})
+
+
+@app.route('/api/robot/repick', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_repick():
+    """Pay shards → restore 5 old components → pick 5 new (random within
+    locked 2L+2R+1U/C recipe) → mark new ones consumed. Image/video unchanged."""
+    from utilities.postgres.robot import (
+        charge_reforge_action, repick_narog_components,
+        get_recalibration_state, get_robot_page_data, ReforgeError,
+    )
+    try:
+        charge = charge_reforge_action(g.user_id, 'repick')
+        result = repick_narog_components(g.user_id)
+    except ReforgeError as e:
+        return jsonify({'success': False, 'error': e.message}), e.status
+    return jsonify({
+        'success': True,
+        'charge': charge,
+        'new_sources': result['new_sources'],
+        'state': get_recalibration_state(g.user_id),
+        'data': get_robot_page_data(g.user_id),
+    })
+
+
+@app.route('/api/robot/reroll_image', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_reroll_image():
+    """Pay shards → re-run the 5-stage Flux pipeline against the current
+    components. Same items, new silhouette. Spawns the existing forge worker;
+    page polls /api/robot/status while it runs (~30-60s)."""
+    from utilities.postgres.robot import (
+        charge_reforge_action, get_robot, get_recalibration_state, ReforgeError,
+    )
+    from utilities.robot_visuals import start_background_full_build
+    try:
+        charge = charge_reforge_action(g.user_id, 'reroll_image')
+    except ReforgeError as e:
+        return jsonify({'success': False, 'error': e.message}), e.status
+
+    robot = get_robot(g.user_id) or {}
+    sources = list(robot.get('stage_sources') or [])
+    if len(sources) != 5:
+        return jsonify({'success': False, 'error': 'No source manifest found.'}), 409
+
+    # Reset visual state so the existing pipeline re-renders all stages.
+    # current_image_url cleared → frontend shows loading state via build_status.
+    from utilities.postgres.core import db_cursor
+    with db_cursor(commit=True) as cur:
+        cur.execute("""
+            UPDATE pilgrim.robot
+            SET build_status = 'in_progress',
+                visual_stage = 0,
+                stage_images = '[]'::jsonb,
+                stage_started_at = NOW(),
+                stage_ready_at = NOW(),
+                build_error = NULL,
+                cinematic_played = TRUE,
+                updated_at = NOW()
+            WHERE user_id = %s
+        """, (g.user_id,))
+        cur.execute("DELETE FROM pilgrim.robot_stage_log WHERE user_id = %s", (g.user_id,))
+
+    spawned = start_background_full_build(g.user_id, sources)
+    return jsonify({
+        'success': True,
+        'spawned': spawned,
+        'charge': charge,
+        'state': get_recalibration_state(g.user_id),
+    })
+
+
+@app.route('/api/robot/reroll_video', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_reroll_video():
+    """Pay shards + SV → re-run Wan on the current image. Same look, new
+    awakening sequence. Spawns the existing video worker; page polls
+    /api/robot/video_status."""
+    from utilities.postgres.robot import (
+        charge_reforge_action, start_robot_awakening_video,
+        get_recalibration_state, ReforgeError,
+    )
+    from utilities.postgres.core import db_cursor
+    try:
+        charge = charge_reforge_action(g.user_id, 'reroll_video')
+    except ReforgeError as e:
+        return jsonify({'success': False, 'error': e.message}), e.status
+
+    # Clear video_url so start_robot_awakening_video regenerates instead of
+    # short-circuiting on the existing URL.
+    with db_cursor(commit=True) as cur:
+        cur.execute("UPDATE pilgrim.robot SET video_url = NULL, updated_at = NOW() WHERE user_id = %s", (g.user_id,))
+    payload, status = start_robot_awakening_video(g.user_id, app.config, flux)
+    payload['charge'] = charge
+    payload['state'] = get_recalibration_state(g.user_id)
+    return jsonify(payload), status
+
+
+@app.route('/api/robot/lock_in', methods=['POST'])
+@login_required
+@handle_api_error
+def api_robot_lock_in():
+    """Close the 72hr test window and mark the Narog canonical. Free."""
+    from utilities.postgres.robot import (
+        lock_in_narog, get_recalibration_state, ReforgeError,
+    )
+    try:
+        result = lock_in_narog(g.user_id)
+    except ReforgeError as e:
+        return jsonify({'success': False, 'error': e.message}), e.status
+    return jsonify({'success': True, **result, 'state': get_recalibration_state(g.user_id)})
+
+
 @app.route('/api/robot/cinematic_played', methods=['POST'])
 @login_required
 @handle_api_error

@@ -487,6 +487,52 @@
     <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Active 100% · Idle 0%</div>
 </div>
 
+{# ============================================================================ #}
+{# Recalibration — re-pick / re-roll image / re-roll video / lock-in            #}
+{# Test mode: 1% pricing for Andy + Luke. Flip NAROG_REFORGE_TEST_MULTIPLIER    #}
+{# to 1.0 in config.py before opening to other captains.                         #}
+{# ============================================================================ #}
+<div class="dashboard-card p-20 mt-16" id="narog-recal-card">
+    <div class="text-xs uppercase tracking-wide mb-4" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Recalibration
+    </div>
+    <div class="text-xs mb-4" style="color: var(--text-secondary); opacity: 0.75; line-height: 1.55;">
+        The scientist can rebuild your Narog. Each adjustment costs energy — the more often you recalibrate, the harder the resonance fields are to stabilize.
+    </div>
+    <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
+        <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
+    </div>
+    <div id="narog-recal-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+        <button class="narog-recal-action" data-action="repick" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
+            <div class="narog-recal-name">New Components</div>
+            <div class="narog-recal-desc">Pull 5 new materials from your inventory.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+        <button class="narog-recal-action" data-action="reroll_image" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
+            <div class="narog-recal-name">New Look</div>
+            <div class="narog-recal-desc">Same components, new silhouette.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+        <button class="narog-recal-action" data-action="reroll_video" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.tornado_dust }}" alt=""></div>
+            <div class="narog-recal-name">New Awakening</div>
+            <div class="narog-recal-desc">Same look, fresh awakening sequence.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+        <button class="narog-recal-action narog-recal-lock" data-action="lock_in" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.lock_closed }}" alt=""></div>
+            <div class="narog-recal-name">Lock In</div>
+            <div class="narog-recal-desc">Make your Narog permanent.</div>
+            <div class="narog-recal-cost">Free</div>
+        </button>
+    </div>
+    <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
+        Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
+    </div>
+</div>
+
 {% endif %}
 
 </div>{# end #tab-robot #}

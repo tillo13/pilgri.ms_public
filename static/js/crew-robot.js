@@ -1082,6 +1082,184 @@
     }
 
     // ----- INIT -------------------------------------------------------------
+    // ----- RECALIBRATION (re-pick / re-roll image / re-roll video / lock-in) ----
+    // 2026-04-30: post-canonical Narog adjustments. Test-mode pricing (1% of
+    // production) lets Andy + Luke iterate cheaply before we open this for
+    // real captains. Each action: confirm modal → POST → re-fetch state →
+    // repaint buttons.
+    const RECAL_LABELS = {
+        repick: { name: 'Pull New Components',
+                  body: 'Your scientist will swap your 5 current materials for 5 fresh ones from your inventory. Same look and awakening — re-render those separately if you want.' },
+        reroll_image: { name: 'Reimagine the Look',
+                        body: 'Same components, new silhouette. The scientist will redraft the build sequence and a new image will render over the next ~30 seconds.' },
+        reroll_video: { name: 'Re-record the Awakening',
+                        body: 'Same image, new awakening sequence. The scientist will re-render the cinematic — you\'ll see a fresh take in ~60 seconds.' },
+        lock_in: { name: 'Lock In Your Narog',
+                   body: 'Make your Narog permanent. After lock-in, you can still recalibrate, but each adjustment costs more energy each time. Are you ready?' },
+    };
+    let recalState = null;
+    let recalCountdownTimer = null;
+
+    function fmtCost(cost) {
+        if (!cost) return 'Free';
+        if (cost.shards && cost.sv) return `${cost.shards} shards + ${cost.sv} SV`;
+        if (cost.shards) return `${cost.shards} shards`;
+        if (cost.sv) return `${cost.sv} SV`;
+        return 'Free';
+    }
+
+    async function loadRecalState() {
+        try {
+            const r = await fetch('/api/robot/recalibration_state', { credentials: 'same-origin' });
+            const j = await r.json();
+            recalState = (j && j.success) ? j.state : null;
+        } catch (e) { recalState = null; }
+        renderRecal();
+    }
+
+    function renderRecal() {
+        const card = document.getElementById('narog-recal-card');
+        if (!card) return;
+        if (!recalState || !recalState.available) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = '';
+        ['repick','reroll_image','reroll_video'].forEach(action => {
+            const btn = card.querySelector(`.narog-recal-action[data-action="${action}"]`);
+            if (!btn) return;
+            const a = recalState.actions[action];
+            if (!a) return;
+            btn.querySelector('.cost-shards').textContent = fmtCost(a.cost);
+            btn.querySelector('.cost-counter').textContent = `${a.used}/${a.cap} used`;
+            btn.disabled = a.remaining <= 0;
+        });
+        const lockBtn = card.querySelector('.narog-recal-action[data-action="lock_in"]');
+        if (lockBtn) lockBtn.disabled = !!recalState.locked;
+
+        // 72hr countdown banner
+        const banner = document.getElementById('narog-recal-window-banner');
+        if (banner) {
+            if (recalState.window_seconds_remaining != null && !recalState.locked) {
+                banner.style.display = '';
+                paintCountdown();
+                if (recalCountdownTimer) clearInterval(recalCountdownTimer);
+                recalCountdownTimer = setInterval(paintCountdown, 1000);
+            } else {
+                banner.style.display = 'none';
+                if (recalCountdownTimer) { clearInterval(recalCountdownTimer); recalCountdownTimer = null; }
+            }
+        }
+    }
+
+    function paintCountdown() {
+        if (!recalState || recalState.window_seconds_remaining == null) return;
+        const el = document.getElementById('narog-recal-countdown');
+        if (!el) return;
+        // tick down locally between server polls
+        recalState.window_seconds_remaining = Math.max(0, recalState.window_seconds_remaining - 1);
+        const s = recalState.window_seconds_remaining;
+        const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+        el.textContent = `${h}h ${m}m ${sec}s`;
+        if (s <= 0) loadRecalState();  // window expired — re-sync server state
+    }
+
+    async function postRecalAction(action, btn) {
+        const a = recalState && recalState.actions[action];
+        const cost = (action === 'lock_in') ? null : (a && a.cost);
+        const meta = RECAL_LABELS[action];
+        const confirm = await confirmRecal(action, meta, cost);
+        if (!confirm) return;
+
+        btn.classList.add('is-busy');
+        const endpoint = {
+            repick:       '/api/robot/repick',
+            reroll_image: '/api/robot/reroll_image',
+            reroll_video: '/api/robot/reroll_video',
+            lock_in:      '/api/robot/lock_in',
+        }[action];
+        try {
+            const r = await fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}',
+            });
+            const j = await r.json();
+            if (!j || !j.success) {
+                if (typeof showToast === 'function') showToast(j && j.error ? j.error : 'Recalibration failed.', 'error', 'Narog');
+                return;
+            }
+            if (typeof showToast === 'function') {
+                const msg = action === 'lock_in' ? 'Narog locked in.' : 'Recalibration in progress.';
+                showToast(msg, 'success', 'Narog');
+            }
+            // For image / video re-rolls the page needs a fresh render to show
+            // the loading state; reload after a beat so the captain sees their
+            // new silhouette assemble.
+            if (action === 'reroll_image' || action === 'reroll_video') {
+                setTimeout(() => location.reload(), 500);
+                return;
+            }
+            // Repick swapped items — refresh page to update build manifest grid
+            if (action === 'repick') {
+                setTimeout(() => location.reload(), 500);
+                return;
+            }
+            // Lock-in: just re-render the card
+            recalState = j.state;
+            renderRecal();
+        } finally {
+            btn.classList.remove('is-busy');
+        }
+    }
+
+    function confirmRecal(action, meta, cost) {
+        return new Promise((resolve) => {
+            if (typeof MarsModal === 'undefined' || !MarsModal.show) { resolve(true); return; }
+            const costLine = cost
+                ? `<div style="background:rgba(255,200,140,0.08); border:1px solid rgba(255,200,140,0.3); border-radius:8px; padding:10px 14px; font-size:13px; margin:12px 0; color:#ffc88a;"><strong>Cost: ${fmtCost(cost)}</strong></div>`
+                : '';
+            const tone = (action === 'lock_in')
+                ? 'border:1px solid rgba(168,85,247,0.4); background:rgba(168,85,247,0.08); border-radius:8px; padding:10px 14px; color:#d8b4fe; font-size:12px; margin-top:10px;'
+                : '';
+            const lockNote = (action === 'lock_in')
+                ? '<div style="' + tone + '">After lock-in, the recalibration window closes. Future adjustments still work — the costs just keep climbing.</div>'
+                : '';
+            MarsModal.show({
+                title: meta.name + '?',
+                body: `
+                    <div style="font-size:13px; color:var(--text-secondary); line-height:1.7;">${meta.body}</div>
+                    ${costLine}
+                    ${lockNote}
+                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+                        <button id="recal-cancel" style="background:var(--bg-secondary); color:var(--text-primary); border:1px solid var(--border-default); border-radius:8px; padding:10px 18px; font-weight:700; cursor:pointer;">Cancel</button>
+                        <button id="recal-confirm" style="background:var(--color-sepolia); color:white; border:none; border-radius:8px; padding:10px 22px; font-weight:800; cursor:pointer;">${action === 'lock_in' ? 'Lock In' : 'Confirm'}</button>
+                    </div>
+                `,
+            });
+            setTimeout(() => {
+                const cancel = document.getElementById('recal-cancel');
+                const confirm = document.getElementById('recal-confirm');
+                if (cancel) cancel.onclick = () => { MarsModal.hide(); resolve(false); };
+                if (confirm) confirm.onclick = () => { MarsModal.hide(); resolve(true); };
+            }, 0);
+        });
+    }
+
+    function wireRecalibration() {
+        const card = document.getElementById('narog-recal-card');
+        if (!card) return;
+        card.querySelectorAll('.narog-recal-action').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                if (!action) return;
+                postRecalAction(action, btn);
+            });
+        });
+        loadRecalState();
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         wireBuildButton();
         wireReroll();
@@ -1095,6 +1273,7 @@
         wireRegenVideoButton();
         wireRetryForgeButton();
         wireManifestClicks();
+        wireRecalibration();  // 2026-04-30: re-pick / re-roll image / re-roll video / lock-in
         maybeFireRobotCinematic();
     });
 })();

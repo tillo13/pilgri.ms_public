@@ -434,3 +434,49 @@ UI_ICONS = {
     # ARIA
     'aria_avatar': 'https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png',
 }
+
+
+# ============================================================================
+# NAROG RECALIBRATION — re-pick / re-roll image / re-roll video / lock-in
+# ============================================================================
+# Single lever to flip when going live: 0.01 = 1% test pricing, 1.0 = full price.
+# 2026-04-30: Andy + Luke are the only post-canonical Narogs in existence.
+# Test mode lets us validate the recalibration loop without burning real shards.
+# Flip to 1.0 before captain #3 ever forges.
+NAROG_REFORGE_TEST_MULTIPLIER = 0.01
+
+# Base costs at full (production) pricing. Test mode multiplies these.
+# Costs mirror real API spend ratios:
+#   - Re-pick has no API cost (just a shard sink to prevent spam)
+#   - Re-roll Image runs Flux (~$0.05) → 500 shard base
+#   - Re-roll Video runs Wan (~$0.50, 10× Flux) → 5000 shard + 500 SV base
+NAROG_REFORGE_BASE_COSTS = {
+    'repick':       {'shards': 500,  'sv': 0},
+    'reroll_image': {'shards': 500,  'sv': 0},
+    'reroll_video': {'shards': 5000, 'sv': 500},
+}
+
+# Lifetime caps per Narog. After cap, the action is disabled with the message
+# "the hardware can't recalibrate further." Prevents on-chain breadcrumb spam
+# and bounds our worst-case Flux/Wan spend per captain.
+NAROG_REFORGE_LIFETIME_CAPS = {
+    'repick':       5,
+    'reroll_image': 10,
+    'reroll_video': 3,
+}
+
+# 72-hour test window. Until the captain hits "Lock In" or this elapses, no
+# real on-chain tx are written. Auto-lock fires on expiry with whatever state
+# is current.
+NAROG_TEST_WINDOW_HOURS = 72
+
+
+def narog_reforge_cost(action: str) -> dict:
+    """Return current effective cost for a recalibration action, applying the
+    test multiplier. Round up so costs stay as positive ints."""
+    import math
+    base = NAROG_REFORGE_BASE_COSTS.get(action) or {'shards': 0, 'sv': 0}
+    return {
+        'shards': max(1, math.ceil(base['shards'] * NAROG_REFORGE_TEST_MULTIPLIER)),
+        'sv':     max(0, math.ceil(base['sv']     * NAROG_REFORGE_TEST_MULTIPLIER)),
+    }

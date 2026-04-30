@@ -95,6 +95,18 @@ def ensure_robot_tables():
                 ALTER TABLE pilgrim.robot
                 ADD COLUMN IF NOT EXISTS {col} INTEGER NOT NULL DEFAULT 5
             """)
+        # 2026-04-30: Recalibration system — 72hr test window where the captain
+        # can re-pick components, re-roll the Flux image, or re-roll the Wan
+        # video. No on-chain tx until lock-in. Lifetime counters persist
+        # forever (caps in config.NAROG_REFORGE_LIFETIME_CAPS).
+        cur.execute("""
+            ALTER TABLE pilgrim.robot
+            ADD COLUMN IF NOT EXISTS test_window_started_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS test_window_locked BOOLEAN NOT NULL DEFAULT TRUE,
+            ADD COLUMN IF NOT EXISTS repick_count INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS reroll_image_count INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS reroll_video_count INTEGER NOT NULL DEFAULT 0
+        """)
 
 
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
@@ -720,6 +732,257 @@ def set_robot_dial(user_id: int, dial: Dict[str, int]) -> Dict[str, Any]:
         """, (json.dumps(cleaned), user_id))
         row = cur.fetchone()
         return dict(row['dial']) if row else cleaned
+
+
+class ReforgeError(Exception):
+    """Raised when a recalibration action can't proceed (cap hit, insufficient
+    funds, no robot, locked window). Caller surfaces .message verbatim."""
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
+COUNTER_COL_BY_ACTION = {
+    'repick':       'repick_count',
+    'reroll_image': 'reroll_image_count',
+    'reroll_video': 'reroll_video_count',
+}
+
+
+def _ensure_test_window(user_id: int) -> None:
+    """If the captain's narog is currently locked, open a fresh 72hr test window.
+    Idempotent — does nothing when the window is already open. Called at the
+    start of every recalibration action so Andy/Luke (post-canonical) can
+    re-enter the test loop without a separate 'start window' call."""
+    with db_cursor(commit=True) as cur:
+        cur.execute("""
+            UPDATE pilgrim.robot
+            SET test_window_started_at = COALESCE(test_window_started_at, NOW()),
+                test_window_locked = FALSE,
+                updated_at = NOW()
+            WHERE user_id = %s AND test_window_locked = TRUE
+        """, (user_id,))
+
+
+def charge_reforge_action(user_id: int, action: str) -> Dict[str, Any]:
+    """Validate cap + balance, deduct shards/SV, increment counter for one
+    recalibration action. Atomic. Raises ReforgeError on any failure.
+
+    Action must be one of: 'repick' | 'reroll_image' | 'reroll_video'.
+    Returns {'cost': {shards, sv}, 'new_count': int, 'cap': int}.
+
+    Charging is idempotent-per-call: each click = one charge. No silent retries.
+    """
+    from config import (NAROG_REFORGE_LIFETIME_CAPS,
+                        narog_reforge_cost)
+    from utilities.sepolia_utils import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance, display_to_eth
+    from utilities.postgres.users import spend_research_points_for_tech, get_user_research_data
+
+    col = COUNTER_COL_BY_ACTION.get(action)
+    if not col:
+        raise ReforgeError(f"unknown recalibration action: {action!r}")
+    cap = NAROG_REFORGE_LIFETIME_CAPS.get(action, 0)
+    cost = narog_reforge_cost(action)
+
+    ensure_robot_tables()
+
+    # Pull current robot row + counter; bail if no robot or cap hit.
+    with db_cursor() as cur:
+        cur.execute(f"""
+            SELECT build_status, {col} as cur_count
+            FROM pilgrim.robot WHERE user_id = %s
+        """, (user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise ReforgeError("No Narog to recalibrate.", status=404)
+        if row['build_status'] != 'complete':
+            raise ReforgeError("Wait for the current build to finish before recalibrating.", status=409)
+        if (row['cur_count'] or 0) >= cap:
+            raise ReforgeError(
+                f"This recalibration option has reached its lifetime limit ({cap}). "
+                "The hardware can't recalibrate further.",
+                status=409,
+            )
+
+    # Validate balance up-front so we don't charge SV then fail on shards.
+    wallet = get_user_primary_sepolia_wallet(user_id)
+    if not wallet:
+        raise ReforgeError("No wallet found for this captain.", status=500)
+    bal_eth = float(wallet.get('current_balance_eth') or 0.0)
+    bal_shards = bal_eth * 10_000_000
+    if bal_shards < cost['shards']:
+        raise ReforgeError(
+            f"Need {cost['shards']} shards, you have {int(bal_shards)}.",
+            status=402,
+        )
+    if cost['sv'] > 0:
+        sv_data = get_user_research_data(user_id) or {}
+        cur_sv = int(sv_data.get('research_points') or 0)
+        if cur_sv < cost['sv']:
+            raise ReforgeError(
+                f"Need {cost['sv']} science, you have {cur_sv}.",
+                status=402,
+            )
+
+    # Charge shards (sepolia wallet update). Cheap helper; tx hash NOT recorded
+    # for recalibration so the on-chain breadcrumb trail isn't polluted with
+    # micro-payments. The shards leave the wallet though — same as Shard Rush.
+    cost_eth = display_to_eth(cost['shards'])
+    update_sepolia_wallet_balance(wallet['wallet_address'], bal_eth - cost_eth)
+
+    # Charge SV (atomic, raises on insufficient).
+    if cost['sv'] > 0:
+        ok = spend_research_points_for_tech(user_id, cost['sv'])
+        if not ok:
+            # Refund shards if SV charge failed (race condition).
+            update_sepolia_wallet_balance(wallet['wallet_address'], bal_eth)
+            raise ReforgeError("Science deduction failed — try again.", status=409)
+
+    # Bump counter. Done LAST so a transient DB hiccup doesn't leave us with a
+    # bumped counter and no spend (caller can retry safely on charge failures).
+    with db_cursor(commit=True) as cur:
+        cur.execute(f"""
+            UPDATE pilgrim.robot
+            SET {col} = {col} + 1, updated_at = NOW()
+            WHERE user_id = %s
+            RETURNING {col} as new_count
+        """, (user_id,))
+        new_count = cur.fetchone()['new_count']
+
+    _ensure_test_window(user_id)
+    logger.info(f"narog reforge: user {user_id} {action} #{new_count} (cost {cost})")
+    return {'cost': cost, 'new_count': new_count, 'cap': cap}
+
+
+def lock_in_narog(user_id: int) -> Dict[str, Any]:
+    """Close the 72hr test window and mark the Narog canonical. Idempotent —
+    locking an already-locked Narog is a no-op success.
+
+    NOTE: For the first cut, lock-in is a local-state flag only. Future work:
+    fire on-chain broadcasts here when a captain's been in test mode without
+    canonical tx (i.e. brand-new captains in the future 72hr free window).
+    For Andy + Luke (post-canonical), lock-in just exits the test loop —
+    their canonical tx was written at first forge.
+    """
+    ensure_robot_tables()
+    with db_cursor(commit=True) as cur:
+        cur.execute("""
+            UPDATE pilgrim.robot
+            SET test_window_locked = TRUE,
+                test_window_started_at = NULL,
+                updated_at = NOW()
+            WHERE user_id = %s
+            RETURNING build_status
+        """, (user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise ReforgeError("No Narog to lock in.", status=404)
+    return {'locked': True}
+
+
+def get_recalibration_state(user_id: int) -> Dict[str, Any]:
+    """Returns the current recalibration counters + caps + costs + window state
+    for a captain. Frontend uses this to render the Recalibration card."""
+    from config import (NAROG_REFORGE_LIFETIME_CAPS,
+                        NAROG_TEST_WINDOW_HOURS,
+                        narog_reforge_cost)
+    ensure_robot_tables()
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT repick_count, reroll_image_count, reroll_video_count,
+                   test_window_started_at, test_window_locked, build_status
+            FROM pilgrim.robot WHERE user_id = %s
+        """, (user_id,))
+        row = cur.fetchone()
+    if not row:
+        return {'available': False}
+
+    counters = {
+        'repick':       int(row['repick_count'] or 0),
+        'reroll_image': int(row['reroll_image_count'] or 0),
+        'reroll_video': int(row['reroll_video_count'] or 0),
+    }
+    actions = {}
+    for action in ('repick', 'reroll_image', 'reroll_video'):
+        cap = NAROG_REFORGE_LIFETIME_CAPS[action]
+        used = counters[action]
+        actions[action] = {
+            'cost': narog_reforge_cost(action),
+            'used': used,
+            'cap': cap,
+            'remaining': max(0, cap - used),
+        }
+
+    # Window state — seconds remaining if test window is open
+    window_seconds_remaining = None
+    started = row['test_window_started_at']
+    locked = bool(row['test_window_locked'])
+    if started and not locked:
+        elapsed = (datetime.utcnow() - started).total_seconds()
+        window_seconds_remaining = max(0, NAROG_TEST_WINDOW_HOURS * 3600 - elapsed)
+
+    return {
+        'available': row['build_status'] == 'complete',
+        'actions': actions,
+        'locked': locked,
+        'window_seconds_remaining': window_seconds_remaining,
+        'window_hours_total': NAROG_TEST_WINDOW_HOURS,
+    }
+
+
+def repick_narog_components(user_id: int) -> Dict[str, Any]:
+    """Restore the 5 currently-consumed source items, pick 5 new ones, mark
+    them consumed, replace stage_sources. Hero image + video are NOT touched —
+    captain re-rolls those separately if they want updates.
+    """
+    ensure_robot_tables()
+    with db_cursor() as cur:
+        cur.execute("SELECT stage_sources FROM pilgrim.robot WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+    if not row:
+        raise ReforgeError("No Narog to recalibrate.", status=404)
+
+    old_sources = list(row['stage_sources'] or [])
+    old_ids = [int(s['discovery_id']) for s in old_sources if s.get('discovery_id') is not None]
+
+    with db_cursor(commit=True) as cur:
+        # Restore old items first (analyzed=false → back in inventory pool)
+        if old_ids:
+            cur.execute("""
+                UPDATE pilgrim.expedition_discoveries
+                SET analyzed = FALSE, analyzed_at = NULL
+                WHERE id = ANY(%s::int[])
+                  AND expedition_id IN (SELECT id FROM pilgrim.expeditions WHERE user_id = %s)
+            """, (old_ids, user_id))
+
+        # Pick fresh 5 (uses the locked 2L+2R+1U/C recipe)
+        try:
+            new_sources = pick_stage_sources(user_id)
+        except RobotGateError as e:
+            raise ReforgeError(str(e), status=409)
+        new_ids = [int(s['discovery_id']) for s in new_sources if s.get('discovery_id') is not None]
+
+        # Consume new items atomically; if any was used in the moment between
+        # restore and pick (other tab, etc.), we roll forward by skipping that
+        # one and trusting pick_stage_sources to have given us a valid set.
+        if new_ids:
+            cur.execute("""
+                UPDATE pilgrim.expedition_discoveries
+                SET analyzed = TRUE, analyzed_at = NOW()
+                WHERE id = ANY(%s::int[])
+                  AND expedition_id IN (SELECT id FROM pilgrim.expeditions WHERE user_id = %s)
+            """, (new_ids, user_id))
+
+        score = compute_craftsmanship_score(new_sources)
+        cur.execute("""
+            UPDATE pilgrim.robot
+            SET stage_sources = %s::jsonb, craftsmanship_score = %s, updated_at = NOW()
+            WHERE user_id = %s
+        """, (json.dumps(new_sources), score, user_id))
+
+    logger.info(f"narog repick: user {user_id} swapped {len(old_ids)} → {len(new_ids)} components")
+    return {'new_sources': new_sources, 'craftsmanship_score': score}
 
 
 def mark_cinematic_played(user_id: int) -> None:

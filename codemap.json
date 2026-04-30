@@ -75,7 +75,8 @@
       "generate_random_leader_stats — Generate random stats for a default leader",
       "get_infrastructure_definition — Get infrastructure config by type",
       "get_available_port — Find an available port in the configured range",
-      "kill_port_processes — Kill any processes using the specified port"
+      "kill_port_processes — Kill any processes using the specified port",
+      "narog_reforge_cost — Return current effective cost for a recalibration action, applying the"
     ]
   },
   "config_infrastructure.py": {
@@ -2034,9 +2035,9 @@
       "broadcast_stage_async — Fire-and-forget Sepolia broadcast for one narog stage.",
       "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
-      "mark_cinematic_played — Flag the build-complete cinematic as already shown so it doesn't replay.",
-      "save_name_suggestions — Store pre-generated golem name suggestions in the robot row.",
-      "start_robot_awakening_video — Kick off a Wan video animation for the completed robot image."
+      "class ReforgeError — Raised when a recalibration action can't proceed (cap hit, insufficient",
+      "charge_reforge_action — Validate cap + balance, deduct shards/SV, increment counter for one",
+      "lock_in_narog — Close the 72hr test window and mark the Narog canonical. Idempotent —"
     ]
   },
   "utilities/postgres/shop.py": {
@@ -3444,7 +3445,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
