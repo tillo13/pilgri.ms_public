@@ -36,16 +36,29 @@ def build_expedition_haul(user_id: int, expedition_id: int) -> dict:
     except Exception as e:
         logger.warning(f"Could not fetch destination image: {e}")
 
-    if expedition['status'] in ('complete', 'recalled'):
+    # Unlock discoveries for any expedition whose return_arrives_at has passed,
+    # not just ones already flipped to status='complete'. The dashboard fleet
+    # card surfaces the "RETURNED!" UI based on now >= return_arrives_at, so
+    # the modal must align — otherwise captains see "0 discoveries" on a
+    # vehicle they can clearly see has returned.
+    from datetime import datetime as _dt
+    now_utc = _dt.utcnow()
+    return_arrives_at = expedition.get('return_arrives_at') or expedition.get('arrives_at')
+    has_arrived = bool(return_arrives_at and now_utc >= return_arrives_at)
+    if expedition['status'] in ('complete', 'recalled') or has_arrived:
         unlock_discoveries_by_distance(expedition_id, float(expedition['distance_km']))
 
     discoveries = get_expedition_discoveries(expedition_id, unlocked_only=True)
 
-    travel_hours = 0
+    # Travel time — clamp to 0 so corrupted timestamps (arrives_at < departed_at
+    # from a TZ-skewed launch path) never render as "-318 minutes". Prefer the
+    # actual completed_at delta when available; otherwise use the planned
+    # round-trip arrives_at.
+    travel_hours = 0.0
     if expedition.get('departed_at') and expedition.get('completed_at'):
-        travel_hours = (expedition['completed_at'] - expedition['departed_at']).total_seconds() / 3600
+        travel_hours = max(0.0, (expedition['completed_at'] - expedition['departed_at']).total_seconds() / 3600)
     elif expedition.get('departed_at') and expedition.get('arrives_at'):
-        travel_hours = (expedition['arrives_at'] - expedition['departed_at']).total_seconds() / 3600
+        travel_hours = max(0.0, (expedition['arrives_at'] - expedition['departed_at']).total_seconds() / 3600)
 
     formatted = [{
         'id': d.get('id'), 'item_name': d.get('item_name'), 'rarity': d.get('rarity', 'common'),
