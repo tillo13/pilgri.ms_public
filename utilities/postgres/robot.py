@@ -191,8 +191,10 @@ def _resolve_coords(coords_jsonb, dest_lat, dest_lon):
 
 ROBOT_GATE_MIN_LEGENDARY = 1
 ROBOT_GATE_MIN_RARE = 2
-ROBOT_BUILD_MAX_LEGENDARY = 3
+ROBOT_BUILD_MAX_LEGENDARY = 2  # 2026-04-30: dropped from 3 → keep 1+ slot for non-leg items
 ROBOT_BUILD_MAX_RARE = 4
+ROBOT_BUILD_PER_NAME_CAP = 3   # max 3 copies of any one item_name in a Narog
+                                # (e.g. Andy with 53 Viking Fragments caps at 3)
 ROBOT_BUILD_TOTAL_ITEMS = 5
 
 
@@ -201,15 +203,26 @@ class RobotGateError(ValueError):
     pass
 
 
-def _pick_with_diversity(items: List[Dict[str, Any]], n: int) -> List[Dict[str, Any]]:
+def _pick_with_diversity(items: List[Dict[str, Any]], n: int,
+                         per_name_cap: int = 999,
+                         name_counts: Optional[Dict[str, int]] = None) -> List[Dict[str, Any]]:
     """Pick n items from the pool, preferring distinct item types over duplicates.
 
     Pass 1 takes one of each unique item_name in random order. Pass 2 fills the
     remainder from whatever is left, shuffled. This biases output toward variety
     (3 distinct legendaries beats 3 copies of Crystal Sentinel) without ever
     duplicating a specific discovery row.
+
+    `per_name_cap` + shared `name_counts` enforce the global "max 3 of any one
+    item_name in a Narog" rule across multiple tier calls. Pass the same
+    `name_counts` Counter through every call from pick_stage_sources so a
+    captain with 53 Viking Fragments can't end up with 4-5 of them by
+    consuming legendaries+rares from different tiers.
     """
     import random
+    from collections import Counter
+    if name_counts is None:
+        name_counts = Counter()
     if n <= 0 or not items:
         return []
     by_type: Dict[str, List[Dict[str, Any]]] = {}
@@ -220,10 +233,17 @@ def _pick_with_diversity(items: List[Dict[str, Any]], n: int) -> List[Dict[str, 
     types = list(by_type.keys())
     random.shuffle(types)
     chosen: List[Dict[str, Any]] = []
+    # Pass 1: one of each unique name (skip names already at cap)
     for t in types:
         if len(chosen) >= n:
             break
+        if name_counts.get(t, 0) >= per_name_cap:
+            continue
+        if not by_type[t]:
+            continue
         chosen.append(by_type[t].pop(0))
+        name_counts[t] = name_counts.get(t, 0) + 1
+    # Pass 2: fill from leftovers, still respecting the cap
     leftovers: List[Dict[str, Any]] = []
     for t in types:
         leftovers.extend(by_type[t])
@@ -231,7 +251,10 @@ def _pick_with_diversity(items: List[Dict[str, Any]], n: int) -> List[Dict[str, 
     for item in leftovers:
         if len(chosen) >= n:
             break
+        if name_counts.get(item['item_name'], 0) >= per_name_cap:
+            continue
         chosen.append(item)
+        name_counts[item['item_name']] = name_counts.get(item['item_name'], 0) + 1
     return chosen[:n]
 
 
@@ -300,20 +323,26 @@ def check_robot_gate(user_id: int) -> Dict[str, Any]:
 def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
     """Pick 5 source manifests for a Narog build — 100% from real claimed inventory.
 
-    Composition: 1-3 legendaries (randomized, capped at MAX_LEGENDARY and at
-    inventory) + the remaining slots filled from rare → uncommon → common in
-    that priority order. If a tier runs out, fall through to the next. If
-    everything-but-legendary is exhausted, use spare legendaries past the
-    soft cap. NEVER fabricates synthetic items — gate check guarantees the
-    captain has ≥ 5 real items before this is called.
+    Composition rules (all enforced):
+      • 1-2 legendaries (random, MAX_LEGENDARY cap, capped by inventory)
+      • Up to MAX_RARE (4) rares
+      • Max PER_NAME_CAP (3) copies of any one item_name across the whole
+        manifest. So a captain with 53 Viking Fragments tops out at 3
+        Vikings — the remaining 2 slots fall through to other rarities.
+      • Fill remaining slots with rare → uncommon → common in that priority
+        order. Per-name cap still applies inside each tier (shared counter).
+      • If everything is exhausted (vanishingly rare given the gate check
+        for ≥5 real items), use any spare items past their tier cap. NEVER
+        fabricates synthetic items.
 
-    Diversity bias inside each tier (see _pick_with_diversity). Final list is
-    shuffled so the same inputs produce a different stage→item mapping each roll.
+    Final list is shuffled so the same inputs produce a different stage→item
+    mapping each roll.
 
     Raises RobotGateError if the gate isn't met or the captain has < 5 real
     items. Caller should surface the message verbatim to the captain.
     """
     import random
+    from collections import Counter
     inv = _load_claimed_inventory(user_id)
     n_leg = len(inv['legendary'])
     n_rare = len(inv['rare'])
@@ -333,31 +362,49 @@ def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
             f"claimed discoveries total. You have {n_total}."
         )
 
-    # 1) Pick legendaries (1-3, capped at inventory)
+    # Shared name-counter threaded through every tier pick so the per-name cap
+    # is enforced GLOBALLY across the manifest (not per tier).
+    name_counts: Counter = Counter()
+
+    # 1) Legendaries (1-2 by default, MAX_LEGENDARY caps it)
     n_legendary = random.randint(
         ROBOT_GATE_MIN_LEGENDARY,
         min(ROBOT_BUILD_MAX_LEGENDARY, n_leg),
     )
-    chosen: List[Dict[str, Any]] = list(_pick_with_diversity(inv['legendary'], n_legendary))
+    chosen: List[Dict[str, Any]] = list(_pick_with_diversity(
+        inv['legendary'], n_legendary,
+        per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
+    ))
 
-    # 2) Fill remaining slots with rare → uncommon → common, in that priority
-    #    order. Cap rare picks at MAX_RARE; if rare runs out, fall through.
+    # 2) Rare next (cap MAX_RARE OR remaining slots, whichever is smaller)
     remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
     n_rare_pick = min(ROBOT_BUILD_MAX_RARE, n_rare, remaining)
-    chosen.extend(_pick_with_diversity(inv['rare'], n_rare_pick))
+    chosen.extend(_pick_with_diversity(
+        inv['rare'], n_rare_pick,
+        per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
+    ))
 
+    # 3) Fall through: uncommon, then common
     remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
     if remaining > 0 and n_unc:
-        chosen.extend(_pick_with_diversity(inv['uncommon'], min(remaining, n_unc)))
+        chosen.extend(_pick_with_diversity(
+            inv['uncommon'], min(remaining, n_unc),
+            per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
+        ))
     remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
     if remaining > 0 and n_com:
-        chosen.extend(_pick_with_diversity(inv['common'], min(remaining, n_com)))
+        chosen.extend(_pick_with_diversity(
+            inv['common'], min(remaining, n_com),
+            per_name_cap=ROBOT_BUILD_PER_NAME_CAP, name_counts=name_counts,
+        ))
 
-    # 3) Ultra-rare fallback: still short? Captain has tons of legendary/rare
-    #    but no commons/uncommons (e.g. Andy: 9L+55R+0U+0C with n_legendary=1
-    #    and only 4 rares would fall here, but rare cap of 4 means we already
-    #    picked enough). This block exists so future inventory weirdness can't
-    #    re-introduce synthetic struts.
+    # 4) Last resort: per-name cap stopped the picker but captain still short
+    #    (e.g. Andy with only 2 item-name types in inventory: 1 leg roll + 3
+    #    Vikings = 4, needs 1 more). Pick from the spare pool but PREFER
+    #    items whose name is least represented so we don't end up with 4
+    #    Vikings — instead we'd add a 2nd Crystal Sentinel (bypassing the
+    #    legendary cap rather than the per-name cap, since "max 3 of one
+    #    name" is the harder UX rule).
     remaining = ROBOT_BUILD_TOTAL_ITEMS - len(chosen)
     if remaining > 0:
         used_ids = {c.get('discovery_id') for c in chosen if c.get('discovery_id') is not None}
@@ -366,6 +413,8 @@ def pick_stage_sources(user_id: int) -> List[Dict[str, Any]]:
             if it['discovery_id'] not in used_ids
         ]
         random.shuffle(spare)
+        # Stable sort by current name count → least-represented first
+        spare.sort(key=lambda it: name_counts.get(it['item_name'], 0))
         chosen.extend(spare[:remaining])
 
     random.shuffle(chosen)

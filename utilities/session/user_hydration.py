@@ -19,6 +19,29 @@ DEFAULT_LAT, DEFAULT_LON = -4.5, 140.0
 HYDRATION_TTL_SECONDS = 300
 
 
+def _is_app_dev_flag(user_id):
+    """Source-of-truth check for the Start Over UI gate. Imports lazily to
+    avoid a circular dependency at module-load time."""
+    if not user_id:
+        return False
+    try:
+        from utilities.admin_utils import is_app_dev
+        return is_app_dev(user_id)
+    except Exception:
+        return False
+
+
+def _is_narog_dry_run_flag(user_id):
+    """Source-of-truth check for the dry-run banner. Same lazy-import pattern."""
+    if not user_id:
+        return False
+    try:
+        from utilities.admin_utils import is_narog_dry_run
+        return is_narog_dry_run(user_id)
+    except Exception:
+        return False
+
+
 def _calc_time_on_mars(first_login_str):
     """Return the sol count since first_login, or None if unavailable."""
     if not first_login_str:
@@ -246,15 +269,15 @@ def build_global_context(auth, static_v):
             'static_v': static_v,
             'mimic_email': session.get('_mimic_email'),
             'is_admin': session.get('_adm', False),
-            # Dev-grade gate — stricter than is_admin. Hardcoded to user 45
-            # to match utilities.admin_utils.APP_DEV_USER_IDS. If that set
-            # changes, update here too (or import the helper).
-            'is_app_dev': session.get('user_id') in {45},
-            # Narog Sepolia dry-run flag — surfaces the "🧪 Dry-run" banner
-            # so dev forges are obviously distinct from canonical on-chain
-            # ones. Mirrors utilities.admin_utils.NAROG_DRY_RUN_USER_IDS.
-            # 2026-04-30: empty set after Andy went live; everyone is canonical now.
-            'is_narog_dry_run': False,
+            # Dev-grade gate — stricter than is_admin. Source of truth is
+            # utilities.admin_utils.APP_DEV_USER_IDS; importing here avoids
+            # the two-place-update bug. APP_DEV_USER_IDS is empty in
+            # production after Andy's canonical Narog forge 2026-04-30, so
+            # this returns False for everyone — Start Over is hidden.
+            'is_app_dev': _is_app_dev_flag(session.get('user_id')),
+            # Narog Sepolia dry-run flag — same import-from-source-of-truth
+            # principle. Empty set in production = always False.
+            'is_narog_dry_run': _is_narog_dry_run_flag(session.get('user_id')),
         }
     except Exception as e:
         logger.warning(f"Failed to inject global stats: {e}")
