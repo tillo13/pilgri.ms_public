@@ -52,7 +52,11 @@ def create_expedition(user_id: int, commander_asset_id: int, destination_name: s
     ensure_signal_claim_columns()
     try:
         with db_cursor(commit=True) as cur:
-            now = datetime.now()
+            # UTC: match how SQL NOW() stores departed_at on the same row.
+            # Naive datetime.now() returned local-time on App Engine instances
+            # that ran with a non-UTC TZ, producing arrives_at < departed_at
+            # by the offset (~5-7h). 56 historical rows patched 2026-04-30.
+            now = datetime.utcnow()
             arrives_at = now + timedelta(seconds=travel_time_seconds)
             return_arrives_at = arrives_at + timedelta(seconds=travel_time_seconds)  # Same time back
 

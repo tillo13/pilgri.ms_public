@@ -1962,47 +1962,6 @@ def cron_retry_bonds():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@app.route('/api/cron/complete_expeditions', methods=['GET'])
-@cron_only
-def cron_complete_expeditions():
-    """Sweep stuck expeditions whose return_arrives_at has elapsed across ALL users.
-
-    Pre-2026-04-30 the only path that flipped status='traveling' → 'complete' was
-    captain interaction (page load) or andy_check.py (post-deploy, Andy only).
-    Captains who didn't visit during/after their return window saw expeditions
-    stuck in 'traveling' indefinitely, plus the Base HQ modal showed wrong data
-    because status hadn't flipped. This cron sweeps every 10 minutes."""
-    try:
-        from utilities.postgres.core import db_cursor
-        from utilities.expeditions.lifecycle import complete_expedition_if_ready
-        completed, errored = 0, 0
-        with db_cursor() as cur:
-            cur.execute("""
-                SELECT id, user_id FROM pilgrim.expeditions
-                WHERE status IN ('traveling', 'returning')
-                  AND return_arrives_at IS NOT NULL
-                  AND return_arrives_at <= NOW()
-                ORDER BY id
-                LIMIT 200
-            """)
-            ready = [(r['id'], r['user_id']) for r in cur.fetchall()]
-        for exp_id, uid in ready:
-            try:
-                result = complete_expedition_if_ready(exp_id, uid)
-                if result.get('success') and result.get('complete'):
-                    completed += 1
-                elif not result.get('success'):
-                    errored += 1
-                    logger.warning(f"complete_expedition_if_ready({exp_id}, {uid}) error: {result.get('error')}")
-            except Exception as e:
-                errored += 1
-                logger.error(f"complete_expedition_if_ready({exp_id}, {uid}) crashed: {e}")
-        return jsonify({'success': True, 'swept': len(ready), 'completed': completed, 'errored': errored})
-    except Exception as e:
-        logger.error(f"Expedition completion cron failed: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @app.route('/api/cron/drone_trail_build', methods=['GET'])
 @cron_only
 def cron_drone_trail_build():

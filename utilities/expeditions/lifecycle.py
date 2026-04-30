@@ -378,7 +378,8 @@ def launch_expedition(
         from utilities.depot_utils import eth_to_display
         new_balance_display = eth_to_display(new_balance)
 
-        now = datetime.now()
+        # UTC — must match SQL NOW() used on the DB row. See expeditions.py:55.
+        now = datetime.utcnow()
         arrives_at = now + timedelta(seconds=travel_time_seconds)
         return_arrives_at = arrives_at + timedelta(seconds=travel_time_seconds)
 
@@ -426,7 +427,8 @@ def recall_expedition(user_id: int, expedition_id: int) -> dict:
     if expedition.get('expedition_type') == 'signal_claim':
         return {'success': False, 'error': 'Signal claim expeditions cannot be recalled — the cinematic awaits.'}
 
-    now = datetime.now()
+    # UTC — match SQL NOW() used to store departed_at / arrives_at.
+    now = datetime.utcnow()
     arrives_at = expedition['arrives_at']
     departed_at = expedition['departed_at']
 
@@ -534,7 +536,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
             'discovery_message': expedition['discovery_message']
         }
 
-    now = datetime.now()  # Use local time to match how arrives_at was stored
+    now = datetime.utcnow()  # UTC — matches SQL NOW() used to store arrives_at
     arrives_at = expedition['arrives_at']
     return_arrives_at = expedition.get('return_arrives_at') or arrives_at  # Fallback for old expeditions
 
@@ -822,7 +824,7 @@ def get_expedition_discovery_progress(expedition_id: int, user_id: int) -> dict:
         unlock_discoveries_by_distance(expedition_id, current_distance)
         logger.info(f"✅ Completed expedition {expedition_id}: unlocked all discoveries at {current_distance} km")
     else:
-        elapsed = (datetime.now() - expedition['departed_at']).total_seconds()  # Use local time to match stored timestamps
+        elapsed = (datetime.utcnow() - expedition['departed_at']).total_seconds()  # UTC — matches SQL NOW()
         return_arrives_at = expedition.get('return_arrives_at') or expedition['arrives_at']
         total_time = (return_arrives_at - expedition['departed_at']).total_seconds()
         progress = min(1.0, elapsed / total_time)

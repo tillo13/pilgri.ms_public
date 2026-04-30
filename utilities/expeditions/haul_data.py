@@ -36,15 +36,24 @@ def build_expedition_haul(user_id: int, expedition_id: int) -> dict:
     except Exception as e:
         logger.warning(f"Could not fetch destination image: {e}")
 
-    # Unlock discoveries for any expedition whose return_arrives_at has passed,
-    # not just ones already flipped to status='complete'. The dashboard fleet
-    # card surfaces the "RETURNED!" UI based on now >= return_arrives_at, so
-    # the modal must align — otherwise captains see "0 discoveries" on a
-    # vehicle they can clearly see has returned.
+    # If the expedition has functionally returned (return_arrives_at < NOW)
+    # but status hasn't flipped yet, complete it on demand. This replaces a
+    # 10-min cron that would only matter for the 1-2 active captains in this
+    # game — clicking Review Haul (or the auto-popup on /home) is already a
+    # reliable trigger. complete_expedition_if_ready handles the discovery
+    # rolls, SV grant, on-chain reward, etc.
     from datetime import datetime as _dt
     now_utc = _dt.utcnow()
     return_arrives_at = expedition.get('return_arrives_at') or expedition.get('arrives_at')
     has_arrived = bool(return_arrives_at and now_utc >= return_arrives_at)
+    if expedition['status'] not in ('complete', 'recalled') and has_arrived:
+        try:
+            from utilities.expeditions.lifecycle import complete_expedition_if_ready
+            complete_expedition_if_ready(expedition_id, user_id)
+            # Re-fetch the now-updated expedition row
+            expedition = get_expedition_by_id(expedition_id)
+        except Exception as e:
+            logger.warning(f"on-demand expedition completion failed for {expedition_id}: {e}")
     if expedition['status'] in ('complete', 'recalled') or has_arrived:
         unlock_discoveries_by_distance(expedition_id, float(expedition['distance_km']))
 
