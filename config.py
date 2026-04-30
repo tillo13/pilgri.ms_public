@@ -448,21 +448,25 @@ NAROG_REFORGE_TEST_MULTIPLIER = 0.01
 # Base costs at full (production) pricing. Test mode multiplies these.
 # Costs mirror real API spend ratios:
 #   - Re-pick has no API cost (just a shard sink to prevent spam)
-#   - Re-roll Image runs Flux (~$0.05) → 500 shard base
-#   - Re-roll Video runs Wan (~$0.50, 10× Flux) → 5000 shard + 500 SV base
+#   - Re-roll Image runs Flux (~$0.05) → 500 shard base. Re-rolling image
+#     INVALIDATES the existing awakening video (since Wan animates from
+#     the image), so video_url is cleared on every re-roll. Captain then
+#     decides whether to pay for a new awakening or lock in image-only.
+#   - Re-roll Video runs Wan (~$0.50, 10× Flux) → 5000 shard + 500 SV base.
+#     Surfaced contextually only when video_url is missing (not as a primary
+#     recalibration action) — captain pays this when they want their new
+#     image animated.
 NAROG_REFORGE_BASE_COSTS = {
     'repick':       {'shards': 500,  'sv': 0},
     'reroll_image': {'shards': 500,  'sv': 0},
     'reroll_video': {'shards': 5000, 'sv': 500},
 }
 
-# Lifetime caps per Narog. After cap, the action is disabled with the message
-# "the hardware can't recalibrate further." Prevents on-chain breadcrumb spam
-# and bounds our worst-case Flux/Wan spend per captain.
+# Lifetime caps per Narog.
 NAROG_REFORGE_LIFETIME_CAPS = {
     'repick':       5,
     'reroll_image': 10,
-    'reroll_video': 3,
+    'reroll_video': 5,
 }
 
 # 72-hour test window. Until the captain hits "Lock In" or this elapses, no

@@ -306,6 +306,29 @@ def crew():
     return render_template('crew.html', active_tab='crew', user=None, **data)
 
 
+# Deep-link shortcuts to specific crew tabs. Each redirects to /crew with the
+# right ?tab= so the JS tab-switcher lands on the desired tab.
+@app.route('/narog')
+def narog_shortcut():
+    return redirect(url_for('crew') + '?tab=robot')
+
+@app.route('/captain')
+def captain_shortcut():
+    return redirect(url_for('crew') + '?tab=captain')
+
+@app.route('/scientist')
+def scientist_shortcut():
+    return redirect(url_for('crew') + '?tab=scientist')
+
+@app.route('/aria')
+def aria_shortcut():
+    return redirect(url_for('crew') + '?tab=aria')
+
+@app.route('/trails-tab')
+def trails_tab_shortcut():
+    return redirect(url_for('crew') + '?tab=trails')
+
+
 # ============================================================================
 # ROBOT CREW MEMBER API — Step 4d ships with stub stage advance.
 # Step 4c will replace _stub_advance_one_stage() with real Sepolia + Kontext;
@@ -552,7 +575,9 @@ def api_robot_reroll_image():
         return jsonify({'success': False, 'error': 'No source manifest found.'}), 409
 
     # Reset visual state so the existing pipeline re-renders all stages.
-    # current_image_url cleared → frontend shows loading state via build_status.
+    # ALSO clear video_url — the old awakening was animated from the OLD
+    # image and won't match the new one. Captain pays separately for a fresh
+    # awakening render once the new image lands ("Bring your Narog to Life").
     from utilities.postgres.core import db_cursor
     with db_cursor(commit=True) as cur:
         cur.execute("""
@@ -564,6 +589,7 @@ def api_robot_reroll_image():
                 stage_ready_at = NOW(),
                 build_error = NULL,
                 cinematic_played = TRUE,
+                video_url = NULL,
                 updated_at = NOW()
             WHERE user_id = %s
         """, (g.user_id,))
@@ -609,15 +635,38 @@ def api_robot_reroll_video():
 @login_required
 @handle_api_error
 def api_robot_lock_in():
-    """Close the 72hr test window and mark the Narog canonical. Free."""
+    """Close the 72hr test window and mark the Narog canonical.
+
+    Side-effect: if the captain doesn't already have an awakening video, we
+    auto-charge the reroll_video cost and kick off a Wan render — every locked
+    Narog should ship with both an image AND an awakening cinematic. The modal
+    discloses this cost up-front; here we just silently apply it. If the
+    captain can't afford it, lock-in is blocked with a clear error.
+    """
     from utilities.postgres.robot import (
-        lock_in_narog, get_recalibration_state, ReforgeError,
+        lock_in_narog, get_recalibration_state, get_robot,
+        charge_reforge_action, start_robot_awakening_video, ReforgeError,
     )
+    robot = get_robot(g.user_id) or {}
+    video_charge = None
+    if not robot.get('video_url'):
+        try:
+            video_charge = charge_reforge_action(g.user_id, 'reroll_video')
+        except ReforgeError as e:
+            return jsonify({'success': False, 'error': f"Awakening render: {e.message}"}), e.status
+        # Spawn the Wan render in the background — captain can leave the page.
+        start_robot_awakening_video(g.user_id, app.config, flux)
+
     try:
         result = lock_in_narog(g.user_id)
     except ReforgeError as e:
         return jsonify({'success': False, 'error': e.message}), e.status
-    return jsonify({'success': True, **result, 'state': get_recalibration_state(g.user_id)})
+    return jsonify({
+        'success': True,
+        **result,
+        'video_charge': video_charge,
+        'state': get_recalibration_state(g.user_id),
+    })
 
 
 @app.route('/api/robot/cinematic_played', methods=['POST'])

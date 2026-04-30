@@ -253,6 +253,18 @@
                         ↻ Regenerate Video (dev)
                     </button>
                     {% endif %}
+                    {% elif robot.cinematic_played %}
+                    {# Recalibration mode: image was re-rolled, awakening doesn't match.
+                       Show CTA to pay for a fresh awakening render. #}
+                    <div class="robot-hero-video-cta" id="robot-bring-to-life-cta" style="cursor:pointer;">
+                        <img src="{{ icons.tornado_dust }}" alt="" style="width: 36px; height: 36px; opacity: 0.85; margin-bottom: 8px;">
+                        <div style="font-size: 13px; font-weight: 800; color: #ffc88a; letter-spacing: 0.04em; margin-bottom: 4px;">Bring Your Narog to Life</div>
+                        <div class="text-xs" style="color: var(--text-secondary); opacity: 0.85; line-height: 1.5; max-width: 200px;">
+                            Pay the scientist to render the awakening cinematic.
+                        </div>
+                        <div class="text-xs" style="color: #ffc88a; font-weight: 700; margin-top: 8px;" id="robot-bring-to-life-cost">…</div>
+                    </div>
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · awaiting render</div>
                     {% else %}
                     <div class="robot-hero-video-placeholder robot-hero-forging">
                         <img src="{{ icons.rare_sparkle }}" alt="" style="width: 36px; height: 36px; opacity: 0.8; margin-bottom: 8px;">
@@ -429,32 +441,42 @@
     <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
         <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
     </div>
-    <div id="narog-recal-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+    <div id="narog-recal-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
         <button class="narog-recal-action" data-action="repick" type="button">
             <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
             <div class="narog-recal-name">New Components</div>
-            <div class="narog-recal-desc">Pull 5 new materials from your inventory.</div>
+            <div class="narog-recal-desc">Pull 5 new materials from your inventory. Image &amp; awakening stay until you re-roll them.</div>
             <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
         </button>
         <button class="narog-recal-action" data-action="reroll_image" type="button">
             <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
             <div class="narog-recal-name">New Look</div>
-            <div class="narog-recal-desc">Same components, new silhouette.</div>
+            <div class="narog-recal-desc">Re-render the silhouette from the current components. Awakening is reset — render it again separately.</div>
             <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
-        </button>
-        <button class="narog-recal-action" data-action="reroll_video" type="button">
-            <div class="narog-recal-icon"><img src="{{ icons.tornado_dust }}" alt=""></div>
-            <div class="narog-recal-name">New Awakening</div>
-            <div class="narog-recal-desc">Same look, fresh awakening sequence.</div>
-            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
-        </button>
-        <button class="narog-recal-action narog-recal-lock" data-action="lock_in" type="button">
-            <div class="narog-recal-icon"><img src="{{ icons.lock_closed }}" alt=""></div>
-            <div class="narog-recal-name">Lock In</div>
-            <div class="narog-recal-desc">Make your Narog permanent.</div>
-            <div class="narog-recal-cost">Free</div>
         </button>
     </div>
+
+    {# Lock In — the WOW moment. Bigger, louder, dramatic glow. #}
+    <button class="narog-recal-lockin-big" data-action="lock_in" type="button">
+        <div class="narog-recal-lockin-glow"></div>
+        <div class="narog-recal-lockin-content">
+            <div class="narog-recal-lockin-icon">
+                <img src="{{ icons.star_milestone }}" alt="">
+            </div>
+            <div class="narog-recal-lockin-text">
+                <div class="narog-recal-lockin-eyebrow">When you're ready</div>
+                <div class="narog-recal-lockin-name">Lock In Your Narog</div>
+                <div class="narog-recal-lockin-desc">
+                    Commit your Narog to the colony record forever. The scientist will document the awakening, your Narog comes fully online, and passive bonuses start ticking the moment you confirm.
+                </div>
+            </div>
+            <div class="narog-recal-lockin-cta">
+                <span class="narog-recal-lockin-cost">Free</span>
+                <span class="narog-recal-lockin-arrow">→</span>
+            </div>
+        </div>
+    </button>
+
     <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
         Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
     </div>

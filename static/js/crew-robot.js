@@ -1115,7 +1115,10 @@
             return;
         }
         card.style.display = '';
-        ['repick','reroll_image','reroll_video'].forEach(action => {
+        // Recalibration card has only repick + reroll_image (no New Awakening
+        // button — video re-render is surfaced via the "Bring to Life" CTA in
+        // the hero area when video_url is missing).
+        ['repick','reroll_image'].forEach(action => {
             const btn = card.querySelector(`.narog-recal-action[data-action="${action}"]`);
             if (!btn) return;
             const a = recalState.actions[action];
@@ -1124,7 +1127,20 @@
             btn.querySelector('.cost-counter').textContent = `${a.used}/${a.cap} used`;
             btn.disabled = a.remaining <= 0;
         });
-        const lockBtn = card.querySelector('.narog-recal-action[data-action="lock_in"]');
+
+        // Update the Bring-to-Life CTA cost (only present in DOM if video missing)
+        const briefCta = document.getElementById('robot-bring-to-life-cta');
+        const briefCost = document.getElementById('robot-bring-to-life-cost');
+        if (briefCta && briefCost && recalState.actions.reroll_video) {
+            const v = recalState.actions.reroll_video;
+            briefCost.textContent = `${fmtCost(v.cost)} · ${v.used}/${v.cap} used`;
+            if (v.remaining <= 0) {
+                briefCta.style.opacity = '0.5';
+                briefCta.style.cursor = 'not-allowed';
+            }
+        }
+
+        const lockBtn = card.querySelector('.narog-recal-lockin-big[data-action="lock_in"]');
         if (lockBtn) lockBtn.disabled = !!recalState.locked;
 
         // 72hr countdown banner
@@ -1213,9 +1229,14 @@
             </div>`;
         };
 
+        // If video is missing, lock-in will auto-render it (Wan call) and
+        // charge the reroll_video cost. Disclose this clearly so the captain
+        // isn't surprised by the deduction.
+        const videoCost = recalState && recalState.actions && recalState.actions.reroll_video
+            ? recalState.actions.reroll_video.cost : null;
         const videoLine = robot.video_url
             ? '<span style="color:#22c55e;">✓ rendered</span>'
-            : '<span style="color:#fca5a5;">✗ not yet rendered (re-roll Awakening before lock-in)</span>';
+            : `<span style="color:#fbbf24;">✗ not yet rendered — the scientist will record it now for <strong style="color:#ffc88a;">${fmtCost(videoCost)}</strong> when you lock in.</span>`;
 
         return new Promise((resolve) => {
             MarsModal.show({
@@ -1292,15 +1313,9 @@
                 const msg = action === 'lock_in' ? 'Narog locked in.' : 'Recalibration in progress.';
                 showToast(msg, 'success', 'Narog');
             }
-            // For image / video re-rolls the page needs a fresh render to show
-            // the loading state; reload after a beat so the captain sees their
-            // new silhouette assemble.
-            if (action === 'reroll_image' || action === 'reroll_video') {
-                setTimeout(() => location.reload(), 500);
-                return;
-            }
-            // Repick swapped items — refresh page to update build manifest grid
-            if (action === 'repick') {
+            // For repick / image / video re-rolls the page needs a fresh
+            // render to show the loading state. Reload, preserving tab=robot.
+            if (action === 'repick' || action === 'reroll_image' || action === 'reroll_video') {
                 setTimeout(() => location.reload(), 500);
                 return;
             }
@@ -1314,14 +1329,29 @@
 
     function wireRecalibration() {
         const card = document.getElementById('narog-recal-card');
-        if (!card) return;
-        card.querySelectorAll('.narog-recal-action').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-                if (!action) return;
-                postRecalAction(action, btn);
+        if (card) {
+            // Repick + reroll_image buttons
+            card.querySelectorAll('.narog-recal-action').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.dataset.action;
+                    if (!action) return;
+                    postRecalAction(action, btn);
+                });
             });
-        });
+            // Big Lock In button
+            const lockBtn = card.querySelector('.narog-recal-lockin-big');
+            if (lockBtn) {
+                lockBtn.addEventListener('click', () => postRecalAction('lock_in', lockBtn));
+            }
+        }
+        // Bring-to-Life CTA in the hero area (only in DOM when video missing)
+        const brief = document.getElementById('robot-bring-to-life-cta');
+        if (brief) {
+            brief.addEventListener('click', () => {
+                if (brief.style.cursor === 'not-allowed') return;
+                postRecalAction('reroll_video', brief);
+            });
+        }
         loadRecalState();
     }
 

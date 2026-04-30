@@ -936,6 +936,12 @@ def repick_narog_components(user_id: int) -> Dict[str, Any]:
     """Restore the 5 currently-consumed source items, pick 5 new ones, mark
     them consumed, replace stage_sources. Hero image + video are NOT touched —
     captain re-rolls those separately if they want updates.
+
+    BUGFIX 2026-04-30: the restore + pick must commit in separate transactions.
+    pick_stage_sources opens its own connection and won't see the restored
+    items if they're still in an uncommitted transaction. So the old flow
+    failed for captains whose commons/uncommons had all been consumed by trail
+    building — the restored items weren't visible in time for the gate.
     """
     ensure_robot_tables()
     with db_cursor() as cur:
@@ -947,9 +953,10 @@ def repick_narog_components(user_id: int) -> Dict[str, Any]:
     old_sources = list(row['stage_sources'] or [])
     old_ids = [int(s['discovery_id']) for s in old_sources if s.get('discovery_id') is not None]
 
-    with db_cursor(commit=True) as cur:
-        # Restore old items first (analyzed=false → back in inventory pool)
-        if old_ids:
+    # Step 1: restore old items in its own committed transaction so the next
+    # pick query sees them in inventory.
+    if old_ids:
+        with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.expedition_discoveries
                 SET analyzed = FALSE, analyzed_at = NULL
@@ -957,16 +964,17 @@ def repick_narog_components(user_id: int) -> Dict[str, Any]:
                   AND expedition_id IN (SELECT id FROM pilgrim.expeditions WHERE user_id = %s)
             """, (old_ids, user_id))
 
-        # Pick fresh 5 (uses the locked 2L+2R+1U/C recipe)
-        try:
-            new_sources = pick_stage_sources(user_id)
-        except RobotGateError as e:
-            raise ReforgeError(str(e), status=409)
-        new_ids = [int(s['discovery_id']) for s in new_sources if s.get('discovery_id') is not None]
+    # Step 2: pick fresh 5 from the now-larger inventory pool. If this fails
+    # (insufficient gate), the old items are still restored — captain can
+    # accumulate commons/uncommons via more expeditions and try again.
+    try:
+        new_sources = pick_stage_sources(user_id)
+    except RobotGateError as e:
+        raise ReforgeError(str(e), status=409)
+    new_ids = [int(s['discovery_id']) for s in new_sources if s.get('discovery_id') is not None]
 
-        # Consume new items atomically; if any was used in the moment between
-        # restore and pick (other tab, etc.), we roll forward by skipping that
-        # one and trusting pick_stage_sources to have given us a valid set.
+    # Step 3: consume the new picks + write stage_sources atomically.
+    with db_cursor(commit=True) as cur:
         if new_ids:
             cur.execute("""
                 UPDATE pilgrim.expedition_discoveries
