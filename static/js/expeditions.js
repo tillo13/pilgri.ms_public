@@ -173,52 +173,85 @@ function setVehicleRange(btn, vehicleType) {
 
     const rangeKm = parseInt(btn.dataset.range) || 0;
 
-    // Bug #1394 ReOpen v2 (2026-04-29): three issues from Luke's reopen comments —
-    //   (1) Rover ring rendered with a "bell" shape because Leaflet drew a polygon
-    //       fill across antimeridian crossings, smearing edges across the map.
-    //   (2) Some bright (in-range) dots fell outside the rendered ring, even
-    //       though the dim/bright classification was correct.
-    //   (3) Buggy ring (δ ≈ 135°) wasn't drawn at all — earlier fix bailed out
-    //       for δ > π/2 to avoid the polygon-fill artifact.
+    // Bug #1394 ReOpen v4 (2026-05-04): three prior fixes (L.circle with Earth scale →
+    // geodesic L.polygon → geodesic L.polyline + antimeridian split) all converged on
+    // mathematically correct geodesic projections. Luke rejected each because Mercator
+    // can't make a 69°-radius cap on Mars look like a circle — for bases where δ + |lat|
+    // > 90° the cap contains a pole and the projection becomes a "bell" shape.
+    //
+    // Luke 2026-04-30: "Per the comment about 'weird shape', it's Ok for the circle to
+    //   not be a perfect circle, it just has to connect on all sides and show up on the
+    //   map in a user friendly way."
+    //
+    // He also confirmed (2026-04-29) that the dim/bright dot classification is the
+    // source of truth: "The distances seem to be calculating correctly now (dots greyed
+    // out if they are not reachable, and outside circle)."
+    //
+    // Bug #1428 (Backlog, P5) acknowledges Mercator's fundamental limit: "flat map makes
+    // game code around estimating destinations, and vehicle circles around the poles
+    // harder to calculate and visualize in UI."
     //
     // Fix:
-    //   - Generate 256 geodesic points (denser, smoother arcs).
-    //   - Normalize longitudes to (-180, 180].
-    //   - Split the closed ring into segments at any antimeridian crossing
-    //     (|Δlon| > 180° between adjacent vertices). Each segment is an open arc
-    //     that enters / exits the map at lon = ±180°.
-    //   - Render every segment as a dashed POLYLINE (no fill). Polylines don't
-    //     have the polygon-fill wraparound artifact and do not require a closed
-    //     boundary on the projected map. Group them so one tooltip covers all.
-    //   - Always draw, regardless of δ. For δ > π/2 (Buggy) the ring legitimately
-    //     wraps the antipode side of the planet; on Mercator this surfaces as
-    //     two arcs entering opposite edges, which is what Luke asked for.
-    //
-    // Mercator distortion at high latitude still squishes/stretches the polyline
-    // (e.g. a southern arc near lat=-80° collapses to a near-horizontal line).
-    // That distortion is a property of the basemap projection, not our math —
-    // dots and ring are projected with the same transformation, so a bright dot
-    // is always inside the closed-on-sphere polyline once antimeridian splitting
-    // is correct. The in/out-of-range classification (haversine ≤ rangeKm) is
-    // unchanged and authoritative — the polyline is purely visual.
+    //   - Drop the geodesic-polyline approach. Use L.circle (screen-space ellipse) for
+    //     a CONNECTED visual — fast to render, always a clean closed shape on Mercator.
+    //   - Mars-correction factor 6371/3396 ≈ 1.876: convert Mars km → Earth meters that
+    //     Leaflet uses for its local-scale circle approximation. Mathematically correct
+    //     for small δ; visually a stretched ellipse for large δ — but always connected.
+    //   - For δ > 90° (Buggy at 8000+ km on Mars), the cap is more than half the planet
+    //     and L.circle around the base would be enormous and visually meaningless. Draw
+    //     a SMALL circle around the antipode labeled "out of range — only this zone is
+    //     too far" instead. Inverts the visual but conveys the same information cleanly.
+    //   - After every vehicle change, fitBounds() to base + ring so the user always
+    //     sees the ring without scrolling. Solves Luke's "still don't see Buggy circle".
+    //   - Dim/bright dot classification (haversine ≤ rangeKm) is unchanged and remains
+    //     authoritative. The visual ring is an approximation; boundary dots may visually
+    //     fall on the "wrong" side because Mercator distortion ≠ true Mars geodesic at
+    //     large δ — that's accepted per Luke's relaxation above.
     const MARS_RADIUS_KM = 3396;
-    const ringPoints = geodesicCirclePoints(
-        baseCoords.latitude, baseCoords.longitude, rangeKm, MARS_RADIUS_KM, 256
-    );
-    const segments = splitRingAtAntimeridian(ringPoints);
-    if (segments.length) {
-        const lineLayers = segments.map(seg => L.polyline(seg, {
+    const EARTH_RADIUS_KM = 6371;
+    const marsCorrection = EARTH_RADIUS_KM / MARS_RADIUS_KM;
+    const angularRad = rangeKm / MARS_RADIUS_KM;
+    const angularDeg = angularRad * 180 / Math.PI;
+
+    if (angularDeg < 90) {
+        // Cap is less than a hemisphere — draw a "you can reach inside this" ring around base.
+        rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
+            radius: rangeKm * 1000 * marsCorrection,
             color: '#ffffff',
             weight: 2,
-            opacity: 0.7,
+            opacity: 0.75,
+            fillOpacity: 0.04,
             dashArray: '8, 6',
             interactive: false,
-        }));
-        rangeCircle = L.featureGroup(lineLayers).addTo(map);
-        // Bug #1283: explicit label on the range circle so Luke can verify visually that
-        // a marker labeled "403km" is correctly OUT of a 300km vehicle range.
+        }).addTo(map);
         rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
+    } else {
+        // Cap is MORE than a hemisphere — draw a "this antipode zone is the only place
+        // you CAN'T reach" ring around the antipode. Visually small + clean + always on-map.
+        const antipodeLat = -baseCoords.latitude;
+        let antipodeLon = baseCoords.longitude + 180;
+        if (antipodeLon > 180) antipodeLon -= 360;
+        const inverseAngularRad = Math.PI - angularRad;
+        const inverseRangeKm = inverseAngularRad * MARS_RADIUS_KM;
+        rangeCircle = L.circle([antipodeLat, antipodeLon], {
+            radius: inverseRangeKm * 1000 * marsCorrection,
+            color: '#ff6030',
+            weight: 2,
+            opacity: 0.85,
+            fillOpacity: 0.06,
+            dashArray: '8, 6',
+            interactive: false,
+        }).addTo(map);
+        rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range — only this zone is too far to reach`, { permanent: true, direction: 'top', className: 'range-circle-label' });
     }
+
+    // Auto-fit map so base + ring are both visible. Solves Luke's "Buggy ring missing"
+    // (the antipode ring on the western hemisphere wasn't in his eastern-hemisphere view).
+    try {
+        const bounds = rangeCircle.getBounds().extend([baseCoords.latitude, baseCoords.longitude]);
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 4, animate: true });
+    } catch (e) { /* fitBounds may throw on degenerate bounds; ignore. */ }
+
     // Store current selected range so marker popups can compute in/out status
     window.__currentRangeKm = rangeKm;
 
