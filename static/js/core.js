@@ -547,10 +547,14 @@ initTheme();
 
 // Hide processing overlay when page is shown (handles back-forward cache)
 window.addEventListener('pageshow', function(event) {
-    // Always hide - modal shouldn't be visible on page load
     hideProcessing();
-    // Close any stuck modals
-    document.querySelectorAll('.mm-overlay.show').forEach(m => m.classList.remove('show'));
+    // Bug #1397 v4: pageshow fires AFTER load, which fires AFTER DOMContentLoaded.
+    // Stripping .mm-overlay.show on every fresh load was murdering the depot
+    // build-completion modal ~0.5s after it opened (load wait = GCS image loads).
+    // Only strip on bfcache restore, where stale overlays are a legit concern.
+    if (event.persisted) {
+        document.querySelectorAll('.mm-overlay.show').forEach(m => m.classList.remove('show'));
+    }
 });
 
 // Init
