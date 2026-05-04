@@ -651,13 +651,13 @@ function formatEffectName(key) {
 }
 
 function formatEffectValue(key, value) {
+    // Bug #1243 v3 (2026-05-04): Nx multiplier format for all multiplicative effects.
     if (key.endsWith('_mult')) {
-        const pct = Math.round((value - 1) * 100);
-        if (key.includes('cost')) return `${pct}%`;
-        return `+${pct}%`;
+        // Cost multipliers (e.g. fuel_cost_mult=0.85) and bonus multipliers (e.g. passive_income_mult=1.28) all show as Nx.
+        return `${value.toFixed(2)}x`;
     }
     if (key.endsWith('_bonus') || key === 'dust_storm_resistance') {
-        return `+${Math.round(value * 100)}%`;
+        return `${(1 + value).toFixed(2)}x`;
     }
     if (key === 'cargo_slots') return `+${value} slots`;
     if (key === 'passive_income_base') return `+${value}/hr`;

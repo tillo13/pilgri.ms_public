@@ -25,39 +25,40 @@ logger = logging.getLogger(__name__)
 
 # Bonus definitions — single source of truth for both UI labels and effect application.
 BOND_BONUSES = {
+    # Bug #1243 v3 (2026-05-04): description strings use Nx multiplier format per spec.
     'A': {
         'code': 'A', 'name': 'SV Bonus',
-        'description': '+5% Science Value gain on every claim',
+        'description': '1.05x Science Value gain on every claim',
         'effect_key': 'sv_mult', 'effect_value': 1.05,
         'icon': '🔬',
     },
     'B': {
         'code': 'B', 'name': 'Expedition Speed',
-        'description': '+5% expedition speed (vehicles travel faster)',
+        'description': '1.05x expedition speed (vehicles travel faster)',
         'effect_key': 'expedition_speed_mult', 'effect_value': 1.05,
         'icon': '🚀',
     },
     'C': {
         'code': 'C', 'name': 'Depot Build Speed',
-        'description': '+5% faster building / upgrade construction',
+        'description': '0.95x building / upgrade construction time',
         'effect_key': 'build_time_mult', 'effect_value': 0.95,  # lower = faster
         'icon': '🏗️',
     },
     'D': {
         'code': 'D', 'name': 'Shard Hourly Bonus',
-        'description': '+5% shard generation per hour',
+        'description': '1.05x shard generation per hour',
         'effect_key': 'shards_mult', 'effect_value': 1.05,
         'icon': '💎',
     },
     'E': {
         'code': 'E', 'name': 'Vehicle Range',
-        'description': '+5% maximum vehicle range on expeditions',
+        'description': '1.05x maximum vehicle range on expeditions',
         'effect_key': 'vehicle_range_mult', 'effect_value': 1.05,
         'icon': '🛞',
     },
     'F': {
         'code': 'F', 'name': 'Discovery Rate',
-        'description': '+5% chance to find rarer discoveries',
+        'description': '1.05x chance to find rarer discoveries',
         'effect_key': 'discovery_chance_bonus', 'effect_value': 0.05,  # additive bonus
         'icon': '🔍',
     },
