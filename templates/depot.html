@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 {% endif %}
                 {% if item.next_level_stats.expedition_speed_mult and item.current_stats and item.current_stats.expedition_speed_mult %}
                 {% set speed_delta = item.next_level_stats.expedition_speed_mult - item.current_stats.expedition_speed_mult %}
-                {% if speed_delta > 0 %}<span class="upgrade-delta">+{{ "%.0f"|format((speed_delta / item.current_stats.expedition_speed_mult) * 100) }}% speed</span>{% endif %}
+                {% if speed_delta > 0 %}<span class="upgrade-delta">{{ "%.2f"|format(1 + (speed_delta / item.current_stats.expedition_speed_mult)) }}x speed</span>{% endif %}
                 {% endif %}
                 {% if item.next_level_stats.generation_rate and item.current_stats and item.current_stats.generation_rate %}
                 {% set gen_delta = item.next_level_stats.generation_rate - item.current_stats.generation_rate %}
