@@ -12,7 +12,7 @@
 {% if bbs %}
 <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; padding: 8px 12px; background: rgba(168,85,247,0.04); border: 1px dashed rgba(168,85,247,0.3); border-radius: 8px;">
     <strong style="color: #a855f7;">Fragment Bonuses:</strong>
-    {{ bbs.picks_count }} of {{ bbs.max_picks }} chosen ({{ bbs.picks_remaining }} remaining). Each bond grants ONE permanent +5% bonus. No duplicates.
+    {{ bbs.picks_count }} of {{ bbs.max_picks }} chosen ({{ bbs.picks_remaining }} remaining). Each bond grants ONE permanent 1.05x bonus. No duplicates.
 </div>
 {% endif %}
 {% for bond in signal_bonds %}
