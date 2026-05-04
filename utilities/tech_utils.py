@@ -779,11 +779,10 @@ def _format_effects_for_display(effects: Dict[str, Any]) -> list:
                 continue
             value_display = f"{float(value):.2f}x {meta['label']}"
         elif fmt == 'pct_bonus':
+            # Bug #1243 v3 (2026-05-04): Nx multiplier format per spec.
             if float(value) == 0:
                 continue
-            pct = float(value) * 100
-            sign = '+' if pct >= 0 else ''
-            value_display = f"{sign}{pct:.0f}% {meta['label']}"
+            value_display = f"{1 + float(value):.2f}x {meta['label']}"
         elif fmt == 'immune':
             # dust_storm_resistance is a float, >=1.0 means full immunity.
             if float(value) < 1.0:
