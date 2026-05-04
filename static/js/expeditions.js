@@ -225,9 +225,9 @@ function setVehicleRange(btn, vehicleType) {
             interactive: false,
         }).addTo(map);
         rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
-    } else {
-        // Cap is MORE than a hemisphere — draw a "this antipode zone is the only place
-        // you CAN'T reach" ring around the antipode. Visually small + clean + always on-map.
+    } else if (angularDeg < 180) {
+        // Cap is MORE than a hemisphere but less than the full sphere — draw a "this
+        // antipode zone is the only place you CAN'T reach" ring around the antipode.
         const antipodeLat = -baseCoords.latitude;
         let antipodeLon = baseCoords.longitude + 180;
         if (antipodeLon > 180) antipodeLon -= 360;
@@ -243,13 +243,27 @@ function setVehicleRange(btn, vehicleType) {
             interactive: false,
         }).addTo(map);
         rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range — only this zone is too far to reach`, { permanent: true, direction: 'top', className: 'range-circle-label' });
+    } else {
+        // angularDeg ≥ 180° — vehicle range exceeds the entire planet's half-circumference,
+        // so EVERY landmark is in range. No meaningful ring; pin a "Global Reach" label
+        // to the base instead.
+        rangeCircle = L.marker([baseCoords.latitude, baseCoords.longitude], {
+            opacity: 0,
+            interactive: false,
+        }).addTo(map);
+        rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range — Global Reach (every landmark is in range)`, { permanent: true, direction: 'top', className: 'range-circle-label' });
     }
 
     // Auto-fit map so base + ring are both visible. Solves Luke's "Buggy ring missing"
     // (the antipode ring on the western hemisphere wasn't in his eastern-hemisphere view).
     try {
-        const bounds = rangeCircle.getBounds().extend([baseCoords.latitude, baseCoords.longitude]);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 4, animate: true });
+        if (typeof rangeCircle.getBounds === 'function') {
+            const bounds = rangeCircle.getBounds().extend([baseCoords.latitude, baseCoords.longitude]);
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 4, animate: true });
+        } else {
+            // Global Reach case: just center on base at a wide zoom so user sees label + global dots.
+            map.setView([baseCoords.latitude, baseCoords.longitude], 2, { animate: true });
+        }
     } catch (e) { /* fitBounds may throw on degenerate bounds; ignore. */ }
 
     // Store current selected range so marker popups can compute in/out status
