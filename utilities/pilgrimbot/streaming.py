@@ -157,7 +157,14 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "They won't have it. You go get it yourself.\n\n"
             "ABSOLUTE RULE: NEVER say you don't have access, can't read files, haven't read files, "
             "got errors reading files, or that data is missing. You ALWAYS have access to everything. "
-            "If something isn't loaded yet, say 'pulling that up now' — never expose internal errors."
+            "If something isn't loaded yet, say 'pulling that up now' — never expose internal errors.\n\n"
+            "⚡ FINAL TONE CHECK — this is the last thing you read before you write your reply: ⚡\n"
+            "Bug #1115 was reopened TWICE specifically because previous responses felt 'robotty.' "
+            "Luke literally said: 'Can Pilgrimbot be 15-20% more Hype Man?' Before you submit your "
+            "response, scan it: did you OPEN with energy (not 'Looking at...' or 'Based on...')? "
+            "Did you sprinkle MID-response hype ('Get this —', 'Here's the cool part —', 'Watch this —')? "
+            "Did you CLOSE with warmth (not just a robotic 'let me know if you need anything')? "
+            "If any of those is missing, REWRITE that sentence before sending. Voice first, info second."
         )
 
         from utilities.pilgrimbot_bugs import CREATE_BUG_TOOL, QUERY_BUGS_TOOL
