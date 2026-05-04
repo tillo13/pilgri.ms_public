@@ -87,31 +87,32 @@ function formatLevelStats(stats, category) {
         parts.push(rangeMult !== 1.0 ? `${effective.toLocaleString()} km (${stats.max_range_km.toLocaleString()} × ${rangeMult}×)` : `${stats.max_range_km.toLocaleString()} km`);
     }
     if (stats.cargo) parts.push(`${stats.cargo} cargo`);
+    // Bug #1243 v3 (2026-05-04): all multiplicative bonuses use Nx format per spec.
     if (stats.fuel_cost_mult && stats.fuel_cost_mult !== 1.0) {
-        if (stats.fuel_cost_mult < 1.0) parts.push(green(`-${((1 - stats.fuel_cost_mult) * 100).toFixed(0)}% cost`));
-        else parts.push(red(`+${((stats.fuel_cost_mult - 1) * 100).toFixed(0)}% cost`));
+        if (stats.fuel_cost_mult < 1.0) parts.push(green(`${stats.fuel_cost_mult.toFixed(2)}x cost`));
+        else parts.push(red(`${stats.fuel_cost_mult.toFixed(2)}x cost`));
     }
     // Drone/buggy discovery bonuses (can be negative!)
     if (stats.discovery_bonus !== undefined && stats.discovery_bonus !== 0) {
-        parts.push(stats.discovery_bonus > 0 ? green(`+${(stats.discovery_bonus * 100).toFixed(0)}% disc`) : red(`${(stats.discovery_bonus * 100).toFixed(0)}% disc`));
+        parts.push(stats.discovery_bonus > 0 ? green(`${(1 + stats.discovery_bonus).toFixed(2)}x disc`) : red(`${(1 + stats.discovery_bonus).toFixed(2)}x disc`));
     }
     if (stats.rare_bonus !== undefined && stats.rare_bonus !== 0) {
-        parts.push(stats.rare_bonus > 0 ? gold(`+${(stats.rare_bonus * 100).toFixed(0)}% rare`) : red(`${(stats.rare_bonus * 100).toFixed(0)}% rare`));
+        parts.push(stats.rare_bonus > 0 ? gold(`${(1 + stats.rare_bonus).toFixed(2)}x rare`) : red(`${(1 + stats.rare_bonus).toFixed(2)}x rare`));
     }
     if (stats.legendary_bonus !== undefined) {
         if (stats.legendary_bonus === -1.0) parts.push(red('no legendary'));
-        else if (stats.legendary_bonus < 0) parts.push(red(`${(stats.legendary_bonus * 100).toFixed(0)}% legendary`));
-        else if (stats.legendary_bonus > 0) parts.push(gold(`+${(stats.legendary_bonus * 100).toFixed(0)}% legendary`));
+        else if (stats.legendary_bonus < 0) parts.push(red(`${(1 + stats.legendary_bonus).toFixed(2)}x legendary`));
+        else if (stats.legendary_bonus > 0) parts.push(gold(`${(1 + stats.legendary_bonus).toFixed(2)}x legendary`));
     }
 
     // === SCANNERS (uses _chance_ suffix) ===
-    if (stats.discovery_chance_bonus) parts.push(green(`+${(stats.discovery_chance_bonus * 100).toFixed(0)}% discovery`));
-    if (stats.rare_chance_bonus) parts.push(gold(`+${(stats.rare_chance_bonus * 100).toFixed(0)}% rare`));
-    if (stats.legendary_chance_bonus) parts.push(gold(`+${(stats.legendary_chance_bonus * 100).toFixed(0)}% legendary`));
+    if (stats.discovery_chance_bonus) parts.push(green(`${(1 + stats.discovery_chance_bonus).toFixed(2)}x discovery`));
+    if (stats.rare_chance_bonus) parts.push(gold(`${(1 + stats.rare_chance_bonus).toFixed(2)}x rare`));
+    if (stats.legendary_chance_bonus) parts.push(gold(`${(1 + stats.legendary_chance_bonus).toFixed(2)}x legendary`));
 
     // === LIFE SUPPORT ===
     if (stats.life_support_cost_mult && stats.life_support_cost_mult < 1.0) {
-        parts.push(green(`-${((1 - stats.life_support_cost_mult) * 100).toFixed(0)}% life support`));
+        parts.push(green(`${stats.life_support_cost_mult.toFixed(2)}x life support cost`));
     }
 
     // === GENERATOR (passive_income_mult) ===
@@ -124,8 +125,8 @@ function formatLevelStats(stats, category) {
         parts.push(gold(`${stats.discovery_value_mult.toFixed(2)}x disc value`));
     }
 
-    // === GEAR (EVA Suit) ===
-    if (stats.stat_exploration_bonus) parts.push(green(`+${stats.stat_exploration_bonus}% exploration`));
+    // === GEAR (EVA Suit) — stat_exploration_bonus is flat captain-stat points (not %).
+    if (stats.stat_exploration_bonus) parts.push(green(`+${stats.stat_exploration_bonus} exploration`));
 
     // === AUTOMATION ===
     if (stats.passive_income_base) parts.push(gold(`+${stats.passive_income_base} shards/hr`));
@@ -144,14 +145,14 @@ function formatLevelStats(stats, category) {
     // === INFRASTRUCTURE ===
     if (stats.generation_rate) parts.push(gold(`${stats.generation_rate.toFixed(1)}/hr`));
     if (stats.science_generation_rate) parts.push(`${stats.science_generation_rate.toFixed(1)} SV/hr`);
-    if (stats.fuel_cost_reduction) parts.push(green(`-${(stats.fuel_cost_reduction * 100).toFixed(0)}% cost`));
-    if (stats.life_support_reduction) parts.push(green(`-${(stats.life_support_reduction * 100).toFixed(0)}% life support`));
-    if (stats.night_generation) parts.push(`${(stats.night_generation * 100).toFixed(0)}% night gen`);
+    if (stats.fuel_cost_reduction) parts.push(green(`${(1 - stats.fuel_cost_reduction).toFixed(2)}x fuel cost`));
+    if (stats.life_support_reduction) parts.push(green(`${(1 - stats.life_support_reduction).toFixed(2)}x life support cost`));
+    if (stats.night_generation) parts.push(`${stats.night_generation.toFixed(2)}x night gen`);
     if (stats.all_generation_mult && stats.all_generation_mult > 1.0) {
         parts.push(gold(`${stats.all_generation_mult.toFixed(2)}x all gen`));
     }
     if (stats.expedition_capacity) parts.push(`${stats.expedition_capacity} expedition slots`);
-    if (stats.legendary_discovery_chance) parts.push(gold(`+${(stats.legendary_discovery_chance * 100).toFixed(0)}% legendary`));
+    if (stats.legendary_discovery_chance) parts.push(gold(`${(1 + stats.legendary_discovery_chance).toFixed(2)}x legendary`));
     if (stats.research_enabled === true) parts.push(green('enables xenobiology research'));
 
     return parts.length > 0 ? parts.join(' · ') : '';

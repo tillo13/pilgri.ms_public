@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="stat-pill">
                 <div class="stat-pill-header"><span class="stat-name">Lore Memory</span><span class="stat-value" style="color: #a855f7;">Lv{{ lm_lvl }}/100</span></div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ lm_lvl }}%; background: #7c3aed;"></div></div>
-                <div class="stat-desc">Trail efficiency +{{ "%.1f"|format(lm_lvl / 2) }}% &middot; {{ lm_xp % 100 }}/100 XP to next</div>
+                <div class="stat-desc">{{ "%.2f"|format(1 + lm_lvl / 200.0) }}x trail efficiency &middot; {{ lm_xp % 100 }}/100 XP to next</div>
             </div>
             <div class="stat-pill">
                 <div class="stat-pill-header"><span class="stat-name">Age</span><span class="stat-value" style="color: var(--text-muted);">?/???</span></div>

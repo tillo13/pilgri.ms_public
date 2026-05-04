@@ -125,8 +125,9 @@
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(nav / 50 * 100)|round|int, 100]|min }}%; background: var(--color-sepolia);"></div></div>
                 <div class="stat-desc">
-                    <div>• <strong>×{{ "%.2f"|format(1 + nav / 150) }} expedition speed</strong> — stacks with vehicle speed, captain Logistics, and trail bonuses (+0.67%/pt, max ×1.33 at 50).</div>
-                    <div>• <strong>×{{ "%.2f"|format(([nav, 1]|max) / 50.0) }} NAROG trail output</strong> — scales the Robot Crew's passive km/hr from the exploration dial slot (linear in NAV/50; #1113).</div>
+                    {# Bug #1243 v3 (2026-05-04): standardized to Nx suffix per spec. #}
+                    <div>• <strong>{{ "%.2f"|format(1 + nav / 150) }}x expedition speed</strong> — stacks with vehicle speed, captain Logistics, and trail bonuses (+0.67%/pt, max 1.33x at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(([nav, 1]|max) / 50.0) }}x NAROG trail output</strong> — scales the Robot Crew's passive km/hr from the exploration dial slot (linear in NAV/50; #1113).</div>
                 </div>
             </div>
             <div class="stat-pill">
@@ -136,9 +137,9 @@
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(anl / 50 * 100)|round|int, 100]|min }}%; background: var(--color-success);"></div></div>
                 <div class="stat-desc">
-                    <div>• <strong>+{{ (anl / 2)|int }}% discovery value</strong> — stacks multiplicatively with captain Exploration and distance bonuses (+0.5%/pt, max +25% at 50).</div>
-                    <div>• <strong>×{{ "%.2f"|format(1 + ([anl, 50]|min) * 0.02) }} shard generation</strong> — multiplies your colony shard income (+2%/pt, max ×2.0 at 50).</div>
-                    <div>• <strong>×{{ "%.2f"|format(1 + anl / 50.0) }} SV generation</strong> — multiplies Research Station Science Value income (+2%/pt, max ×2.0 at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(1 + (anl / 200.0)) }}x discovery value</strong> — stacks multiplicatively with captain Exploration and distance bonuses (+0.5%/pt, max 1.25x at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(1 + ([anl, 50]|min) * 0.02) }}x shard generation</strong> — multiplies your colony shard income (+2%/pt, max 2.00x at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(1 + anl / 50.0) }}x SV generation</strong> — multiplies Research Station Science Value income (+2%/pt, max 2.00x at 50).</div>
                 </div>
             </div>
             <div class="stat-pill">
@@ -148,8 +149,8 @@
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(geo / 50 * 100)|round|int, 100]|min }}%; background: var(--color-mars);"></div></div>
                 <div class="stat-desc">
-                    <div>• <strong>+{{ geo }}% mineral/rock spawn weight</strong> — boosts mineral/rock discoveries near terrain features on expedition paths (+1%/pt, max +50% at 50).</div>
-                    <div>• <strong>+{{ "%.1f"|format(geo / 2.0) }}% trail building speed</strong> — multiplies on-expedition trail km/hr alongside scientist specialty bonus (+0.5%/pt, max +25% at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(1 + geo / 100.0) }}x mineral/rock spawn weight</strong> — boosts mineral/rock discoveries near terrain features on expedition paths (+1%/pt, max 1.50x at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(1 + geo / 200.0) }}x trail building speed</strong> — multiplies on-expedition trail km/hr alongside scientist specialty bonus (+0.5%/pt, max 1.25x at 50).</div>
                 </div>
             </div>
             <div class="stat-pill">
@@ -159,8 +160,9 @@
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [(eng / 50 * 100)|round|int, 100]|min }}%; background: var(--color-primary);"></div></div>
                 <div class="stat-desc">
+                    {# Cargo slots stay flat-additive per Bug #1243 spec ('+X slots' is correct). #}
                     <div>• <strong>+{{ (eng / 10)|int }} cargo slots</strong> — added to every expedition on top of vehicle cargo and Material Science tech (+1 per 10 pts, max +5 at 50).</div>
-                    <div>• <strong>−{{ "%.1f"|format(eng / 5.0) }}% depot build time</strong> — speeds up every upgrade and infrastructure build, stacks with captain Logistics + Maintenance Drone (−0.2%/pt, max −10% at 50).</div>
+                    <div>• <strong>{{ "%.2f"|format(1 - eng / 500.0) }}x depot build time</strong> — speeds up every upgrade and infrastructure build, stacks with captain Logistics + Maintenance Drone (−0.2%/pt, min 0.90x at 50).</div>
                 </div>
             </div>
         </div>

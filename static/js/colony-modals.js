@@ -245,11 +245,11 @@ function showBuildingEquipmentModal(el) {
     if (rareBonus > 0) bonusStats.push({ label: 'Rare Find Chance', value: '+' + (rareBonus * 100).toFixed(0) + '%' });
     if (legendaryBonus > 0) bonusStats.push({ label: 'Legendary Chance', value: '+' + (legendaryBonus * 100).toFixed(0) + '%' });
     if (speedMult > 0 && speedMult !== 1.0) {
-        const speedPct = speedMult > 1 ? '+' + ((speedMult - 1) * 100).toFixed(0) : '-' + ((1 - speedMult) * 100).toFixed(0);
-        bonusStats.push({ label: 'Expedition Speed', value: speedPct + '%' });
+        // Bug #1243 v3 (2026-05-04): Nx multiplier format per spec.
+        bonusStats.push({ label: 'Expedition Speed', value: speedMult.toFixed(2) + 'x' });
     }
     if (cargoSlots > 0) bonusStats.push({ label: 'Extra Cargo', value: '+' + cargoSlots + ' slots' });
-    if (fuelMult > 0 && fuelMult < 1.0) bonusStats.push({ label: 'Cost Efficiency', value: '-' + ((1 - fuelMult) * 100).toFixed(0) + '% expedition cost' });
+    if (fuelMult > 0 && fuelMult < 1.0) bonusStats.push({ label: 'Cost Efficiency', value: fuelMult.toFixed(2) + 'x expedition cost' });
     if (bonusStats.length > 0) {
         stats.push({ label: '\u2500\u2500\u2500 BONUSES (when complete) \u2500\u2500\u2500', value: '' });
         bonusStats.forEach(b => stats.push(b));

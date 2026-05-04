@@ -389,10 +389,11 @@ function formatEffects(effects) {
     return Object.entries(effects).map(([k, v]) => {
         if (k === 'expedition_speed_mult') return `${v.toFixed(2)}x speed`;
         if (k === 'discovery_chance_mult') return `${v.toFixed(2)}x discovery`;
-        if (k === 'discovery_chance_bonus') return `+${(v * 100).toFixed(0)}% discovery`;
+        // Bug #1243 v3 (2026-05-04): chance bonuses formatted as Nx multiplier per spec.
+        if (k === 'discovery_chance_bonus') return `${(1 + v).toFixed(2)}x discovery`;
         if (k === 'rare_find_mult') return `${v.toFixed(2)}x rare finds`;
-        if (k === 'rare_chance_bonus') return `+${(v * 100).toFixed(0)}% rare finds`;
-        if (k === 'legendary_chance_bonus') return `+${(v * 100).toFixed(0)}% legendary`;
+        if (k === 'rare_chance_bonus') return `${(1 + v).toFixed(2)}x rare finds`;
+        if (k === 'legendary_chance_bonus') return `${(1 + v).toFixed(2)}x legendary`;
         if (k === 'cargo_slots') return `+${v} cargo`;
         if (k === 'fuel_cost_mult') return `${v.toFixed(2)}x cost`;
         if (k === 'life_support_cost_mult') return `${v.toFixed(2)}x life support`;

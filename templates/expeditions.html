@@ -155,42 +155,42 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="/colony?tab=assets" style="font-size: 11px; color: var(--text-muted); text-decoration: none;">View all in Colony &rarr;</a>
     </div>
     <div class="flex gap-16 flex-wrap text-base text-primary" style="row-gap: 8px;">
-        {# --- SPEED & RANGE --- #}
+        {# --- SPEED & RANGE — Bug #1243 v3 (2026-05-04): Nx multiplier format per spec. --- #}
         {% if eb.expedition_speed_mult > 1.0 %}
-            {{ bonus_chip(icons.rocket_launch, 'Speed', '+' ~ ((eb.expedition_speed_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'expedition_speed_mult') }}
+            {{ bonus_chip(icons.rocket_launch, 'Speed', "%.2f"|format(eb.expedition_speed_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'expedition_speed_mult') }}
         {% endif %}
         {% if eb.vehicle_range_mult > 1.0 %}
-            {{ bonus_chip(icons.tab_map, 'Vehicle Range', '+' ~ ((eb.vehicle_range_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'vehicle_range_mult') }}
+            {{ bonus_chip(icons.tab_map, 'Vehicle Range', "%.2f"|format(eb.vehicle_range_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'vehicle_range_mult') }}
         {% endif %}
         {% if eb.expedition_range_mult > 1.0 %}
-            {{ bonus_chip(icons.rocket_launch, 'Launch Pad', '+' ~ ((eb.expedition_range_mult - 1) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', 'launch_pad', 'expedition_range_mult') }}
+            {{ bonus_chip(icons.rocket_launch, 'Launch Pad', "%.2f"|format(eb.expedition_range_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', 'launch_pad', 'expedition_range_mult') }}
         {% endif %}
 
         {# --- DISCOVERY RATES (rarity tiers) --- #}
         {% if eb.discovery_chance_bonus > 0 %}
-            {{ bonus_chip(icons.signal_transmission, 'Discovery (Common)', '+' ~ (eb.discovery_chance_bonus * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', 'comms_array', 'discovery_chance_bonus') }}
+            {{ bonus_chip(icons.signal_transmission, 'Discovery (Common)', "%.2f"|format(1 + eb.discovery_chance_bonus) ~ 'x', 'text-sepolia', 'var(--color-sepolia-rgb)', 'comms_array', 'discovery_chance_bonus') }}
         {% endif %}
         {% if eb.rare_chance_bonus > 0 %}
-            {{ bonus_chip(icons.signal_transmission, 'Rare Discovery', '+' ~ (eb.rare_chance_bonus * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'rare_chance_bonus') }}
+            {{ bonus_chip(icons.signal_transmission, 'Rare Discovery', "%.2f"|format(1 + eb.rare_chance_bonus) ~ 'x', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'rare_chance_bonus') }}
         {% endif %}
         {% if eb.legendary_chance_bonus > 0 %}
-            {{ bonus_chip(icons.tower_structures, 'Legendary Chance', '+' ~ (eb.legendary_chance_bonus * 100)|int ~ '%', 'text-mars', 'var(--color-mars-rgb)', 'space_elevator', 'legendary_chance_bonus') }}
+            {{ bonus_chip(icons.tower_structures, 'Legendary Chance', "%.2f"|format(1 + eb.legendary_chance_bonus) ~ 'x', 'text-mars', 'var(--color-mars-rgb)', 'space_elevator', 'legendary_chance_bonus') }}
         {% endif %}
 
         {# --- DISCOVERY VALUE --- #}
         {% if eb.discovery_value_mult > 1.0 %}
-            {{ bonus_chip(icons.shard_gem, 'Discovery Value', '+' ~ ((eb.discovery_value_mult - 1) * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'discovery_value_mult') }}
+            {{ bonus_chip(icons.shard_gem, 'Discovery Value', "%.2f"|format(eb.discovery_value_mult) ~ 'x', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'discovery_value_mult') }}
         {% endif %}
         {% if eb.bio_discovery_value_mult > 1.0 %}
-            {{ bonus_chip(icons.microscope_lab, 'Bio Discovery Value', '+' ~ ((eb.bio_discovery_value_mult - 1) * 100)|int ~ '%', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'bio_discovery_value_mult') }}
+            {{ bonus_chip(icons.microscope_lab, 'Bio Discovery Value', "%.2f"|format(eb.bio_discovery_value_mult) ~ 'x', 'text-sepolia', 'var(--color-sepolia-rgb)', '', 'bio_discovery_value_mult') }}
         {% endif %}
 
-        {# --- COSTS (lower = better) --- #}
+        {# --- COSTS (lower = better, shown as <1.00x cost) --- #}
         {% if eb.fuel_cost_mult < 1.0 %}
-            {{ bonus_chip(icons.env_sun_power, 'Fuel Cost', '−' ~ ((1 - eb.fuel_cost_mult) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'fuel_cost_mult') }}
+            {{ bonus_chip(icons.env_sun_power, 'Fuel Cost', "%.2f"|format(eb.fuel_cost_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'fuel_cost_mult') }}
         {% endif %}
         {% if eb.life_support_cost_mult < 1.0 %}
-            {{ bonus_chip(icons.env_sun_power, 'Life Support Cost', '−' ~ ((1 - eb.life_support_cost_mult) * 100)|int ~ '%', 'text-success', 'var(--color-success-rgb)', '', 'life_support_cost_mult') }}
+            {{ bonus_chip(icons.env_sun_power, 'Life Support Cost', "%.2f"|format(eb.life_support_cost_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'life_support_cost_mult') }}
         {% endif %}
 
         {# --- CARGO --- #}
