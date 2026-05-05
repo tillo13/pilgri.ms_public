@@ -510,8 +510,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         {% else %}
                         <!-- Stats badges -->
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
-                            {% if vehicle.discovery_bonus > 0 %}<span class="effect-badge" style="font-size: 10px; padding: 2px 6px;">+{{ (vehicle.discovery_bonus * 100)|int }}% find</span>{% endif %}
-                            {% if vehicle.rare_bonus > 0 %}<span class="effect-badge" style="font-size: 10px; padding: 2px 6px; background: rgba(96,165,250,0.15); color: #60a5fa;">+{{ (vehicle.rare_bonus * 100)|int }}% rare</span>{% endif %}
+                            {% if vehicle.discovery_bonus > 0 %}<span class="effect-badge" style="font-size: 10px; padding: 2px 6px;">{{ "%.2f"|format(1 + vehicle.discovery_bonus) }}x find</span>{% endif %}
+                            {% if vehicle.rare_bonus > 0 %}<span class="effect-badge" style="font-size: 10px; padding: 2px 6px; background: rgba(96,165,250,0.15); color: #60a5fa;">{{ "%.2f"|format(1 + vehicle.rare_bonus) }}x rare</span>{% endif %}
                         </div>
                         {% endif %}
                     </div>
