@@ -202,8 +202,12 @@ TECH_CATALOG = {
                 'name': 'Chassis Reinforcement',
                 'tier': 2,
                 'base_cost_sv': 12000,
-                'description': 'Reinforce for heavier loads. 1.20x speed, 1.10x cargo.',
-                'effects': {'expedition_speed_mult': 1.20, 'cargo_capacity_mult': 1.10},
+                'description': 'Reinforce for heavier loads and longer hauls. 1.20x range, 1.10x cargo.',
+                # Bug #1447 (Luke 2026-05-06): swapped speed → range. Speed
+                # already appears on Suspension Eng (T1) + All-Terrain (T3);
+                # range appeared on no tech, leaving Drone/Rover obsolete
+                # mid-game.
+                'effects': {'vehicle_range_mult': 1.20, 'cargo_capacity_mult': 1.10},
                 'requires': ['material_science'],
                 'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/tech_icons/chassis_reinforcement_1769193957.png',
             },

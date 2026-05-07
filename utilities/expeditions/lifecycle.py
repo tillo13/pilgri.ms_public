@@ -96,13 +96,16 @@ def launch_expedition(
     if not vehicle_data:
         return {'success': False, 'error': f'{vehicle_type.capitalize()} not unlocked'}
 
-    # Range scales with fog radius (more discoveries = further reach) × scanner vehicle_range_mult
+    # Range scales with fog radius (more discoveries = further reach) × scanner
+    # vehicle_range_mult × tech vehicle_range_mult (Chassis Reinforcement, #1447).
     discovered = get_user_discovered_landmarks(user_id)
     fog_radius = min(1000, 300 + len(discovered) * 50)
     range_mult = fog_radius / 300.0
     from utilities.upgrades_utils import get_user_upgrade_effects as _get_eff
+    from utilities.tech_utils import get_tech_effects as _get_tech_eff
     scanner_range_mult = _get_eff(user_id).get('vehicle_range_mult', 1.0)
-    max_range = int(vehicle_data.get('max_range_km', 9999) * range_mult * scanner_range_mult)
+    tech_range_mult = _get_tech_eff(user_id).get('vehicle_range_mult', 1.0)
+    max_range = int(vehicle_data.get('max_range_km', 9999) * range_mult * scanner_range_mult * tech_range_mult)
     if distance_km > max_range:
         return {'success': False, 'error': f'{vehicle_type.capitalize()} max range is {max_range} km. Destination is {distance_km:.0f} km away.'}
 

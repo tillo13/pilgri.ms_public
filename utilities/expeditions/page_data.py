@@ -138,11 +138,13 @@ def get_expeditions_page_data(user_id: int) -> dict:
         owned_vehicles = [{'vehicle_type': 'rover', 'name': 'Scout Rover', 'cargo': 5}]
 
     # Discovery-based range multiplier (same formula used in estimate_expedition)
-    # × scanner vehicle_range_mult (Scanner L2+ extends range)
+    # × scanner vehicle_range_mult × tech vehicle_range_mult (Chassis Reinforcement, #1447).
     discovery_count = len(discovered_landmarks) if discovered_landmarks else 0
     fog_radius = min(1000, 300 + discovery_count * 50)
     range_mult = fog_radius / 300.0
     scanner_range_mult = upgrade_effects.get('vehicle_range_mult', 1.0)
+    from utilities.tech_utils import get_tech_effects as _get_tech_eff
+    tech_range_mult = _get_tech_eff(user_id).get('vehicle_range_mult', 1.0)
 
     # Determine which vehicle types are currently on active expeditions
     active_vehicle_types = {e.get('vehicle_type', 'rover') for e in active_expeditions
@@ -161,7 +163,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
         lv1_stats = get_upgrade_stats('vehicles', vtype, 1) or {}
         v['base_range_km'] = lv1_stats.get('max_range_km', base_range)
         v['base_speed'] = lv1_stats.get('expedition_speed_mult', v.get('speed_mult', 1.0))
-        v['effective_range_km'] = int(base_range * range_mult * scanner_range_mult)
+        v['effective_range_km'] = int(base_range * range_mult * scanner_range_mult * tech_range_mult)
         v['available'] = vtype not in active_vehicle_types
 
     # Expedition slots: vehicle count capped by habitat capacity (default 3 if no habitat)

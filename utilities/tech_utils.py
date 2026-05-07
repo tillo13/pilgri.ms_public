@@ -743,6 +743,7 @@ def get_user_tech_status(user_id: int) -> Dict[str, Any]:
 # Icon keys resolve to UI_ICONS at template render time (we pass just the key).
 _EFFECT_DISPLAY = {
     'expedition_speed_mult':    {'icon': 'speed_fast',         'label': 'speed',            'fmt': 'mult'},
+    'vehicle_range_mult':       {'icon': 'compass_exploration','label': 'range',            'fmt': 'mult'},
     'discovery_chance_bonus':   {'icon': 'magnifier_discovery','label': 'discovery',        'fmt': 'pct_bonus'},
     'rare_chance_bonus':        {'icon': 'rare_sparkle',       'label': 'rare',             'fmt': 'pct_bonus'},
     'legendary_chance_bonus':   {'icon': 'value_diamond',      'label': 'legendary',        'fmt': 'pct_bonus'},

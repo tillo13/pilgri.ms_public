@@ -430,6 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 {% for eff_key, eff_val in tech.effects.items() %}
                 <span class="tech-effect">
                     {% if eff_key == 'expedition_speed_mult' %}<img src="{{ icons.speed_fast }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x speed
+                    {% elif eff_key == 'vehicle_range_mult' %}<img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(eff_val) }}x range
                     {% elif eff_key == 'discovery_chance_bonus' %}<img src="{{ icons.magnifier_discovery }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(1 + eff_val) }}x discovery
                     {% elif eff_key == 'rare_chance_bonus' %}<img src="{{ icons.rare_sparkle }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(1 + eff_val) }}x rare
                     {% elif eff_key == 'legendary_chance_bonus' %}<img src="{{ icons.value_diamond }}" alt="" class="inline-icon-sm"> {{ "%.2f"|format(1 + eff_val) }}x legendary
@@ -632,6 +633,7 @@ function formatEffectName(key) {
         'rare_chance_bonus': 'Rare find chance',
         'legendary_chance_bonus': 'Legendary chance',
         'expedition_speed_mult': 'Expedition speed',
+        'vehicle_range_mult': 'Vehicle range',
         'fuel_cost_mult': 'Expedition cost',
         'cargo_slots': 'Cargo capacity',
         'bio_discovery_value_mult': 'Bio specimen value',

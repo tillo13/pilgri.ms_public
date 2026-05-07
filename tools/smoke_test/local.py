@@ -300,6 +300,22 @@ def test_foundry_level_prereqs():
     return True
 
 
+@test("Chassis Reinforcement gives range, not speed (#1447)", tier=1, features=['config', 'tech'], mode='local')
+def test_chassis_reinforcement_range_swap():
+    """Bug #1447 (Luke 2026-05-06): Chassis swapped speed for range so Drone/Rover stay relevant.
+    If a refactor reverts this, we want loud failure — speed is already on Suspension Eng + All-Terrain."""
+    from config_tech import TECH_CATALOG
+    chassis = TECH_CATALOG['vehicles']['techs']['chassis_reinforcement']
+    effects = chassis.get('effects', {})
+    if 'expedition_speed_mult' in effects:
+        return f"chassis_reinforcement still grants expedition_speed_mult — should be vehicle_range_mult per #1447"
+    if effects.get('vehicle_range_mult') != 1.20:
+        return f"vehicle_range_mult should be 1.20, got {effects.get('vehicle_range_mult')}"
+    if effects.get('cargo_capacity_mult') != 1.10:
+        return f"cargo_capacity_mult should be 1.10 (kept), got {effects.get('cargo_capacity_mult')}"
+    return True
+
+
 @test("Tech catalog valid structure", tier=1, features=['config', 'tech'], mode='local')
 def test_tech_structure():
     from config_tech import TECH_CATALOG
