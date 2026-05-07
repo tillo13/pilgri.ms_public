@@ -118,6 +118,27 @@ def perform_upgrade(user_id: int, category: str, item_key: str) -> Dict[str, Any
         if not next_stats:
             return {'success': False, 'error': 'No upgrade available'}
 
+        # Per-level upgrade prereqs (#1436). next_stats['level_requires'] is
+        # {building_key: required_level}. Enforced for infrastructure paths
+        # only — equipment upgrades don't currently use this field.
+        level_requires = next_stats.get('level_requires') or {}
+        if level_requires and category == 'infrastructure':
+            from utilities.upgrades_utils import get_all_infrastructure_levels
+            from config_infrastructure import INFRASTRUCTURE_CATALOG
+            current_levels = get_all_infrastructure_levels(user_id) or {}
+            missing = []
+            for req_key, req_lvl in level_requires.items():
+                have = int(current_levels.get(req_key, 0))
+                if have < req_lvl:
+                    pretty = INFRASTRUCTURE_CATALOG.get(req_key, {}).get('name', req_key)
+                    missing.append(f'{pretty} Lv{req_lvl} (have Lv{have})')
+            if missing:
+                return {
+                    'success': False,
+                    'error': 'Cannot upgrade yet — missing prerequisites: ' + ', '.join(missing),
+                    'missing_prereqs': missing,
+                }
+
         cost_display = next_stats.get('cost', 0)
         build_time_days = next_stats.get('build_time_days', 0)
 

@@ -243,6 +243,63 @@ def test_depot_cost_floors():
     return True
 
 
+@test("Narog stat math matches #1436 spec", tier=1, features=['config', 'narog'], mode='local')
+def test_narog_stat_math():
+    """Bug #1436: Foundry L0 = 5/100, L10 = 100/100, linear in between."""
+    from utilities.postgres.robot import compute_robot_stat_value, compute_robot_stats, STAT_UNLOCK_FOUNDRY_LEVEL
+    if compute_robot_stat_value(0) != 5:
+        return f"L0 stat should be 5, got {compute_robot_stat_value(0)}"
+    if compute_robot_stat_value(10) != 100:
+        return f"L10 stat should be 100, got {compute_robot_stat_value(10)}"
+    if compute_robot_stat_value(11) != 100:
+        return "L11 stat should clamp to 100"
+    if compute_robot_stat_value(-1) != 5:
+        return "Negative L should clamp to 5"
+    # Spot-check linear ramp at L5 (~52, the midpoint)
+    mid = compute_robot_stat_value(5)
+    if mid < 50 or mid > 55:
+        return f"L5 should be ~52, got {mid}"
+    # Unlock thresholds match spec
+    if STAT_UNLOCK_FOUNDRY_LEVEL != {'exploration': 0, 'logistics': 3, 'research': 6, 'expeditions': 9}:
+        return f"Unlock thresholds drifted: {STAT_UNLOCK_FOUNDRY_LEVEL}"
+    # compute_robot_stats locks per spec
+    sm = compute_robot_stats(2)  # below all secondary unlocks
+    if not sm['exploration']['unlocked']:
+        return "Exploration must be unlocked at L2"
+    if sm['logistics']['unlocked'] or sm['research']['unlocked'] or sm['expeditions']['unlocked']:
+        return "Secondary slots must be locked at L2"
+    sm = compute_robot_stats(6)
+    if not (sm['logistics']['unlocked'] and sm['research']['unlocked']):
+        return "Logistics + Research must unlock by L6"
+    if sm['expeditions']['unlocked']:
+        return "Expeditions must still be locked at L6"
+    return True
+
+
+@test("Foundry per-level prereqs match #1436 spec", tier=1, features=['config', 'narog'], mode='local')
+def test_foundry_level_prereqs():
+    """Bug #1436: Foundry L3 ← Habitat Lv3, L6 ← RS+GH Lv6, L9 ← Habitat+GH+RS Lv9."""
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    levels = INFRASTRUCTURE_CATALOG['robotics_lab']['levels']
+    expected = {
+        3: {'habitat_module': 3},
+        6: {'research_station': 6, 'greenhouse': 6},
+        9: {'habitat_module': 9, 'greenhouse': 9, 'research_station': 9},
+    }
+    for lvl, want in expected.items():
+        got = levels[lvl].get('level_requires') or {}
+        if got != want:
+            return f"L{lvl} level_requires drift: got {got}, want {want}"
+    # Ensure no other levels carry stray level_requires (would silently gate)
+    for lvl in (1, 2, 4, 5, 7, 8, 10):
+        if 'level_requires' in levels[lvl]:
+            return f"L{lvl} has unexpected level_requires"
+    # Catalog name matches Luke's renaming
+    if INFRASTRUCTURE_CATALOG['robotics_lab']['name'] != 'Narog Foundry':
+        return "robotics_lab.name should be 'Narog Foundry'"
+    return True
+
+
 @test("Tech catalog valid structure", tier=1, features=['config', 'tech'], mode='local')
 def test_tech_structure():
     from config_tech import TECH_CATALOG

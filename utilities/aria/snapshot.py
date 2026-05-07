@@ -859,7 +859,7 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
     if robot.get('lab_unlocked'):
         if not robot.get('has_robot'):
             parts.append(
-                f"ROBOT CREW MEMBER: Narog Lab Lv{robot.get('lab_level', 0)} unlocked, "
+                f"ROBOT CREW MEMBER: Narog Foundry Lv{robot.get('lab_level', 0)} unlocked, "
                 f"but the captain has NOT started building their robot yet. They can begin "
                 f"construction from /crew → Robot tab — it forges 5 stages from real items "
                 f"they recovered on past expeditions."
@@ -891,8 +891,8 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
         # Lab not built — only mention if asked, but include a one-liner so ARIA
         # knows this is a thing the captain CAN unlock.
         parts.append(
-            "ROBOT CREW MEMBER: Narog Lab not yet built. The captain can unlock a "
-            "fourth crew member by constructing the Narog Lab in their Colony "
+            "ROBOT CREW MEMBER: Narog Foundry not yet built. The captain can unlock a "
+            "fourth crew member by constructing the Narog Foundry in their Colony "
             "(requires Research Station Lv3 + Regolith Forge Lv3)."
         )
 

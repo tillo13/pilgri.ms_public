@@ -137,20 +137,45 @@ RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}
 CRAFTSMANSHIP_MAX = 150  # 2 leg + 2 rare + 1 uncommon = 30+30+10+10+3 = 83 typical
 
 # 2026-04-30: dial slots align to Luke's brainstorm §4 spec.
-# Phase-gated: only `exploration` is interactive at Phase 1. logistics/research/
-# expeditions are visible-locked until later upgrades unlock them.
+# Per Bug #1436 (Luke 2026-05-06): all 4 stats scale linearly from 5/100 at
+# Foundry L0 to 100/100 at Foundry L10. Slots unlock at Foundry tiers:
+# Logistics L3, Research L6, Expeditions L9.
 STAT_KEYS = ['exploration', 'logistics', 'research', 'expeditions']
 STAT_BASE = 5      # every Narog starts at 5/100 per stat
 STAT_MAX = 100
 
-# Each slot's unlock phase. Phase 1 == "robot is built". Phase 3/4/5 are
-# Robotics-Lab upgrade tiers (TBD — see P1 bug for Luke).
-DIAL_UNLOCK_PHASE = {
-    'exploration': 1,
+# Foundry level required to unlock each stat slot (#1436 Luke).
+# Exploration is always available — it's the slot you build the Narog with.
+STAT_UNLOCK_FOUNDRY_LEVEL = {
+    'exploration': 0,
     'logistics':   3,
-    'research':    4,
-    'expeditions': 5,
+    'research':    6,
+    'expeditions': 9,
 }
+
+
+def compute_robot_stat_value(foundry_level: int) -> int:
+    """Linear stat = 5 + foundry_level × 9.5, integer-rounded, clamped [5,100].
+    Sequence by Foundry level: 5, 14, 24, 33, 43, 52, 62, 71, 81, 90, 100."""
+    fl = max(0, min(10, int(foundry_level or 0)))
+    return max(STAT_BASE, min(STAT_MAX, int(STAT_BASE + fl * 9.5)))
+
+
+def compute_robot_stats(foundry_level: int) -> Dict[str, Dict[str, Any]]:
+    """For each of the 4 Narog stats return the current value, whether the
+    slot is unlocked at the current Foundry level, and the foundry level
+    required to unlock it. Used by /crew Narog tab + ARIA snapshot."""
+    fl = max(0, int(foundry_level or 0))
+    value = compute_robot_stat_value(fl)
+    out = {}
+    for key in STAT_KEYS:
+        unlock_at = STAT_UNLOCK_FOUNDRY_LEVEL[key]
+        out[key] = {
+            'value': value,
+            'unlocked': fl >= unlock_at,
+            'unlock_at_foundry_level': unlock_at,
+        }
+    return out
 
 
 def compute_craftsmanship_score(sources: List[Dict[str, Any]]) -> int:
@@ -1145,7 +1170,7 @@ def start_build_with_name_prefetch(user_id: int, cmd_name: Optional[str],
     if int(levels.get('robotics_lab', 0)) < 1:
         return {
             'success': False,
-            'error': 'Narog Lab required. Build the Narog Lab in your Colony first.',
+            'error': 'Narog Foundry required. Build the Narog Foundry in your Colony first.',
         }, 400
 
     try:
@@ -1313,7 +1338,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         # rule. RS+RF over-promises were UI-only drift; removed to keep card
         # and gate consistent.
         prereq_defs = [
-            {'key': 'robotics_lab', 'name': 'Narog Lab', 'required_level': 1},
+            {'key': 'robotics_lab', 'name': 'Narog Foundry', 'required_level': 1},
         ]
         for pd in prereq_defs:
             cat = INFRASTRUCTURE_CATALOG.get(pd['key'], {})
@@ -1374,6 +1399,13 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
             'stage_duration_seconds': STAGE_DURATION_SECONDS,
         }
 
+    # Override stat columns with values derived from current Foundry level
+    # (#1436 — Luke's spec: linear ramp 5→100 across L0→L10). The columns
+    # exist but are no longer the source of truth; they default to 5 only.
+    stat_meta = compute_robot_stats(lab_level)
+    for key in STAT_KEYS:
+        robot[f'stat_{key}'] = stat_meta[key]['value']
+
     # Active or complete build
     log = get_stage_log(user_id)
     log_by_idx = {entry['stage_idx']: entry for entry in log}
@@ -1410,6 +1442,7 @@ def get_robot_page_data(user_id: int) -> Dict[str, Any]:
         'lab_level': lab_level,
         'prereqs': prereqs,
         'robot': robot,
+        'stat_meta': stat_meta,
         'stages': stages_view,
         'stages_meta': ROBOT_STAGES,
         'log': log,

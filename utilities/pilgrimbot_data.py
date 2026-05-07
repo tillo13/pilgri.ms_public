@@ -45,7 +45,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   crew_missions     — Captain/Scientist/ARIA trail missions with time remaining
   discoveries       — Unclaimed/total discoveries, storage capacity
   signal_claims     — Origin site claims, ARIA bonds
-  robot             — Fourth crew member (Step 4d): Robotics Lab level, build status, current visual stage, time until next stage, role dial split, source manifest of items used to forge each stage
+  robot             — Fourth crew member (Step 4d): Narog Foundry level, build status, current visual stage, time until next stage, role dial split, source manifest of items used to forge each stage
   leaderboard       — Top players by shards, expeditions, and research (no user_id needed)
 """
 
@@ -427,7 +427,7 @@ def query_player_data(category, user_id):
             from utilities.postgres.robot import get_robot_page_data
             data = get_robot_page_data(user_id) or {}
             lines = ["=== ROBOT CREW MEMBER (Step 4d) ==="]
-            lines.append(f"Robotics Lab: Lv{data.get('lab_level', 0)} ({'unlocked' if data.get('lab_unlocked') else 'LOCKED — needs Research Station Lv3 + Regolith Forge Lv3'})")
+            lines.append(f"Narog Foundry: Lv{data.get('lab_level', 0)} ({'unlocked' if data.get('lab_unlocked') else 'LOCKED — needs Research Station Lv3 + Regolith Forge Lv3'})")
             if not data.get('has_robot'):
                 lines.append("Build status: NOT STARTED")
                 if data.get('lab_unlocked'):

@@ -524,17 +524,18 @@
     }
 
     // ----- ROLE DIAL — rotary knobs (visual chrome lives in narog-knob.js) --
-    // 4 dials map to Luke's brainstorm §4. Phase 1 unlocks only `exploration`;
-    // Phase 3/4/5 unlock the others. Locked + solo-pinned dials open a modal.
+    // 4 dials map to Luke's brainstorm §4. Per #1436 the 3 secondary slots
+    // unlock at Narog Foundry tiers L3 / L6 / L9 (was: robot build phases).
+    // Locked + solo-pinned dials open a modal.
     // Sum across UNLOCKED dials must always equal 100; rebalancing happens here.
     const DIAL_KEYS = ['exploration', 'logistics', 'research', 'expeditions'];
     const DIAL_STEP = 5;
     const DIAL_TOTAL = 100;
     const DIAL_PHASES = {
-        exploration: 'Phase 1 — Built',
-        logistics:   'Phase 3 — Circuits',
-        research:    'Phase 4 — Core',
-        expeditions: 'Phase 5 — Crystal Resonance',
+        exploration: 'Always unlocked',
+        logistics:   'Narog Foundry Lv3',
+        research:    'Narog Foundry Lv6',
+        expeditions: 'Narog Foundry Lv9',
     };
     const DIAL_DESCRIPTIONS = {
         exploration: 'Speeds up autonomous trail building while you’re away. The base Exploration stat × this dial % = your Narog’s effective trail bonus.',
@@ -642,9 +643,9 @@
                 <div style="font-size:13px; color:var(--text-secondary); line-height:1.7;">
                     <p style="margin:0 0 12px;">Every Narog starts at <strong style="color:#ffc88a;">5/100</strong> in all four stats — <strong>Exploration</strong>, <strong>Logistics</strong>, <strong>Research</strong>, <strong>Expeditions</strong>. The number is the cap; the allocation % below is how much of that cap is being applied.</p>
                     <p style="margin:0 0 12px;"><strong style="color:var(--text-primary);">Effective bonus = Base × allocation %.</strong> So 100% of 5/100 = an effective 5; 50% of 5/100 = 2.5. That number drives every passive bonus your Narog produces.</p>
-                    <p style="margin:0 0 12px;">As you upgrade <strong>Depot</strong> and <strong>Robotics Lab</strong> buildings, the base stats rise toward 100. A fully built-out Narog might land near 55/100 in each stat — at which point 100% allocation = 55× the current passive bonus.</p>
+                    <p style="margin:0 0 12px;">Each <strong>Narog Foundry</strong> level raises every stat linearly: 5 at Lv0, 14 at Lv1, 24 at Lv2 … <strong>100/100 at Lv10</strong>. Foundry upgrades also unlock the secondary slots — <strong>Logistics at Lv3</strong>, <strong>Research at Lv6</strong>, <strong>Expeditions at Lv9</strong>.</p>
                     <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-default); border-radius:8px; padding:10px 12px; font-size:12px; color:var(--text-muted); margin-top:12px;">
-                        <strong style="color:#ffc88a;">In progress:</strong> Luke is finalizing which buildings raise which stats and by how much (tracked in <code>#1436</code>). Right now every Narog is at 5/100 across the board — the dial mechanic works end-to-end so you can see how an allocation translates to live km/day on the home page.
+                        <strong style="color:#ffc88a;">Tip:</strong> Higher Foundry tiers also require companion buildings — Foundry Lv3 needs Habitat Module Lv3; Lv6 needs Research Station + Greenhouse at Lv6; Lv9 needs all three at Lv9. Plan your Depot upgrade order accordingly.
                     </div>
                 </div>
             `,
@@ -672,11 +673,11 @@
             title: titleMap[key] || 'Dial info',
             body: `
                 <div style="font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:8px;">
-                    Your Narog can only build trails right now. The other three rows unlock as you upgrade your Robotics Lab and complete later phases. Here's what each will do:
+                    Your Narog can only build trails right now. The other three rows unlock as you upgrade your Narog Foundry. Here's what each will do:
                 </div>
                 <div class="na-modal-list">${rowsHtml}</div>
                 <div style="font-size:10px; color:var(--text-muted); margin-top:10px; text-align:center;">
-                    Phase &amp; bonus formulas: TBD — Luke is finalizing the Depot upgrade matrix.
+                    Foundry levels also require companion buildings — Lv3 needs Habitat Module Lv3, Lv6 needs Research Station + Greenhouse at Lv6, Lv9 needs all three at Lv9.
                 </div>
             `,
         });

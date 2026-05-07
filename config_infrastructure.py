@@ -1002,14 +1002,18 @@ INFRASTRUCTURE_CATALOG = {
     # Each level shortens robot stage assembly time via robot_build_speed_mult.
     # =========================================================================
     'robotics_lab': {
-        'name': 'Narog Lab',
-        'description': 'Workshop where recovered Martian salvage is forged into an autonomous robot',
+        'name': 'Narog Foundry',
+        'description': 'Workshop where recovered Martian salvage is forged into an autonomous robot. Each Foundry level raises every Narog stat linearly from 5/100 to 100/100.',
         'icon': '\U0001f916',  # 🤖
         'category': 'research',
         'max_level': 10,
         'default_level': 0,
         'requirements': ['research_station', 'regolith_forge'],
         'unlock_requirements': {'research_station': 3, 'regolith_forge': 3},
+        # Per-level upgrade prereqs (Bug #1436, Luke 2026-05-06).
+        # Foundry L3 also unlocks the Narog's Logistics stat slot;
+        # L6 unlocks Research; L9 unlocks Expeditions. See robot.py
+        # STAT_UNLOCK_FOUNDRY_LEVEL.
         'levels': {
             1: {
                 'name': 'Salvage Workbench', 'cost': 150000, 'build_time_days': 7,
@@ -1024,6 +1028,7 @@ INFRASTRUCTURE_CATALOG = {
             3: {
                 'name': 'Calibration Pit', 'cost': 188160, 'build_time_days': 9,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.20,
+                'level_requires': {'habitat_module': 3},  # #1436 Luke
                 'image_url': '',
             },
             4: {
@@ -1039,6 +1044,7 @@ INFRASTRUCTURE_CATALOG = {
             6: {
                 'name': 'Crystal-Servo Lab', 'cost': 264352, 'build_time_days': 12,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.50,
+                'level_requires': {'research_station': 6, 'greenhouse': 6},  # #1436 Luke
                 'image_url': '',
             },
             7: {
@@ -1054,6 +1060,7 @@ INFRASTRUCTURE_CATALOG = {
             9: {
                 'name': 'Autonomy Reactor', 'cost': 371396, 'build_time_days': 14,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.90,
+                'level_requires': {'habitat_module': 9, 'greenhouse': 9, 'research_station': 9},  # #1436 Luke
                 'image_url': '',
             },
             10: {
