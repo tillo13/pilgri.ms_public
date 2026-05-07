@@ -788,6 +788,37 @@ def test_all_tech_levels():
     return True
 
 
+@test("Lab Research Summary lifetime totals (#1424)", tier=1, features=['tech'], mode='local')
+def test_research_summary_lifetime_totals():
+    """Bug #1424: header must show '/200' lifetime cap (10 levels × 5 techs ×
+    4 branches in W1) instead of the old '/20' per-current-tier count, and
+    every branch must expose lifetime_completed / lifetime_total so the
+    template can render Luke's per-branch 'Exploration X/50 · ...' breakdown.
+    Andy (user 45) is canonical so we validate the live shape on his row."""
+    from utilities.tech_utils import get_tech_summary
+    s = get_tech_summary(45)
+    for k in ('lifetime_completed', 'lifetime_total'):
+        assert k in s, f"tech_summary missing top-level '{k}' — header would render blank"
+    # W1 shape: 4 branches × 5 techs × 10 max levels = 200.
+    assert s['lifetime_total'] == 200, f"lifetime_total should be 200 in W1, got {s['lifetime_total']}"
+    # lifetime_completed counts every (tech_key, branch_level) row, must be ≥ distinct count.
+    assert s['lifetime_completed'] >= s['total_completed'], (
+        f"lifetime_completed ({s['lifetime_completed']}) should be ≥ distinct total_completed "
+        f"({s['total_completed']}) — every distinct tech has at least one row"
+    )
+    # Per-branch shape — what the new branch-count chips read.
+    for b in s['branches']:
+        for k in ('lifetime_completed', 'lifetime_total'):
+            assert k in b, f"branch '{b.get('branch_key')}' missing '{k}'"
+        assert b['lifetime_total'] == 50, (
+            f"branch {b['branch_key']} lifetime_total should be 50 in W1, got {b['lifetime_total']}"
+        )
+    # Sums must reconcile.
+    assert sum(b['lifetime_completed'] for b in s['branches']) == s['lifetime_completed']
+    assert sum(b['lifetime_total'] for b in s['branches']) == s['lifetime_total']
+    return True
+
+
 @test("Infrastructure prerequisites valid", tier=3, features=['config', 'colony'], mode='local')
 def test_infra_prerequisites():
     from config_infrastructure import INFRASTRUCTURE_CATALOG

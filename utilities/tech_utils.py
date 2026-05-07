@@ -829,8 +829,10 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
 
     Returns:
         {
-            'total_completed': int,
-            'total_available': int,           # total techs in catalog (across all branches)
+            'total_completed': int,           # distinct (tech_key) completions across branches
+            'total_available': int,           # distinct techs in catalog (across all branches)
+            'lifetime_completed': int,        # bug #1424 — every (tech_key, branch_level) row
+            'lifetime_total': int,            # bug #1424 — sum across branches of techs × max_branch_level
             'branches_started': int,          # branches with >=1 completion
             'branches_total': int,            # branches in catalog (currently 4)
             'branches': [  # ALL branches in catalog order (started + unstarted)
@@ -885,6 +887,11 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
     global_effects: Dict[str, Any] = {}
     branches_out = []
     total_available = 0
+    # Bug #1424: lifetime totals count every (tech_key, branch_level) completion,
+    # so the header reads "X/200" in W1 (10 levels × 5 techs × 4 branches) instead
+    # of "X/20" (which only reflected distinct techs at the captain's current tier).
+    lifetime_completed = 0
+    lifetime_total = 0
 
     # Iterate ALL branches in TECH_CATALOG order — even unstarted ones get a
     # row so the captain can see what they're missing (Luke's QA pattern: never
@@ -904,8 +911,17 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
         techs_config = branch_data.get('techs', {})
         branch_total_techs = len(techs_config)
         total_available += branch_total_techs
+        # Bug #1424: per-branch lifetime denominator = techs × max_branch_level
+        # (50 in W1: 5 techs × 10 branch levels).
+        branch_max_level = branch_data.get('max_branch_level', 10)
+        branch_lifetime_total = branch_total_techs * branch_max_level
+        lifetime_total += branch_lifetime_total
 
         branch_rows = by_branch.get(branch_key, [])
+        # Bug #1424: row count = every distinct (tech_key, branch_level) the
+        # captain has completed in this branch — that's what the header sums.
+        branch_lifetime_completed = len(branch_rows)
+        lifetime_completed += branch_lifetime_completed
         completed_keys = {r['tech_key'] for r in branch_rows}
         branch_effects: Dict[str, Any] = {}
 
@@ -974,6 +990,9 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
             # Distinct techs, not row count — see counting note above.
             'completed_count': len(tech_cards),
             'total_techs': branch_total_techs,
+            # Bug #1424: lifetime per-branch progress for the header breakdown.
+            'lifetime_completed': branch_lifetime_completed,
+            'lifetime_total': branch_lifetime_total,
             'started': len(tech_cards) > 0,
             'next_tech': next_tech,
             'techs': tech_cards,
@@ -986,6 +1005,8 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
     return {
         'total_completed': total_distinct_completed,
         'total_available': total_available,
+        'lifetime_completed': lifetime_completed,
+        'lifetime_total': lifetime_total,
         'branches_started': branches_started,
         'branches_total': len(branches_out),
         'branches': branches_out,

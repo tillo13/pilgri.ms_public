@@ -139,10 +139,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /* Lab Summary Box (bug #1286) — top-of-Lab overview of all researched tech + stacked bonuses */
 .tech-summary { background: var(--bg-card); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; border: 1px solid rgba(168, 85, 247, 0.25); }
-.tech-summary-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.tech-summary-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .tech-summary-title { font-size: 15px; font-weight: 700; color: var(--color-sepolia); display: flex; align-items: center; gap: 8px; }
-.tech-summary-count { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 10px; }
+.tech-summary-count { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
 .tech-summary-count strong { color: #fff; font-weight: 700; }
+/* Bug #1424 — per-branch lifetime breakdown beneath the X/200 header. */
+.tech-summary-branch-counts { width: 100%; display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(168, 85, 247, 0.20); justify-content: flex-end; }
+.tech-summary-branch-count { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+.tech-summary-branch-count strong { color: #fff; font-weight: 700; }
 .tech-summary-global { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 14px; background: rgba(168, 85, 247, 0.10); border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid rgba(168, 85, 247, 0.15); }
 .tech-summary-global-label { width: 100%; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-sepolia); font-weight: 700; margin-bottom: 2px; }
 .tech-summary-global .summary-chip { font-size: 13px; color: #fff; font-weight: 700; background: rgba(168, 85, 247, 0.40); padding: 6px 12px; border-radius: 5px; display: inline-flex; align-items: center; gap: 5px; }
@@ -250,9 +254,20 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="tech-summary-title">
             <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon"> Research Summary
         </div>
+        {# Bug #1424: header now shows lifetime totals — every (tech, branch_level)
+           completion counted toward the cap (W1: 10 levels × 5 techs × 4 branches
+           = 200), plus per-branch breakdowns instead of the trivial "branches
+           started" stat. #}
         <div class="tech-summary-count">
-            <span><strong>{{ tech_summary.total_completed }}/{{ tech_summary.total_available }}</strong> techs researched</span>
-            <span><strong>{{ tech_summary.branches_started }}/{{ tech_summary.branches_total }}</strong> branches started</span>
+            <span><strong>{{ tech_summary.lifetime_completed }}/{{ tech_summary.lifetime_total }}</strong> techs researched</span>
+        </div>
+        <div class="tech-summary-branch-counts">
+            {% for branch in tech_summary.branches %}
+            <span class="tech-summary-branch-count">
+                <img src="{{ branch.icon_url or icons[branch.icon] }}" alt="" class="inline-icon-sm">
+                {{ branch.name }} <strong>{{ branch.lifetime_completed }}/{{ branch.lifetime_total }}</strong>
+            </span>
+            {% endfor %}
         </div>
     </div>
 
