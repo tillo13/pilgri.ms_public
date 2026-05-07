@@ -443,7 +443,24 @@ def _get_available_sv(user_id: int) -> int:
         """, (user_id,))
         spent = int(cur.fetchone()['spent'])
 
-    return max(0, total_sv - spent)
+    # SV spent on Narog reforge actions (Bug #1438). Stored on pilgrim.robot
+    # so the status bar + reforge gate share one balance. Guarded so a
+    # pre-migration row (missing column) doesn't 500 every page load — the
+    # column lands on first call into utilities.postgres.robot.
+    reforge_spent = 0
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT COALESCE(reforge_sv_spent, 0) as reforge_spent
+                FROM pilgrim.robot
+                WHERE user_id = %s
+            """, (user_id,))
+            row = cur.fetchone()
+            reforge_spent = int(row['reforge_spent']) if row else 0
+    except Exception:
+        reforge_spent = 0
+
+    return max(0, total_sv - spent - reforge_spent)
 
 
 def start_research(user_id: int, branch: str, tech_key: str, session) -> Dict[str, Any]:

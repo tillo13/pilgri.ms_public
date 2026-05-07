@@ -900,6 +900,35 @@ def test_narog_build_error_column():
     return True
 
 
+@test("Narog reforge SV gate uses _get_available_sv (#1438)", tier=1, features=['db', 'crew'], mode='local')
+def test_narog_reforge_uses_available_sv():
+    """Bug #1438: status bar showed 71,792 SV but reforge said 'Need 5 science,
+    you have 0' because charge_reforge_action read the legacy
+    users.research_points column (always 0) instead of _get_available_sv —
+    same source the status bar uses. Lock both pieces in:
+      1. pilgrim.robot.reforge_sv_spent column exists (the new spend bucket).
+      2. charge_reforge_action source references _get_available_sv.
+      3. _get_available_sv source subtracts reforge_sv_spent.
+    """
+    import inspect
+    from utilities.postgres.robot import ensure_robot_tables, charge_reforge_action
+    from utilities.postgres.core import db_cursor
+    from utilities import tech_utils
+    ensure_robot_tables()
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema='pilgrim' AND table_name='robot' AND column_name='reforge_sv_spent'
+        """)
+        assert cur.fetchone(), "pilgrim.robot.reforge_sv_spent column missing — migration didn't run"
+    src = inspect.getsource(charge_reforge_action)
+    assert "_get_available_sv" in src, "charge_reforge_action must use _get_available_sv (status bar source), not legacy research_points"
+    assert "spend_research_points_for_tech" not in src, "spend_research_points_for_tech is the legacy bug — remove it from charge_reforge_action"
+    avail_src = inspect.getsource(tech_utils._get_available_sv)
+    assert "reforge_sv_spent" in avail_src, "_get_available_sv must subtract reforge_sv_spent so status bar reflects narog spend"
+    return True
+
+
 @test("Narog: prereq cards match Luke's spec (Lab L1 only)", tier=1, features=['crew'], mode='local')
 def test_narog_prereqs_lab_only():
     """The UI used to over-promise RS L3 + RF L3 alongside Lab L1. The server

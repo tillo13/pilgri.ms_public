@@ -105,7 +105,8 @@ def ensure_robot_tables():
             ADD COLUMN IF NOT EXISTS test_window_locked BOOLEAN NOT NULL DEFAULT TRUE,
             ADD COLUMN IF NOT EXISTS repick_count INTEGER NOT NULL DEFAULT 0,
             ADD COLUMN IF NOT EXISTS reroll_image_count INTEGER NOT NULL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS reroll_video_count INTEGER NOT NULL DEFAULT 0
+            ADD COLUMN IF NOT EXISTS reroll_video_count INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS reforge_sv_spent INTEGER NOT NULL DEFAULT 0
         """)
         # Stale-detection timestamps. video is "stale" when image_updated_at
         # is newer than video_updated_at — UI hides the stale video and
@@ -828,7 +829,7 @@ def charge_reforge_action(user_id: int, action: str) -> Dict[str, Any]:
                         narog_reforge_cost)
     from utilities.postgres.wallets import get_user_primary_sepolia_wallet, update_sepolia_wallet_balance
     from utilities.depot_utils import display_to_eth
-    from utilities.postgres.users import spend_research_points_for_tech, get_user_research_data
+    from utilities.tech_utils import _get_available_sv
 
     col = COUNTER_COL_BY_ACTION.get(action)
     if not col:
@@ -867,9 +868,12 @@ def charge_reforge_action(user_id: int, action: str) -> Dict[str, Any]:
             f"Need {cost['shards']} shards, you have {int(bal_shards)}.",
             status=402,
         )
+    # SV check uses _get_available_sv (same source as the status bar): claimed
+    # discoveries + passive scientist generation − SV spent on tech research −
+    # SV already spent on prior reforges. Bug #1438: previously read the legacy
+    # users.research_points column which was always 0, blocking every reforge.
     if cost['sv'] > 0:
-        sv_data = get_user_research_data(user_id) or {}
-        cur_sv = int(sv_data.get('research_points') or 0)
+        cur_sv = int(_get_available_sv(user_id))
         if cur_sv < cost['sv']:
             raise ReforgeError(
                 f"Need {cost['sv']} science, you have {cur_sv}.",
@@ -882,13 +886,16 @@ def charge_reforge_action(user_id: int, action: str) -> Dict[str, Any]:
     cost_eth = display_to_eth(cost['shards'])
     update_sepolia_wallet_balance(wallet['wallet_address'], bal_eth - cost_eth)
 
-    # Charge SV (atomic, raises on insufficient).
+    # Charge SV by recording the spend on the robot row. _get_available_sv()
+    # subtracts SUM(reforge_sv_spent) so the status bar drops in real time and
+    # future reforge checks see the reduced balance.
     if cost['sv'] > 0:
-        ok = spend_research_points_for_tech(user_id, cost['sv'])
-        if not ok:
-            # Refund shards if SV charge failed (race condition).
-            update_sepolia_wallet_balance(wallet['wallet_address'], bal_eth)
-            raise ReforgeError("Science deduction failed — try again.", status=409)
+        with db_cursor(commit=True) as cur:
+            cur.execute("""
+                UPDATE pilgrim.robot
+                SET reforge_sv_spent = reforge_sv_spent + %s, updated_at = NOW()
+                WHERE user_id = %s
+            """, (cost['sv'], user_id))
 
     # Bump counter. Done LAST so a transient DB hiccup doesn't leave us with a
     # bumped counter and no spend (caller can retry safely on charge failures).
