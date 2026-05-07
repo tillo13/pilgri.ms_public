@@ -204,9 +204,13 @@
             </div>
         </div>
 
+        {# Bug #1303: Drone + Narog cards added so the trail summary reflects
+           ALL contributors. Grid uses auto-fit so 3-5 cards wrap cleanly on
+           any width. Drone card appears once any maintenance/mining drone is
+           built; Narog card appears once the captain has forged a Narog. #}
         <!-- Crew Status Row (compact, shows who's available + trail contribution) -->
         <div class="text-xs opacity-50 mb-8">Your Crew • <span style="color: var(--color-warning);">Orange = building trail</span> • % = share of your total trail km</div>
-        <div class="grid gap-12 mb-12" style="grid-template-columns: repeat(3, 1fr);" id="crew-status-row">
+        <div class="grid gap-12 mb-12" style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));" id="crew-status-row">
             <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid var(--color-success);">
                 <img src="{{ character_url if character_url else '/static/img/placeholder.png' }}" alt="Captain" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
                 <div class="text-xs font-semibold">{{ commander.commander_name if commander and commander.commander_name else 'Captain' }}</div>
@@ -233,6 +237,22 @@
                 <div id="aria-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
                 <div id="aria-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
             </div>
+            {% if has_drone %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid #f59e0b;">
+                <img src="{{ icons.vehicle_drone }}" alt="Drone" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
+                <div class="text-xs font-semibold">Drone</div>
+                <div id="drone-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="drone-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% endif %}
+            {% if robot_data and robot_data.is_complete %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid #ffc88a;">
+                <img src="{{ robot_data.robot.current_image_url or icons.robot_avatar }}" alt="Narog" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px; object-fit: cover;">
+                <div class="text-xs font-semibold">{{ robot_data.robot.name or 'Narog' }}</div>
+                <div id="robot-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="robot-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Global Mars Progress -->

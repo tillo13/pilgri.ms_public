@@ -9,9 +9,19 @@ def get_crew_page_data_authenticated(user_id):
     """Full data bundle for the authenticated crew page (reuses command page data)."""
     from utilities.depot_utils import get_pricing_info
     from utilities.postgres.robot import get_robot_page_data
+    from utilities.upgrades_utils import get_user_upgrade_level
     data = get_command_page_data(user_id)
     data['pricing'] = get_pricing_info(user_id)
     data['robot_data'] = get_robot_page_data(user_id)
+    # Bug #1303: trails tab needs to know whether to surface a Drone card +
+    # Narog card in the "Your Crew" contribution row. Drone km is fed by the
+    # maintenance + mining drone upgrades' trail_km_per_hour values (see
+    # utilities/postgres/trails/segments.py:545); either one being level ≥ 1
+    # means the captain has a contributing drone.
+    data['has_drone'] = (
+        get_user_upgrade_level(user_id, 'maintenance', 'maintenance') >= 1
+        or get_user_upgrade_level(user_id, 'mining', 'mining') >= 1
+    )
     return data
 
 

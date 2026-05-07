@@ -788,6 +788,50 @@ def test_all_tech_levels():
     return True
 
 
+@test("Trail summary counts drone + robot km (#1303)", tier=1, features=['crew', 'trails'], mode='local')
+def test_trail_summary_includes_drone_and_robot():
+    """Bug #1303 (Luke 2026-05-06): the 3 visible crew cards always summed to
+    100% because updateCrewTrailContributions() in crew-map.js was only
+    adding captain+scientist+aria — drone_km + robot_km from
+    pilgrim.user_trail_chains were dropped on the floor, so both the per-crew
+    percentages AND the 'Your Total Trail Progress' km value were wrong.
+
+    Pin three things so the bug can't silently regress:
+      1. The view layer exposes `has_drone` to the trails tab so the Drone
+         card can be conditionally rendered.
+      2. The crew-map.js source counts every per-source km column when
+         computing the grand total.
+      3. The trails-tab template renders both the drone and narog contrib
+         hooks (#drone-trail-contrib / #robot-trail-contrib) under the right
+         template gates."""
+    import inspect
+    from utilities.views import arrival as arrival_mod
+
+    src = inspect.getsource(arrival_mod.get_crew_page_data_authenticated)
+    assert "has_drone" in src, "get_crew_page_data_authenticated must expose has_drone for the Drone card gate"
+
+    js_path = '/Users/at/Desktop/code/galactica/static/js/crew-map.js'
+    with open(js_path) as f:
+        js = f.read()
+    for k in ('captain_km', 'scientist_km', 'aria_km', 'drone_km', 'robot_km'):
+        assert k in js, f"crew-map.js must read t.{k} when summing crew contributions"
+    # The grand-total expression must include drone + robot terms — the
+    # original bug was the literal omission, so guard against it directly.
+    assert 'droneTotal' in js and 'robotTotal' in js, (
+        "crew-map.js grandTotal must include droneTotal + robotTotal — "
+        "Luke's bug #1303 was caused by these being missing"
+    )
+
+    tpl_path = '/Users/at/Desktop/code/galactica/templates/crew/_tab_trails.html'
+    with open(tpl_path) as f:
+        tpl = f.read()
+    for hook in ('drone-trail-contrib', 'robot-trail-contrib'):
+        assert hook in tpl, f"_tab_trails.html must render #{hook} for crew-map.js to populate"
+    assert 'has_drone' in tpl, "_tab_trails.html must gate the Drone card on has_drone"
+    assert 'robot_data.is_complete' in tpl, "_tab_trails.html must gate the Narog card on robot_data.is_complete"
+    return True
+
+
 @test("Lab Research Summary lifetime totals (#1424)", tier=1, features=['tech'], mode='local')
 def test_research_summary_lifetime_totals():
     """Bug #1424: header must show '/200' lifetime cap (10 levels × 5 techs ×

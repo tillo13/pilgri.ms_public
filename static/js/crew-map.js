@@ -506,34 +506,43 @@ function drawGhostChainRoutes() {
 }
 
 // Update crew trail contribution percentages
+// Bug #1303: previously summed only captain+scientist+aria, dropping drone_km
+// and robot_km on the floor — Luke caught it because the 3 visible cards
+// always summed to 100%. Now sums all 5 sources so the percentages and the
+// "Your Total Trail Progress" km value reflect every contributor.
 function updateCrewTrailContributions() {
     // Sum up all km built by each crew member across all trails
-    let captainTotal = 0, scientistTotal = 0, ariaTotal = 0;
+    let captainTotal = 0, scientistTotal = 0, ariaTotal = 0, droneTotal = 0, robotTotal = 0;
     nearbyTrails.forEach(t => {
         captainTotal += t.captain_km || 0;
         scientistTotal += t.scientist_km || 0;
         ariaTotal += t.aria_km || 0;
+        droneTotal += t.drone_km || 0;
+        robotTotal += t.robot_km || 0;
     });
-    const grandTotal = captainTotal + scientistTotal + ariaTotal;
+    const grandTotal = captainTotal + scientistTotal + ariaTotal + droneTotal + robotTotal;
 
-    // Update crew contribution displays
-    const captainEl = document.getElementById('captain-trail-contrib');
+    // Update crew contribution displays. drone-/robot-trail-contrib are only in
+    // the DOM when the captain has the corresponding source (template gates).
+    const captainEl   = document.getElementById('captain-trail-contrib');
     const scientistEl = document.getElementById('scientist-trail-contrib');
-    const ariaEl = document.getElementById('aria-trail-contrib');
+    const ariaEl      = document.getElementById('aria-trail-contrib');
+    const droneEl     = document.getElementById('drone-trail-contrib');
+    const robotEl     = document.getElementById('robot-trail-contrib');
 
-    if (grandTotal > 0) {
-        const captainPct = (captainTotal / grandTotal * 100).toFixed(1);
-        const scientistPct = (scientistTotal / grandTotal * 100).toFixed(1);
-        const ariaPct = (ariaTotal / grandTotal * 100).toFixed(1);
-
-        if (captainEl) captainEl.textContent = `${captainPct}% contrib`;
-        if (scientistEl) scientistEl.textContent = `${scientistPct}% contrib`;
-        if (ariaEl) ariaEl.textContent = `${ariaPct}% contrib`;
-    } else {
-        if (captainEl) captainEl.textContent = 'No trails yet';
-        if (scientistEl) scientistEl.textContent = 'No trails yet';
-        if (ariaEl) ariaEl.textContent = 'No trails yet';
-    }
+    const setPct = (el, total) => {
+        if (!el) return;
+        if (grandTotal > 0) {
+            el.textContent = `${(total / grandTotal * 100).toFixed(1)}% contrib`;
+        } else {
+            el.textContent = 'No trails yet';
+        }
+    };
+    setPct(captainEl, captainTotal);
+    setPct(scientistEl, scientistTotal);
+    setPct(ariaEl, ariaTotal);
+    setPct(droneEl, droneTotal);
+    setPct(robotEl, robotTotal);
 
     // Update global Mars progress
     const globalKmEl = document.getElementById('global-km-built');
