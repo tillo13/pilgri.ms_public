@@ -204,6 +204,45 @@ def test_infra_structure():
     return True
 
 
+@test("Depot cost curve floors (#1405)", tier=1, features=['config', 'depot', 'colony'], mode='local')
+def test_depot_cost_floors():
+    """Bug #1405 rebalance: enforces the L4 / L8 cost floors so future edits
+    can't silently undo Luke's calibration. If a path's cost drops below the
+    floor at any level in [4..7] or [8..10], surface it. Either re-run
+    tools/apply_depot_cost_rebalance.py or update the floors here with a note."""
+    MID_L4_FLOOR = 4128   # 40h × Andy's 103.2 shards/hr
+    LATE_L8_FLOOR = 54640  # 100h × Luke's 546.4 shards/hr
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    from config_upgrades import UPGRADE_CATALOG
+
+    def _violations(path_label, item_key, levels):
+        bad = []
+        for lvl, ldata in (levels or {}).items():
+            if not isinstance(lvl, int):
+                continue
+            cost = int((ldata or {}).get('cost') or 0)
+            if cost == 0:
+                continue
+            if 4 <= lvl <= 7 and cost < MID_L4_FLOOR:
+                bad.append(f"{path_label}/{item_key} L{lvl}={cost} < mid floor {MID_L4_FLOOR}")
+            elif 8 <= lvl <= 10 and cost < LATE_L8_FLOOR:
+                bad.append(f"{path_label}/{item_key} L{lvl}={cost} < late floor {LATE_L8_FLOOR}")
+        return bad
+
+    violations = []
+    for k, cfg in INFRASTRUCTURE_CATALOG.items():
+        violations += _violations('infra', k, cfg.get('levels'))
+    for cat, cat_dict in UPGRADE_CATALOG.items():
+        if not isinstance(cat_dict, dict):
+            continue
+        for k, cfg in cat_dict.items():
+            if isinstance(cfg, dict) and 'levels' in cfg:
+                violations += _violations(cat, k, cfg.get('levels'))
+    if violations:
+        return f"{len(violations)} cost(s) below #1405 floor: " + '; '.join(violations[:5])
+    return True
+
+
 @test("Tech catalog valid structure", tier=1, features=['config', 'tech'], mode='local')
 def test_tech_structure():
     from config_tech import TECH_CATALOG
