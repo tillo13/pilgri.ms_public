@@ -1314,6 +1314,22 @@
       "6. How to pick this up later"
     ]
   },
+  "docs/scope_bug_21_captain_stats.md": {
+    "description": "Bug #21 — Captain & Scientist Stat Progression: Full Scope",
+    "exports": [
+      "1. What \"stats progression\" means in concrete terms",
+      "2. What already exists (and what surprises hide there)",
+      "3. The new schema we need",
+      "4. Trigger sites — where to fire `award_stat_event`",
+      "5. UI: toast + display + history",
+      "6. Retroactive credit migration — the riskiest piece",
+      "7. Edge cases and risks",
+      "8. Recommended ship order",
+      "9. Files we'll touch",
+      "10. Open questions / Luke decisions still needed",
+      "11. References"
+    ]
+  },
   "docs/signal.md": {
     "description": "SIGNAL.md — Mars Mission Message System & Blockchain Easter Eggs",
     "exports": [
@@ -1864,6 +1880,16 @@
       "upload_video_to_gcs — Upload an MP4 video to GCS and return the public URL.",
       "upload_thumbnail_to_gcs — Upload a JPEG thumbnail to GCS and return the public URL.",
       "get_user_video_data — Get video data for a user's FOMO email."
+    ]
+  },
+  "utilities/visitor_logging.py": {
+    "description": "Shared visitor-logging module for ALL of Andy's Flask apps.",
+    "exports": [
+      "classify_user_agent — Short human-readable source label for a UA string.",
+      "log_view — Async-fire one row. Caller must NOT await — returns immediately.",
+      "install_middleware — Register a before_request hook that logs every public GET to",
+      "get_recent_views — Return recent rows. Each row is a dict with `source` + `from_linkedin`",
+      "get_stats — Counts of humans / LinkedIn-referred / bots in the last N hours, plus"
     ]
   },
   "utilities/xenobiology.py": {
@@ -3471,7 +3497,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3484,7 +3510,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

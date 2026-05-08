@@ -98,6 +98,13 @@ logger = logging.getLogger(__name__)
 kill_port_processes(PORT_RANGE_START)
 app = Flask(__name__)
 
+# Cross-app visitor logging → kumori_ops.visitor_log
+try:
+    from utilities.visitor_logging import install_middleware as _install_visitor_logging
+    _install_visitor_logging(app, 'galactica')
+except Exception as _vl_e:
+    pass
+
 # Custom URL converter for signed integers (supports negative IDs for origin site items)
 class SignedIntConverter(IntegerConverter):
     regex = r'-?\d+'
