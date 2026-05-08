@@ -268,7 +268,8 @@ def sitemap():
 @app.route('/robots.txt')
 def robots():
     from utilities.static.feeds import ROBOTS_TXT
-    return Response(ROBOTS_TXT, mimetype='text/plain')
+    from utilities.visitor_logging import append_bot_block
+    return Response(append_bot_block(ROBOTS_TXT), mimetype='text/plain')
 
 @app.route('/feed.xml')
 def atom_feed():
