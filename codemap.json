@@ -1565,6 +1565,12 @@
       "clear_credential_cache — Clears the in-memory credential cache"
     ]
   },
+  "utilities/gtag.py": {
+    "description": "GA4 measurement-ID registry + tag-snippet helper.",
+    "exports": [
+      "snippet — Return the canonical gtag.js script block for a given site slug."
+    ]
+  },
   "utilities/idle_discovery_utils.py": {
     "description": "Idle Discovery System - Commanders passively find things while player is away",
     "exports": [
@@ -3498,7 +3504,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

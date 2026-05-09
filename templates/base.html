@@ -59,6 +59,7 @@
     </script>
 
     {% block extra_head %}{% endblock %}
+    {{ ga_snippet('galactica') | safe }}
 </head>
 <body data-page="{{ active_tab or 'home' }}">
 {% if session.get('_real_uid') %}
