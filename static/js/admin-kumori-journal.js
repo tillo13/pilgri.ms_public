@@ -144,6 +144,9 @@
     $('kj-generate').disabled = true;
     $('kj-save').disabled = true;
     last = null;
+    // Same processing overlay we use for page transitions — fast millisecond
+    // timer so the user sees something live while the ~8-12s pipeline runs.
+    if (typeof showProcessing === 'function') showProcessing('Generating ARIA journal entry…');
     const t0 = Date.now();
     let j;
     try {
@@ -157,9 +160,11 @@
       $('kj-status').textContent = 'network error: ' + e;
       $('kj-status').style.color = 'var(--color-danger)';
       $('kj-generate').disabled = false;
+      if (typeof hideProcessing === 'function') hideProcessing();
       return;
     } finally {
       $('kj-generate').disabled = false;
+      if (typeof hideProcessing === 'function') hideProcessing();
     }
     const dt = Date.now() - t0;
     if (!j.success) {
