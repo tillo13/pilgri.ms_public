@@ -407,13 +407,16 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
         "Stick to POSITION, COMPOSITION, LIGHTING, MOOD, and BACKGROUND SURROUNDINGS. Klein handles the appearance from the actual pixels.",
         "",
         "Klein rules for the image_prompt field:",
-        "(1) Prose only — natural cinematic English. No bracketed tags, no role labels in ALL CAPS.",
-        "(2) Structure: Subject -> Setting -> Details -> Lighting -> Atmosphere.",
-        "(3) Reference images by index ('image 1', 'image 2', ...).",
-        "(4) ALWAYS write 'Keep EXACTLY the same as reference image N' for every reference — Klein needs this to lock identity to pixels you cannot see.",
-        "(5) No negatives — describe positive visual opposites.",
-        "(6) State the count of HUMAN characters in the scene explicitly (PERSON kind only).",
-        "(7) Describe each subject in natural language. DO NOT write KIND tags in the prose.",
+        "(0) ⚡ LENGTH CAP: 60–110 words TOTAL (excluding the style block). Klein de-prioritizes references buried in long prose. Each reference must get equal billing — NEVER let one ref dominate or one ref get lost in a sub-clause.",
+        "(1) Prose only — short clear sentences. No bracketed tags, no role labels in ALL CAPS.",
+        "(2) FIRST sentence must list ALL references in image-index order, e.g.:",
+        "    'On Mars at dusk: the artifact in image 1, the person in image 2, and the vehicle in image 3.'",
+        "    Then add ONE short composition/lighting/mood sentence, then the Keep-EXACTLY lines.",
+        "(3) Reference images ONLY by index ('image 1', 'image 2', …). No name-based descriptions.",
+        "(4) Write a SEPARATE 'Keep EXACTLY the same as reference image N.' sentence for EACH reference (one per ref, each its own sentence).",
+        "(5) No negatives.",
+        "(6) State the HUMAN_CHARACTER_COUNT verbatim (e.g., 'There are 0 human characters in the scene.' or 'There is 1 human character in the scene.').",
+        "(7) Describe each subject ONLY by 'the <KIND-noun> in image N'. DO NOT describe appearance.",
         "(8) Never use proper names — role labels only.",
         f"(9) CLOSE the image_prompt with this canonical Pilgrims style block verbatim: \"{PILGRIMS_STYLE_BLOCK}\"",
         "",
@@ -486,9 +489,12 @@ def synthesize_scene(user_id: int, *, seed: Optional[int] = None,
                                           chosen, meta['mood'], meta['composition'])
 
     t_llm = time.time()
+    # max_tokens lowered from 900 → 350 to discourage rambling prompts that
+    # bury references mid-paragraph. Klein de-prioritizes refs buried in
+    # long prose, so we want tight ~80-100-word image_prompts.
     text, backend, attempts, llm_debug = kumori_llm_chat(LLM_SYSTEM, user_payload,
-                                              max_tokens=900, temperature=0.7,
-                                              min_chars=120, debug=debug)
+                                              max_tokens=350, temperature=0.7,
+                                              min_chars=80, debug=debug)
     stage('llm_synth', ms=int((time.time()-t_llm)*1000),
           winning_backend=backend, attempt_count=len(attempts),
           response_chars=len(text))

@@ -48,13 +48,24 @@ PRESETS = {
     'thumbnail':          (512, 384),    # quick previews
 }
 
-# Default LLM backend chain for /llm/chat-resilient calls. Tuned for prose
-# synthesis (Llama 3.3 70B first, fast/cheap fallbacks after).
+# Default LLM backend chain — STRONGEST first. Used for prompt synthesis and
+# caption rewriting where instruction-following + prose quality matter.
+# Ranked by capability for structured creative tasks:
+#   openrouter-hermes      → Hermes 3 Llama 3.1 405B (the biggest free model)
+#   mistral-mistral-large  → Mistral Large (top Mistral tier)
+#   sambanova-meta-llama   → Llama 3.3 70B on SambaNova (very fast)
+#   github-llama-70b       → Llama 3.3 70B (GitHub Models, reliable)
+#   openrouter-nemotron    → NVIDIA Nemotron 120B
+#   github-gpt4nano        → GPT-4.1 nano (small but solid for fallback)
+#   mistral-medium         → final fallback
 DEFAULT_LLM_BACKENDS = [
+    'openrouter-hermes',
+    'mistral-mistral-large-latest',
+    'sambanova-meta-llama-3.3-70b-instruct',
     'github-llama-70b',
+    'openrouter-nemotron-120b',
     'github-gpt4nano',
     'mistral-medium',
-    'mistral',
 ]
 
 _initialized = False
