@@ -2647,6 +2647,238 @@ def api_admin_kumori_generate():
     })
 
 
+@app.route('/api/admin/kumori-journal/generate-stream', methods=['POST'])
+def api_admin_kumori_generate_stream():
+    """Same pipeline as /generate, but emits Server-Sent Events as each stage
+    completes so the admin console can render results progressively instead
+    of blocking on the full ~12-15s pipeline. Events emitted (one per line):
+
+        event: start          — pipeline kicked off (timestamp)
+        event: pool           — build_recent_pool done (pool_by_category, totals)
+        event: pick           — random_pick done (N, mood, composition, chosen[])
+        event: llm_synth      — synthesis LLM done (image_prompt, aria_caption,
+                                backend, attempts, system+user prompts, raw text,
+                                llm_debug_info upstream calls)
+        event: klein_render   — Klein edit done (image_b64, provider, ms,
+                                klein_debug_info upstream calls)
+        event: vision         — vision LLM done (description, backend, ms)
+        event: final_caption  — final-caption LLM done (final_aria_caption,
+                                system+user prompts, attempts, backend, ms,
+                                upstream_calls)
+        event: done           — pipeline complete (pipeline_stage_log,
+                                galactica_to_kumori_http, totals)
+        event: error          — fatal error (string)
+
+    Each event payload is JSON. Client uses fetch + ReadableStream + manual
+    SSE parser (EventSource doesn't support POST bodies)."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+
+    data = request.get_json() or {}
+    target_uid = int(data.get('user_id') or 0)
+    force_n = int(data.get('force_min_n', 0))
+    preset = (data.get('preset') or 'aria_journal').strip()
+    custom_w = data.get('width')
+    custom_h = data.get('height')
+    if not target_uid:
+        return jsonify({'success': False, 'error': 'user_id required'}), 400
+
+    from utilities.aria_journal import (
+        build_recent_pool, random_pick, build_llm_user_payload, LLM_SYSTEM,
+        parse_llm_json, render_scene, verify_and_caption,
+    )
+    from utilities.kumori_image import PRESETS, validate_klein_size, kumori_llm_chat
+    from utilities.kumori_api_client.client import set_request_log
+    from utilities.mars_environment_utils import get_mars_sol_number
+    import base64 as _b64
+    import json as _json
+    import time as _time
+
+    if custom_w and custom_h:
+        try:
+            w = int(custom_w); h = int(custom_h)
+            w, h = validate_klein_size(w, h)
+            PRESETS['__custom__'] = (w, h)
+            preset = '__custom__'
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'bad width/height: {e}'}), 400
+    elif preset not in PRESETS:
+        return jsonify({'success': False, 'error': f'unknown preset {preset!r}'}), 400
+
+    def sse(event_name, payload):
+        return f"event: {event_name}\ndata: {_json.dumps(payload)}\n\n"
+
+    def generate():
+        galactica_to_kumori_http = []
+        set_request_log(galactica_to_kumori_http)
+        stage_log = []
+        t_pipeline = _time.time()
+        try:
+            yield sse('start', {'timestamp': _time.time(), 'target_user_id': target_uid,
+                                 'preset': preset, 'force_min_n': force_n})
+
+            # Stage 1 — Pool
+            t = _time.time()
+            pool = build_recent_pool(target_uid)
+            pool_by_cat = {c: len(items) for c, items in pool.items()}
+            stage_log.append({'stage': 'pool_build', 'timestamp': _time.time(),
+                              'ms': int((_time.time()-t)*1000),
+                              'total': sum(pool_by_cat.values()), 'by_category': pool_by_cat})
+            yield sse('pool', {
+                'pool_size_total': sum(pool_by_cat.values()),
+                'pool_by_category': pool_by_cat,
+                'ms': int((_time.time()-t)*1000),
+            })
+
+            # Stage 2 — Pick
+            t = _time.time()
+            N, chosen, meta = random_pick(pool, force_min_n=force_n)
+            stage_log.append({'stage': 'random_pick', 'timestamp': _time.time(),
+                              'ms': int((_time.time()-t)*1000),
+                              'N': N, 'mood': meta['mood'], 'composition': meta['composition']})
+            yield sse('pick', {
+                'N': N, 'mood': meta['mood'], 'composition': meta['composition'],
+                'chosen': [{'category': c['category'], 'role_label': c['role_label'],
+                            'facts': c.get('facts'), 'kind_tag': c.get('kind_tag'),
+                            'url': c['url']} for c in chosen],
+                'ms': int((_time.time()-t)*1000),
+            })
+
+            # Stage 3 — LLM synth
+            sol = get_mars_sol_number()
+            weather, time_of_day = 'Hazy', 'dusk'
+            user_payload = build_llm_user_payload(sol, weather, time_of_day,
+                                                   chosen, meta['mood'], meta['composition'])
+            t = _time.time()
+            text, backend, attempts, llm_debug = kumori_llm_chat(
+                LLM_SYSTEM, user_payload, max_tokens=350, temperature=0.7,
+                min_chars=80, debug=True)
+            llm_ms = int((_time.time()-t)*1000)
+            stage_log.append({'stage': 'llm_synth', 'timestamp': _time.time(),
+                              'ms': llm_ms, 'backend': backend,
+                              'chars': len(text)})
+            parsed = parse_llm_json(text) or {}
+            image_prompt = (parsed.get('image_prompt') or '').strip()
+            first_pass_caption = (parsed.get('aria_caption') or '').strip()
+            yield sse('llm_synth', {
+                'endpoint': 'POST /api/v1/llm/chat-resilient',
+                'system_prompt': LLM_SYSTEM,
+                'user_payload': user_payload,
+                'backend': backend, 'attempts': attempts,
+                'image_prompt': image_prompt,
+                'aria_caption': first_pass_caption,
+                'raw_response': text,
+                'llm_debug_info': llm_debug or {'upstream_calls': []},
+                'ms': llm_ms,
+            })
+
+            # Stage 4 — Klein render
+            synth = {
+                'sol': sol, 'weather': weather, 'time_of_day': time_of_day,
+                'N': N, 'chosen': chosen, 'mood': meta['mood'],
+                'composition': meta['composition'],
+                'image_prompt': image_prompt, 'aria_caption': first_pass_caption,
+            }
+            t = _time.time()
+            rendered = render_scene(synth, preset=preset, debug=True)
+            render_total_ms = int((_time.time()-t)*1000)
+            stage_log.append({'stage': 'klein_render', 'timestamp': _time.time(),
+                              'ms': render_total_ms, 'provider': rendered.get('provider'),
+                              'output_bytes': len(rendered['image_bytes']),
+                              'used_size': rendered['used_size']})
+            yield sse('klein_render', {
+                'endpoint': 'POST /api/v1/imggen/edit',
+                'image_b64': _b64.b64encode(rendered['image_bytes']).decode(),
+                'provider': rendered.get('provider'),
+                'server_ms': rendered.get('ms'),
+                'total_ms': render_total_ms,
+                'used_size': rendered['used_size'],
+                'target_image_url': chosen[0]['url'] if chosen else None,
+                'reference_image_urls': [c['url'] for c in chosen[1:]] if chosen else [],
+                'klein_debug_info': {'upstream_calls': rendered.get('upstream_calls', [])},
+            })
+
+            # Stages 5 + 6 — Verify + final caption (split for progressive UX)
+            from utilities.kumori_image import kumori_describe
+            from utilities.aria_journal import (FINAL_CAPTION_SYSTEM,
+                                                  build_caption_reconciliation_prompt)
+
+            VISION_PROMPT = (
+                "Describe everything visible in this single image, clearly and factually, "
+                "in 3-4 short sentences. Name every character, every object, every notable "
+                "feature you can identify. Focus on visual content — what shapes, colors, "
+                "characters, objects, structures appear. Do not interpret meaning, mood, or "
+                "context. Just describe what is visibly there."
+            )
+            t = _time.time()
+            try:
+                vision_text, vision_backend = kumori_describe(
+                    rendered['image_bytes'], prompt=VISION_PROMPT)
+            except Exception as e:
+                vision_text, vision_backend = '', f'failed: {e}'
+            vision_ms = int((_time.time()-t)*1000)
+            stage_log.append({'stage': 'vision_describe_rendered', 'timestamp': _time.time(),
+                              'ms': vision_ms, 'backend': vision_backend,
+                              'chars': len(vision_text)})
+            yield sse('vision', {
+                'endpoint': 'POST /api/v1/describe/describe',
+                'prompt': VISION_PROMPT, 'description': vision_text,
+                'backend': vision_backend, 'ms': vision_ms,
+            })
+
+            # Stage 6 — final caption reconciliation
+            synth['aria_caption'] = first_pass_caption  # ensure first-pass available
+            cap_user = build_caption_reconciliation_prompt(
+                synth, vision_text or '(vision describe failed; only PICKED ELEMENTS are known)')
+            t = _time.time()
+            try:
+                cap_text, cap_backend, cap_attempts, cap_debug = kumori_llm_chat(
+                    FINAL_CAPTION_SYSTEM, cap_user,
+                    max_tokens=200, temperature=0.7, min_chars=20, debug=True)
+            except Exception as e:
+                cap_text, cap_backend, cap_attempts, cap_debug = '', f'failed: {e}', [], None
+            cap_ms = int((_time.time()-t)*1000)
+            cap_parsed = parse_llm_json(cap_text) if cap_text else None
+            if cap_parsed and cap_parsed.get('aria_caption'):
+                final_caption = cap_parsed['aria_caption'].strip()
+            elif cap_text:
+                final_caption = cap_text.strip()[:300]
+            else:
+                final_caption = first_pass_caption
+            stage_log.append({'stage': 'final_caption_rewrite', 'timestamp': _time.time(),
+                              'ms': cap_ms, 'backend': cap_backend,
+                              'chars': len(final_caption)})
+            yield sse('final_caption', {
+                'endpoint': 'POST /api/v1/llm/chat-resilient',
+                'system_prompt': FINAL_CAPTION_SYSTEM,
+                'user_prompt': cap_user,
+                'backend': cap_backend, 'attempts': cap_attempts,
+                'raw_response': cap_text, 'final_aria_caption': final_caption,
+                'upstream_calls': (cap_debug or {}).get('upstream_calls', []),
+                'ms': cap_ms,
+            })
+
+            yield sse('done', {
+                'pipeline_total_ms': int((_time.time()-t_pipeline)*1000),
+                'pipeline_stage_log': stage_log,
+                'galactica_to_kumori_http': galactica_to_kumori_http,
+                'sol': sol, 'weather': weather, 'time_of_day': time_of_day,
+            })
+        except Exception as e:
+            logger.exception(f"kumori_journal stream failed: {e}")
+            yield sse('error', {'error': str(e)[:500]})
+        finally:
+            set_request_log(None)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache, no-store, must-revalidate',
+                 'X-Accel-Buffering': 'no', 'Connection': 'keep-alive'}
+    )
+
+
 @app.route('/api/admin/kumori-journal/save', methods=['POST'])
 @handle_api_error
 def api_admin_kumori_save():

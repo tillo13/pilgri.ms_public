@@ -432,58 +432,67 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
 
 FINAL_CAPTION_SYSTEM = (
     "You are ARIA, the small crystal-and-rock companion robot of a Mars colony captain. "
-    "You write the caption for ARIA's daily photo journal entry — like an Instagram post. "
-    "Voice: first-person ARIA — observational, slightly inhuman, sometimes wry or melancholy. "
-    "You will be given TWO inputs: (a) PICKED ELEMENTS that were SUPPOSED to be in this photo, with their proper names and facts, and (b) VISION DESCRIPTION — what the vision model actually sees in the rendered image. "
-    "Your job is to write a 1–2 sentence caption that reconciles the two: "
-    "  • Use the proper names/facts from PICKED ELEMENTS for items that DO appear in the VISION DESCRIPTION. "
-    "  • Gracefully OMIT any picked element the vision model didn't see — do NOT lie that it's there. "
-    "  • Don't introduce objects/characters that aren't in the VISION DESCRIPTION. "
-    "  • Open with a concrete observation. NEVER 'As dusk falls', 'As I gaze', 'As [time/event]'. "
-    "  • Match the supplied MOOD. "
+    "You curate ARIA's daily photo journal. A first-pass caption has ALREADY been written with proper names, ARIA's voice, and narrative sentimentality. "
+    "Your job is to PRESERVE that caption almost entirely. The vision-LLM read of the rendered image is a VETO SIGNAL — only useful for catching when an element was supposed to render but Klein silently dropped it. "
+    "Default action: return the first-pass caption VERBATIM. "
+    "Only edit when the vision description clearly proves a NAMED element from the picks is absent — and even then, surgically rewrite that one phrase, keeping ARIA's voice, proper names, mood, and Mars sentimentality intact. "
+    "RULES: "
+    "  • Preserve proper names from the picks (Narog, captain, scientist, specific landmark names like 'Farah Vallis', etc.) whenever they're consistent with vision. "
+    "  • Vision LLMs often miss humans inside spacesuits, miscount figures, or call a captain 'a robot'. Do NOT treat that as proof the captain is absent. Trust picks unless vision actively shows something incompatible. "
+    "  • Preserve ARIA's voice: observational, slightly inhuman, wry or melancholy, with narrative beats. "
+    "  • Preserve Mars sentimentality: references to sol, Martian terrain, the colony, ARIA's relationship with the captain. "
+    "  • NEVER flatten the caption into a generic description of what vision saw. 'I'm standing alongside a robot with a fetching Santa hat' is a FAILURE — that's vision-LLM voice, not ARIA voice. "
+    "  • Only when a picked element is clearly missing (e.g., picks include 'scientist' but vision sees zero humans and only one robot), surgically remove the scientist clause while preserving everything else. "
     "Output ONLY valid JSON with one key: aria_caption (string). No markdown, no preamble."
 )
 
 
 def build_caption_reconciliation_prompt(synth: dict, vision_text: str) -> str:
-    """The strong LLM gets full context: every picked element with its proper
-    name + facts, PLUS the vision model's read of what's actually in the
-    rendered image. This lets the LLM caption accurately and use names only
-    when the corresponding visual thing actually rendered."""
+    """Give the strong LLM the first-pass caption AS THE STARTING POINT,
+    the picks (for proper names + facts), and the vision read (as a veto
+    signal for elements Klein silently dropped). Default behavior: return
+    the first-pass caption unchanged. Edit only when vision proves a named
+    element is absent."""
     chosen = synth.get('chosen') or []
+    first_pass = (synth.get('aria_caption') or '').strip()
     parts = [
         f"SOL: {synth.get('sol')}",
         f"MOOD: {synth.get('mood')}",
         f"COMPOSITION: {synth.get('composition')}",
         "",
+        "FIRST-PASS CAPTION (this is the starting point — your DEFAULT output is to return this verbatim):",
+        f'  "{first_pass}"',
+        "",
     ]
     if chosen:
-        parts.append("PICKED ELEMENTS (use proper names from here only when the matching thing IS in the vision description):")
+        parts.append("PICKED ELEMENTS (these were supposed to render — proper names & facts to preserve):")
         for i, c in enumerate(chosen, start=1):
             parts.append(f"  • image {i} [{c['category']} · {c['kind_tag']}]")
             parts.append(f"      role_label: {c['role_label']}")
             if c.get('facts'):
                 parts.append(f"      facts: {c['facts']}")
     else:
-        parts.append("PICKED ELEMENTS: none (pure Mars landscape — no characters or objects were supposed to be in this photo)")
+        parts.append("PICKED ELEMENTS: none (pure Mars landscape)")
     parts += [
         "",
-        "VISION DESCRIPTION (ground truth — what the vision model actually sees in the rendered image):",
+        "VISION-LLM READ (what the vision model saw — use ONLY as a veto signal):",
         f'  "{vision_text}"',
         "",
-        "STEP 1 — silently cross-check (do this in your head, do not output):",
-        "  For each picked element above, decide whether the VISION DESCRIPTION mentions it.",
-        "  Mark each picked element as VISIBLE or MISSING based on the vision description.",
-        "  Example: if 'scientist' is picked but vision says 'a robot and a crystal on Mars' (no mention of a scientist), then the scientist is MISSING.",
+        "DECISION PROCESS:",
+        "  STEP 1 — For each PICKED element, decide if vision actively CONTRADICTS its presence.",
+        "    • 'contradicts' = vision describes the scene in a way that's incompatible with the element rendering at all.",
+        "    • 'vision called the captain a robot' is NOT a contradiction — vision LLMs misread cartoon spacesuits all the time.",
+        "    • 'picks have a scientist but vision sees zero humans and one robot' IS a contradiction.",
+        "    • When in doubt, trust the picks. The picks are ground truth for INTENT; vision is just QA.",
+        "  STEP 2 — If NOTHING is contradicted: return the first-pass caption VERBATIM. Do not paraphrase, do not 'improve' it.",
+        "  STEP 3 — If something IS contradicted: surgically rewrite ONLY the phrase that mentions the missing element. Preserve everything else: proper names, ARIA voice, Mars sentimentality, mood, narrative beats.",
         "",
-        "STEP 2 — write the caption:",
-        "  • Mention ONLY the picked elements you marked VISIBLE (using their proper names from the picks).",
-        "  • Gracefully omit any picked element marked MISSING — do NOT pretend it's there.",
-        "  • Do NOT introduce anything that's neither in PICKED ELEMENTS nor in the VISION DESCRIPTION.",
-        "  • 1–2 sentences, first-person ARIA voice, matching MOOD.",
-        "  • Open with a concrete observation. Never 'As dusk falls' / 'As I gaze'.",
+        "FORBIDDEN OUTPUTS:",
+        "  • Flattening the caption into a generic vision-style description ('I'm standing alongside a robot with a Santa hat…') — this destroys ARIA's voice. NEVER do this.",
+        "  • Replacing proper names from the picks with generic vision nouns ('Narog' → 'a robot') — keep the proper name.",
+        "  • Stripping out colony/Mars references that the vision LLM didn't explicitly see — those are ARIA's worldview, not vision's job to corroborate.",
         "",
-        'Output JSON: {"aria_caption": "<1-2 sentences>"}',
+        'Output JSON: {"aria_caption": "<the first-pass caption verbatim, OR a surgically-edited version preserving voice/names/sentiment>"}',
     ]
     return "\n".join(parts)
 
