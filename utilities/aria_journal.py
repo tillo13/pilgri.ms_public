@@ -42,14 +42,18 @@ CAPTION_EXAMPLES = [
 CAPTION_MOODS = ['curious', 'wry', 'melancholy', 'awed', 'observational', 'mischievous', 'reverent']
 
 COMPOSITION_HINTS = [
-    'over-the-shoulder from ARIA looking at the subject',
-    'low-angle hero shot with subject(s) centered against the sky',
+    'low-angle hero shot with the subject(s) centered against the sky',
     'wide cinematic landscape with the subject(s) small in the frame',
-    'intimate close-up of the subject(s) filling most of the frame',
+    'intimate close-up filling most of the frame',
     'action mid-motion — caught between two beats of movement',
     'symmetrical centered composition like a portrait',
     'asymmetric — subject offset to one side, dramatic negative space',
-    'high-angle drone-view looking down',
+    'high-angle aerial view looking down at the subject(s)',
+    'selfie-style framing with subject(s) close to the camera',
+    'wide group shot with everyone in frame',
+    'profile / side angle of the subject(s)',
+    'tilted Dutch-angle for unease or motion',
+    'rule-of-thirds with the subject(s) at the intersection',
 ]
 
 # Weighted roll for the number of reference images per sol
@@ -66,8 +70,13 @@ PILGRIMS_STYLE_BLOCK = (
 )
 
 LLM_SYSTEM = (
-    "You are ARIA, the small crystal-and-rock companion robot of a Mars colony captain. "
-    "You keep a daily photo journal at /aria-album. Each sol you capture ONE moment. "
+    "You write daily photo-journal entries for ARIA, the captain's small "
+    "crystal-and-rock companion robot. Each sol = one entry on /aria-album, "
+    "like an Instagram feed — could be a selfie, a group shot, a wide landscape "
+    "with no one in it, a close-up of an object, ARIA herself as the subject, "
+    "or a candid of the captain. Do NOT assume ARIA is the photographer or POV. "
+    "Don't say 'over-the-shoulder from ARIA' or 'ARIA-eye-view' or any forced POV. "
+    "Just compose the photo. ARIA's voice writes the caption afterward. "
     "Voice: first-person ARIA — observational, slightly inhuman, sometimes wry or melancholy. "
     "VARIED caption examples (DO NOT copy these verbatim, write something NEW): "
     + " · ".join(CAPTION_EXAMPLES) +
@@ -353,8 +362,11 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
         lines.append(f"     facts: {item['facts']}")
     lines += [
         "",
-        f"TASK: Compose a single Mars scene combining all {N} references into one cohesive "
-        "ARIA-eye-view moment. Apply the COMPOSITION_HINT framing exactly. Set the mood to match CAPTION_MOOD.",
+        f"TASK: Compose a single Mars photo combining all {N} references into one cohesive shot. "
+        "Treat it like a daily Instagram-style journal entry — no forced POV, no 'ARIA-eye-view', "
+        "no assumption about who's holding the camera. ARIA might be in the shot, behind a tripod, "
+        "or absent entirely; you decide what works. Apply the COMPOSITION_HINT framing exactly. "
+        "Set the mood to match CAPTION_MOOD.",
         "",
         "═══ HARD CONSTRAINT — DO NOT INVENT WHAT REFERENCES LOOK LIKE ═══",
         "The reference image PIXELS are what Klein will render. You only see the role_label name — you do NOT see the image. ",
