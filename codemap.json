@@ -1414,7 +1414,7 @@
       "parse_llm_json — Best-effort JSON extraction. Tolerates ```json fences + leading prose.",
       "synthesize_scene — Run the full pipeline through the LLM synth stage. Does NOT render yet.",
       "render_scene — Render the synthesized scene via Klein. Returns",
-      "generate_journal_entry — End-to-end pipeline. Returns the full synth payload PLUS:"
+      "generate_journal_entry — End-to-end pipeline. Returns the full synth payload PLUS rendered image."
     ]
   },
   "utilities/brainstorm_chat.py": {
@@ -1628,7 +1628,7 @@
       "validate_klein_size — Snap to multiple-of-16 + cap to 4 MP. Returns (w, h) Klein will actually",
       "kumori_klein_edit — Render an image via Cloudflare flux-2-klein-4b.",
       "kumori_describe — Vision LLM → text. Returns (description_text, backend_used).",
-      "kumori_llm_chat — LLM with server-side backend fallback. Returns (text, winning_backend, attempt_log)."
+      "kumori_llm_chat — LLM with server-side backend fallback. Returns"
     ]
   },
   "utilities/legacy_migration.py": {
@@ -2822,6 +2822,7 @@
     "exports": [
       "class KumoriAPIError — Raised when kumori.ai/api/v1/* call fails after retry.",
       "init — Inject Secret Manager fetcher + which secret holds this app's API key.",
+      "set_request_log — Begin recording every _request() call to `target_list` (or pass None to",
       "llm_generate — Auto-routes to a free backend. Returns (text, backend_name).",
       "llm_chat — Pinned-backend multi-turn chat. Returns (text, backend_name).",
       "llm_chat_resilient — Server-side fallback chat. Tries each backend in `backends` (list, in",
@@ -2833,8 +2834,7 @@
       "llm_is_backed_off — Convenience: True if backend is currently in backoff.",
       "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as",
       "imggen_generate — Text→image via free providers. Klein-4B size rules apply (multiples of",
-      "imggen_edit — Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference",
-      "describe_image — Describe an image via free vision LLMs. Pass either image_url OR"
+      "imggen_edit — Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference"
     ]
   },
   "utilities/email/__init__.py": {
@@ -3005,9 +3005,14 @@
       "loadUsage",
       "loadCaptains",
       "fmt",
+      "renderHttpCalls",
+      "statusClass",
+      "urlShort",
       "renderRefs",
       "role",
       "generate",
+      "llmUpstream",
+      "kleinUpstream",
       "saveToAlbum"
     ]
   },
@@ -3578,7 +3583,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3594,7 +3599,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

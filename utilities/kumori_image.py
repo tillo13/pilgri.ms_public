@@ -30,6 +30,7 @@ from utilities.kumori_api_client import (
     llm_chat_resilient as _kc_llm_chat_resilient,
     KumoriAPIError,
 )
+from utilities.kumori_api_client.client import set_request_log, _redact_b64  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -117,14 +118,15 @@ def _pack_image_url_or_bytes(image_url_or_bytes, max_long_side: int = 1024) -> s
 def kumori_klein_edit(prompt: str, target_image, reference_images: Optional[List] = None,
                      preset: Optional[str] = None, width: int = 1024, height: int = 1024,
                      app_name: str = 'galactica', character: str = '',
-                     ref_filename: str = '') -> Dict[str, Any]:
+                     ref_filename: str = '', debug: bool = False) -> Dict[str, Any]:
     """Render an image via Cloudflare flux-2-klein-4b.
 
     target_image / reference_images: each can be a URL, file path, or raw bytes.
     Up to 3 reference images (target + 3 refs = 4 total — Klein's hard cap).
 
-    Returns {ok, image_bytes, provider, ms, used_size:(w,h)} on success
-    or raises KumoriAPIError on failure (after server-side retries).
+    Returns {ok, image_bytes, provider, ms, used_size:(w,h), [upstream_calls]}
+    on success. When debug=True, the response includes the upstream HTTP calls
+    kumori made to Cloudflare so the caller can see the raw payloads.
     """
     if preset:
         if preset not in PRESETS:
@@ -137,18 +139,21 @@ def kumori_klein_edit(prompt: str, target_image, reference_images: Optional[List
     res = _kc_imggen_edit(prompt=prompt, target_image_b64=target_b64,
                           reference_images_b64=refs_b64, width=width, height=height,
                           app_name=app_name, character=character or 'anon',
-                          ref_filename=ref_filename or 'ref')
+                          ref_filename=ref_filename or 'ref', debug=debug)
     ms = int((time.time() - t0) * 1000)
     if not res.get('ok'):
         raise KumoriAPIError(f"klein edit failed: {res.get('error')}", payload=res)
     image_bytes = base64.b64decode(res['image_b64'])
-    return {
+    out = {
         'ok': True,
         'image_bytes': image_bytes,
         'provider': res.get('provider'),
         'ms': res.get('ms') or ms,
         'used_size': (width, height),
     }
+    if debug and res.get('_debug'):
+        out['upstream_calls'] = res['_debug'].get('upstream_calls', [])
+    return out
 
 
 def kumori_describe(image_url_or_bytes, prompt: str = "Describe this image briefly.") -> Tuple[str, str]:
@@ -169,12 +174,18 @@ def kumori_describe(image_url_or_bytes, prompt: str = "Describe this image brief
 def kumori_llm_chat(system: str, user_prompt: str, *,
                     backends: Optional[List[str]] = None,
                     max_tokens: int = 700, temperature: float = 0.4,
-                    min_chars: int = 80) -> Tuple[str, str, List[dict]]:
-    """LLM with server-side backend fallback. Returns (text, winning_backend, attempt_log)."""
+                    min_chars: int = 80, debug: bool = False) -> Tuple[str, str, List[dict], Optional[Dict[str, Any]]]:
+    """LLM with server-side backend fallback. Returns
+    (text, winning_backend, attempt_log, debug_info_or_None).
+
+    When debug=True, debug_info has {upstream_calls: [...]} listing every
+    HTTP call kumori made to LLM provider APIs (Groq, Mistral, GitHub Models, etc.)
+    with full request/response payloads."""
     chain = backends or DEFAULT_LLM_BACKENDS
     messages = [{"role": "user", "content": user_prompt}]
-    text, backend, attempts = _kc_llm_chat_resilient(
+    text, backend, attempts, debug_info = _kc_llm_chat_resilient(
         backends=chain, messages=messages, max_tokens=max_tokens,
         temperature=temperature, system=system, min_chars=min_chars,
+        debug=debug,
     )
-    return text or '', backend or '?', attempts or []
+    return text or '', backend or '?', attempts or [], debug_info

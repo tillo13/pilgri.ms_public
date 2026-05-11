@@ -71,6 +71,42 @@ def _api_key():
     return val
 
 
+# Optional instrumentation hook — when set to a list, every _request() call
+# appends a record with the full request body, response body, status, and
+# latency. Used by the galactica admin debug console to surface every byte
+# hitting kumori. Module-level (process-wide) — not thread-safe; intended for
+# single-user admin testing, not production multi-tenant traffic.
+_request_log = None
+
+
+def set_request_log(target_list):
+    """Begin recording every _request() call to `target_list` (or pass None to
+    stop). Base64 image fields in request/response bodies are truncated to
+    `<base64:N chars>` placeholders so the log stays human-readable."""
+    global _request_log
+    _request_log = target_list
+
+
+def _redact_b64(obj):
+    """Walk a dict and replace any *_b64 / image_b64 string fields with size
+    markers. Keeps the log readable when payloads contain ~500KB+ base64."""
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if k.endswith('_b64') and isinstance(v, str):
+                out[k] = f"<base64:{len(v)} chars>"
+            elif k == 'reference_images_b64' and isinstance(v, list):
+                out[k] = [f"<base64:{len(b)} chars>" if isinstance(b, str) else b for b in v]
+            elif isinstance(v, (dict, list)):
+                out[k] = _redact_b64(v)
+            else:
+                out[k] = v
+        return out
+    if isinstance(obj, list):
+        return [_redact_b64(x) for x in obj]
+    return obj
+
+
 def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
     """Generic kumori API call. Returns parsed JSON dict on success, raises
     KumoriAPIError on failure.
@@ -136,11 +172,12 @@ def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=Non
 
 
 def llm_chat_resilient(backends, messages, max_tokens=500, temperature=0.3,
-                       system=None, min_chars=1):
+                       system=None, min_chars=1, debug=False):
     """Server-side fallback chat. Tries each backend in `backends` (list, in
     order); rotates on empty / 5xx / transient errors. Returns
-    (text, winning_backend, attempt_log_list). Raises KumoriAPIError if every
-    backend fails (the exception's .payload contains the attempt log).
+    (text, winning_backend, attempt_log_list, debug_info). debug_info is None
+    unless debug=True, in which case it's a dict {upstream_calls:[...]} listing
+    every outbound HTTP call kumori made to LLM provider APIs.
 
     min_chars: response-shape gate — backend response shorter than this counts
     as a failure and rotation continues.
@@ -150,8 +187,10 @@ def llm_chat_resilient(backends, messages, max_tokens=500, temperature=0.3,
             'min_chars': min_chars}
     if system:
         body['system'] = system
+    if debug:
+        body['debug'] = True
     data = _request('POST', '/api/v1/llm/chat-resilient', body, timeout=(5, 120))
-    return data.get('text'), data.get('backend'), data.get('attempts', [])
+    return data.get('text'), data.get('backend'), data.get('attempts', []), data.get('_debug')
 
 
 def llm_chat_eval(prompt, system=None, caller=None):
@@ -218,10 +257,13 @@ def imggen_generate(prompt, width=1024, height=1024, mode='roundrobin'):
 
 def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
                 width=1024, height=1024, app_name=None, character=None,
-                ref_filename=None):
+                ref_filename=None, debug=False):
     """Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference
     images allowed (target + 3 refs = 4 image inputs total). Size rules same
-    as imggen_generate. Returns {ok, image_b64, provider, ms}."""
+    as imggen_generate. Returns {ok, image_b64, provider, ms, [_debug]}.
+
+    When debug=True, response includes `_debug.upstream_calls` listing every
+    HTTP call kumori made to Cloudflare (with payloads + response details)."""
     if not target_image_b64:
         raise ValueError('imggen_edit requires target_image_b64')
     refs = reference_images_b64 or []
@@ -232,6 +274,7 @@ def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
     if app_name: body['app_name'] = app_name
     if character: body['character'] = character
     if ref_filename: body['ref_filename'] = ref_filename
+    if debug: body['debug'] = True
     data = _request('POST', '/api/v1/imggen/edit', body, timeout=(5, 180))
     return data
 

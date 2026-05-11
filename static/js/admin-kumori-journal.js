@@ -59,6 +59,49 @@
 
   function fmt(obj) { return JSON.stringify(obj, null, 2); }
 
+  function renderHttpCalls(containerEl, calls, emptyMsg) {
+    containerEl.innerHTML = '';
+    if (!calls || !calls.length) {
+      containerEl.innerHTML = `<div class="kj-mini">${emptyMsg || '(no calls)'}</div>`;
+      return;
+    }
+    calls.forEach((c, i) => {
+      const status = c.response_status ?? c.status ?? '?';
+      const statusClass = (typeof status === 'number' && status < 400) ? 'kj-status-ok'
+                        : (typeof status === 'number') ? 'kj-status-err' : 'kj-status-unk';
+      const errBadge = c.error ? `<span class="kj-http-err">${c.error}</span>` : '';
+      const card = document.createElement('details');
+      card.className = 'kj-http-call';
+      card.open = false;
+      // Friendly summary in the <summary> tag
+      const urlShort = (c.url || '').replace(/^https?:\/\//, '').slice(0, 80);
+      card.innerHTML = `
+        <summary>
+          <span class="kj-http-idx">#${i+1}</span>
+          <span class="kj-http-method">${c.method || '?'}</span>
+          <span class="kj-http-url">${urlShort}</span>
+          <span class="kj-http-status ${statusClass}">${status}</span>
+          <span class="kj-http-ms">${c.ms ?? '?'}ms</span>
+          ${errBadge}
+        </summary>
+        <div class="kj-http-body">
+          <div class="kj-key">URL (full):</div>
+          <div class="kj-val"><code>${c.url || ''}</code></div>
+          <div class="kj-key">Request headers:</div>
+          <pre>${fmt(c.request_headers || c.headers || {})}</pre>
+          <div class="kj-key">Request body:</div>
+          <pre>${fmt(c.request_body !== undefined ? c.request_body : (c.request || {}))}</pre>
+          <div class="kj-key">Response status:</div>
+          <div class="kj-val"><code>${status}</code> · ${c.response_size_bytes ? c.response_size_bytes + ' bytes' : ''}</div>
+          <div class="kj-key">Response headers:</div>
+          <pre>${fmt(c.response_headers || {})}</pre>
+          <div class="kj-key">Response body:</div>
+          <pre>${fmt(c.response_body !== undefined ? c.response_body : (c.response || {}))}</pre>
+        </div>`;
+      containerEl.appendChild(card);
+    });
+  }
+
   function renderRefs(refs) {
     const grid = $('kj-chosen-refs');
     grid.innerHTML = '';
@@ -131,7 +174,12 @@
     // Rendered image + caption
     $('kj-img').src = 'data:image/png;base64,' + j.image_b64;
     $('kj-caption').textContent = j.aria_caption || '';
-    $('kj-used-size').textContent = `output size: ${j.used_size?.[0]}×${j.used_size?.[1]} · sol ${j.sol}`;
+    $('kj-used-size').textContent = `output size: ${j.used_size?.[0]}×${j.used_size?.[1]} · sol ${j.sol} · N=${j.N} · mood=${j.mood} · composition="${j.composition}"`;
+
+    // Pinned always-visible prompt + LLM input — duplicated from the trace
+    // panel so you can scan dozens of combos without expanding collapsibles.
+    $('kj-image-prompt-pinned').textContent = j.image_prompt || '';
+    $('kj-llm-user-pinned').textContent = j.llm_user_payload || '';
 
     // Stage 1 — pool
     $('kj-pool').textContent = fmt({
@@ -173,7 +221,25 @@
       total_pipeline_ms: j.render_total_ms,
     });
 
-    // Raw dump
+    // Stage 5 — pipeline stage log
+    $('kj-pipeline-log').textContent = fmt(j.pipeline_stage_log || []);
+
+    // Stage 6 — galactica → kumori HTTP
+    renderHttpCalls($('kj-http-galactica'), j.galactica_to_kumori_http || [],
+                    'No HTTP calls recorded — debug instrumentation may not be wired (check kumori_api_client.set_request_log).');
+
+    // Stage 7 — kumori → LLM upstream
+    $('kj-llm-raw-response').textContent = j.llm_raw_response_text || '(not captured)';
+    const llmUpstream = (j.llm_debug_info && j.llm_debug_info.upstream_calls) || [];
+    renderHttpCalls($('kj-http-llm-upstream'), llmUpstream,
+                    'No upstream LLM calls captured — kumori service may not have shipped the upstream_trace patch yet, or this LLM call hit a server-side cache.');
+
+    // Stage 8 — kumori → cloudflare (klein) upstream
+    const kleinUpstream = (j.klein_debug_info && j.klein_debug_info.upstream_calls) || [];
+    renderHttpCalls($('kj-http-klein-upstream'), kleinUpstream,
+                    'No upstream Klein calls captured — kumori service may not have shipped the upstream_trace patch yet.');
+
+    // Stage 9 — raw dump (with image_b64 redacted)
     const rawCopy = { ...j };
     rawCopy.image_b64 = `<${j.image_b64?.length || 0} chars base64 — omitted from raw view>`;
     $('kj-raw').textContent = fmt(rawCopy);
@@ -229,9 +295,15 @@
     });
     $('kj-save').addEventListener('click', saveToAlbum);
     $('kj-usage-refresh').addEventListener('click', loadUsage);
-    // Toggle custom W×H inputs when the preset dropdown is set to "custom"
     $('kj-preset').addEventListener('change', (e) => {
       $('kj-custom-size-row').style.display = (e.target.value === '__custom__') ? 'flex' : 'none';
+    });
+    $('kj-copy-prompt').addEventListener('click', () => {
+      const txt = $('kj-image-prompt-pinned').textContent;
+      navigator.clipboard.writeText(txt).then(() => {
+        $('kj-copy-prompt').textContent = '✓ copied';
+        setTimeout(() => $('kj-copy-prompt').textContent = '📋 copy', 1500);
+      });
     });
   });
 })();

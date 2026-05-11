@@ -389,18 +389,14 @@ def parse_llm_json(text: str) -> Optional[dict]:
 def synthesize_scene(user_id: int, *, seed: Optional[int] = None,
                      force_min_n: int = 0,
                      weather: str = 'Hazy', time_of_day: str = 'dusk',
-                     sol: Optional[int] = None) -> Dict[str, Any]:
+                     sol: Optional[int] = None,
+                     debug: bool = False) -> Dict[str, Any]:
     """Run the full pipeline through the LLM synth stage. Does NOT render yet.
 
-    Returns:
-        {
-          'user_id', 'sol', 'weather', 'time_of_day',
-          'pool_size_total', 'pool_by_category': {cat: count},
-          'N', 'chosen': [list of {category, role_label, facts, url, kind_tag}],
-          'mood', 'composition',
-          'llm_system_prompt', 'llm_user_payload', 'llm_attempts',
-          'image_prompt', 'aria_caption', 'llm_backend',
-        }
+    When debug=True the result includes:
+        'llm_raw_response_text'  — exact text the LLM returned (before JSON parse)
+        'llm_debug_info'         — {upstream_calls:[...]} every HTTP call kumori made
+                                    to LLM providers (Groq/Mistral/GitHub/etc.)
 
     Raises KumoriAPIError if the LLM fallback chain exhausts.
     """
@@ -410,22 +406,40 @@ def synthesize_scene(user_id: int, *, seed: Optional[int] = None,
     if sol is None:
         sol = get_mars_sol_number()
 
+    stage_log = []
+    def stage(name, **fields):
+        stage_log.append({'stage': name, 'timestamp': time.time(), **fields})
+
+    t_pool = time.time()
     pool = build_recent_pool(user_id)
     pool_by_cat = {c: len(items) for c, items in pool.items()}
+    stage('pool_build', ms=int((time.time()-t_pool)*1000),
+          total=sum(pool_by_cat.values()), by_category=pool_by_cat)
+
+    t_pick = time.time()
     N, chosen, meta = random_pick(pool, seed=seed, force_min_n=force_min_n)
+    stage('random_pick', ms=int((time.time()-t_pick)*1000),
+          N=N, mood=meta['mood'], composition=meta['composition'],
+          chosen_categories=[c['category'] for c in chosen])
 
     user_payload = build_llm_user_payload(sol, weather, time_of_day,
                                           chosen, meta['mood'], meta['composition'])
-    text, backend, attempts = kumori_llm_chat(LLM_SYSTEM, user_payload,
+
+    t_llm = time.time()
+    text, backend, attempts, llm_debug = kumori_llm_chat(LLM_SYSTEM, user_payload,
                                               max_tokens=900, temperature=0.7,
-                                              min_chars=120)
+                                              min_chars=120, debug=debug)
+    stage('llm_synth', ms=int((time.time()-t_llm)*1000),
+          winning_backend=backend, attempt_count=len(attempts),
+          response_chars=len(text))
+
     parsed = parse_llm_json(text)
     if not parsed:
         from utilities.kumori_image import KumoriAPIError
         raise KumoriAPIError(f"LLM returned unparseable JSON: {text[:200]}")
     image_prompt = (parsed.get('image_prompt') or '').strip()
     caption = (parsed.get('aria_caption') or '').strip()
-    return {
+    result = {
         'user_id': user_id, 'sol': sol, 'weather': weather, 'time_of_day': time_of_day,
         'pool_size_total': sum(pool_by_cat.values()),
         'pool_by_category': pool_by_cat,
@@ -437,12 +451,21 @@ def synthesize_scene(user_id: int, *, seed: Optional[int] = None,
         'llm_backend': backend,
         'image_prompt': image_prompt,
         'aria_caption': caption,
+        'pipeline_stage_log': stage_log,
     }
+    if debug:
+        result['llm_raw_response_text'] = text
+        result['llm_debug_info'] = llm_debug or {'upstream_calls': []}
+    return result
 
 
-def render_scene(synth: dict, *, preset: str = 'aria_journal') -> Dict[str, Any]:
+def render_scene(synth: dict, *, preset: str = 'aria_journal',
+                 debug: bool = False) -> Dict[str, Any]:
     """Render the synthesized scene via Klein. Returns
-    {image_bytes, provider, ms, used_size}. Raises KumoriAPIError on failure.
+    {image_bytes, provider, ms, used_size, [upstream_calls]}.
+
+    When debug=True the response includes the upstream HTTP calls
+    kumori made to Cloudflare (or other Klein providers).
     """
     from utilities.kumori_image import kumori_klein_edit, PRESETS
     chosen = synth['chosen']
@@ -455,9 +478,6 @@ def render_scene(synth: dict, *, preset: str = 'aria_journal') -> Dict[str, Any]
         synth['image_prompt'] = image_prompt
         synth.setdefault('post_process_notes', []).append('appended_pilgrims_style_block')
     if synth['N'] == 0:
-        # Anchor with ARIA's static portrait (kumori imggen/generate path
-        # exists but used to be buggy; klein edit with ARIA target works on
-        # both paths and gives a stable identity anchor).
         target = ARIA_STATIC_URL
         refs = []
     else:
@@ -469,6 +489,7 @@ def render_scene(synth: dict, *, preset: str = 'aria_journal') -> Dict[str, Any]
         width=w, height=h, app_name='galactica_aria_journal',
         character=f'uid{synth["user_id"]}',
         ref_filename=f'sol{synth["sol"]}_N{synth["N"]}',
+        debug=debug,
     )
     return res
 
@@ -477,18 +498,48 @@ def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
                             force_min_n: int = 0,
                             preset: str = 'aria_journal',
                             weather: str = 'Hazy',
-                            time_of_day: str = 'dusk') -> Dict[str, Any]:
-    """End-to-end pipeline. Returns the full synth payload PLUS:
-      'image_bytes', 'render_provider', 'render_ms', 'used_size'.
-    Caller decides whether to save (upload to GCS + save_generated_image).
+                            time_of_day: str = 'dusk',
+                            debug: bool = False) -> Dict[str, Any]:
+    """End-to-end pipeline. Returns the full synth payload PLUS rendered image.
+
+    When debug=True, the result includes EVERY piece of HTTP traffic involved:
+      - 'pipeline_stage_log'    — per-stage timing/summary (code-side)
+      - 'galactica_to_kumori_http' — every request galactica's client made to
+                                     kumori.ai (with bodies redacted for base64)
+      - 'llm_debug_info'        — kumori→LLM provider HTTP calls (Stage B for the LLM step)
+      - 'klein_debug_info'      — kumori→Cloudflare HTTP calls (Stage B for the render step)
+      - 'llm_raw_response_text' — what the LLM returned BEFORE JSON parse
     """
-    synth = synthesize_scene(user_id, seed=seed, force_min_n=force_min_n,
-                             weather=weather, time_of_day=time_of_day)
-    t0 = time.time()
-    rendered = render_scene(synth, preset=preset)
+    from utilities.kumori_api_client.client import set_request_log
+    galactica_to_kumori_http = [] if debug else None
+    if debug:
+        set_request_log(galactica_to_kumori_http)
+    try:
+        synth = synthesize_scene(user_id, seed=seed, force_min_n=force_min_n,
+                                 weather=weather, time_of_day=time_of_day, debug=debug)
+        t_render_start = time.time()
+        rendered = render_scene(synth, preset=preset, debug=debug)
+        render_total_ms = int((time.time() - t_render_start) * 1000)
+    finally:
+        if debug:
+            set_request_log(None)
+
     synth['image_bytes'] = rendered['image_bytes']
     synth['render_provider'] = rendered['provider']
     synth['render_ms'] = rendered['ms']
-    synth['render_total_ms'] = int((time.time() - t0) * 1000)
+    synth['render_total_ms'] = render_total_ms
     synth['used_size'] = rendered['used_size']
+
+    if debug:
+        synth['galactica_to_kumori_http'] = galactica_to_kumori_http or []
+        synth['klein_debug_info'] = {'upstream_calls': rendered.get('upstream_calls', [])}
+        # also add a final stage entry for the klein call
+        synth.setdefault('pipeline_stage_log', []).append({
+            'stage': 'klein_render',
+            'timestamp': time.time(),
+            'ms': render_total_ms,
+            'provider': rendered.get('provider'),
+            'output_bytes': len(rendered['image_bytes']),
+            'used_size': rendered['used_size'],
+        })
     return synth

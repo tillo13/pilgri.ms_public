@@ -131,9 +131,15 @@ auth = SimpleGoogleAuth(app)
 # utilities/aria_journal.py (ARIA Photo Journal) and replaces the paid
 # nano_banana_pro Replicate path in utilities/aria/photos/*. Falls back silently
 # if the secret isn't reachable (only the kumori-routed surfaces care).
+# CRITICAL: PILGRIMS_KUMORI_API_KEY lives in kumori-404602 Secret Manager, NOT
+# in galactica-character-game. galactica's get_secret() defaults to
+# galactica-character-game; we have to explicitly point it at kumori-404602.
 try:
     from utilities.kumori_image import init_kumori
-    init_kumori(get_secret_fn=get_secret, api_key_name='PILGRIMS_KUMORI_API_KEY')
+    init_kumori(
+        get_secret_fn=lambda name: get_secret(name, project_id='kumori-404602'),
+        api_key_name='PILGRIMS_KUMORI_API_KEY',
+    )
 except Exception as _e:
     logger.warning(f"kumori_image init failed (free-stack image paths will be unavailable): {_e}")
 
@@ -2551,7 +2557,9 @@ def api_admin_kumori_generate():
         return jsonify({'success': False, 'error': f'unknown preset {preset!r}; valid: {list(PRESETS.keys())}'}), 400
 
     try:
-        result = generate_journal_entry(target_uid, force_min_n=force_n, preset=preset)
+        # Always run in debug mode from the admin console — we want every byte
+        # of every request/response to surface for fine-tuning.
+        result = generate_journal_entry(target_uid, force_min_n=force_n, preset=preset, debug=True)
     except Exception as e:
         logger.exception(f"kumori_journal generate failed for user {target_uid}: {e}")
         return jsonify({'success': False, 'error': str(e)[:300]}), 500
@@ -2604,6 +2612,19 @@ def api_admin_kumori_generate():
         'sol': result.get('sol'),
         'weather': result.get('weather'),
         'time_of_day': result.get('time_of_day'),
+
+        # FULL trace — three layers for fine-tuning:
+        #   (1) pipeline_stage_log: per-stage timing/summary (code-side)
+        #   (2) galactica_to_kumori_http: every HTTP call from galactica's client
+        #       to kumori.ai (request/response bodies, status, ms)
+        #   (3) llm_debug_info / klein_debug_info: every HTTP call kumori made
+        #       to upstream free-tier providers (Cloudflare, Groq, Mistral,
+        #       GitHub Models, etc.) with full bodies
+        'pipeline_stage_log': result.get('pipeline_stage_log', []),
+        'galactica_to_kumori_http': result.get('galactica_to_kumori_http', []),
+        'llm_raw_response_text': result.get('llm_raw_response_text'),
+        'llm_debug_info': result.get('llm_debug_info'),
+        'klein_debug_info': result.get('klein_debug_info'),
     })
 
 
