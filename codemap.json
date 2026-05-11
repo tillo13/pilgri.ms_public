@@ -2908,7 +2908,7 @@
     "description": "Bug Tracker — Admin page styles"
   },
   "static/css/admin-kumori-journal.css": {
-    "description": "Admin kumori-journal test bench — bug #1457"
+    "description": "Admin kumori-journal debug console — bug #1457"
   },
   "static/css/brainstorm-signal.css": {
     "description": "Signal brainstorm page — rendered markdown styling"
@@ -3000,9 +3000,13 @@
     ]
   },
   "static/js/admin-kumori-journal.js": {
-    "description": "Admin / kumori ARIA journal test bench — bug #1457.",
+    "description": "Admin / kumori ARIA journal DEBUG CONSOLE — bug #1457.",
     "exports": [
+      "loadUsage",
       "loadCaptains",
+      "fmt",
+      "renderRefs",
+      "role",
       "generate",
       "saveToAlbum"
     ]
@@ -3585,12 +3589,12 @@
     ]
   },
   "templates/admin_kumori_journal.html": {
-    "description": "Page: Admin · Kumori ARIA Journal"
+    "description": "Page: Admin · Kumori ARIA Journal · Debug Console"
   },
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3655,7 +3659,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

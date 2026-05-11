@@ -2392,6 +2392,102 @@ def admin_kumori_journal():
     return render_template('admin_kumori_journal.html', user=auth.get_current_user())
 
 
+@app.route('/api/admin/kumori-journal/usage', methods=['GET'])
+@handle_api_error
+def api_admin_kumori_usage():
+    """Today's free-tier kumori usage — pulled from kumori-404602.kumori_api_usage.
+
+    Shows: total calls today, breakdown by provider/model/feature/app, the daily
+    caps (klein=30, cloudflare shared pool=20 per provider · 10K neurons total),
+    plus the shared-pool ledger so the admin sees how close we are to the
+    cap before clicking Generate again."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+
+    import psycopg2
+    from utilities.anthropic_logger import _get_db_creds
+    creds = _get_db_creds()
+    is_gcp = os.environ.get('GAE_ENV', '').startswith('standard') or os.path.exists('/cloudsql')
+    host = (f"{os.environ.get('DB_SOCKET_DIR', '/cloudsql')}/{creds['connection_name']}"
+            if is_gcp else creds['host'])
+    conn = psycopg2.connect(host=host, dbname=creds['dbname'], user=creds['user'],
+                            password=creds['password'], connect_timeout=5,
+                            options='-c statement_timeout=10000')
+    try:
+        cur = conn.cursor()
+        # Free-tier rows only: provider LIKE 'kumori_free_%' from the new
+        # kumori main.py wiring. Fallback also pulls anthropic-logged
+        # rows for the admin to see the LLM volume.
+        cur.execute("""
+            SELECT
+                provider, model, feature, app_name,
+                COUNT(*) AS calls,
+                SUM(image_count) AS images,
+                AVG(duration_ms)::int AS avg_ms,
+                SUM(estimated_cost_usd)::numeric(10,4) AS cost
+            FROM kumori_api_usage
+            WHERE created_at::date = CURRENT_DATE
+              AND (provider LIKE 'kumori_free_%' OR app_name='galactica' OR feature ILIKE '%aria%')
+            GROUP BY 1,2,3,4
+            ORDER BY calls DESC
+            LIMIT 50
+        """)
+        cols = [d[0] for d in cur.description]
+        today_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+        # Shared-pool tally — the Cloudflare 10K-neuron daily budget covers
+        # flux-1-schnell + dreamshaper + flux-2-klein-4b combined. Klein
+        # ≈ 147 neurons/call; flux schnell ≈ 492; dreamshaper ≈ 492.
+        cur.execute("""
+            SELECT model, COUNT(*) AS n
+            FROM kumori_api_usage
+            WHERE created_at::date = CURRENT_DATE
+              AND provider = 'kumori_free_imggen'
+              AND model IN ('cloudflare_flux2_klein_edit', 'cloudflare_flux', 'cloudflare_dreamshaper')
+            GROUP BY model
+        """)
+        cf_calls = {r[0]: r[1] for r in cur.fetchall()}
+        cf_neurons = (cf_calls.get('cloudflare_flux2_klein_edit', 0) * 147
+                     + cf_calls.get('cloudflare_flux', 0) * 492
+                     + cf_calls.get('cloudflare_dreamshaper', 0) * 492)
+
+        # Klein-specific count (its own 30/day cap inside the shared pool)
+        cur.execute("""
+            SELECT COUNT(*) FROM kumori_api_usage
+            WHERE created_at::date = CURRENT_DATE
+              AND provider = 'kumori_free_imggen'
+              AND model = 'cloudflare_flux2_klein_edit'
+        """)
+        klein_today = cur.fetchone()[0]
+
+        # Galactica's per-key today count (PILGRIMS_KUMORI_API_KEY)
+        cur.execute("""
+            SELECT request_count FROM kumori_api_key_usage
+            WHERE usage_date = CURRENT_DATE
+              AND key_hash = (SELECT key_hash FROM kumori_api_keys WHERE label LIKE '%pilgrims%' LIMIT 1)
+        """)
+        r = cur.fetchone()
+        pilgrims_today = r[0] if r else 0
+
+        cur.close()
+    finally:
+        conn.close()
+
+    return jsonify({
+        'success': True,
+        'today_rows': [{k: (float(v) if hasattr(v, 'as_tuple') else v) for k, v in r.items()} for r in today_rows],
+        'caps': {
+            'klein_4b_calls': {'used': klein_today, 'limit': 30,
+                'note': 'cloudflare flux-2-klein-4b: 30 edits/day per kumori config'},
+            'cloudflare_neurons_shared_pool': {'used': cf_neurons, 'limit': 10000,
+                'note': 'shared across flux-1-schnell + dreamshaper + klein-4b'},
+            'pilgrims_api_key_calls': {'used': pilgrims_today, 'limit': 20000,
+                'note': 'PILGRIMS_KUMORI_API_KEY daily quota across all endpoints'},
+        },
+    })
+
+
 @app.route('/api/admin/kumori-journal/captains', methods=['GET'])
 @handle_api_error
 def api_admin_kumori_captains():
@@ -2443,28 +2539,53 @@ def api_admin_kumori_generate():
         return jsonify({'success': False, 'error': str(e)[:300]}), 500
 
     image_b64 = _b64.b64encode(result.pop('image_bytes')).decode()
-    # Trim very large fields for the response
+    # FULL transparency — every prompt, every response, every endpoint hit.
+    # This is the debug-console payload; nothing's truncated except the actual
+    # image bytes themselves (which we return as image_b64 separately).
     return jsonify({
         'success': True,
         'image_b64': image_b64,
-        'aria_caption': result.get('aria_caption'),
-        'image_prompt': result.get('image_prompt'),
-        'mood': result.get('mood'),
-        'composition': result.get('composition'),
-        'N': result.get('N'),
-        'chosen': [
-            {'category': c['category'], 'role_label': c['role_label'], 'url': c['url']}
-            for c in result.get('chosen', [])
-        ],
+
+        # Stage 1 — recency-filtered per-captain image pool
         'pool_by_category': result.get('pool_by_category'),
         'pool_size_total': result.get('pool_size_total'),
-        'used_size': result.get('used_size'),
-        'llm_backend': result.get('llm_backend'),
+
+        # Stage 2 — random pick (which categories + items got chosen, plus
+        # mood/composition hints for the LLM)
+        'N': result.get('N'),
+        'mood': result.get('mood'),
+        'composition': result.get('composition'),
+        'chosen': [
+            {'category': c['category'], 'role_label': c['role_label'],
+             'facts': c.get('facts'), 'kind_tag': c.get('kind_tag'), 'url': c['url']}
+            for c in result.get('chosen', [])
+        ],
+
+        # Stage 3 — LLM synthesis (every byte of input + output)
+        'llm_endpoint': 'POST /api/v1/llm/chat-resilient',
+        'llm_system_prompt': result.get('llm_system_prompt'),
+        'llm_user_payload': result.get('llm_user_payload'),
+        'llm_backend_used': result.get('llm_backend'),
         'llm_attempts': result.get('llm_attempts'),
+        'image_prompt': result.get('image_prompt'),
+        'aria_caption': result.get('aria_caption'),
+        'post_process_notes': result.get('post_process_notes', []),
+
+        # Stage 4 — Klein render
+        'klein_endpoint': 'POST /api/v1/imggen/edit',
+        'klein_target_image_url': result['chosen'][0]['url'] if result.get('chosen') else None,
+        'klein_reference_image_urls': [c['url'] for c in result.get('chosen', [])[1:]],
+        'klein_target_count': 1,
+        'klein_ref_count': max(0, len(result.get('chosen', [])) - 1),
+        'used_size': result.get('used_size'),
         'render_provider': result.get('render_provider'),
         'render_ms': result.get('render_ms'),
         'render_total_ms': result.get('render_total_ms'),
+
+        # Context
         'sol': result.get('sol'),
+        'weather': result.get('weather'),
+        'time_of_day': result.get('time_of_day'),
     })
 
 
