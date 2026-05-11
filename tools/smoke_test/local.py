@@ -472,6 +472,34 @@ def test_active_chain_segments_shape():
     return True
 
 
+@test("Bug #1454: per-vehicle speed chips match lifecycle launch math", tier=2, features=['expeditions'], mode='local')
+@requires_web3
+def test_vehicle_speed_chips_match_launch():
+    """The Active Bonuses Speed chip used to show max(all vehicles) × tech, but
+    each launch uses THIS vehicle × tech (lifecycle.py:190-195). Luke picked
+    Option A on 2026-05-10: render one chip per owned vehicle whose value
+    matches the exact number the captain experiences on launch."""
+    from utilities.expeditions.page_data import get_expeditions_page_data
+    from utilities.upgrades.vehicles import get_user_owned_vehicles
+    from utilities.tech_utils import get_tech_effects
+    USER = 45  # Andy — has multiple vehicles
+    data = get_expeditions_page_data(USER)
+    chips = (data.get('expedition_bonuses') or {}).get('vehicle_speed_chips')
+    assert isinstance(chips, list), f"vehicle_speed_chips missing/not list: {type(chips)}"
+    owned = get_user_owned_vehicles(USER)
+    assert len(chips) == len(owned), f"chip count {len(chips)} != owned {len(owned)}"
+    tech_mult = get_tech_effects(USER).get('expedition_speed_mult', 1.0)
+    owned_by_type = {v['vehicle_type']: v for v in owned}
+    for chip in chips:
+        vtype = chip['vehicle_type']
+        v = owned_by_type[vtype]
+        expected = float(v['speed_mult']) * float(tech_mult)
+        got = float(chip['value_mult'])
+        if abs(got - expected) > 1e-6:
+            return f"{vtype} chip={got} != lifecycle launch={expected} (vehicle={v['speed_mult']} × tech={tech_mult})"
+    return True
+
+
 @test("chain speed mult for off-chain dest is 1.0", tier=2, features=['trails', 'expeditions'], mode='local')
 def test_off_chain_speed_mult():
     from utilities.postgres.trails.chains import get_chain_speed_mult_for_destination

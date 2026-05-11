@@ -166,6 +166,26 @@ def get_expeditions_page_data(user_id: int) -> dict:
         v['effective_range_km'] = int(base_range * range_mult * scanner_range_mult * tech_range_mult)
         v['available'] = vtype not in active_vehicle_types
 
+    # Bug #1454 (Luke 2026-05-10 picked Option A): Active Bonuses panel must render
+    # one Speed chip per owned vehicle showing THIS vehicle's launch multiplier
+    # (vehicle.speed_mult × tech-only speed mult). The aggregate expedition_speed_mult
+    # above is max-across-vehicles × tech and overstates speed for every vehicle
+    # except the fastest owned — exactly the gap lifecycle.py:190-195 overrides
+    # at launch time. Per-vehicle chips match launch reality 1:1.
+    tech_speed_mult = _get_tech_eff(user_id).get('expedition_speed_mult', 1.0)
+    _vehicle_icon_key = {'rover': 'vehicle_rover', 'drone': 'vehicle_drone', 'buggy': 'vehicle_buggy'}
+    vehicle_speed_chips = []
+    for v in owned_vehicles:
+        vtype = v.get('vehicle_type', 'rover')
+        speed_mult = float(v.get('speed_mult', 1.0)) * float(tech_speed_mult)
+        vehicle_speed_chips.append({
+            'vehicle_type': vtype,
+            'label': f"{v.get('name', vtype.title())} Speed",
+            'value_mult': speed_mult,
+            'icon_key': _vehicle_icon_key.get(vtype, 'rocket_launch'),
+        })
+    expedition_bonuses['vehicle_speed_chips'] = vehicle_speed_chips
+
     # Expedition slots: vehicle count capped by habitat capacity (default 3 if no habitat)
     expedition_cap = infra_effects.get('expedition_capacity', 3)
     max_concurrent_expeditions = min(vehicle_count, expedition_cap)

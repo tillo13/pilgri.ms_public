@@ -139,7 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Active Expedition Bonuses (Bug #1419 — full bonus surface) -->
 {% set eb = expedition_bonuses %}
-{% set has_any_bonus = eb and (eb.expedition_range_mult > 1.0 or eb.expedition_speed_mult > 1.0 or eb.vehicle_range_mult > 1.0 or eb.discovery_chance_bonus > 0 or eb.rare_chance_bonus > 0 or eb.legendary_chance_bonus > 0 or eb.discovery_value_mult > 1.0 or eb.bio_discovery_value_mult > 1.0 or eb.fuel_cost_mult < 1.0 or eb.life_support_cost_mult < 1.0 or eb.cargo_slots > 0 or eb.signal_detection_enabled or eb.dust_storm_immune) %}
+{% set vehicle_speed_chips = (eb.vehicle_speed_chips if eb else []) or [] %}
+{% set has_speed_chip = vehicle_speed_chips|selectattr('value_mult', '>', 1.0)|list|length > 0 %}
+{% set has_any_bonus = eb and (has_speed_chip or eb.expedition_range_mult > 1.0 or eb.vehicle_range_mult > 1.0 or eb.discovery_chance_bonus > 0 or eb.rare_chance_bonus > 0 or eb.legendary_chance_bonus > 0 or eb.discovery_value_mult > 1.0 or eb.bio_discovery_value_mult > 1.0 or eb.fuel_cost_mult < 1.0 or eb.life_support_cost_mult < 1.0 or eb.cargo_slots > 0 or eb.signal_detection_enabled or eb.dust_storm_immune) %}
 {% if has_any_bonus %}
 {# Reusable chip macro so we don't repeat 14 copies of the same div #}
 {% macro bonus_chip(icon, label, value_html, color_class='text-success', bg_color='var(--color-success-rgb)', highlight='', breakdown_key='') -%}
@@ -155,10 +157,14 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="/colony?tab=assets" style="font-size: 11px; color: var(--text-muted); text-decoration: none;">View all in Colony &rarr;</a>
     </div>
     <div class="flex gap-16 flex-wrap text-base text-primary" style="row-gap: 8px;">
-        {# --- SPEED & RANGE — Bug #1243 v3 (2026-05-04): Nx multiplier format per spec. --- #}
-        {% if eb.expedition_speed_mult > 1.0 %}
-            {{ bonus_chip(icons.rocket_launch, 'Speed', "%.2f"|format(eb.expedition_speed_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'expedition_speed_mult') }}
-        {% endif %}
+        {# --- SPEED — Bug #1454 (Luke 2026-05-10): per-vehicle chips, not one aggregate.
+             Each chip is vehicle.speed_mult × tech_speed_mult — the exact number
+             lifecycle.py:190-195 uses on launch. No more max-of-all-vehicles lie. --- #}
+        {% for chip in vehicle_speed_chips %}
+            {% if chip.value_mult > 1.0 %}
+                {{ bonus_chip(icons[chip.icon_key], chip.label, "%.2f"|format(chip.value_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'expedition_speed_mult') }}
+            {% endif %}
+        {% endfor %}
         {% if eb.vehicle_range_mult > 1.0 %}
             {{ bonus_chip(icons.tab_map, 'Vehicle Range', "%.2f"|format(eb.vehicle_range_mult) ~ 'x', 'text-success', 'var(--color-success-rgb)', '', 'vehicle_range_mult') }}
         {% endif %}
