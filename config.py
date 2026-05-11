@@ -163,13 +163,15 @@ COLONY_SCIENTISTS = {
     'millie': {
         'name': 'Dr. Millie',
         'specialty': 'Meteorology',
-        'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/scientists/scientist_millie_1767581005.png',
+        # Bug #1282: Luke "ship both" 2026-05-08 — refreshed Meteorology-themed portrait
+        'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/scientists/scientist_millie_1778527521.png',
         'stats': {'navigation': 38, 'analysis': 20, 'geology': 15, 'engineering': 12},
     },
     'mra': {
         'name': 'Dr. Mra',
         'specialty': 'Materials Science',
-        'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/scientists/scientist_mra_1767581055.png',
+        # Bug #1282: Luke "ship both" 2026-05-08 — sunglasses removed, face visible
+        'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/scientists/scientist_mra_no_glasses_1778527521.png',
         'stats': {'navigation': 16, 'analysis': 18, 'geology': 32, 'engineering': 42},
     },
     'tanner': {
