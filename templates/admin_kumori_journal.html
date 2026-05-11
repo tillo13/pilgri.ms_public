@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Admin · Kumori ARIA Journal · Debug Console{% endblock %}
 {% block extra_head %}
-<link rel="stylesheet" href="/static/css/admin-kumori-journal.css?v=2">
+<link rel="stylesheet" href="/static/css/admin-kumori-journal.css?v=3">
 {% endblock %}
 {% block content %}
 <div class="kj-container">
@@ -165,14 +165,63 @@
       </details>
 
       <details class="kj-stage" open>
-        <summary>Stage 5 — Pipeline stage log (per-step timing summary)</summary>
+        <summary>Stage 5 — Vision LLM describes the RENDERED image (ground truth)</summary>
         <div class="kj-stage-body">
-          <pre id="kj-pipeline-log"></pre>
+          <div class="kj-mini">Reads the pixels Klein actually produced. The final caption uses this to skip naming items Klein silently dropped (e.g., the scientist ref that didn't render).</div>
+          <div class="kj-key">Endpoint:</div>
+          <div class="kj-val"><code id="kj-verify-vision-endpoint"></code></div>
+          <div class="kj-key">Backend used:</div>
+          <div class="kj-val"><code id="kj-verify-vision-backend"></code> · <span id="kj-verify-vision-ms" class="kj-mini"></span></div>
+          <details class="kj-nested">
+            <summary>Vision prompt (what we asked the vision LLM to do)</summary>
+            <pre id="kj-verify-vision-prompt"></pre>
+          </details>
+          <div class="kj-key">Vision LLM description of rendered image:</div>
+          <pre id="kj-verify-vision-description"></pre>
         </div>
       </details>
 
       <details class="kj-stage" open>
-        <summary>Stage 6 — Galactica → Kumori HTTP calls (every byte sent + received)</summary>
+        <summary>Stage 6 — Final caption LLM rewrite (reconciles picks vs vision)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Strongest LLM (Hermes-405B chain) rewrites the caption using picks + what vision actually saw, so the final caption never names something that didn't render.</div>
+          <div class="kj-key">Endpoint:</div>
+          <div class="kj-val"><code id="kj-verify-caption-endpoint"></code></div>
+          <div class="kj-key">Backend used (winner):</div>
+          <div class="kj-val"><code id="kj-verify-caption-backend"></code> · <span id="kj-verify-caption-ms" class="kj-mini"></span></div>
+          <details class="kj-nested">
+            <summary>Final-caption system prompt (full)</summary>
+            <pre id="kj-verify-caption-system"></pre>
+          </details>
+          <details class="kj-nested">
+            <summary>Final-caption user payload (picks + vision read)</summary>
+            <pre id="kj-verify-caption-user"></pre>
+          </details>
+          <details class="kj-nested">
+            <summary>Per-attempt log (every backend tried, in order)</summary>
+            <pre id="kj-verify-caption-attempts"></pre>
+          </details>
+          <div class="kj-key">Raw LLM response (before JSON parse):</div>
+          <pre id="kj-verify-caption-raw"></pre>
+          <div class="kj-key">Final aria_caption (this is what gets saved):</div>
+          <pre id="kj-verify-final-caption"></pre>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 7 — Pipeline stage log (per-step millisecond timing)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Every stage's wall-clock time. Find the slow step here.</div>
+          <div id="kj-pipeline-bars" class="kj-pipeline-bars"></div>
+          <details class="kj-nested">
+            <summary>Raw JSON (full stage log)</summary>
+            <pre id="kj-pipeline-log"></pre>
+          </details>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 8 — Galactica → Kumori HTTP calls (every byte sent + received)</summary>
         <div class="kj-stage-body">
           <div class="kj-mini">Each HTTP call galactica's kumori_api_client made to kumori.ai. Base64 image fields are size-redacted so logs stay readable.</div>
           <div id="kj-http-galactica" class="kj-http-list"></div>
@@ -180,19 +229,22 @@
       </details>
 
       <details class="kj-stage" open>
-        <summary>Stage 7 — Kumori → LLM-provider HTTP calls (Groq / Mistral / GitHub Models / …)</summary>
+        <summary>Stage 9 — Kumori → LLM-provider HTTP calls (Groq / Mistral / GitHub Models / …)</summary>
         <div class="kj-stage-body">
-          <div class="kj-mini">Every outbound HTTP call kumori made to upstream free-tier LLM providers while synthesizing this prompt. Captured via requests.api.request monkey-patch inside the kumori service for this debug request.</div>
+          <div class="kj-mini">Every outbound HTTP call kumori made to upstream free-tier LLM providers (covers the synthesis call AND the final-caption rewrite call). Captured via requests.api.request monkey-patch inside the kumori service for this debug request.</div>
           <details class="kj-nested">
-            <summary>LLM raw response text (before JSON parse — what the LLM actually returned)</summary>
+            <summary>Synthesis LLM raw response text (before JSON parse — what the LLM actually returned)</summary>
             <pre id="kj-llm-raw-response"></pre>
           </details>
+          <div class="kj-key">Synthesis LLM upstream calls:</div>
           <div id="kj-http-llm-upstream" class="kj-http-list"></div>
+          <div class="kj-key" style="margin-top:12px;">Final-caption LLM upstream calls:</div>
+          <div id="kj-http-verify-caption-upstream" class="kj-http-list"></div>
         </div>
       </details>
 
       <details class="kj-stage" open>
-        <summary>Stage 8 — Kumori → Cloudflare HTTP calls (the Klein render itself)</summary>
+        <summary>Stage 10 — Kumori → Cloudflare HTTP calls (the Klein render itself)</summary>
         <div class="kj-stage-body">
           <div class="kj-mini">Every outbound HTTP call kumori made to Cloudflare Workers AI (flux-2-klein-4b endpoint) for this render.</div>
           <div id="kj-http-klein-upstream" class="kj-http-list"></div>
@@ -200,12 +252,12 @@
       </details>
 
       <details class="kj-stage">
-        <summary>Stage 9 — Raw API response (everything above as one JSON blob)</summary>
+        <summary>Stage 11 — Raw API response (everything above as one JSON blob)</summary>
         <pre id="kj-raw"></pre>
       </details>
 
     </div>
   </div>
 </div>
-<script src="/static/js/admin-kumori-journal.js?v=4" defer></script>
+<script src="/static/js/admin-kumori-journal.js?v=5" defer></script>
 {% endblock %}

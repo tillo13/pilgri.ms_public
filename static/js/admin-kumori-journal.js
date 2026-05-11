@@ -14,10 +14,12 @@
       const j = await r.json();
       if (!j.success) { bars.textContent = j.error || 'failed'; return; }
       const caps = j.caps || {};
-      const order = ['klein_4b_calls', 'cloudflare_neurons_shared_pool', 'pilgrims_api_key_calls'];
+      // Only show the REAL upstream limit (PILGRIMS_KUMORI_API_KEY 20K/day).
+      // The other two ("Klein 4B 30/day", "Cloudflare neurons 10K shared pool")
+      // were self-imposed soft caps — dropped per Andy 2026-05-11: pilgrims
+      // gets full reign; anything beyond simply fails upstream and that's fine.
+      const order = ['pilgrims_api_key_calls'];
       const labels = {
-        klein_4b_calls: 'Klein 4B edits',
-        cloudflare_neurons_shared_pool: 'Cloudflare neurons (shared pool)',
         pilgrims_api_key_calls: 'Pilgrims API key calls',
       };
       bars.innerHTML = '';
@@ -102,6 +104,45 @@
     });
   }
 
+  function renderPipelineBars(containerEl, stages) {
+    containerEl.innerHTML = '';
+    if (!stages || !stages.length) {
+      containerEl.innerHTML = '<div class="kj-mini">(no stage log)</div>';
+      return;
+    }
+    // Find max ms so we can scale bar widths
+    const maxMs = Math.max(1, ...stages.map(s => Number(s.ms) || 0));
+    const totalMs = stages.reduce((acc, s) => acc + (Number(s.ms) || 0), 0);
+    const header = document.createElement('div');
+    header.className = 'kj-mini';
+    header.style.marginBottom = '6px';
+    header.textContent = `Total wall-clock across all stages: ${totalMs}ms`;
+    containerEl.appendChild(header);
+    stages.forEach((s) => {
+      const ms = Number(s.ms) || 0;
+      const pct = Math.max(2, Math.round((ms / maxMs) * 100));
+      const color = ms >= maxMs * 0.7 ? 'var(--color-danger)'
+                  : ms >= maxMs * 0.4 ? 'var(--color-warning)'
+                  : 'var(--color-success)';
+      const meta = [];
+      if (s.backend) meta.push(`backend=${s.backend}`);
+      if (s.provider) meta.push(`provider=${s.provider}`);
+      if (s.chars != null) meta.push(`${s.chars} chars`);
+      if (s.output_bytes != null) meta.push(`${s.output_bytes} bytes`);
+      if (s.used_size) meta.push(`${s.used_size[0]}×${s.used_size[1]}`);
+      const row = document.createElement('div');
+      row.className = 'kj-pipe-row';
+      row.innerHTML = `
+        <div class="kj-pipe-head">
+          <span class="kj-pipe-stage">${s.stage || '?'}</span>
+          <span class="kj-pipe-ms">${ms}ms</span>
+        </div>
+        <div class="kj-pipe-bar"><div class="kj-pipe-fill" style="width:${pct}%; background:${color};"></div></div>
+        <div class="kj-mini">${meta.join(' · ') || ''}</div>`;
+      containerEl.appendChild(row);
+    });
+  }
+
   function renderRefs(refs) {
     const grid = $('kj-chosen-refs');
     grid.innerHTML = '';
@@ -176,9 +217,10 @@
     $('kj-status').textContent = `✅ pipeline OK · client wall-clock ${dt}ms · server klein ${j.render_ms}ms`;
     $('kj-status').style.color = 'var(--color-success)';
 
-    // Rendered image + caption
+    // Rendered image + caption (use FINAL caption — the one that reconciled
+    // picks against what Klein actually rendered)
     $('kj-img').src = 'data:image/png;base64,' + j.image_b64;
-    $('kj-caption').textContent = j.aria_caption || '';
+    $('kj-caption').textContent = j.final_aria_caption || j.aria_caption || '';
     $('kj-used-size').textContent = `output size: ${j.used_size?.[0]}×${j.used_size?.[1]} · sol ${j.sol} · N=${j.N} · mood=${j.mood} · composition="${j.composition}"`;
 
     // Pinned always-visible prompt + LLM input — duplicated from the trace
@@ -226,25 +268,48 @@
       total_pipeline_ms: j.render_total_ms,
     });
 
-    // Stage 5 — pipeline stage log
+    // Stage 5 — Vision LLM describes the rendered image
+    $('kj-verify-vision-endpoint').textContent = 'POST /api/v1/describe/describe';
+    $('kj-verify-vision-backend').textContent = j.verification_vision_backend || '?';
+    $('kj-verify-vision-ms').textContent = (j.verification_vision_ms ?? '?') + 'ms';
+    $('kj-verify-vision-prompt').textContent = j.verification_vision_prompt || '(none)';
+    $('kj-verify-vision-description').textContent = j.verification_vision_description || '(vision describe returned empty / failed)';
+
+    // Stage 6 — Final caption LLM rewrite
+    $('kj-verify-caption-endpoint').textContent = j.verification_caption_endpoint || 'POST /api/v1/llm/chat-resilient';
+    $('kj-verify-caption-backend').textContent = j.verification_caption_llm_backend || '?';
+    $('kj-verify-caption-ms').textContent = (j.verification_caption_ms ?? '?') + 'ms';
+    $('kj-verify-caption-system').textContent = j.verification_caption_system_prompt || '(none)';
+    $('kj-verify-caption-user').textContent = j.verification_caption_user_prompt || '(none)';
+    $('kj-verify-caption-attempts').textContent = fmt(j.verification_caption_llm_attempts || []);
+    $('kj-verify-caption-raw').textContent = j.verification_caption_raw || '(empty)';
+    $('kj-verify-final-caption').textContent = j.final_aria_caption || '(none)';
+
+    // Stage 7 — pipeline stage log with per-stage millisecond bars so the
+    // slowest step is visually obvious.
+    renderPipelineBars($('kj-pipeline-bars'), j.pipeline_stage_log || []);
     $('kj-pipeline-log').textContent = fmt(j.pipeline_stage_log || []);
 
-    // Stage 6 — galactica → kumori HTTP
+    // Stage 8 — galactica → kumori HTTP (now includes 3 calls: synth LLM,
+    // Klein edit, vision describe, final-caption LLM)
     renderHttpCalls($('kj-http-galactica'), j.galactica_to_kumori_http || [],
                     'No HTTP calls recorded — debug instrumentation may not be wired (check kumori_api_client.set_request_log).');
 
-    // Stage 7 — kumori → LLM upstream
+    // Stage 9 — kumori → LLM upstream (synthesis + final-caption rewrite)
     $('kj-llm-raw-response').textContent = j.llm_raw_response_text || '(not captured)';
     const llmUpstream = (j.llm_debug_info && j.llm_debug_info.upstream_calls) || [];
     renderHttpCalls($('kj-http-llm-upstream'), llmUpstream,
-                    'No upstream LLM calls captured — kumori service may not have shipped the upstream_trace patch yet, or this LLM call hit a server-side cache.');
+                    'No upstream synthesis LLM calls captured — kumori service may not have shipped the upstream_trace patch yet, or this LLM call hit a server-side cache.');
+    const verifyCaptionUpstream = (j.verification_caption_llm_debug && j.verification_caption_llm_debug.upstream_calls) || [];
+    renderHttpCalls($('kj-http-verify-caption-upstream'), verifyCaptionUpstream,
+                    'No upstream final-caption LLM calls captured.');
 
-    // Stage 8 — kumori → cloudflare (klein) upstream
+    // Stage 10 — kumori → cloudflare (klein) upstream
     const kleinUpstream = (j.klein_debug_info && j.klein_debug_info.upstream_calls) || [];
     renderHttpCalls($('kj-http-klein-upstream'), kleinUpstream,
                     'No upstream Klein calls captured — kumori service may not have shipped the upstream_trace patch yet.');
 
-    // Stage 9 — raw dump (with image_b64 redacted)
+    // Stage 11 — raw dump (with image_b64 redacted)
     const rawCopy = { ...j };
     rawCopy.image_b64 = `<${j.image_b64?.length || 0} chars base64 — omitted from raw view>`;
     $('kj-raw').textContent = fmt(rawCopy);
@@ -265,7 +330,7 @@
         body: JSON.stringify({
           user_id: last.user_id,
           image_b64: last.image_b64,
-          aria_caption: last.aria_caption,
+          aria_caption: last.final_aria_caption || last.aria_caption,
           image_prompt: last.image_prompt,
           mood: last.mood,
           composition: last.composition,

@@ -1411,9 +1411,11 @@
       "build_recent_pool — Returns {CATEGORY: [item, ...]}. Each item has role_label, facts, url, kind_tag.",
       "random_pick — Roll N (0–4 weighted), pick N distinct categories, 1 item per category.",
       "build_llm_user_payload — Format the user-side LLM prompt. The LLM authors the scene; we only",
+      "build_caption_reconciliation_prompt — The strong LLM gets full context: every picked element with its proper",
       "parse_llm_json — Best-effort JSON extraction. Tolerates ```json fences + leading prose.",
       "synthesize_scene — Run the full pipeline through the LLM synth stage. Does NOT render yet.",
       "render_scene — Render the synthesized scene via Klein. Returns",
+      "verify_and_caption — Post-render redundancy loop. Two HTTP calls:",
       "generate_journal_entry — End-to-end pipeline. Returns the full synth payload PLUS rendered image."
     ]
   },
@@ -3008,10 +3010,12 @@
       "renderHttpCalls",
       "statusClass",
       "urlShort",
+      "renderPipelineBars",
       "renderRefs",
       "role",
       "generate",
       "llmUpstream",
+      "verifyCaptionUpstream",
       "kleinUpstream",
       "saveToAlbum"
     ]
@@ -3583,7 +3587,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

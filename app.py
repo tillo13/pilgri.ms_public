@@ -2608,6 +2608,25 @@ def api_admin_kumori_generate():
         'render_ms': result.get('render_ms'),
         'render_total_ms': result.get('render_total_ms'),
 
+        # Stage 5 — Vision LLM describes the ACTUAL rendered image (ground truth)
+        'verification_endpoint': 'POST /api/v1/describe/describe',
+        'verification_vision_prompt': result.get('verification_vision_prompt'),
+        'verification_vision_description': result.get('verification_vision_description'),
+        'verification_vision_backend': result.get('verification_vision_backend'),
+        'verification_vision_ms': result.get('verification_vision_ms'),
+
+        # Stage 6 — Strongest LLM rewrites the caption reconciling picks + vision read
+        'verification_caption_endpoint': 'POST /api/v1/llm/chat-resilient',
+        'verification_caption_system_prompt': result.get('verification_caption_system_prompt'),
+        'verification_caption_user_prompt': result.get('verification_caption_user_prompt'),
+        'verification_caption_llm_backend': result.get('verification_caption_llm_backend'),
+        'verification_caption_llm_attempts': result.get('verification_caption_llm_attempts'),
+        'verification_caption_llm_debug': result.get('verification_caption_llm_debug'),
+        'verification_caption_ms': result.get('verification_caption_ms'),
+        'verification_caption_raw': result.get('verification_caption_raw'),
+        'verification_total_ms': result.get('verification_total_ms'),
+        'final_aria_caption': result.get('final_aria_caption'),
+
         # Context
         'sol': result.get('sol'),
         'weather': result.get('weather'),

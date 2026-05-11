@@ -430,6 +430,64 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
     return "\n".join(lines)
 
 
+FINAL_CAPTION_SYSTEM = (
+    "You are ARIA, the small crystal-and-rock companion robot of a Mars colony captain. "
+    "You write the caption for ARIA's daily photo journal entry — like an Instagram post. "
+    "Voice: first-person ARIA — observational, slightly inhuman, sometimes wry or melancholy. "
+    "You will be given TWO inputs: (a) PICKED ELEMENTS that were SUPPOSED to be in this photo, with their proper names and facts, and (b) VISION DESCRIPTION — what the vision model actually sees in the rendered image. "
+    "Your job is to write a 1–2 sentence caption that reconciles the two: "
+    "  • Use the proper names/facts from PICKED ELEMENTS for items that DO appear in the VISION DESCRIPTION. "
+    "  • Gracefully OMIT any picked element the vision model didn't see — do NOT lie that it's there. "
+    "  • Don't introduce objects/characters that aren't in the VISION DESCRIPTION. "
+    "  • Open with a concrete observation. NEVER 'As dusk falls', 'As I gaze', 'As [time/event]'. "
+    "  • Match the supplied MOOD. "
+    "Output ONLY valid JSON with one key: aria_caption (string). No markdown, no preamble."
+)
+
+
+def build_caption_reconciliation_prompt(synth: dict, vision_text: str) -> str:
+    """The strong LLM gets full context: every picked element with its proper
+    name + facts, PLUS the vision model's read of what's actually in the
+    rendered image. This lets the LLM caption accurately and use names only
+    when the corresponding visual thing actually rendered."""
+    chosen = synth.get('chosen') or []
+    parts = [
+        f"SOL: {synth.get('sol')}",
+        f"MOOD: {synth.get('mood')}",
+        f"COMPOSITION: {synth.get('composition')}",
+        "",
+    ]
+    if chosen:
+        parts.append("PICKED ELEMENTS (use proper names from here only when the matching thing IS in the vision description):")
+        for i, c in enumerate(chosen, start=1):
+            parts.append(f"  • image {i} [{c['category']} · {c['kind_tag']}]")
+            parts.append(f"      role_label: {c['role_label']}")
+            if c.get('facts'):
+                parts.append(f"      facts: {c['facts']}")
+    else:
+        parts.append("PICKED ELEMENTS: none (pure Mars landscape — no characters or objects were supposed to be in this photo)")
+    parts += [
+        "",
+        "VISION DESCRIPTION (ground truth — what the vision model actually sees in the rendered image):",
+        f'  "{vision_text}"',
+        "",
+        "STEP 1 — silently cross-check (do this in your head, do not output):",
+        "  For each picked element above, decide whether the VISION DESCRIPTION mentions it.",
+        "  Mark each picked element as VISIBLE or MISSING based on the vision description.",
+        "  Example: if 'scientist' is picked but vision says 'a robot and a crystal on Mars' (no mention of a scientist), then the scientist is MISSING.",
+        "",
+        "STEP 2 — write the caption:",
+        "  • Mention ONLY the picked elements you marked VISIBLE (using their proper names from the picks).",
+        "  • Gracefully omit any picked element marked MISSING — do NOT pretend it's there.",
+        "  • Do NOT introduce anything that's neither in PICKED ELEMENTS nor in the VISION DESCRIPTION.",
+        "  • 1–2 sentences, first-person ARIA voice, matching MOOD.",
+        "  • Open with a concrete observation. Never 'As dusk falls' / 'As I gaze'.",
+        "",
+        'Output JSON: {"aria_caption": "<1-2 sentences>"}',
+    ]
+    return "\n".join(parts)
+
+
 def parse_llm_json(text: str) -> Optional[dict]:
     """Best-effort JSON extraction. Tolerates ```json fences + leading prose."""
     import json, re
@@ -560,6 +618,69 @@ def render_scene(synth: dict, *, preset: str = 'aria_journal',
     return res
 
 
+def verify_and_caption(synth: dict, image_bytes: bytes, *, debug: bool = False) -> Dict[str, Any]:
+    """Post-render redundancy loop. Two HTTP calls:
+      1. Vision LLM describes what's ACTUALLY in the rendered image (ground truth)
+      2. Strongest LLM rewrites the caption using picks + vision description,
+         using proper names only for things that actually rendered.
+
+    Returns a dict that the caller merges into the synth result, surfacing
+    every byte of the verification stages for the debug console.
+    """
+    from utilities.kumori_image import kumori_describe, kumori_llm_chat
+
+    VISION_PROMPT = (
+        "Describe everything visible in this single image, clearly and factually, in 3-4 short sentences. "
+        "Name every character, every object, every notable feature you can identify. "
+        "Focus on visual content — what shapes, colors, characters, objects, structures appear. "
+        "Do not interpret meaning, mood, or context. Just describe what is visibly there."
+    )
+
+    t_v = time.time()
+    try:
+        vision_text, vision_backend = kumori_describe(image_bytes, prompt=VISION_PROMPT)
+    except Exception as e:
+        logger.warning(f"verify_and_caption: vision describe failed: {e}")
+        vision_text, vision_backend = '', '?'
+    vision_ms = int((time.time() - t_v) * 1000)
+
+    cap_user = build_caption_reconciliation_prompt(synth, vision_text or '(vision describe failed; only PICKED ELEMENTS are known)')
+    t_c = time.time()
+    try:
+        cap_text, cap_backend, cap_attempts, cap_debug = kumori_llm_chat(
+            FINAL_CAPTION_SYSTEM, cap_user,
+            max_tokens=200, temperature=0.7, min_chars=20, debug=debug,
+        )
+    except Exception as e:
+        logger.warning(f"verify_and_caption: final caption LLM failed: {e}")
+        cap_text, cap_backend, cap_attempts, cap_debug = '', '?', [], None
+    cap_ms = int((time.time() - t_c) * 1000)
+    parsed = parse_llm_json(cap_text) if cap_text else None
+    if parsed and parsed.get('aria_caption'):
+        final_caption = parsed['aria_caption'].strip()
+    elif cap_text:
+        # LLM didn't return JSON — use the raw text as caption fallback
+        final_caption = cap_text.strip()[:300]
+    else:
+        # All else failed — fall back to first-pass caption
+        final_caption = synth.get('aria_caption', '').strip()
+
+    return {
+        'verification_vision_prompt': VISION_PROMPT,
+        'verification_vision_description': vision_text,
+        'verification_vision_backend': vision_backend,
+        'verification_vision_ms': vision_ms,
+        'verification_caption_user_prompt': cap_user,
+        'verification_caption_system_prompt': FINAL_CAPTION_SYSTEM,
+        'verification_caption_llm_backend': cap_backend,
+        'verification_caption_llm_attempts': cap_attempts,
+        'verification_caption_llm_debug': cap_debug,
+        'verification_caption_ms': cap_ms,
+        'verification_caption_raw': cap_text,
+        'final_aria_caption': final_caption,
+    }
+
+
 def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
                             force_min_n: int = 0,
                             preset: str = 'aria_journal',
@@ -586,6 +707,17 @@ def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
         t_render_start = time.time()
         rendered = render_scene(synth, preset=preset, debug=debug)
         render_total_ms = int((time.time() - t_render_start) * 1000)
+
+        # Post-render verification + caption rewrite. Vision LLM describes
+        # the actual rendered image; strongest LLM rewrites the caption using
+        # the picks + vision read so the caption only names things that
+        # actually rendered. If scientist was supposed to be there but
+        # Klein dropped them, vision won't see them, and the caption won't
+        # mention them.
+        t_verify_start = time.time()
+        verification = verify_and_caption(synth, rendered['image_bytes'], debug=debug)
+        verify_ms = int((time.time() - t_verify_start) * 1000)
+        synth.update(verification)
     finally:
         if debug:
             set_request_log(None)
@@ -595,11 +727,11 @@ def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
     synth['render_ms'] = rendered['ms']
     synth['render_total_ms'] = render_total_ms
     synth['used_size'] = rendered['used_size']
+    synth['verification_total_ms'] = verify_ms
 
     if debug:
         synth['galactica_to_kumori_http'] = galactica_to_kumori_http or []
         synth['klein_debug_info'] = {'upstream_calls': rendered.get('upstream_calls', [])}
-        # also add a final stage entry for the klein call
         synth.setdefault('pipeline_stage_log', []).append({
             'stage': 'klein_render',
             'timestamp': time.time(),
@@ -607,5 +739,19 @@ def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
             'provider': rendered.get('provider'),
             'output_bytes': len(rendered['image_bytes']),
             'used_size': rendered['used_size'],
+        })
+        synth['pipeline_stage_log'].append({
+            'stage': 'vision_describe_rendered',
+            'timestamp': time.time(),
+            'ms': verification.get('verification_vision_ms'),
+            'backend': verification.get('verification_vision_backend'),
+            'chars': len(verification.get('verification_vision_description', '')),
+        })
+        synth['pipeline_stage_log'].append({
+            'stage': 'final_caption_rewrite',
+            'timestamp': time.time(),
+            'ms': verification.get('verification_caption_ms'),
+            'backend': verification.get('verification_caption_llm_backend'),
+            'chars': len(verification.get('final_aria_caption', '')),
         })
     return synth

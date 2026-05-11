@@ -179,6 +179,16 @@
 }
 .kj-cap-fill { height: 100%; transition: width 0.3s, background 0.3s; }
 
+/* Pipeline timing bars — one per stage, scaled to the slowest stage so the
+   bottleneck is visually obvious. */
+.kj-pipeline-bars { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+.kj-pipe-row { display: flex; flex-direction: column; gap: 3px; }
+.kj-pipe-head { display: flex; justify-content: space-between; font-size: 12px; align-items: baseline; }
+.kj-pipe-stage { color: var(--text-primary); font-weight: 600; font-family: 'SF Mono', Menlo, monospace; }
+.kj-pipe-ms { color: var(--text-secondary); font-family: 'SF Mono', Menlo, monospace; font-size: 11px; }
+.kj-pipe-bar { height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; }
+.kj-pipe-fill { height: 100%; transition: width 0.3s, background 0.3s; }
+
 /* HTTP call cards — used to render every outbound request/response */
 .kj-http-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .kj-http-call {
