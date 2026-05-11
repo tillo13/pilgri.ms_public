@@ -334,9 +334,23 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
     """Format the user-side LLM prompt. The LLM authors the scene; we only
     supply categorical facts + mood/composition hints."""
     N = len(chosen)
+    # Pre-compute the HUMAN character count so the LLM can't invent humans.
+    # Only PERSON-kind references count. NON-HUMAN-CHARACTER (NAROG, ARIA),
+    # OBJECT, VEHICLE, BUILDING, LANDSCAPE-FEATURE do NOT count as humans.
+    human_count = sum(1 for c in chosen if c.get('kind_tag') == 'PERSON')
+    # Build the EXACT subjects list — the LLM may not introduce anything else.
+    if N == 0:
+        subjects_block = "  NONE — pure Mars landscape only. No characters, objects, buildings, vehicles, or recognizable features other than the planet."
+    else:
+        subjects_block = "\n".join(
+            f"  • image {i+1}: {c['kind_tag'].lower()} — {c['role_label']}"
+            for i, c in enumerate(chosen)
+        )
     common = (
         f"\nCAPTION_MOOD (use this emotional register): {mood}\n"
         f"COMPOSITION_HINT (use this framing): {composition}\n"
+        f"HUMAN_CHARACTER_COUNT (use this EXACT number in the prose — do not invent humans): {human_count}\n"
+        f"ALLOWED SUBJECTS IN SCENE (these and ONLY these may appear):\n{subjects_block}\n"
     )
     if N == 0:
         return (
@@ -368,18 +382,29 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
         "or absent entirely; you decide what works. Apply the COMPOSITION_HINT framing exactly. "
         "Set the mood to match CAPTION_MOOD.",
         "",
-        "═══ HARD CONSTRAINT — DO NOT INVENT WHAT REFERENCES LOOK LIKE ═══",
-        "The reference image PIXELS are what Klein will render. You only see the role_label name — you do NOT see the image. ",
-        "DO NOT guess what each reference looks like (shape, color, material, era).",
-        "Refer to each reference ONLY by 'the <KIND-noun> in image N'. Examples of allowed phrasing:",
+        "═══ HARD CONSTRAINTS — ZERO TOLERANCE ═══",
+        "",
+        "RULE A — ONLY the subjects listed under ALLOWED SUBJECTS IN SCENE may appear in the image_prompt.",
+        "Do NOT introduce any character, object, vehicle, building, or recognizable feature that is not in that list.",
+        "If 'the captain' is not in ALLOWED SUBJECTS, the captain is NOT in this photo — DO NOT write 'beside the captain' or 'with the captain' or 'the captain watches'.",
+        "Same rule applies to 'the scientist', 'the colony', 'the rover', ARIA herself, etc. — they only appear if listed.",
+        "Backdrops (sky, dust, distant hills, sun, stars) are fine. Naming an unlisted subject is forbidden.",
+        "",
+        "RULE B — HUMAN_CHARACTER_COUNT is supplied. Use it verbatim. Do NOT count differently. Do NOT invent humans.",
+        "PERSON kind = human (captain / scientist). NON-HUMAN-CHARACTER (ARIA, NAROG) is NOT human. OBJECT/VEHICLE/BUILDING/LANDSCAPE-FEATURE is NOT human.",
+        "",
+        "RULE C — Do NOT invent what references LOOK LIKE.",
+        "The reference image PIXELS are what Klein will render. You only see the role_label name — you do NOT see the image.",
+        "DO NOT guess shape, color, material, era, or design.",
+        "Refer to each reference ONLY by 'the <KIND-noun> in image N'. Allowed:",
         "  • 'the artifact in image 1, resting on the rocky ground'",
-        "  • 'the vehicle in image 2, parked beside the captain'",
-        "  • 'the building in image 3, looming in the background'",
-        "Examples of FORBIDDEN phrasing (these hallucinate appearance from the name):",
+        "  • 'the vehicle in image 2, parked nearby'",
+        "  • 'the building in image 3, in the background'",
+        "Forbidden (hallucinated appearance):",
         "  • 'a leather-bound book' — NO (you don't know what the artifact looks like)",
         "  • 'a sleek metallic drone with sweeping wings' — NO (you don't know what the vehicle looks like)",
         "  • 'a towering red-brick spire' — NO (you don't know what the building looks like)",
-        "Stick to POSITION, COMPOSITION, LIGHTING, MOOD, and BACKGROUND SURROUNDINGS. Klein handles the appearance.",
+        "Stick to POSITION, COMPOSITION, LIGHTING, MOOD, and BACKGROUND SURROUNDINGS. Klein handles the appearance from the actual pixels.",
         "",
         "Klein rules for the image_prompt field:",
         "(1) Prose only — natural cinematic English. No bracketed tags, no role labels in ALL CAPS.",
