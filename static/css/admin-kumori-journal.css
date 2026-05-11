@@ -1,0 +1,66 @@
+/* Admin kumori-journal test bench — bug #1457 */
+.kj-container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+.kj-title { color: var(--color-sepolia); margin-bottom: 4px; }
+.kj-sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+.kj-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.kj-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.kj-row-actions { margin-top: 8px; flex-wrap: wrap; }
+.kj-label { width: 200px; font-weight: 600; font-size: 13px; color: var(--text-primary); }
+.kj-input {
+  flex: 1; padding: 8px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.kj-status { font-size: 13px; color: var(--text-secondary); margin-left: 12px; }
+.kj-result {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) { .kj-result { grid-template-columns: 1fr; } }
+.kj-preview img {
+  width: 100%; height: auto;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+.kj-caption {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: rgba(var(--color-sepolia-rgb), 0.08);
+  border-left: 3px solid var(--color-sepolia);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.kj-meta h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 16px 0 6px 0;
+}
+.kj-meta pre {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text-primary);
+  max-height: 280px;
+  overflow-y: auto;
+}

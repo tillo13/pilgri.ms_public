@@ -1405,6 +1405,18 @@
       "logged_stream — Context manager wrapping client.messages.stream(...). Logs final usage on exit."
     ]
   },
+  "utilities/aria_journal.py": {
+    "description": "ARIA Photo Journal — daily image + caption generator using free kumori stack.",
+    "exports": [
+      "build_recent_pool — Returns {CATEGORY: [item, ...]}. Each item has role_label, facts, url, kind_tag.",
+      "random_pick — Roll N (0–4 weighted), pick N distinct categories, 1 item per category.",
+      "build_llm_user_payload — Format the user-side LLM prompt. The LLM authors the scene; we only",
+      "parse_llm_json — Best-effort JSON extraction. Tolerates ```json fences + leading prose.",
+      "synthesize_scene — Run the full pipeline through the LLM synth stage. Does NOT render yet.",
+      "render_scene — Render the synthesized scene via Klein. Returns",
+      "generate_journal_entry — End-to-end pipeline. Returns the full synth payload PLUS:"
+    ]
+  },
   "utilities/brainstorm_chat.py": {
     "description": "Generic brainstorm chat used by tech tree and trail brainstorm pages.",
     "exports": [
@@ -1548,6 +1560,7 @@
     "description": "Google Cloud Storage utilities for Galactica Pilgrims",
     "exports": [
       "upload_blob_from_url — Download from Replicate URL and upload to GCS with retry logic",
+      "upload_blob_from_bytes — Upload raw bytes (in-memory) to GCS. Mirror of upload_blob_from_url, but",
       "create_thumbnail — Create a thumbnail from image data using Pillow.",
       "upload_blob_from_url_with_thumbnail — Download from URL, create thumbnail, and upload both to GCS.",
       "save_character_image — Save character image from Replicate to GCS and record in database",
@@ -1606,6 +1619,16 @@
     "exports": [
       "class KillswitchTripped",
       "check_killswitch — Raise KillswitchTripped if `provider` is disabled OR MTD + est >= cap."
+    ]
+  },
+  "utilities/kumori_image.py": {
+    "description": "Galactica → kumori.ai free-tier image stack.",
+    "exports": [
+      "init_kumori — Call once at app boot. Wires the vendored client to Secret Manager.",
+      "validate_klein_size — Snap to multiple-of-16 + cap to 4 MP. Returns (w, h) Klein will actually",
+      "kumori_klein_edit — Render an image via Cloudflare flux-2-klein-4b.",
+      "kumori_describe — Vision LLM → text. Returns (description_text, backend_used).",
+      "kumori_llm_chat — LLM with server-side backend fallback. Returns (text, winning_backend, attempt_log)."
     ]
   },
   "utilities/legacy_migration.py": {
@@ -2791,6 +2814,29 @@
     ],
     "keywords": "origin sites CRUD, echo sites, network reconstruction percent (origin_progress + echo_progress), closest pilgrim"
   },
+  "utilities/kumori_api_client/__init__.py": {
+    "description": "Public API for kumori_api_client — thin HTTP wrappers for kumori.ai/api/v1/*."
+  },
+  "utilities/kumori_api_client/client.py": {
+    "description": "Thin HTTP client for kumori.ai/api/v1/* — replaces in-process vendoring of",
+    "exports": [
+      "class KumoriAPIError — Raised when kumori.ai/api/v1/* call fails after retry.",
+      "init — Inject Secret Manager fetcher + which secret holds this app's API key.",
+      "llm_generate — Auto-routes to a free backend. Returns (text, backend_name).",
+      "llm_chat — Pinned-backend multi-turn chat. Returns (text, backend_name).",
+      "llm_chat_resilient — Server-side fallback chat. Tries each backend in `backends` (list, in",
+      "llm_chat_eval — Eval-pool scoring call. Signature mirrors kumori_free_llms.chat_eval.",
+      "llm_backends — List available backends. Returns the list of backend dicts.",
+      "llm_usage — Cluster-wide usage summary across backends.",
+      "llm_registry — Full backend_registry snapshot. Returns dict with keys: backends, models,",
+      "llm_backoff_state — Current per-backend backoff state. Returns",
+      "llm_is_backed_off — Convenience: True if backend is currently in backoff.",
+      "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as",
+      "imggen_generate — Text→image via free providers. Klein-4B size rules apply (multiples of",
+      "imggen_edit — Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference",
+      "describe_image — Describe an image via free vision LLMs. Pass either image_url OR"
+    ]
+  },
   "utilities/email/__init__.py": {
     "description": "Consolidated email package for Pilgrims."
   },
@@ -2860,6 +2906,9 @@
   },
   "static/css/admin-bugs.css": {
     "description": "Bug Tracker — Admin page styles"
+  },
+  "static/css/admin-kumori-journal.css": {
+    "description": "Admin kumori-journal test bench — bug #1457"
   },
   "static/css/brainstorm-signal.css": {
     "description": "Signal brainstorm page — rendered markdown styling"
@@ -2948,6 +2997,14 @@
       "renderBugList",
       "renderIdeas",
       "getFilteredBugs"
+    ]
+  },
+  "static/js/admin-kumori-journal.js": {
+    "description": "Admin / kumori ARIA journal test bench — bug #1457.",
+    "exports": [
+      "loadCaptains",
+      "generate",
+      "saveToAlbum"
     ]
   },
   "static/js/aria.js": {
@@ -3517,7 +3574,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3527,10 +3584,13 @@
       "tabbed interface"
     ]
   },
+  "templates/admin_kumori_journal.html": {
+    "description": "Page: Admin · Kumori ARIA Journal"
+  },
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

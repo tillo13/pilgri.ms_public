@@ -127,6 +127,16 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 auth = SimpleGoogleAuth(app)
 
+# Bug #1457 cutover: wire the kumori.ai free-tier image stack at boot. Used by
+# utilities/aria_journal.py (ARIA Photo Journal) and replaces the paid
+# nano_banana_pro Replicate path in utilities/aria/photos/*. Falls back silently
+# if the secret isn't reachable (only the kumori-routed surfaces care).
+try:
+    from utilities.kumori_image import init_kumori
+    init_kumori(get_secret_fn=get_secret, api_key_name='PILGRIMS_KUMORI_API_KEY')
+except Exception as _e:
+    logger.warning(f"kumori_image init failed (free-stack image paths will be unavailable): {_e}")
+
 # Request timing middleware - logs page load times to console
 @app.before_request
 def force_canonical_host():
@@ -2366,6 +2376,146 @@ def admin_dashboard():
 
     data = get_admin_dashboard_data(real_user_id)
     return render_template('admin.html', user=auth.get_current_user(), **data)
+
+
+# ─── ARIA Photo Journal admin testing (bug #1457 — free-tier kumori cutover) ───
+
+@app.route('/admin/kumori-journal')
+def admin_kumori_journal():
+    """Admin-only test page: pick a captain → generate ARIA photo journal entry
+    via the kumori.ai free-tier stack (Klein 4B + Llama 3.3 70B) → preview →
+    optionally save to /aria-album. Replaces the paid Replicate nano_banana_pro
+    path. Bug #1457."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return redirect(url_for('home'))
+    return render_template('admin_kumori_journal.html', user=auth.get_current_user())
+
+
+@app.route('/api/admin/kumori-journal/captains', methods=['GET'])
+@handle_api_error
+def api_admin_kumori_captains():
+    """List captains for the dropdown — id, name, email."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    from utilities.postgres.core import db_cursor
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT u.id, u.email,
+                   COALESCE(ra.commander_name, u.given_name, u.name, 'user_' || u.id) AS captain_name
+            FROM pilgrim.users u
+            LEFT JOIN pilgrim.replicate_assets ra ON ra.user_id = u.id
+                 AND ra.asset_type IN ('character_image','edited_image')
+                 AND ra.is_deleted = FALSE
+                 AND ra.is_primary_character = TRUE
+            WHERE u.email IS NOT NULL
+            ORDER BY u.id
+        """)
+        rows = [{'id': r['id'], 'email': r['email'], 'captain_name': r['captain_name']}
+                for r in cur.fetchall()]
+    return jsonify({'success': True, 'captains': rows})
+
+
+@app.route('/api/admin/kumori-journal/generate', methods=['POST'])
+@handle_api_error
+def api_admin_kumori_generate():
+    """Fire the full pipeline for a chosen captain. Returns the rendered image
+    as base64 + the synthesized prompt + caption + pick metadata.
+
+    Does NOT save to /aria-album — that's a separate POST to .../save.
+    """
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    data = request.get_json() or {}
+    target_uid = int(data.get('user_id') or 0)
+    force_n = int(data.get('force_min_n', 0))
+    if not target_uid:
+        return jsonify({'success': False, 'error': 'user_id required'}), 400
+
+    from utilities.aria_journal import generate_journal_entry
+    import base64 as _b64
+    try:
+        result = generate_journal_entry(target_uid, force_min_n=force_n)
+    except Exception as e:
+        logger.exception(f"kumori_journal generate failed for user {target_uid}: {e}")
+        return jsonify({'success': False, 'error': str(e)[:300]}), 500
+
+    image_b64 = _b64.b64encode(result.pop('image_bytes')).decode()
+    # Trim very large fields for the response
+    return jsonify({
+        'success': True,
+        'image_b64': image_b64,
+        'aria_caption': result.get('aria_caption'),
+        'image_prompt': result.get('image_prompt'),
+        'mood': result.get('mood'),
+        'composition': result.get('composition'),
+        'N': result.get('N'),
+        'chosen': [
+            {'category': c['category'], 'role_label': c['role_label'], 'url': c['url']}
+            for c in result.get('chosen', [])
+        ],
+        'pool_by_category': result.get('pool_by_category'),
+        'pool_size_total': result.get('pool_size_total'),
+        'used_size': result.get('used_size'),
+        'llm_backend': result.get('llm_backend'),
+        'llm_attempts': result.get('llm_attempts'),
+        'render_provider': result.get('render_provider'),
+        'render_ms': result.get('render_ms'),
+        'render_total_ms': result.get('render_total_ms'),
+        'sol': result.get('sol'),
+    })
+
+
+@app.route('/api/admin/kumori-journal/save', methods=['POST'])
+@handle_api_error
+def api_admin_kumori_save():
+    """Commit a preview to /aria-album. Body: {user_id, image_b64, aria_caption,
+    image_prompt, mood, composition, chosen, N, sol}. Uploads to GCS + writes
+    pilgrim.generated_images row with category='aria_snapshot'."""
+    real_user_id = session.get('_real_uid') or session.get('user_id')
+    if not is_admin(real_user_id):
+        return jsonify({'success': False, 'error': 'Admin only'}), 403
+    data = request.get_json() or {}
+    target_uid = int(data.get('user_id') or 0)
+    image_b64 = data.get('image_b64')
+    caption = (data.get('aria_caption') or '').strip()
+    image_prompt = (data.get('image_prompt') or '').strip()
+    if not target_uid or not image_b64 or not caption:
+        return jsonify({'success': False, 'error': 'user_id, image_b64, aria_caption required'}), 400
+
+    import base64 as _b64
+    import time as _time
+    try:
+        image_bytes = _b64.b64decode(image_b64)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'b64 decode failed: {e}'}), 400
+
+    from utilities.google_cloud_storage_utils import upload_blob_from_bytes
+    from utilities.aria.photos.storage import save_generated_image
+
+    ts = int(_time.time())
+    blob_name = f"aria_snapshots/user_{target_uid}/kumori_{ts}.png"
+    gcs_url = upload_blob_from_bytes(image_bytes, blob_name, content_type='image/png')
+    if not gcs_url:
+        return jsonify({'success': False, 'error': 'GCS upload failed'}), 502
+
+    metadata = {
+        'source': 'kumori_free_stack',
+        'mood': data.get('mood'),
+        'composition': data.get('composition'),
+        'N': data.get('N'),
+        'sol': data.get('sol'),
+        'chosen_categories': [c.get('category') for c in (data.get('chosen') or [])],
+        'admin_test_by_user_id': real_user_id,
+    }
+    snapshot_id = save_generated_image(
+        user_id=target_uid, category='aria_snapshot', subcategory='kumori_journal',
+        gcs_url=gcs_url, gcs_blob_name=blob_name, prompt_used=image_prompt,
+        caption=caption, metadata=metadata,
+    )
+    return jsonify({'success': True, 'snapshot_id': snapshot_id, 'gcs_url': gcs_url})
 
 
 @app.route('/api/admin/generate_snapshots', methods=['POST'])

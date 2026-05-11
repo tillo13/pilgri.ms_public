@@ -91,6 +91,38 @@ def upload_blob_from_url(source_url, destination_blob_name, content_type='image/
     return None
 
 
+def upload_blob_from_bytes(image_bytes, destination_blob_name, content_type='image/png', max_retries=3):
+    """Upload raw bytes (in-memory) to GCS. Mirror of upload_blob_from_url, but
+    skips the download step — used for kumori_free_image_generations which
+    returns image bytes directly (vs Replicate which returns a temp URL).
+
+    Returns the permanent public GCS URL or None on failure.
+    """
+    import time as time_module
+    if not image_bytes:
+        logger.error(f"[{content_type}] upload_blob_from_bytes: empty bytes")
+        return None
+    for attempt in range(max_retries):
+        try:
+            t0 = time_module.time()
+            storage_client = storage.Client(project=GCP_PROJECT_ID)
+            bucket = storage_client.bucket(BUCKET_NAME)
+            blob = bucket.blob(destination_blob_name)
+            blob.cache_control = 'public, max-age=604800'
+            blob.upload_from_string(image_bytes, content_type=content_type,
+                                    predefined_acl=None, timeout=180)
+            dt = time_module.time() - t0
+            public_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{destination_blob_name}"
+            logger.info(f"✅ [{content_type}] uploaded {len(image_bytes):,} bytes in {dt:.2f}s → {public_url}")
+            return public_url
+        except Exception as e:
+            logger.error(f"[{content_type}] GCS upload error (attempt {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                time_module.sleep(2 ** attempt)
+    logger.error(f"[{content_type}] ❌ FAILED bytes upload after {max_retries} attempts")
+    return None
+
+
 def create_thumbnail(image_data, max_width=400, quality=85):
     """
     Create a thumbnail from image data using Pillow.
