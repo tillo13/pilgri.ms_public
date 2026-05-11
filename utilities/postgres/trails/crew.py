@@ -254,16 +254,21 @@ def complete_crew_mission(user_id: int, crew_member: str) -> dict:
                 destination = row['captain_mission_target']
                 km_to_add = row.get('captain_mission_km') or 0
                 from_landmark = row.get('captain_mission_from') or 'HOME'
+                # Bug #21 Deploy D: XP system deprecated per Luke 2026-05-09 #2
+                # ("Ok to deprecate extra experience"). The +5 XP grant per
+                # mission is folded into the new captain stat events
+                # (+0.05 Leadership, wired in Deploy C). Keep current_xp/xp_gain
+                # as the response payload contract — value reflects frozen DB
+                # state, no longer grows.
                 current_xp = row.get('captain_logistics_xp') or 0
-                xp_gain = 5
+                xp_gain = 0  # was +5 — folded into stat events
 
                 cur.execute("""
                     UPDATE pilgrim.users
                     SET captain_mission_ends_at = NULL, captain_mission_target = NULL,
-                        captain_mission_km = 0, captain_mission_from = 'HOME',
-                        captain_logistics_xp = %s
+                        captain_mission_km = 0, captain_mission_from = 'HOME'
                     WHERE id = %s
-                """, (current_xp + xp_gain, user_id))
+                """, (user_id,))
 
             elif crew_member == 'scientist':
                 cur.execute("""
@@ -280,16 +285,17 @@ def complete_crew_mission(user_id: int, crew_member: str) -> dict:
                 destination = row['scientist_mission_target']
                 km_to_add = row.get('scientist_mission_km') or 0
                 from_landmark = row.get('scientist_mission_from') or 'HOME'
+                # Bug #21 Deploy D: see captain block above — XP frozen, folded
+                # into stat events.
                 current_xp = row.get('scientist_navigation_xp') or 0
-                xp_gain = 5
+                xp_gain = 0  # was +5 — folded into stat events
 
                 cur.execute("""
                     UPDATE pilgrim.users
                     SET scientist_mission_ends_at = NULL, scientist_mission_target = NULL,
-                        scientist_mission_km = 0, scientist_mission_from = 'HOME',
-                        scientist_navigation_xp = %s
+                        scientist_mission_km = 0, scientist_mission_from = 'HOME'
                     WHERE id = %s
-                """, (current_xp + xp_gain, user_id))
+                """, (user_id,))
 
             elif crew_member == 'aria':
                 cur.execute("""

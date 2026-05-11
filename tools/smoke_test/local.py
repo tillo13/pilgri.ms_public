@@ -635,6 +635,30 @@ def test_record_landmark_signature():
     return True
 
 
+@test("Bug #21 Deploy D: XP grants removed from complete_crew_mission", tier=1, features=['captain_stats'], mode='local')
+def test_xp_grants_deprecated():
+    """Luke 2026-05-09 #2: 'Ok to deprecate extra experience'. The +5 XP grant
+    per crew mission MUST be gone — folded into the +0.05 Leadership stat
+    event (Deploy C). If anyone re-adds the SET captain_logistics_xp = ...
+    UPDATE in complete_crew_mission, this fails the deploy."""
+    import inspect
+    from utilities.postgres.trails.crew import complete_crew_mission
+    src = inspect.getsource(complete_crew_mission)
+    if "captain_logistics_xp = %s" in src or "scientist_navigation_xp = %s" in src:
+        return "complete_crew_mission still writes XP columns — Deploy D regression"
+    # Captain + scientist branches: xp_gain must be 0 (folded into stat events).
+    # ARIA branch still has xp_gain=5 but writes to aria_skills (separate system
+    # Luke explicitly preserved §4 "ARIA stats grow"). Check the captain/sci
+    # write paths specifically:
+    cap_block = src[src.find("if crew_member == 'captain'"):src.find("elif crew_member == 'scientist'")]
+    sci_block = src[src.find("elif crew_member == 'scientist'"):src.find("elif crew_member == 'aria'")]
+    if "xp_gain = 5" in cap_block:
+        return "captain branch still grants +5 XP — Deploy D regression"
+    if "xp_gain = 5" in sci_block:
+        return "scientist branch still grants +5 XP — Deploy D regression"
+    return True
+
+
 @test("Bug #21 Deploy C: sol-tick cron route exists", tier=1, features=['captain_stats'], mode='local')
 @requires_flask
 def test_sol_tick_route():

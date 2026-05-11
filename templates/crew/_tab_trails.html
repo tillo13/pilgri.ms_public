@@ -270,32 +270,12 @@
             </div>
         </div>
 
-        <!-- XP Progress -->
-        <div class="mt-16 pt-16" style="border-top: 1px solid var(--border-default);">
-            <div class="text-xs opacity-60 mb-8">Crew Experience</div>
-            <div class="grid gap-8" style="grid-template-columns: 1fr 1fr;">
-                <div>
-                    <div class="flex justify-between text-xs mb-4">
-                        <span>Captain Logistics XP</span>
-                        <span id="captain-xp-display">0</span>
-                    </div>
-                    <div style="background: var(--bg-primary); height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div id="captain-xp-bar" style="background: var(--color-success); height: 100%; width: 0%; transition: width 0.3s;"></div>
-                    </div>
-                </div>
-                {% if scientist %}
-                <div>
-                    <div class="flex justify-between text-xs mb-4">
-                        <span>Scientist Navigation XP</span>
-                        <span id="scientist-xp-display">0</span>
-                    </div>
-                    <div style="background: var(--bg-primary); height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div id="scientist-xp-bar" style="background: var(--color-sepolia); height: 100%; width: 0%; transition: width 0.3s;"></div>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
+        {# Bug #21 Deploy D: legacy Crew XP bars removed per Luke 2026-05-09 #2
+           ("Ok to deprecate extra experience"). The +5 XP grants are folded
+           into the new captain stat events (+0.05 Leadership per crew mission),
+           which display on the Captain tab. Frozen XP values still feed the
+           trail-mission multiplier formula (see "How trails work" panel above)
+           — that's separate from the visible progression. #}
     </div>
 </div>
 
