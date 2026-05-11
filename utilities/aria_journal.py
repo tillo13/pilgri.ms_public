@@ -79,6 +79,14 @@ LLM_SYSTEM = (
     "when this string is missing. Include the FULL string at the close of the prose. "
     "KIND tags in the user payload (PERSON / NON-HUMAN-CHARACTER / OBJECT / VEHICLE / BUILDING / LANDSCAPE-FEATURE) are for YOUR reasoning only — "
     "NEVER include the literal tag strings in the image_prompt prose. Describe the kind using natural language ('a small robot', 'a tall structure'). "
+    "═══ CRITICAL — NEVER INVENT WHAT A REFERENCE LOOKS LIKE ═══ "
+    "Klein already sees the actual pixels of every reference image. "
+    "Your prompt MUST NOT describe the visual appearance of any reference (no shape, color, material, era, age, era, era — none of it). "
+    "If a reference is named 'Mountain Readings' you do NOT call it 'a leather-bound book' or 'an ancient scroll' — that hallucinates appearance. "
+    "If a reference is named 'drone vehicle' you do NOT call it 'a sleek metallic body' or 'a rugged off-roader' — that hallucinates appearance. "
+    "Refer to each reference ONLY by image index plus a NEUTRAL noun matching its KIND ('the artifact in image 1', 'the vehicle in image 2', 'the building in image 3', 'the character in image 4'). "
+    "Your job is to describe POSITION (where in frame), COMPOSITION (over-the-shoulder / wide / etc.), LIGHTING, MOOD, ATMOSPHERE, and the BACKGROUND surroundings — never the look of the reference itself. "
+    "ALWAYS include the phrase 'Keep EXACTLY the same as reference image N' for every reference, so Klein locks identity to the pixels you can't see. "
     'Output ONLY valid JSON with EXACTLY two keys: image_prompt (string), aria_caption (string). '
     "No markdown, no preamble, no code fences, no extra fields."
 )
@@ -348,11 +356,24 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
         f"TASK: Compose a single Mars scene combining all {N} references into one cohesive "
         "ARIA-eye-view moment. Apply the COMPOSITION_HINT framing exactly. Set the mood to match CAPTION_MOOD.",
         "",
+        "═══ HARD CONSTRAINT — DO NOT INVENT WHAT REFERENCES LOOK LIKE ═══",
+        "The reference image PIXELS are what Klein will render. You only see the role_label name — you do NOT see the image. ",
+        "DO NOT guess what each reference looks like (shape, color, material, era).",
+        "Refer to each reference ONLY by 'the <KIND-noun> in image N'. Examples of allowed phrasing:",
+        "  • 'the artifact in image 1, resting on the rocky ground'",
+        "  • 'the vehicle in image 2, parked beside the captain'",
+        "  • 'the building in image 3, looming in the background'",
+        "Examples of FORBIDDEN phrasing (these hallucinate appearance from the name):",
+        "  • 'a leather-bound book' — NO (you don't know what the artifact looks like)",
+        "  • 'a sleek metallic drone with sweeping wings' — NO (you don't know what the vehicle looks like)",
+        "  • 'a towering red-brick spire' — NO (you don't know what the building looks like)",
+        "Stick to POSITION, COMPOSITION, LIGHTING, MOOD, and BACKGROUND SURROUNDINGS. Klein handles the appearance.",
+        "",
         "Klein rules for the image_prompt field:",
         "(1) Prose only — natural cinematic English. No bracketed tags, no role labels in ALL CAPS.",
         "(2) Structure: Subject -> Setting -> Details -> Lighting -> Atmosphere.",
         "(3) Reference images by index ('image 1', 'image 2', ...).",
-        "(4) Use 'Keep EXACTLY the same as reference image N' for identity preservation.",
+        "(4) ALWAYS write 'Keep EXACTLY the same as reference image N' for every reference — Klein needs this to lock identity to pixels you cannot see.",
         "(5) No negatives — describe positive visual opposites.",
         "(6) State the count of HUMAN characters in the scene explicitly (PERSON kind only).",
         "(7) Describe each subject in natural language. DO NOT write KIND tags in the prose.",
@@ -360,7 +381,9 @@ def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
         f"(9) CLOSE the image_prompt with this canonical Pilgrims style block verbatim: \"{PILGRIMS_STYLE_BLOCK}\"",
         "",
         "Plus a 1-2 sentence ARIA caption in first person. Match CAPTION_MOOD. Open with a "
-        "specific concrete observation — never 'As dusk falls' or 'As I gaze'.",
+        "specific concrete observation — never 'As dusk falls' or 'As I gaze'. "
+        "The caption MAY mention specific names from the facts (artifact name, destination, etc.) "
+        "since that's narrative voice — but the image_prompt may NOT.",
         "",
         'Output JSON: {"image_prompt": "<prose>", "aria_caption": "<1-2 sentences>"}'
     ]

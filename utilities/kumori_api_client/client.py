@@ -123,21 +123,46 @@ def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
     url = f'{KUMORI_BASE}{path}'
     headers = {'X-API-Key': key, 'Content-Type': 'application/json'}
 
+    import time as _time
     last_exc = None
     for attempt in (1, 2):
+        t0 = _time.time()
         try:
             r = requests.request(method, url, json=body, headers=headers, timeout=timeout)
         except (requests.ConnectionError, requests.Timeout) as e:
             last_exc = e
+            if _request_log is not None:
+                _request_log.append({
+                    'method': method.upper(), 'url': url, 'attempt': attempt,
+                    'request_body': _redact_b64(body) if isinstance(body, (dict, list)) else body,
+                    'error': f"{type(e).__name__}: {str(e)[:200]}",
+                    'ms': int((_time.time() - t0) * 1000),
+                    'timestamp': _time.time(),
+                })
             if attempt == 1 and retry_on_5xx:
                 logger.warning(f"kumori {path} {type(e).__name__}, retrying")
                 continue
             raise KumoriAPIError(f'Network error reaching kumori: {e}')
+        ms = int((_time.time() - t0) * 1000)
         # Got a response — parse JSON
         try:
             data = r.json()
         except ValueError:
             data = {'raw': r.text[:300]}
+        # Record this call for the admin debug console if instrumentation active
+        if _request_log is not None:
+            _request_log.append({
+                'method': method.upper(),
+                'url': url,
+                'attempt': attempt,
+                'request_body': _redact_b64(body) if isinstance(body, (dict, list)) else body,
+                'response_status': r.status_code,
+                'response_headers': dict(r.headers),
+                'response_body': _redact_b64(data) if isinstance(data, (dict, list)) else data,
+                'response_size_bytes': len(r.content) if r.content is not None else 0,
+                'ms': ms,
+                'timestamp': _time.time(),
+            })
         if r.status_code == 200:
             return data
         if 500 <= r.status_code < 600 and attempt == 1 and retry_on_5xx:
