@@ -134,7 +134,14 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             user_content = message
         api_messages.append({"role": "user", "content": user_content})
 
-        # Phase 1: Quick Haiku call with just persona + knowledge (~10KB)
+        # Phase 1: Quick Haiku call with persona + knowledge + ALWAYS-LOADED codemap.
+        # Bug #1452 Tier A: previously the codemap was only loaded in the deep-dive
+        # if bug_mode=True — Phase 1 lied about "available in the deep-dive that
+        # follows" for non-bug chats. Now the manifest is always in Phase 1's
+        # context so the bot never hallucinates file paths or claims it has access
+        # to files that aren't in scope.
+        codemap_for_phase1 = load_codemap()
+        codemap_manifest_block = _build_codemap_summary(codemap_for_phase1) if codemap_for_phase1 else ""
         phase1_system = system_base + (
             "\n\nIMPORTANT — HOW THIS WORKS:\n"
             "This is your quick first response. After this, the system automatically loads the exact "
@@ -143,8 +150,8 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "The user is typically a QA tester or project manager. They do NOT have code, file paths, "
             "or database schemas. They describe bugs/features in plain language. YOU are the one with "
             "codebase access — never ask them for code, files, or technical data.\n\n"
-            "YOUR RESOURCES (available in the deep-dive that follows automatically):\n"
-            "- codemap.json — index of every file in the codebase with descriptions\n"
+            "YOUR RESOURCES (codemap is already in your context below; the rest loads automatically):\n"
+            "- codemap.json — index of every file in the codebase with descriptions (BELOW, you have it now)\n"
             "- math_registry.json — all game formulas and constants\n"
             "- read_file tool — can read any source file by path\n"
             "- query_player_data — can query any player's live game data\n"
@@ -166,6 +173,13 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             "Did you CLOSE with warmth (not just a robotic 'let me know if you need anything')? "
             "If any of those is missing, REWRITE that sentence before sending. Voice first, info second."
         )
+        # Bug #1452 Tier A: append the codemap manifest. Phase 1 now sees every
+        # file path + one-line description, so it can name real files (not
+        # hallucinate). Manifest is ~30-50 tokens × ~384 files ≈ 15K tokens —
+        # cheap on Haiku, eliminates the "I'll check db_map.py" lie when there's
+        # no db_map.py.
+        if codemap_manifest_block:
+            phase1_system += "\n\n" + codemap_manifest_block
 
         from utilities.pilgrimbot_bugs import CREATE_BUG_TOOL, QUERY_BUGS_TOOL
         active_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL, QUERY_BUGS_TOOL]
@@ -230,11 +244,16 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
         deep_system = system_base + surgical_context
 
-        # Always give file tools + codemap in bug mode — PilgrimBot should always be able to read code
+        # Bug #1452 Tier A: codemap is now ALWAYS in the deep-dive system prompt,
+        # not gated on bug_mode. The codemap is already in Phase 1 too — but Phase
+        # 2 needs the read_file tool reference + the full descriptions for the
+        # files it's planning to open. read_file stays bug_mode-gated to keep
+        # casual chat from running file reads on every turn.
         deep_tools = [PLAYER_DATA_TOOL, CREATE_BUG_TOOL, QUERY_BUGS_TOOL]
         if bug_mode:
             deep_tools.append(READ_FILE_TOOL)
-            codemap = load_codemap()
+        codemap = load_codemap()
+        if codemap:
             deep_system += f"\n\n{_build_codemap_summary(codemap)}"
 
         # Build the deep-dive conversation — model sees its Phase 1 response + system instruction to go deeper

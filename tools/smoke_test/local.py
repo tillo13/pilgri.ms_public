@@ -635,6 +635,26 @@ def test_record_landmark_signature():
     return True
 
 
+@test("Bug #1452 Tier A: codemap always in Phase 1 + Phase 2 (no bug_mode gate)", tier=1, features=['pilgrimbot'], mode='local')
+def test_codemap_always_loaded():
+    """Bug #1452: Phase 1 was lying — codemap was only loaded when bug_mode=True.
+    Now it's always appended to phase1_system AND deep_system. This pins the
+    behavior so a future revert can't quietly re-introduce the hallucination."""
+    import inspect
+    from utilities.pilgrimbot import streaming
+    src = inspect.getsource(streaming)
+    if "codemap_manifest_block" not in src:
+        return "Phase 1 codemap manifest var missing — Bug #1452 Tier A regression"
+    # The Phase 2 unconditional append: codemap loaded outside the `if bug_mode:` block
+    if "if bug_mode:\n            deep_tools.append(READ_FILE_TOOL)\n            codemap = load_codemap()" in src:
+        return "Phase 2 still gates codemap load on bug_mode — Bug #1452 Tier A regression"
+    from utilities.pilgrimbot_context import load_codemap
+    cm = load_codemap()
+    if not cm or len(cm) < 100:
+        return f"codemap.json failed to load or too small (got {len(cm)} entries)"
+    return True
+
+
 @test("Bug #21 Deploy D: XP grants removed from complete_crew_mission", tier=1, features=['captain_stats'], mode='local')
 def test_xp_grants_deprecated():
     """Luke 2026-05-09 #2: 'Ok to deprecate extra experience'. The +5 XP grant
