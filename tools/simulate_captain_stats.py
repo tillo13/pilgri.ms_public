@@ -415,18 +415,20 @@ def commit_retroactive(dry_run=True, user_ids=None):
         sim = simulate(c, activity)
 
         if dry_run:
-            # Show baseline-from-latest-asset + growth → final cap. Matches what
-            # production /crew will display post-commit.
+            # Baseline from PRIMARY asset (matches /crew's reader). Same selector
+            # as commit path below.
+            from utilities.postgres.captain_stats import _primary_asset_id
             with db_cursor() as _cur:
-                _cur.execute("""
-                    SELECT commander_leadership AS lead, commander_strategy AS stra,
-                           commander_exploration AS expl, commander_logistics AS logi,
-                           commander_charisma AS char
-                    FROM pilgrim.replicate_assets
-                    WHERE user_id = %s AND asset_type='character_image' AND is_deleted=FALSE
-                    ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
-                """, (uid,))
-                _r = _cur.fetchone()
+                primary_id = _primary_asset_id(_cur, uid)
+                _r = None
+                if primary_id is not None:
+                    _cur.execute("""
+                        SELECT commander_leadership AS lead, commander_strategy AS stra,
+                               commander_exploration AS expl, commander_logistics AS logi,
+                               commander_charisma AS char
+                        FROM pilgrim.replicate_assets WHERE id = %s
+                    """, (primary_id,))
+                    _r = _cur.fetchone()
             short = {'leadership':'lead','strategy':'stra','exploration':'expl','logistics':'logi','charisma':'char'}
             parts = []
             for stat in ['leadership','strategy','exploration','logistics','charisma']:
@@ -438,22 +440,26 @@ def commit_retroactive(dry_run=True, user_ids=None):
             print(f"  [{uid}] {name}: " + " | ".join(parts))
             continue
 
-        # CRITICAL: snapshot from the SAME asset get_commander_stats reads (latest
-        # by created_at), NOT fetch_all_captains' highest-score picker. Production
-        # /crew displays the latest; our retro must extend that, not the sim's
-        # different asset. Otherwise captains see growth on top of stats they
-        # don't recognize. Re-fetched here per-captain.
+        # CRITICAL: snapshot from the PRIMARY asset (get_primary_commander
+        # selector — what /crew actually renders), NOT fetch_all_captains'
+        # highest-score picker. Earlier path used "latest character_image" which
+        # diverged from /crew's reader for captains whose primary is an
+        # edited_image, or whose primary character_image isn't the latest
+        # one. Retro writes the captain's growth on the asset they see in-game.
+        from utilities.postgres.captain_stats import _primary_asset_id
         with db_cursor() as _cur:
+            primary_id = _primary_asset_id(_cur, uid)
+            if primary_id is None:
+                print(f"  [{uid}] {name}: SKIPPED — no primary character with stats")
+                continue
             _cur.execute("""
                 SELECT commander_leadership, commander_strategy, commander_exploration,
                        commander_logistics, commander_charisma
-                FROM pilgrim.replicate_assets
-                WHERE user_id = %s AND asset_type='character_image' AND is_deleted=FALSE
-                ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
-            """, (uid,))
+                FROM pilgrim.replicate_assets WHERE id = %s
+            """, (primary_id,))
             _r = _cur.fetchone()
         if not _r or _r['commander_leadership'] is None:
-            print(f"  [{uid}] {name}: SKIPPED — no character_image with stats")
+            print(f"  [{uid}] {name}: SKIPPED — primary has no stats")
             continue
         current_stats = {s: int(_r[f'commander_{s}'] or 0) for s in ['leadership','strategy','exploration','logistics','charisma']}
         snapshot_baseline(uid, current_stats)

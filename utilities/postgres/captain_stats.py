@@ -152,19 +152,37 @@ def set_go_live_at(ts: datetime) -> None:
             _go_live_at = datetime.fromisoformat(r['value'])
 
 
-def _latest_character_asset_id(cur, user_id: int) -> Optional[int]:
-    """The replicate_assets row that get_commander_stats reads — same selector."""
+def _primary_asset_id(cur, user_id: int) -> Optional[int]:
+    """The replicate_assets row /crew actually displays — get_primary_commander's
+    selector (asset_type IN character_image+edited_image, is_primary_character=true).
+    Fallback to latest character_image when no primary is flagged (early captains
+    sometimes lack the primary flag — preserves the original behavior).
+    """
+    cur.execute("""
+        SELECT id FROM pilgrim.replicate_assets
+        WHERE user_id = %s
+          AND asset_type IN ('character_image', 'edited_image')
+          AND is_deleted = FALSE
+          AND is_primary_character = TRUE
+          AND commander_leadership IS NOT NULL
+        LIMIT 1
+    """, (user_id,))
+    r = cur.fetchone()
+    if r:
+        return r['id']
+    # Fallback: legacy captains with no primary flag
     cur.execute("""
         SELECT id FROM pilgrim.replicate_assets
         WHERE user_id = %s AND asset_type = 'character_image' AND is_deleted = FALSE
-        ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
+          AND commander_leadership IS NOT NULL
+        ORDER BY created_at DESC LIMIT 1
     """, (user_id,))
     r = cur.fetchone()
     return r['id'] if r else None
 
 
 def _recompute_and_save(cur, user_id: int, stat: str) -> int:
-    """Sum events for this user+stat, cap, write to replicate_assets, return new int."""
+    """Sum events for this user+stat, cap, write to PRIMARY asset, return new int."""
     cur.execute("""
         SELECT COALESCE(SUM(delta), 0) AS total
         FROM pilgrim.captain_stat_events
@@ -172,7 +190,7 @@ def _recompute_and_save(cur, user_id: int, stat: str) -> int:
     """, (user_id, stat))
     total = float(cur.fetchone()['total'] or 0)
     new_int = max(0, min(WORLD_1_CAP, round(total)))
-    asset_id = _latest_character_asset_id(cur, user_id)
+    asset_id = _primary_asset_id(cur, user_id)
     if asset_id is not None:
         col = f'commander_{stat}'
         cur.execute(f"UPDATE pilgrim.replicate_assets SET {col} = %s, updated_at = NOW() WHERE id = %s", (new_int, asset_id))
@@ -188,13 +206,17 @@ def _ensure_baselines_for_user(cur, user_id: int) -> bool:
     cur.execute("SELECT 1 FROM pilgrim.captain_stat_events WHERE user_id = %s LIMIT 1", (user_id,))
     if cur.fetchone():
         return True  # baselines (or other events) already exist
+    # Read from the PRIMARY asset — same one /crew renders and the trigger
+    # writer updates. Diverging from get_primary_commander caused the Deploy B
+    # mismatch where retro wrote to character_image while /crew read edited_image.
+    asset_id = _primary_asset_id(cur, user_id)
+    if asset_id is None:
+        return False  # no character yet — caller should drop the event
     cur.execute("""
         SELECT commander_leadership, commander_strategy, commander_exploration,
                commander_logistics, commander_charisma
-        FROM pilgrim.replicate_assets
-        WHERE user_id = %s AND asset_type = 'character_image' AND is_deleted = FALSE
-        ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
-    """, (user_id,))
+        FROM pilgrim.replicate_assets WHERE id = %s
+    """, (asset_id,))
     r = cur.fetchone()
     if r is None or r['commander_leadership'] is None:
         return False  # no character yet — caller should drop the event
@@ -242,11 +264,10 @@ def award_stat_event(
             if not _ensure_baselines_for_user(cur, user_id):
                 return None  # no character — pre-character growth impossible
 
-            cur.execute(f"""
-                SELECT commander_{stat} AS v FROM pilgrim.replicate_assets
-                WHERE user_id = %s AND asset_type = 'character_image' AND is_deleted = FALSE
-                ORDER BY (commander_{stat} IS NOT NULL) DESC, created_at DESC LIMIT 1
-            """, (user_id,))
+            asset_id = _primary_asset_id(cur, user_id)
+            if asset_id is None:
+                return None
+            cur.execute(f"SELECT commander_{stat} AS v FROM pilgrim.replicate_assets WHERE id = %s", (asset_id,))
             r = cur.fetchone()
             old_int = int(r['v'] or 0) if r else 0
 
