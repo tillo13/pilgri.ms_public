@@ -2527,13 +2527,31 @@ def api_admin_kumori_generate():
     data = request.get_json() or {}
     target_uid = int(data.get('user_id') or 0)
     force_n = int(data.get('force_min_n', 0))
+    preset = (data.get('preset') or 'aria_journal').strip()
+    custom_w = data.get('width')
+    custom_h = data.get('height')
     if not target_uid:
         return jsonify({'success': False, 'error': 'user_id required'}), 400
 
     from utilities.aria_journal import generate_journal_entry
+    from utilities.kumori_image import PRESETS, validate_klein_size
     import base64 as _b64
+
+    # Custom W×H overrides preset if both provided (snapped to multiples of 16 + 4 MP cap)
+    if custom_w and custom_h:
+        try:
+            w = int(custom_w); h = int(custom_h)
+            w, h = validate_klein_size(w, h)
+            # Register an ad-hoc preset for this call so generate_journal_entry uses it
+            PRESETS['__custom__'] = (w, h)
+            preset = '__custom__'
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'bad width/height: {e}'}), 400
+    elif preset not in PRESETS:
+        return jsonify({'success': False, 'error': f'unknown preset {preset!r}; valid: {list(PRESETS.keys())}'}), 400
+
     try:
-        result = generate_journal_entry(target_uid, force_min_n=force_n)
+        result = generate_journal_entry(target_uid, force_min_n=force_n, preset=preset)
     except Exception as e:
         logger.exception(f"kumori_journal generate failed for user {target_uid}: {e}")
         return jsonify({'success': False, 'error': str(e)[:300]}), 500

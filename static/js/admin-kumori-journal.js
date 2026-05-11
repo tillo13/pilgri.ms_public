@@ -89,7 +89,13 @@
   async function generate() {
     const uid = parseInt($('kj-captain').value || '0', 10);
     const force_min_n = parseInt($('kj-force-n').value || '0', 10);
+    const preset = $('kj-preset').value || 'aria_journal';
     if (!uid) { $('kj-status').textContent = 'pick a captain'; return; }
+    const body = { user_id: uid, force_min_n, preset };
+    if (preset === '__custom__') {
+      body.width = parseInt($('kj-custom-w').value || '1024', 10);
+      body.height = parseInt($('kj-custom-h').value || '1024', 10);
+    }
     $('kj-status').textContent = 'Generating… (build pool → roll → 1 LLM call → 1 Klein call, ~8–12s)';
     $('kj-status').style.color = 'var(--text-secondary)';
     $('kj-generate').disabled = true;
@@ -101,7 +107,7 @@
       const r = await fetch('/api/admin/kumori-journal/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: uid, force_min_n })
+        body: JSON.stringify(body)
       });
       j = await r.json();
     } catch (e) {
@@ -223,5 +229,9 @@
     });
     $('kj-save').addEventListener('click', saveToAlbum);
     $('kj-usage-refresh').addEventListener('click', loadUsage);
+    // Toggle custom W×H inputs when the preset dropdown is set to "custom"
+    $('kj-preset').addEventListener('change', (e) => {
+      $('kj-custom-size-row').style.display = (e.target.value === '__custom__') ? 'flex' : 'none';
+    });
   });
 })();

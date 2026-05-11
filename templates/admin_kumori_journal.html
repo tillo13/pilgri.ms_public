@@ -41,6 +41,26 @@
         <option value="4">4 — exactly four (Klein hard cap)</option>
       </select>
     </div>
+    <div class="kj-row">
+      <label class="kj-label">Image size</label>
+      <select id="kj-preset" class="kj-input">
+        <option value="aria_journal" selected>aria_journal · 1024×768 (4:3, ~1.9s, matches /aria-album)</option>
+        <option value="square_hero">square_hero · 1024×1024 (1:1, ~1.8s)</option>
+        <option value="captain_portrait">captain_portrait · 768×1024 (3:4, ~1.6s)</option>
+        <option value="phone_splash">phone_splash · 720×1280 (9:16, ~1.8s)</option>
+        <option value="wide_cinematic">wide_cinematic · 2048×1024 (2:1, ~3.5s)</option>
+        <option value="premium_share">premium_share · 2048×2048 (4 MP MAX, ~7s, top quality)</option>
+        <option value="thumbnail">thumbnail · 512×384 (~1.3s, quick draft)</option>
+        <option value="__custom__">custom W×H (multiples of 16, ≤4 MP)</option>
+      </select>
+    </div>
+    <div class="kj-row" id="kj-custom-size-row" style="display:none">
+      <label class="kj-label">Custom W × H</label>
+      <input type="number" id="kj-custom-w" class="kj-input" placeholder="width" min="128" max="2048" step="16" value="1024" style="max-width:120px">
+      <span style="opacity:0.5">×</span>
+      <input type="number" id="kj-custom-h" class="kj-input" placeholder="height" min="128" max="2048" step="16" value="1024" style="max-width:120px">
+      <span class="kj-mini">snaps DOWN to multiple of 16</span>
+    </div>
     <div class="kj-row kj-row-actions">
       <button id="kj-generate" class="btn btn-primary">▶ Generate (trace every step)</button>
       <button id="kj-save" class="btn btn-secondary" disabled>💾 Save to ARIA Album</button>
