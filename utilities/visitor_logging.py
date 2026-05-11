@@ -513,6 +513,13 @@ def install_middleware(flask_app, app_name: str, *,
 
     def _default_email():
         try:
+            # When admin is mimicking, attribute the visit to the REAL admin
+            # not the mimicked target. Otherwise visitor_log would show "Kenny
+            # visited X" when Andy was actually mimicking Kenny — confusing for
+            # forensics. Surface the target in the path-drawer view separately.
+            real = session.get('_real_user')
+            if real and real.get('email'):
+                return (real['email'] or '').lower()
             u = session.get('user') or {}
             return (u.get('email') or '').lower()
         except Exception:

@@ -86,41 +86,62 @@ def fetch_all_captains():
     return list(best.values())
 
 
-def fetch_activity(user_id, first_login):
+def fetch_activity(user_id, first_login, cutoff_at=None):
+    """Pull activity counts for V2 retro math.
+
+    cutoff_at — when provided (the retro commit path), only count rows with
+    completed_at < cutoff_at. Live triggers fire on rows with completed_at >=
+    cutoff_at. The two windows are disjoint, so no activity is double-credited.
+    The dry-run sim path (no cutoff) counts all completed rows as it always did.
+    """
     current_sol = get_mars_sol_number()
     first_sol = get_mars_sol_number(first_login) if first_login else current_sol
     sols_survived = max(0, current_sol - first_sol)
 
+    # When committing, freeze sols to the cutoff so the live sol-tick cron can
+    # award future sols without overlap.
+    if cutoff_at is not None:
+        cutoff_sol = get_mars_sol_number(cutoff_at)
+        sols_survived = max(0, cutoff_sol - first_sol)
+
+    cutoff_clause = " AND completed_at < %s" if cutoff_at else ""
+    cutoff_params = (cutoff_at,) if cutoff_at else ()
+
     with db_cursor() as cur:
-        cur.execute("SELECT COUNT(*) AS n FROM pilgrim.crew_missions WHERE user_id = %s AND completed_at IS NOT NULL", (user_id,))
+        cur.execute(f"SELECT COUNT(*) AS n FROM pilgrim.crew_missions WHERE user_id = %s AND completed_at IS NOT NULL{cutoff_clause}", (user_id, *cutoff_params))
         crew_missions = cur.fetchone()['n']
 
-        cur.execute("SELECT COUNT(*) AS n, COALESCE(SUM(distance_km), 0) AS km FROM pilgrim.expeditions WHERE user_id = %s AND completed_at IS NOT NULL", (user_id,))
+        cur.execute(f"SELECT COUNT(*) AS n, COALESCE(SUM(distance_km), 0) AS km FROM pilgrim.expeditions WHERE user_id = %s AND completed_at IS NOT NULL{cutoff_clause}", (user_id, *cutoff_params))
         row = cur.fetchone()
         expeditions = row['n']
         km_traveled = float(row['km'] or 0)
 
-        cur.execute("""
+        cur.execute(f"""
             SELECT COUNT(*) AS n
               FROM pilgrim.expedition_discoveries ed
               JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
               JOIN pilgrim.discovery_items d ON d.id = ed.discovery_item_id
-             WHERE e.user_id = %s AND d.rarity = 'legendary'
-        """, (user_id,))
+             WHERE e.user_id = %s AND d.rarity = 'legendary' AND e.completed_at IS NOT NULL{(' AND e.completed_at < %s' if cutoff_at else '')}
+        """, (user_id, *cutoff_params))
         legendaries = cur.fetchone()['n']
 
-        cur.execute("SELECT COUNT(DISTINCT landmark_name) AS n FROM pilgrim.landmark_discoveries WHERE user_id = %s", (user_id,))
+        landmark_cutoff = (" AND discovered_at < %s" if cutoff_at else "")
+        cur.execute(f"SELECT COUNT(DISTINCT landmark_name) AS n FROM pilgrim.landmark_discoveries WHERE user_id = %s{landmark_cutoff}", (user_id, *cutoff_params))
         landmarks = cur.fetchone()['n']
 
-        cur.execute("SELECT COUNT(*) AS n FROM pilgrim.trail_segments WHERE user_id = %s", (user_id,))
+        # trail_segments — uses created_at as proxy
+        ts_cutoff = (" AND created_at < %s" if cutoff_at else "")
+        cur.execute(f"SELECT COUNT(*) AS n FROM pilgrim.trail_segments WHERE user_id = %s{ts_cutoff}", (user_id, *cutoff_params))
         trail_segments = cur.fetchone()['n']
 
-        # player_upgrades is the live table (upgrade_transactions is empty/unused).
-        # Sum of current levels = total upgrade-level-ups the captain has completed.
-        cur.execute("SELECT COALESCE(SUM(level), 0) AS n FROM pilgrim.player_upgrades WHERE user_id = %s", (user_id,))
+        # player_upgrades — upgraded_at is the completion timestamp
+        upg_cutoff = (" AND upgraded_at < %s" if cutoff_at else "")
+        cur.execute(f"SELECT COALESCE(SUM(level), 0) AS n FROM pilgrim.player_upgrades WHERE user_id = %s{upg_cutoff}", (user_id, *cutoff_params))
         depot_upgrades = int(cur.fetchone()['n'])
 
-        cur.execute("SELECT COUNT(*) AS n FROM pilgrim.aria_bonds WHERE (user_id_1 = %s OR user_id_2 = %s) AND status = 'bonded'", (user_id, user_id))
+        # aria_bonds — bonded_at when status='bonded'
+        bond_cutoff = (" AND bonded_at < %s" if cutoff_at else "")
+        cur.execute(f"SELECT COUNT(*) AS n FROM pilgrim.aria_bonds WHERE (user_id_1 = %s OR user_id_2 = %s) AND status = 'bonded'{bond_cutoff}", (user_id, user_id, *cutoff_params))
         aria_bonds = cur.fetchone()['n']
 
     return {
@@ -345,12 +366,137 @@ def post_to_brainstorm(markdown_text, section_idx=2):
         return cur.fetchone()['id']
 
 
+def commit_retroactive(dry_run=True, user_ids=None):
+    """Bug #21 Deploy B — commit V2 retroactive credit to every captain.
+
+    Luke locked V2 multipliers 2026-05-07 ("V2 is fine"). This commits the
+    growth numbers he saw in brainstorm/captain-stats §2 comment #199 for real.
+
+    Steps:
+      1. Set go_live_at = NOW() in pilgrim.captain_stats_meta. Live triggers
+         shipping in Deploy C only fire on activity with completed_at >=
+         go_live_at — retro counts only completed_at < go_live_at. Disjoint.
+      2. For each captain with stats:
+         a. snapshot_baseline(user_id, current_stats) — writes 5 baseline
+            events from current commander_<stat> values.
+         b. Run V2 sim against activity < go_live_at.
+         c. For each of 5 stats: award_stat_event(retro_credit, growth)
+            with source_kind='retro_credit', source_table='aggregate',
+            source_id=user_id — guaranteed-unique per captain via the table's
+            UNIQUE constraint. Re-running is a no-op (dedupe).
+      3. The award_stat_event helper recomputes commander_<stat> from the
+         event sum and writes it back to replicate_assets, capped at 75.
+
+    Idempotent: safe to re-run (all writes ON CONFLICT DO NOTHING).
+    """
+    from datetime import datetime, timezone
+    from utilities.postgres.captain_stats import (
+        ensure_captain_stat_events_table, set_go_live_at, snapshot_baseline,
+        award_stat_event, V2_MULTIPLIERS,
+    )
+
+    ensure_captain_stat_events_table()
+    cutoff_at = datetime.now(timezone.utc)
+
+    captains = fetch_all_captains()
+    if user_ids:
+        captains = [c for c in captains if c['user_id'] in user_ids]
+    print(f"Committing V2 retro for {len(captains)} captain(s). cutoff_at={cutoff_at.isoformat()}")
+
+    if not dry_run:
+        set_go_live_at(cutoff_at)
+        print(f"  ↳ wrote go_live_at to pilgrim.captain_stats_meta")
+
+    summary = []
+    for c in captains:
+        uid = c['user_id']
+        name = c['captain_name']
+        activity = fetch_activity(uid, c['first_login'], cutoff_at=cutoff_at)
+        sim = simulate(c, activity)
+
+        if dry_run:
+            # Show baseline-from-latest-asset + growth → final cap. Matches what
+            # production /crew will display post-commit.
+            with db_cursor() as _cur:
+                _cur.execute("""
+                    SELECT commander_leadership AS lead, commander_strategy AS stra,
+                           commander_exploration AS expl, commander_logistics AS logi,
+                           commander_charisma AS char
+                    FROM pilgrim.replicate_assets
+                    WHERE user_id = %s AND asset_type='character_image' AND is_deleted=FALSE
+                    ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
+                """, (uid,))
+                _r = _cur.fetchone()
+            short = {'leadership':'lead','strategy':'stra','exploration':'expl','logistics':'logi','charisma':'char'}
+            parts = []
+            for stat in ['leadership','strategy','exploration','logistics','charisma']:
+                base = int(_r[short[stat]] or 0) if _r else 0
+                g = sim[stat]['growth']
+                final = min(WORLD_1_CAP, round(base + g))
+                star = '★' if (base + g) > WORLD_1_CAP else ''
+                parts.append(f"{stat[:4]} {base}+{g:.1f}={final}{star}")
+            print(f"  [{uid}] {name}: " + " | ".join(parts))
+            continue
+
+        # CRITICAL: snapshot from the SAME asset get_commander_stats reads (latest
+        # by created_at), NOT fetch_all_captains' highest-score picker. Production
+        # /crew displays the latest; our retro must extend that, not the sim's
+        # different asset. Otherwise captains see growth on top of stats they
+        # don't recognize. Re-fetched here per-captain.
+        with db_cursor() as _cur:
+            _cur.execute("""
+                SELECT commander_leadership, commander_strategy, commander_exploration,
+                       commander_logistics, commander_charisma
+                FROM pilgrim.replicate_assets
+                WHERE user_id = %s AND asset_type='character_image' AND is_deleted=FALSE
+                ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
+            """, (uid,))
+            _r = _cur.fetchone()
+        if not _r or _r['commander_leadership'] is None:
+            print(f"  [{uid}] {name}: SKIPPED — no character_image with stats")
+            continue
+        current_stats = {s: int(_r[f'commander_{s}'] or 0) for s in ['leadership','strategy','exploration','logistics','charisma']}
+        snapshot_baseline(uid, current_stats)
+
+        per_stat = {}
+        for stat, terms in FORMULAS.items():
+            growth = sum(activity[key] * rate for key, rate in terms)
+            if growth <= 0:
+                continue
+            r = award_stat_event(
+                user_id=uid, stat=stat, delta=growth,
+                source_kind='retro_credit', source_table='aggregate', source_id=uid,
+            )
+            per_stat[stat] = r['new'] if r else 'dedupe'
+        summary.append((uid, name, per_stat))
+
+    if not dry_run:
+        print()
+        print("=" * 70)
+        print("RETRO COMMIT SUMMARY")
+        print("=" * 70)
+        for uid, name, per_stat in summary:
+            print(f"  [{uid}] {name}: {per_stat}")
+    print()
+    print(f"Done. {'DRY RUN — no DB writes.' if dry_run else 'Live triggers in Deploy C will fire on activity after ' + cutoff_at.isoformat()}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--post', action='store_true', help='Post the report as a PilgrimBot brainstorm comment')
     parser.add_argument('--limit', type=int, help='Only simulate the top N captains by activity')
     parser.add_argument('--focused', type=str, help='Comma-separated user_ids for the focused per-captain table (e.g., 112,45,250,267,271). Uses Simulation 2 multipliers per Luke #198.')
+    parser.add_argument('--commit', action='store_true', help='Bug #21 Deploy B — write V2 retro credit to captain_stat_events + bump commander_<stat>. Sets go_live_at meta. Idempotent.')
+    parser.add_argument('--commit-dry', action='store_true', help='Show what --commit would do without writing.')
+    parser.add_argument('--users', type=str, help='Comma-separated user_ids to limit --commit/--commit-dry to (e.g., 45 for just Andy).')
     args = parser.parse_args()
+
+    if args.commit or args.commit_dry:
+        user_ids = None
+        if args.users:
+            user_ids = [int(x.strip()) for x in args.users.split(',') if x.strip()]
+        commit_retroactive(dry_run=args.commit_dry, user_ids=user_ids)
+        return
 
     if args.focused:
         target_ids = [int(x.strip()) for x in args.focused.split(',') if x.strip()]

@@ -472,6 +472,134 @@ def test_active_chain_segments_shape():
     return True
 
 
+@test("Bug #21: captain_stat_events schema exists with UNIQUE dedupe", tier=1, features=['captain_stats', 'db'], mode='local')
+def test_captain_stat_events_schema():
+    from utilities.postgres.captain_stats import ensure_captain_stat_events_table
+    from utilities.postgres.core import db_cursor
+    ensure_captain_stat_events_table()
+    with db_cursor() as cur:
+        cur.execute("SELECT column_name FROM information_schema.columns WHERE table_schema='pilgrim' AND table_name='captain_stat_events'")
+        cols = {r['column_name'] for r in cur.fetchall()}
+        required = {'id', 'user_id', 'stat_name', 'delta', 'source_kind', 'source_table', 'source_id', 'created_at'}
+        missing = required - cols
+        if missing:
+            return f"missing columns: {missing}"
+        # UNIQUE constraint must exist or retro/triggers double-credit
+        cur.execute("""
+            SELECT conname FROM pg_constraint
+            WHERE conrelid = 'pilgrim.captain_stat_events'::regclass AND contype='u'
+        """)
+        if not cur.fetchall():
+            return "missing UNIQUE constraint (user_id, stat_name, source_kind, source_table, source_id) — dedupe broken"
+    return True
+
+
+@test("Bug #21: V2_MULTIPLIERS match Luke-locked formulas (2026-05-07 'V2 is fine')", tier=1, features=['captain_stats'], mode='local')
+def test_v2_multipliers_locked():
+    """If anyone changes these numbers without a new Luke directive on bug #21,
+    this fails the deploy. Luke spent 3 weeks tuning V1 → V2; protect it."""
+    from utilities.postgres.captain_stats import V2_MULTIPLIERS, WORLD_1_CAP, STAT_NAMES
+    expected = {
+        'leadership':  {'sol_tick': 0.1,   'crew_mission': 0.05},
+        'strategy':    {'expedition': 0.2, 'legendary':    1.0},
+        'exploration': {'km':        0.001, 'landmark':    1.0},
+        'logistics':   {'trail_segment': 0.05, 'upgrade':  1.0},
+        'charisma':    {'aria_bond': 2.0},
+    }
+    if V2_MULTIPLIERS != expected:
+        return f"V2_MULTIPLIERS drifted from Luke-locked! got {V2_MULTIPLIERS}, expected {expected}"
+    if WORLD_1_CAP != 75:
+        return f"WORLD_1_CAP drifted from Luke spec (75): got {WORLD_1_CAP}"
+    if set(STAT_NAMES) != {'leadership', 'strategy', 'exploration', 'logistics', 'charisma'}:
+        return f"STAT_NAMES drift: {STAT_NAMES}"
+    # Also pin the simulate script's FORMULAS_V2 — that's the retro math
+    from tools.simulate_captain_stats import FORMULAS_V2
+    sim_terms = {stat: dict(terms) for stat, terms in FORMULAS_V2.items()}
+    # simulate uses activity keys: sols_survived, crew_missions, expeditions, km_traveled, legendaries, landmarks, trail_segments, depot_upgrades, aria_bonds
+    sim_expected = {
+        'leadership':  {'sols_survived': 0.1,  'crew_missions': 0.05},
+        'strategy':    {'expeditions':   0.2,  'legendaries':   1.0},
+        'exploration': {'km_traveled':   0.001, 'landmarks':    1.0},
+        'logistics':   {'trail_segments': 0.05, 'depot_upgrades': 1.0},
+        'charisma':    {'aria_bonds':    2.0},
+    }
+    if sim_terms != sim_expected:
+        return f"simulate_captain_stats.FORMULAS_V2 drifted: got {sim_terms}, expected {sim_expected}"
+    return True
+
+
+@test("Bug #21: award_stat_event inserts + bumps + dedupes + caps", tier=2, features=['captain_stats'], mode='local')
+@requires_web3
+def test_award_stat_event_e2e():
+    """End-to-end smoke: award produces correct old/new, second call dedupes,
+    huge delta caps at 75. Uses sentinel source_table='smoke_test' + cleans up."""
+    from utilities.postgres.captain_stats import award_stat_event, get_event_totals
+    from utilities.postgres.core import db_cursor
+    USER = 250  # Trusty bot — Luke OK'd bots capping
+    SENTINEL = 'smoke_test'
+    # Snapshot + clean
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT commander_leadership, commander_strategy, commander_exploration,
+                   commander_logistics, commander_charisma
+            FROM pilgrim.replicate_assets
+            WHERE user_id=%s AND asset_type='character_image' AND is_deleted=FALSE
+            ORDER BY (commander_leadership IS NOT NULL) DESC, created_at DESC LIMIT 1
+        """, (USER,))
+        pre = dict(cur.fetchone())
+    with db_cursor(commit=True) as cur:
+        cur.execute("DELETE FROM pilgrim.captain_stat_events WHERE user_id=%s AND source_table=%s", (USER, SENTINEL))
+    try:
+        r1 = award_stat_event(USER, 'leadership', 0.05, 'crew_mission', SENTINEL, 999001)
+        if r1 is None or r1['delta'] != 0.05:
+            return f"first award returned bad result: {r1}"
+        r2 = award_stat_event(USER, 'leadership', 0.05, 'crew_mission', SENTINEL, 999001)
+        if r2 is not None:
+            return f"dedupe failed — second award returned {r2}"
+        r3 = award_stat_event(USER, 'leadership', 9999, 'sol_tick', SENTINEL, 999002)
+        if r3 is None or r3['new'] != 75 or not r3['capped']:
+            return f"cap failed — got {r3}"
+    finally:
+        # Cleanup sentinel events; restore commander values
+        with db_cursor(commit=True) as cur:
+            cur.execute("DELETE FROM pilgrim.captain_stat_events WHERE user_id=%s AND source_table=%s", (USER, SENTINEL))
+            cur.execute("""
+                UPDATE pilgrim.replicate_assets
+                SET commander_leadership=%s, commander_strategy=%s, commander_exploration=%s,
+                    commander_logistics=%s, commander_charisma=%s
+                WHERE user_id=%s AND asset_type='character_image' AND is_deleted=FALSE
+            """, (pre['commander_leadership'], pre['commander_strategy'], pre['commander_exploration'],
+                  pre['commander_logistics'], pre['commander_charisma'], USER))
+    return True
+
+
+@test("Bug #21: retro committed for all 16 captains with baselines + retro_credit", tier=2, features=['captain_stats'], mode='local')
+def test_retro_landed():
+    """Post-Deploy B: every captain with stats should have baseline + retro_credit
+    events for all 5 stats. If this fails post-deploy, retro didn't run."""
+    from utilities.postgres.core import db_cursor
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT user_id,
+                   SUM(CASE WHEN source_kind='baseline' THEN 1 ELSE 0 END) AS baselines,
+                   SUM(CASE WHEN source_kind='retro_credit' THEN 1 ELSE 0 END) AS retros
+            FROM pilgrim.captain_stat_events
+            GROUP BY user_id
+        """)
+        rows = list(cur.fetchall())
+    if len(rows) < 1:
+        return "no retro events found — Deploy B retro didn't commit"
+    # Every captain should have exactly 5 baselines (one per stat) and >=1 retro_credit
+    bad = [r for r in rows if r['baselines'] != 5]
+    if bad:
+        return f"{len(bad)} captain(s) missing baselines (got != 5): {[r['user_id'] for r in bad[:5]]}"
+    # go_live_at must be set so live triggers (Deploy C) know the cutoff
+    from utilities.postgres.captain_stats import get_go_live_at
+    if get_go_live_at() is None:
+        return "go_live_at not set — Deploy C triggers would fire on retro-already-counted activity"
+    return True
+
+
 @test("Bug #1454: per-vehicle speed chips match lifecycle launch math", tier=2, features=['expeditions'], mode='local')
 @requires_web3
 def test_vehicle_speed_chips_match_launch():

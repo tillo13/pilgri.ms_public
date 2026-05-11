@@ -771,12 +771,13 @@
     "description": "Bug #21 — Retroactive captain stat simulation.",
     "exports": [
       "fetch_all_captains",
-      "fetch_activity",
+      "fetch_activity — Pull activity counts for V2 retro math.",
       "simulate",
       "fmt_num",
       "build_markdown_report",
       "build_focused_report — Per Luke #198: 'Can we put this into a more easily readable table? I",
       "post_to_brainstorm",
+      "commit_retroactive — Bug #21 Deploy B — commit V2 retroactive credit to every captain.",
       "main"
     ]
   },
@@ -2023,6 +2024,18 @@
       "handle_bug_screenshot_upload — Route-glue wrapper for POST /api/admin/bugs/<bug_id>/screenshot.",
       "upload_bug_screenshot — Upload screenshot to GCS and save URL to bug record.",
       "get_ideas — Get all parking lot ideas (bugs with status='Parking Lot')."
+    ]
+  },
+  "utilities/postgres/captain_stats.py": {
+    "description": "Bug #21 — Captain stats progression event log + cached value updater.",
+    "exports": [
+      "ensure_captain_stat_events_table — Create captain_stat_events + meta table on first call. Idempotent.",
+      "get_go_live_at — Read the deploy-cutoff timestamp written by the retro script. None if",
+      "set_go_live_at — Called once by the retro script after it snapshots activity. Triggers",
+      "award_stat_event — Insert an event + bump the cached commander_<stat>. Dedupes on",
+      "snapshot_baseline — Write 5 baseline events for a captain — one per stat — using current",
+      "get_recent_stat_events — For the ↑ indicator on /crew. Returns events created within `hours`,",
+      "get_event_totals — Sum events per stat for one user. Useful for audit + debug pages."
     ]
   },
   "utilities/postgres/config.py": {
