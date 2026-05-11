@@ -578,6 +578,8 @@ async function executeShardRush(category, itemKey, name) {
         const data = await resp.json();
         if (data.success && data.rushed) {
             showToast(`✅ ${name} complete! ${data.rush_cost.toLocaleString()} shards spent.`, 'success', 'Rush Complete', 4000);
+            // Bug #21 Deploy C: stat-up toast(s) from the rush level-up
+            if (typeof processStatEvents === 'function') processStatEvents(data);
             setTimeout(() => window.location.reload(), 1200);
         } else {
             showToast(sanitizeErrorMsg(data.error) || 'Rush failed.', 'error', 'Rush Failed');

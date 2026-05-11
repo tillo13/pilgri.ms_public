@@ -600,6 +600,52 @@ def test_retro_landed():
     return True
 
 
+@test("Bug #21 Deploy C: every trigger source_kind has a V2_MULTIPLIERS entry", tier=1, features=['captain_stats'], mode='local')
+def test_trigger_source_kinds_match_v2():
+    """If a trigger writes a source_kind that V2_MULTIPLIERS doesn't know about,
+    it won't show up in dry-run sims, won't be retro-credited correctly, and
+    will look like a phantom event. This pins the trigger sites to V2."""
+    from utilities.postgres.captain_stats import V2_MULTIPLIERS, SOURCE_KIND_TO_STAT
+    # Every source_kind we award from a trigger must map to exactly one stat
+    # AND that stat's V2 terms must include this source_kind.
+    for kind, stat in SOURCE_KIND_TO_STAT.items():
+        if stat not in V2_MULTIPLIERS:
+            return f"SOURCE_KIND_TO_STAT[{kind!r}] = {stat!r} but stat not in V2_MULTIPLIERS"
+        if kind not in V2_MULTIPLIERS[stat]:
+            return f"trigger {kind!r} would write events that V2_MULTIPLIERS[{stat!r}] doesn't know about"
+    # Inverse: every term in V2_MULTIPLIERS should be a trigger
+    for stat, terms in V2_MULTIPLIERS.items():
+        for kind in terms:
+            if SOURCE_KIND_TO_STAT.get(kind) != stat:
+                return f"V2_MULTIPLIERS[{stat!r}][{kind!r}] has no matching SOURCE_KIND_TO_STAT entry"
+    return True
+
+
+@test("Bug #21 Deploy C: record_landmark_discovery returns (id, is_new) tuple", tier=1, features=['expeditions'], mode='local')
+def test_record_landmark_signature():
+    """Bug #21 relies on the new (id, is_new) return shape. Pre-change it
+    returned True/False — any caller that does `if record_landmark_discovery(...)`
+    still works either way, but the trigger code at lifecycle.py needs the tuple
+    unpack. This smoke catches a future re-revert."""
+    import inspect
+    from utilities.postgres.expeditions import record_landmark_discovery
+    src = inspect.getsource(record_landmark_discovery)
+    if "RETURNING id, (xmax = 0) AS is_new" not in src:
+        return "record_landmark_discovery no longer RETURNING (id, is_new) — Bug #21 lifecycle trigger will break"
+    return True
+
+
+@test("Bug #21 Deploy C: sol-tick cron route exists", tier=1, features=['captain_stats'], mode='local')
+@requires_flask
+def test_sol_tick_route():
+    from app import app
+    with app.test_request_context():
+        rules = [r for r in app.url_map.iter_rules() if r.rule == '/api/cron/sol_tick_captain_stats']
+        if not rules:
+            return "missing /api/cron/sol_tick_captain_stats route"
+    return True
+
+
 @test("Bug #1454: per-vehicle speed chips match lifecycle launch math", tier=2, features=['expeditions'], mode='local')
 @requires_web3
 def test_vehicle_speed_chips_match_launch():

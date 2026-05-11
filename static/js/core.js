@@ -118,6 +118,33 @@ function showToast(message, type = 'info', title = '', duration = 5000) {
 }
 function removeToast(toast) { toast.classList.add('removing'); setTimeout(() => { toast.remove(); const c = $('toastContainer'); if (c && !c.children.length) c.remove(); }, 300); }
 
+// Bug #21 Deploy C: Captain stat-up toast. Pulls one event from any API
+// response shape that includes `stat_events: [...]`. Each event looks like
+// {stat, delta, old, new, capped, source_kind}. Suppresses baseline +
+// retro_credit (those land off-screen, not "live" growth).
+const STAT_LABEL = { leadership:'Leadership', strategy:'Strategy', exploration:'Exploration', logistics:'Logistics', charisma:'Charisma' };
+function showStatToast(evt) {
+    if (!evt || !evt.stat) return;
+    if (evt.source_kind === 'baseline' || evt.source_kind === 'retro_credit') return;
+    const label = STAT_LABEL[evt.stat] || evt.stat;
+    const delta = Number(evt.delta || 0);
+    const sign = delta >= 0 ? '+' : '';
+    const deltaStr = Math.abs(delta) < 1 ? delta.toFixed(2) : delta.toFixed(1);
+    const capMark = evt.capped ? ' ★' : '';
+    const msg = `${sign}${deltaStr} → ${evt.new}/75${capMark}`;
+    showToast(msg, 'success', `${label} up`, 4000);
+}
+// Helper: process whatever `data.stat_events` your API returned. Safe with
+// missing / null / non-array — just no-ops.
+function processStatEvents(data) {
+    const arr = (data && data.stat_events) || null;
+    if (!Array.isArray(arr) || !arr.length) return;
+    // Stagger toasts slightly so multiple stat-ups don't pile up identically
+    arr.forEach((ev, i) => setTimeout(() => showStatToast(ev), i * 350));
+}
+window.showStatToast = showStatToast;
+window.processStatEvents = processStatEvents;
+
 
 function showImageModal(src, alt) {
     const m = document.createElement('div'); m.className = 'image-modal';

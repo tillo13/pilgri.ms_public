@@ -39,6 +39,10 @@
         <!-- Captain Stats (Base + EVA Suit % + Research) -->
         {% if commander_stats %}
         {% set sb = stat_bonuses if stat_bonuses else {} %}
+        {% set rsg = recent_stat_growth if recent_stat_growth else {} %}
+        {% macro up_arrow(stat_key) -%}
+          {%- if rsg.get(stat_key, 0) > 0 -%}<span title="+{{ '%.2f'|format(rsg.get(stat_key, 0)) }} in last 24h" style="color:var(--color-success);font-size:13px;margin-left:4px;">↑</span>{%- endif -%}
+        {%- endmacro %}
         <div class="commander-stats-panel">
             {# Leadership #}
             {% set suit_pct = commander_stats.leadership_suit_pct|default(0) %}
@@ -47,8 +51,8 @@
             {% set total = commander_stats.leadership + research_pts %}
             <div class="stat-pill">
                 <div class="stat-pill-header">
-                    <span class="stat-name">Leadership</span>
-                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                    <span class="stat-name">Leadership{{ up_arrow('leadership') }}</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/75</span>
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--gradient-primary);"></div></div>
                 <div class="stat-desc">Reduces costs, 1.10x rare discovery at 50+</div>
@@ -60,8 +64,8 @@
             {% set total = commander_stats.strategy + research_pts %}
             <div class="stat-pill">
                 <div class="stat-pill-header">
-                    <span class="stat-name">Strategy</span>
-                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                    <span class="stat-name">Strategy{{ up_arrow('strategy') }}</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/75</span>
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--gradient-success);"></div></div>
                 <div class="stat-desc">Faster expedition discovery phase</div>
@@ -73,8 +77,8 @@
             {% set total = commander_stats.exploration + research_pts %}
             <div class="stat-pill">
                 <div class="stat-pill-header">
-                    <span class="stat-name">Exploration</span>
-                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                    <span class="stat-name">Exploration{{ up_arrow('exploration') }}</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/75</span>
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--color-mars);"></div></div>
                 <div class="stat-desc">{{ "%.2f"|format(1 + total / 100.0) }}x discovery value</div>
@@ -86,8 +90,8 @@
             {% set total = commander_stats.logistics + research_pts %}
             <div class="stat-pill">
                 <div class="stat-pill-header">
-                    <span class="stat-name">Logistics</span>
-                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                    <span class="stat-name">Logistics{{ up_arrow('logistics') }}</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/75</span>
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--color-sepolia);"></div></div>
                 <div class="stat-desc">{{ "%.2f"|format(1 + total / 100) }}x expedition speed</div>
@@ -99,8 +103,8 @@
             {% set total = commander_stats.charisma + research_pts %}
             <div class="stat-pill">
                 <div class="stat-pill-header">
-                    <span class="stat-name">Charisma</span>
-                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/100</span>
+                    <span class="stat-name">Charisma{{ up_arrow('charisma') }}</span>
+                    <span class="stat-value">{{ total }}{% if suit_pct > 0 or research_pts > 0 %}<span style="opacity:0.6;font-size:10px;margin-left:4px;">{% if suit_pct > 0 %}+{{ suit_pct }}%{% endif %}{% if research_pts > 0 %} +{{ research_pts }}{% endif %}</span>{% endif %}/75</span>
                 </div>
                 <div class="stat-bar-container"><div class="stat-bar-fill" style="width: {{ [total, 100]|min }}%; background: var(--color-danger);"></div></div>
                 <div class="stat-desc">{{ "%.2f"|format(1 - total / 500.0) }}x extraction costs</div>

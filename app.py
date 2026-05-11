@@ -2189,6 +2189,49 @@ def cron_drone_trail_build():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/cron/sol_tick_captain_stats', methods=['GET'])
+@cron_only
+def cron_sol_tick_captain_stats():
+    """Bug #21 Deploy C: daily +0.1 Leadership per captain per Mars sol.
+
+    Idempotent via UNIQUE on (user_id, 'leadership', 'sol_tick', 'sol',
+    sol_number) — re-running the cron for a sol that's already been ticked is
+    a no-op. The cron schedule is daily at 00:30 UTC; if a day gets skipped
+    (deploy, outage), the next run only awards the current sol — past sols
+    are NOT backfilled by this route (deliberate: backfilling could cause
+    silent stat changes captains don't notice).
+    """
+    try:
+        from utilities.postgres.captain_stats import award_stat_event, get_go_live_at
+        from utilities.postgres.core import db_cursor
+        from utilities.mars_environment_utils import get_mars_sol_number
+
+        if get_go_live_at() is None:
+            return jsonify({'success': True, 'skipped': 'go_live_at not set (retro not run)'})
+
+        sol_number = get_mars_sol_number()
+        # Every captain with a character_image (live caps only — bots cap is fine
+        # per Luke #198 pt 2, no special filtering).
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT ra.user_id
+                FROM pilgrim.replicate_assets ra
+                WHERE ra.asset_type='character_image' AND ra.is_deleted=FALSE
+                  AND ra.commander_leadership IS NOT NULL
+            """)
+            user_ids = [r['user_id'] for r in cur.fetchall()]
+
+        awarded = 0
+        for uid in user_ids:
+            ev = award_stat_event(uid, 'leadership', 0.1, 'sol_tick', 'sol', int(sol_number))
+            if ev:
+                awarded += 1
+        return jsonify({'success': True, 'sol_number': int(sol_number), 'captains_total': len(user_ids), 'awarded': awarded})
+    except Exception as e:
+        logger.error(f"Sol-tick cron failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # =============================================================================
 # ADMIN FUNCTIONS & ROUTES
 # =============================================================================

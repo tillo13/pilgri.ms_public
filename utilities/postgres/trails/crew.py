@@ -330,13 +330,28 @@ def complete_crew_mission(user_id: int, crew_member: str) -> dict:
                     WHERE user_id = %s AND crew_member = %s AND completed_at IS NULL
                     ORDER BY started_at DESC LIMIT 1
                 )
+                RETURNING id
             """, (now, xp_gain, user_id, crew_member))
+            _mission_row = cur.fetchone()
+            mission_id = _mission_row['id'] if _mission_row else 0
 
         # v3 (#1414): km goes to the captain's active chain segment, not a trail_segments row.
         chain_state = None
         if km_to_add > 0:
             from utilities.postgres.trails.chains import add_km_to_active_chain
             chain_state = add_km_to_active_chain(user_id, km_to_add, crew_member)
+
+        # Bug #21 Deploy C: Leadership +0.05 per crew mission. ARIA missions
+        # don't credit Leadership (they grow the parallel aria_skills system,
+        # which is the "ARIA stats grow" channel Luke called out in §4).
+        stat_events = []
+        if mission_id and crew_member in ('captain', 'scientist'):
+            try:
+                from utilities.postgres.captain_stats import award_stat_event
+                ev = award_stat_event(user_id, 'leadership', 0.05, 'crew_mission', 'crew_missions', mission_id)
+                if ev: stat_events.append(ev)
+            except Exception as _e:
+                logger.error(f"Bug #21 crew_mission stat-event failed user={user_id} mid={mission_id}: {_e}")
 
         return {
             'success': True,
@@ -353,6 +368,7 @@ def complete_crew_mission(user_id: int, crew_member: str) -> dict:
                 'total_distance_km': chain_state['segment_distance_km'] if chain_state else 0,
                 'completed': chain_state['completed'] if chain_state else False,
             } if chain_state else None,
+            'stat_events': stat_events,  # Bug #21
         }
     except Exception as e:
         logger.error(f"Failed to complete crew mission: {e}")

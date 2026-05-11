@@ -126,10 +126,20 @@ def get_command_page_data(user_id):
     from utilities.postgres.trails import get_aria_skills
     aria_skills = get_aria_skills(user_id)
 
+    # Bug #21 Deploy C: which stats grew in the last 24h → ↑ indicator next to pill
+    recent_stat_growth = {}
+    try:
+        from utilities.postgres.captain_stats import get_recent_stat_events
+        for ev in get_recent_stat_events(user_id, hours=24):
+            recent_stat_growth[ev['stat_name']] = recent_stat_growth.get(ev['stat_name'], 0) + float(ev['delta'] or 0)
+    except Exception:
+        pass
+
     return {
         'has_commander': has_commander, 'commander': commander, 'character_url': character_url,
         'character_video_url': character_video_url, 'commander_stats': commander_stats,
         'stat_bonuses': stat_bonuses,
+        'recent_stat_growth': recent_stat_growth,  # Bug #21: ↑ indicator on _tab_captain.html
         'current_balance': total_balance, 'wallet_info': wallet_info, 'pricing': get_pricing_info(),
         'image_history': image_history, 'original_image_url': original_image_url,
         'current_asset_id': current_asset_id, 'all_commanders': all_commanders,

@@ -523,6 +523,21 @@ def add_km_to_active_chain(user_id: int, km: float, source: str) -> Optional[Dic
                     'completed': completed,
                     'source': source,
                 }
+                # Bug #21 Deploy C: +0.05 Logistics when a chain segment
+                # transitions to completed. Dedupe key: (user, 'trail_segment',
+                # f'user_trail_chains:{direction}', segment_index) — each
+                # segment in each direction credits at most once.
+                if completed:
+                    try:
+                        from utilities.postgres.captain_stats import award_stat_event
+                        ev = award_stat_event(
+                            user_id, 'logistics', 0.05,
+                            'trail_segment', f'user_trail_chains:{direction}', int(seg_idx),
+                        )
+                        if ev:
+                            last_state.setdefault('stat_events', []).append(ev)
+                    except Exception as _e:
+                        logger.error(f"Bug #21 trail_segment stat-event failed user={user_id} {direction}#{seg_idx}: {_e}")
                 remaining -= add
                 if not completed:
                     break

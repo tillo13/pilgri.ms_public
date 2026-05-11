@@ -141,6 +141,16 @@ def _complete_pending_upgrade(user_id: int, category: str, item_key: str, new_le
                 WHERE user_id = %s AND category = %s AND item_key = %s
             """, (new_level, user_id, category, item_key))
         logger.info(f"✅ Auto-completed upgrade: {user_id} {category}/{item_key} -> Lv{new_level}")
+        # Bug #21 Deploy C: +1.0 Logistics per upgrade level-up. Dedupe key is
+        # (category/item_key, new_level) so each level credits at most once.
+        try:
+            from utilities.postgres.captain_stats import award_stat_event
+            award_stat_event(
+                user_id, 'logistics', 1.0,
+                'upgrade', f'player_upgrades:{category}/{item_key}', int(new_level),
+            )
+        except Exception as _e:
+            logger.error(f"Bug #21 upgrade stat-event failed user={user_id} {category}/{item_key} L{new_level}: {_e}")
     except Exception as e:
         logger.error(f"Failed to complete pending upgrade: {e}")
 

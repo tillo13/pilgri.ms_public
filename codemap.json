@@ -2074,7 +2074,7 @@
       "get_last_completed_buggy_expedition — Get most recent completed buggy expedition with aggregated discovery stats.",
       "get_user_expedition_history — Get expedition history with discoveries for user.",
       "get_expedition_discovery_items — Get all discovery items for a specific expedition with item details.",
-      "record_landmark_discovery — Record landmark discovery"
+      "record_landmark_discovery — Record landmark discovery."
     ]
   },
   "utilities/postgres/map.py": {
@@ -3517,7 +3517,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3595,7 +3595,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

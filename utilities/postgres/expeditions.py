@@ -360,25 +360,34 @@ def get_expedition_discovery_items(expedition_id: int) -> List[Dict]:
 
 
 def record_landmark_discovery(user_id: int, landmark_name: str, landmark_type: str, latitude: float,
-                               longitude: float, distance_km: float, sepolia_earned: float, expedition_id: int) -> bool:
-    """Record landmark discovery"""
+                               longitude: float, distance_km: float, sepolia_earned: float, expedition_id: int):
+    """Record landmark discovery.
+
+    Returns (landmark_id, is_new) on success, (None, False) on failure.
+    Bug #21 callers use is_new + landmark_id for the Exploration +1.0 event;
+    revisits dedupe via the (same) landmark_id source_id in captain_stat_events.
+    """
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
                 INSERT INTO pilgrim.landmark_discoveries (user_id, landmark_name, landmark_type, latitude, longitude, distance_km, sepolia_earned, expedition_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (user_id, landmark_name) DO UPDATE SET discovered_at = NOW(), sepolia_earned = EXCLUDED.sepolia_earned, expedition_id = EXCLUDED.expedition_id
+                RETURNING id, (xmax = 0) AS is_new
             """, (user_id, landmark_name, landmark_type, latitude, longitude, distance_km, sepolia_earned, expedition_id))
+            row = cur.fetchone()
+            landmark_id = row['id'] if row else None
+            is_new = bool(row['is_new']) if row else False
             logger.info(f"✅ Recorded discovery of {landmark_name}")
             from utilities.postgres.activity import log_activity
             log_activity(user_id, 'landmark', 'landmark_discovery', f"Discovered: {landmark_name}",
                          amount=float(sepolia_earned) * 10000000 if sepolia_earned else 0,
                          detail=landmark_type, source_table='landmark_discoveries',
                          metadata={'distance_km': distance_km, 'landmark_type': landmark_type})
-            return True
+            return (landmark_id, is_new)
     except Exception as e:
         logger.error(f"❌ Failed to record discovery: {e}")
-        return False
+        return (None, False)
 
 def get_user_discovered_landmarks(user_id: int) -> List[Dict]:
     """Get all landmarks user has discovered. Memoized per-request."""

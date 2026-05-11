@@ -642,7 +642,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
         discovery['message']
     )
 
-    record_landmark_discovery(
+    landmark_id, landmark_is_new = record_landmark_discovery(
         user_id=user_id,
         landmark_name=expedition['destination_name'],
         landmark_type=expedition['destination_type'],
@@ -721,6 +721,44 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
     except Exception as e:
         logger.error(f"Puzzle fragment roll failed: {e}")
 
+    # ========================================================================
+    # Bug #21 Deploy C: Captain stat growth on expedition complete.
+    # V2 multipliers (Luke-locked 2026-05-07): Strategy +0.2 per expedition,
+    # Strategy +1.0 per legendary discovery, Exploration +0.001 × distance_km,
+    # Exploration +1.0 per first-time landmark. Each event is keyed on its
+    # source row id — UNIQUE prevents double-credit on duplicate calls.
+    # Never raises — stat failure must not block the discovery payout.
+    # ========================================================================
+    stat_events = []
+    try:
+        from utilities.postgres.captain_stats import award_stat_event
+        distance_km = float(expedition.get('distance_km') or 0)
+        # +0.2 Strategy per expedition
+        ev = award_stat_event(user_id, 'strategy', 0.2, 'expedition', 'expeditions', expedition_id)
+        if ev: stat_events.append(ev)
+        # +0.001 × km Exploration per expedition
+        if distance_km > 0:
+            ev = award_stat_event(user_id, 'exploration', 0.001 * distance_km, 'km', 'expeditions', expedition_id)
+            if ev: stat_events.append(ev)
+        # +1.0 Exploration on FIRST-TIME landmark only (revisits dedupe via landmark_id)
+        if landmark_id and landmark_is_new:
+            ev = award_stat_event(user_id, 'exploration', 1.0, 'landmark', 'landmark_discoveries', landmark_id)
+            if ev: stat_events.append(ev)
+        # +1.0 Strategy per legendary discovery — query for legendaries on this expedition
+        from utilities.postgres.core import db_cursor
+        with db_cursor() as _cur:
+            _cur.execute("""
+                SELECT ed.id FROM pilgrim.expedition_discoveries ed
+                JOIN pilgrim.discovery_items d ON d.id = ed.discovery_item_id
+                WHERE ed.expedition_id = %s AND d.rarity = 'legendary'
+            """, (expedition_id,))
+            legendary_ed_ids = [r['id'] for r in _cur.fetchall()]
+        for ed_id in legendary_ed_ids:
+            ev = award_stat_event(user_id, 'strategy', 1.0, 'legendary', 'expedition_discoveries', ed_id)
+            if ev: stat_events.append(ev)
+    except Exception as _e:
+        logger.error(f"Bug #21 stat-event awarding failed for expedition {expedition_id}: {_e}")
+
     return {
         'success': True,
         'complete': True,
@@ -730,6 +768,7 @@ def complete_expedition_if_ready(expedition_id: int, user_id: int) -> dict:
         'signal_events': signal_events,  # Origin/Echo site discoveries
         'aria_fragment': aria_fragment,  # Entangled crystal fragment (ARIA bond)
         'puzzle_fragment': puzzle_fragment,  # Phase 2.3c: Signal puzzle fragment + whisper
+        'stat_events': stat_events,  # Bug #21: captain stat growth for toast UI
     }
 
 

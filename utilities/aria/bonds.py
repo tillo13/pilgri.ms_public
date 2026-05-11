@@ -502,6 +502,15 @@ def _complete_bond(bond_id: int) -> dict:
 
     logger.info(f"🎉 ARIA BOND #{bond_number} COMPLETE! {bond['bond_tx_hash'][:20] if bond['bond_tx_hash'] else 'no-tx'}... at {bond['landmark_name']}")
 
+    # Bug #21 Deploy C: +2.0 Charisma to BOTH captains in the bond. Dedupe key
+    # is bond_id, so the same bond can't credit either captain twice.
+    try:
+        from utilities.postgres.captain_stats import award_stat_event
+        for _uid in (bond['user_id_1'], bond['user_id_2']):
+            award_stat_event(_uid, 'charisma', 2.0, 'aria_bond', 'aria_bonds', int(bond_id))
+    except Exception as _e:
+        logger.error(f"Bug #21 bond stat-event failed bond={bond_id}: {_e}")
+
     tx_hash = bond['bond_tx_hash'] or ''
     etherscan_url = f"https://sepolia.etherscan.io/tx/{tx_hash}" if tx_hash else None
 

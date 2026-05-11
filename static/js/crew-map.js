@@ -855,6 +855,8 @@ async function claimTrailMission(member) {
             if (data.xp_gained) msg += `, +${data.xp_gained} XP`;
             if (data.trail) msg += ` (${data.trail.percent_complete?.toFixed(1) || 0}% complete)`;
             showToast?.(msg, 'success');
+            // Bug #21 Deploy C: stat-up popups from crew mission complete
+            if (typeof processStatEvents === 'function') processStatEvents(data);
             loadCrewMissions(); // Refresh
         } else {
             showToast?.(data.error || 'Failed to claim mission', 'error');

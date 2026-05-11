@@ -10,6 +10,8 @@ async function checkExpeditionCompletion(w) {
             showToast(`Expedition complete! ${data.discovery_message}`, 'success');
             clearInterval(expeditionTimers.get(id.toString()));
             w.dataset.status = 'complete';  // So claim button removes banner instead of just hiding
+            // Bug #21 Deploy C: pop a stat-up toast for each event the expedition produced.
+            if (typeof processStatEvents === 'function') processStatEvents(data);
 
             // Check for ARIA bond fragment discovery
             if (data.aria_fragment) {

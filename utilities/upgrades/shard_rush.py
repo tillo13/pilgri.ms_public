@@ -234,6 +234,19 @@ def rush_equipment_upgrade(user_id: int, category: str, item_key: str) -> Dict[s
     except Exception:
         pass
 
+    # Bug #21 Deploy C: shard-rush is also a level-up — +1.0 Logistics. Same
+    # dedupe key as the natural-complete path so a captain can't double-credit.
+    stat_events = []
+    try:
+        from utilities.postgres.captain_stats import award_stat_event
+        ev = award_stat_event(
+            user_id, 'logistics', 1.0,
+            'upgrade', f'player_upgrades:{category}/{item_key}', int(target_level),
+        )
+        if ev: stat_events.append(ev)
+    except Exception as _e:
+        logger.error(f"Bug #21 shard-rush stat-event failed user={user_id} {category}/{item_key} L{target_level}: {_e}")
+
     return {
         'success': True,
         'rushed': True,
@@ -242,6 +255,7 @@ def rush_equipment_upgrade(user_id: int, category: str, item_key: str) -> Dict[s
         'level': target_level,
         'rush_cost': rush_cost,
         'new_balance': int(new_balance_eth * 10_000_000),
+        'stat_events': stat_events,  # Bug #21
     }
 
 
