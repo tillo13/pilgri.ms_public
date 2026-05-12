@@ -178,6 +178,17 @@
   overflow: hidden;
 }
 .kj-cap-fill { height: 100%; transition: width 0.3s, background 0.3s; }
+.kj-cap-per-app { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.kj-cap-chip {
+  font-size: 11px;
+  font-family: 'SF Mono', Menlo, monospace;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--bg-primary);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary);
+}
+.kj-cap-chip strong { color: var(--text-primary); margin-right: 4px; }
 
 /* Pipeline timing bars — one per stage, scaled to the slowest stage so the
    bottleneck is visually obvious. */

@@ -37,6 +37,17 @@
                      : pct >= 60 ? 'var(--color-warning)'
                      : 'var(--color-success)';
         const tag = isInfo ? ' <span class="kj-mini" style="opacity:0.7;">(not enforced)</span>' : '';
+        // Per-consumer-app breakdown — which sibling project (galactica,
+        // kindness_social, heathers_plate, etc.) contributed to this number.
+        let perAppHtml = '';
+        if (c.per_app && c.per_app.length) {
+          const unit = k === 'cloudflare_neurons_shared_pool' ? ' neurons' : '';
+          perAppHtml = '<div class="kj-cap-per-app">'
+            + c.per_app.map(a => `<span class="kj-cap-chip"><strong>${a.app}</strong>: ${a.used.toLocaleString()}${unit}</span>`).join('')
+            + '</div>';
+        } else {
+          perAppHtml = '<div class="kj-cap-per-app"><span class="kj-mini" style="opacity:0.6;">no calls today</span></div>';
+        }
         const row = document.createElement('div');
         row.className = 'kj-cap-row';
         row.innerHTML = `
@@ -45,7 +56,8 @@
             <span class="kj-cap-val">${c.used.toLocaleString()} / ${c.limit.toLocaleString()} (${pct}%)</span>
           </div>
           <div class="kj-cap-bar"><div class="kj-cap-fill" style="width:${pct}%; background:${color};"></div></div>
-          <div class="kj-mini">${c.note}</div>`;
+          <div class="kj-mini">${c.note}</div>
+          ${perAppHtml}`;
         bars.appendChild(row);
       }
       $('kj-usage-rows').textContent = JSON.stringify(j.today_rows, null, 2);

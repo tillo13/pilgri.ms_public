@@ -2442,32 +2442,48 @@ def api_admin_kumori_usage():
         cols = [d[0] for d in cur.description]
         today_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
 
-        # Shared-pool tally — the Cloudflare 10K-neuron daily budget covers
-        # flux-1-schnell + dreamshaper + flux-2-klein-4b combined. Klein
-        # ≈ 147 neurons/call; flux schnell ≈ 492; dreamshaper ≈ 492.
+        # Shared-pool tally + Klein cap — per-app breakdown so the admin
+        # console can show WHICH sibling project (kindness_social, etc.) is
+        # burning the cap, not just the total. Cloudflare 10K-neuron daily
+        # budget covers flux-1-schnell + dreamshaper + flux-2-klein-4b combined.
+        # Klein ≈ 147 neurons/call; flux schnell ≈ 492; dreamshaper ≈ 492.
         cur.execute("""
-            SELECT model, COUNT(*) AS n
+            SELECT COALESCE(app_name, '(null)') AS app, model, COUNT(*) AS n
             FROM kumori_api_usage
             WHERE created_at::date = CURRENT_DATE
               AND provider = 'kumori_free_imggen'
               AND model IN ('cloudflare_flux2_klein_edit', 'cloudflare_flux', 'cloudflare_dreamshaper')
-            GROUP BY model
+            GROUP BY 1, 2
         """)
-        cf_calls = {r[0]: r[1] for r in cur.fetchall()}
+        cf_by_app_model = cur.fetchall()
+        # Aggregate totals
+        cf_calls = {}
+        for _, model, n in cf_by_app_model:
+            cf_calls[model] = cf_calls.get(model, 0) + n
         cf_neurons = (cf_calls.get('cloudflare_flux2_klein_edit', 0) * 147
                      + cf_calls.get('cloudflare_flux', 0) * 492
                      + cf_calls.get('cloudflare_dreamshaper', 0) * 492)
+        klein_today = cf_calls.get('cloudflare_flux2_klein_edit', 0)
+        # Per-app rollups
+        klein_per_app = {}
+        cf_neurons_per_app = {}
+        for app, model, n in cf_by_app_model:
+            if model == 'cloudflare_flux2_klein_edit':
+                klein_per_app[app] = klein_per_app.get(app, 0) + n
+                cf_neurons_per_app[app] = cf_neurons_per_app.get(app, 0) + n * 147
+            elif model in ('cloudflare_flux', 'cloudflare_dreamshaper'):
+                cf_neurons_per_app[app] = cf_neurons_per_app.get(app, 0) + n * 492
+        klein_per_app_list = sorted(
+            ({'app': a, 'used': u} for a, u in klein_per_app.items()),
+            key=lambda r: r['used'], reverse=True)
+        cf_per_app_list = sorted(
+            ({'app': a, 'used': u} for a, u in cf_neurons_per_app.items()),
+            key=lambda r: r['used'], reverse=True)
 
-        # Klein-specific count (its own 30/day cap inside the shared pool)
-        cur.execute("""
-            SELECT COUNT(*) FROM kumori_api_usage
-            WHERE created_at::date = CURRENT_DATE
-              AND provider = 'kumori_free_imggen'
-              AND model = 'cloudflare_flux2_klein_edit'
-        """)
-        klein_today = cur.fetchone()[0]
-
-        # Galactica's per-key today count (PILGRIMS_KUMORI_API_KEY)
+        # Pilgrims-key daily count + per-app breakdown across ALL apps so
+        # the admin sees the spread (the PILGRIMS_KUMORI_API_KEY total only
+        # covers galactica calls, but we ALSO show every consumer's count
+        # against the kumori_api_usage table for full visibility).
         cur.execute("""
             SELECT request_count FROM kumori_api_key_usage
             WHERE usage_date = CURRENT_DATE
@@ -2475,6 +2491,15 @@ def api_admin_kumori_usage():
         """)
         r = cur.fetchone()
         pilgrims_today = r[0] if r else 0
+        # Per-app total calls today (any provider) — gives a 'who's hitting
+        # the endpoint at all' view, even for sibling apps with their own keys.
+        cur.execute("""
+            SELECT COALESCE(app_name, '(null)') AS app, COUNT(*) AS n
+            FROM kumori_api_usage
+            WHERE created_at::date = CURRENT_DATE
+            GROUP BY 1 ORDER BY n DESC
+        """)
+        all_calls_per_app = [{'app': r[0], 'used': r[1]} for r in cur.fetchall()]
 
         cur.close()
     finally:
@@ -2485,11 +2510,14 @@ def api_admin_kumori_usage():
         'today_rows': [{k: (float(v) if hasattr(v, 'as_tuple') else v) for k, v in r.items()} for r in today_rows],
         'caps': {
             'klein_4b_calls': {'used': klein_today, 'limit': 30,
-                'note': 'cloudflare flux-2-klein-4b: 30 edits/day per kumori config'},
+                'note': 'cloudflare flux-2-klein-4b: 30 edits/day per kumori config',
+                'per_app': klein_per_app_list},
             'cloudflare_neurons_shared_pool': {'used': cf_neurons, 'limit': 10000,
-                'note': 'shared across flux-1-schnell + dreamshaper + klein-4b'},
+                'note': 'shared across flux-1-schnell + dreamshaper + klein-4b',
+                'per_app': cf_per_app_list},
             'pilgrims_api_key_calls': {'used': pilgrims_today, 'limit': 20000,
-                'note': 'PILGRIMS_KUMORI_API_KEY daily quota across all endpoints'},
+                'note': 'PILGRIMS_KUMORI_API_KEY daily quota — galactica only. Per-app row below shows all consumers hitting the endpoint.',
+                'per_app': all_calls_per_app},
         },
     })
 
