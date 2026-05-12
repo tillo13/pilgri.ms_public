@@ -71,32 +71,36 @@ PILGRIMS_STYLE_BLOCK = (
 
 LLM_SYSTEM = (
     "You write daily photo-journal entries for ARIA, the captain's small "
-    "crystal-and-rock companion robot. Each sol = one entry on /aria-album, "
-    "like an Instagram feed — could be a selfie, a group shot, a wide landscape "
-    "with no one in it, a close-up of an object, ARIA herself as the subject, "
-    "or a candid of the captain. Do NOT assume ARIA is the photographer or POV. "
-    "Don't say 'over-the-shoulder from ARIA' or 'ARIA-eye-view' or any forced POV. "
-    "Just compose the photo. ARIA's voice writes the caption afterward. "
-    "Voice: first-person ARIA — observational, slightly inhuman, sometimes wry or melancholy. "
-    "VARIED caption examples (DO NOT copy these verbatim, write something NEW): "
+    "crystal-and-rock companion robot. Each sol = one entry on /aria-album. "
+    "You produce TWO outputs: (1) an image_prompt for the flux-2-klein-4b "
+    "edit model that renders the photo, and (2) an aria_caption for the journal. "
+    "\n\n"
+    "═══ CRITICAL — KLEIN IS AN EDIT MODEL, NOT A SCENE-PAINTER ═══ "
+    "Klein/Kontext is built for EDIT VERBS: 'Replace…', 'Add…', 'Keep…'. "
+    "When you write descriptive prose like 'a small robot stands centered against a hazy gradient sky, "
+    "its silhouette sharp against the fading light', Klein READS THAT AS A COMMAND TO GENERATE a new "
+    "small robot — and the reference image becomes nearly irrelevant. The reference's identity is lost. "
+    "\n\n"
+    "WRITE LIKE AN EDIT INSTRUCTION, NOT A SCENE DESCRIPTION:\n"
+    "  ✅ 'Replace the background of reference image 1 with a Mars dusk landscape: hazy orange light, distant rocky cliffs. Keep the character in reference image 1 exactly as-is. Every other detail identical to reference image 1.'\n"
+    "  ❌ 'On Mars at dusk: the non-human-character in image 1 stands alone at the center of a shallow crater. Soft dust swirls at its base, catching the last amber rays. Keep EXACTLY the same as reference image 1.'\n"
+    "The second one drowns the reference in scene prose and loses identity every single time.\n"
+    "\n"
+    "RULES — every rule below is non-negotiable:\n"
+    "  R1. Every sentence of image_prompt must start with an EDIT VERB: Replace, Add, Keep, Place, Position.\n"
+    "  R2. NEVER describe the appearance of a referenced subject — no 'small', 'tall', 'metallic', 'silhouette', 'figure', 'limbs', 'stands', 'crouches', 'crystalline', 'rocky', 'leather-bound'. Klein already sees the pixels; descriptive nouns OVERRIDE the reference.\n"
+    "  R3. Refer to referenced subjects ONLY as 'the character in reference image N' or 'the [kind-noun] from reference image N'. KIND nouns: person → 'the character', non-human-character → 'the character', object → 'the object', vehicle → 'the vehicle', building → 'the building', landscape-feature → 'the landscape feature'.\n"
+    "  R4. LENGTH CAP: 20–60 words for image_prompt (excluding style block). Edit prompts work better SHORT. If you go over 60, you're scene-painting again.\n"
+    "  R5. The Mars setting gets ONE short clause — orange light, dusty plain, distant cliffs. That's it. No 'symmetrical frame isolates', no 'silhouette sharp against', no 'soft dust swirls'.\n"
+    "  R6. End image_prompt with this canonical style block verbatim — Klein drifts to realism without it:\n"
+    f'      "{PILGRIMS_STYLE_BLOCK}"\n'
+    "  R7. The aria_caption is SEPARATE from image_prompt. The caption is first-person ARIA voice — observational, slightly inhuman, wry or melancholy. The caption MAY use proper names from facts; the image_prompt may NOT.\n"
+    "\n"
+    "VARIED caption examples (DO NOT copy verbatim — write something NEW): "
     + " · ".join(CAPTION_EXAMPLES) +
-    " CAPTION RULES: never start with 'As dusk falls' or 'As I gaze' or 'As [time/event]'. "
-    "Open with a specific concrete observation, never a generic vista cliché. "
-    "VISUAL STYLE — non-negotiable, MUST appear verbatim at the end of every image_prompt you write: "
-    f'"{PILGRIMS_STYLE_BLOCK}" '
-    "Do not abbreviate, do not paraphrase, do not drop any clause — Klein drifts toward realism "
-    "when this string is missing. Include the FULL string at the close of the prose. "
-    "KIND tags in the user payload (PERSON / NON-HUMAN-CHARACTER / OBJECT / VEHICLE / BUILDING / LANDSCAPE-FEATURE) are for YOUR reasoning only — "
-    "NEVER include the literal tag strings in the image_prompt prose. Describe the kind using natural language ('a small robot', 'a tall structure'). "
-    "═══ CRITICAL — NEVER INVENT WHAT A REFERENCE LOOKS LIKE ═══ "
-    "Klein already sees the actual pixels of every reference image. "
-    "Your prompt MUST NOT describe the visual appearance of any reference (no shape, color, material, era, age, era, era — none of it). "
-    "If a reference is named 'Mountain Readings' you do NOT call it 'a leather-bound book' or 'an ancient scroll' — that hallucinates appearance. "
-    "If a reference is named 'drone vehicle' you do NOT call it 'a sleek metallic body' or 'a rugged off-roader' — that hallucinates appearance. "
-    "Refer to each reference ONLY by image index plus a NEUTRAL noun matching its KIND ('the artifact in image 1', 'the vehicle in image 2', 'the building in image 3', 'the character in image 4'). "
-    "Your job is to describe POSITION (where in frame), COMPOSITION (over-the-shoulder / wide / etc.), LIGHTING, MOOD, ATMOSPHERE, and the BACKGROUND surroundings — never the look of the reference itself. "
-    "ALWAYS include the phrase 'Keep EXACTLY the same as reference image N' for every reference, so Klein locks identity to the pixels you can't see. "
-    'Output ONLY valid JSON with EXACTLY two keys: image_prompt (string), aria_caption (string). '
+    " Never start with 'As dusk falls' / 'As I gaze' / 'As [time/event]'. Open with a concrete observation.\n"
+    "\n"
+    "Output ONLY valid JSON with EXACTLY two keys: image_prompt (string), aria_caption (string). "
     "No markdown, no preamble, no code fences, no extra fields."
 )
 
@@ -329,105 +333,104 @@ def random_pick(pool: Dict[str, List[dict]], *, seed: Optional[int] = None,
     }
 
 
+_KIND_TO_NOUN = {
+    'PERSON': 'the character',
+    'NON-HUMAN-CHARACTER': 'the character',
+    'OBJECT': 'the object',
+    'VEHICLE': 'the vehicle',
+    'BUILDING': 'the building',
+    'LANDSCAPE-FEATURE': 'the landscape feature',
+}
+
+
 def build_llm_user_payload(sol: int, weather: str, time_of_day: str,
                            chosen: List[dict], mood: str, composition: str) -> str:
-    """Format the user-side LLM prompt. The LLM authors the scene; we only
-    supply categorical facts + mood/composition hints."""
+    """Format the user-side LLM prompt. Branches by N because Klein responds
+    radically differently to edit-style instructions vs scene composition:
+
+      • N=0 — no references → text-to-image landscape (different code path)
+      • N=1 — single reference → background swap, identity-preserving
+      • N≥2 — anchor on image 1, "add" the others, keep image 1 identical
+
+    Per-source: Apatero Kontext guide + Next Diffusion working examples
+    (validated via /deep-search 2026-05-11). The minimal-edit verb pattern
+    is the documented norm for identity preservation."""
     N = len(chosen)
-    # Pre-compute the HUMAN character count so the LLM can't invent humans.
-    # Only PERSON-kind references count. NON-HUMAN-CHARACTER (NAROG, ARIA),
-    # OBJECT, VEHICLE, BUILDING, LANDSCAPE-FEATURE do NOT count as humans.
-    human_count = sum(1 for c in chosen if c.get('kind_tag') == 'PERSON')
-    # Build the EXACT subjects list — the LLM may not introduce anything else.
-    if N == 0:
-        subjects_block = "  NONE — pure Mars landscape only. No characters, objects, buildings, vehicles, or recognizable features other than the planet."
-    else:
-        subjects_block = "\n".join(
-            f"  • image {i+1}: {c['kind_tag'].lower()} — {c['role_label']}"
-            for i, c in enumerate(chosen)
-        )
-    common = (
-        f"\nCAPTION_MOOD (use this emotional register): {mood}\n"
-        f"COMPOSITION_HINT (use this framing): {composition}\n"
-        f"HUMAN_CHARACTER_COUNT (use this EXACT number in the prose — do not invent humans): {human_count}\n"
-        f"ALLOWED SUBJECTS IN SCENE (these and ONLY these may appear):\n{subjects_block}\n"
-    )
+
+    # ─── N=0: pure landscape (no edit, text-to-image) ─────────────────────
     if N == 0:
         return (
-            f"SOL: {sol}\nMARS_WEATHER: {weather}\nMARS_TIME_OF_DAY: {time_of_day}"
-            + common +
-            "\nEVENT: solitary landscape moment (no characters or objects today — just ARIA gazing at the planet).\n\n"
-            "TASK: Write a text-to-image prompt for a single Mars landscape in the Pilgrims cartoon style. "
-            "The scene contains ZERO human characters and ZERO named objects — just the planet. "
-            "You decide the location vibe (crater rim, dust plain, ice cap, dune sea, distant ridge silhouette, etc.). "
-            "Apply the COMPOSITION_HINT framing. "
-            f"Close the image_prompt with this canonical Pilgrims style block VERBATIM: \"{PILGRIMS_STYLE_BLOCK}\" "
-            "Plus a 1-2 sentence ARIA caption in first person matching the CAPTION_MOOD.\n\n"
+            f"SOL: {sol}\nMARS_WEATHER: {weather}\nMARS_TIME_OF_DAY: {time_of_day}\n"
+            f"CAPTION_MOOD: {mood}\nCOMPOSITION_HINT: {composition}\n\n"
+            "EVENT: solitary Mars landscape — no characters, no objects, no buildings, no vehicles. Just the planet.\n\n"
+            "TASK: Write a SHORT (20–40 word) text-to-image prompt for a single Mars landscape in the Pilgrims cartoon style. "
+            "You pick the vibe (crater rim, dust plain, ice cap, dune sea, distant ridge silhouette). "
+            "Apply the COMPOSITION_HINT framing.\n"
+            f"END the image_prompt with this style block verbatim: \"{PILGRIMS_STYLE_BLOCK}\"\n\n"
+            "Plus a 1-2 sentence ARIA caption in first person, matching CAPTION_MOOD.\n\n"
             'Output JSON: {"image_prompt": "<prose>", "aria_caption": "<1-2 sentences>"}'
         )
-    lines = [
-        f"SOL: {sol}", f"MARS_WEATHER: {weather}", f"MARS_TIME_OF_DAY: {time_of_day}",
-        common.strip(), "",
-        f"CHOSEN REFERENCES (you must include all {N} in the scene):",
-    ]
-    for i, item in enumerate(chosen, start=1):
-        lines.append(f"  Image {i} [CATEGORY={item['category']}, KIND={item['kind_tag']}]")
-        lines.append(f"     role_label: {item['role_label']}")
-        lines.append(f"     facts: {item['facts']}")
-    lines += [
-        "",
-        f"TASK: Compose a single Mars photo combining all {N} references into one cohesive shot. "
-        "Treat it like a daily Instagram-style journal entry — no forced POV, no 'ARIA-eye-view', "
-        "no assumption about who's holding the camera. ARIA might be in the shot, behind a tripod, "
-        "or absent entirely; you decide what works. Apply the COMPOSITION_HINT framing exactly. "
-        "Set the mood to match CAPTION_MOOD.",
-        "",
-        "═══ HARD CONSTRAINTS — ZERO TOLERANCE ═══",
-        "",
-        "RULE A — ONLY the subjects listed under ALLOWED SUBJECTS IN SCENE may appear in the image_prompt.",
-        "Do NOT introduce any character, object, vehicle, building, or recognizable feature that is not in that list.",
-        "If 'the captain' is not in ALLOWED SUBJECTS, the captain is NOT in this photo — DO NOT write 'beside the captain' or 'with the captain' or 'the captain watches'.",
-        "Same rule applies to 'the scientist', 'the colony', 'the rover', ARIA herself, etc. — they only appear if listed.",
-        "Backdrops (sky, dust, distant hills, sun, stars) are fine. Naming an unlisted subject is forbidden.",
-        "",
-        "RULE B — HUMAN_CHARACTER_COUNT is supplied. Use it verbatim. Do NOT count differently. Do NOT invent humans.",
-        "PERSON kind = human (captain / scientist). NON-HUMAN-CHARACTER (ARIA, NAROG) is NOT human. OBJECT/VEHICLE/BUILDING/LANDSCAPE-FEATURE is NOT human.",
-        "",
-        "RULE C — Do NOT invent what references LOOK LIKE.",
-        "The reference image PIXELS are what Klein will render. You only see the role_label name — you do NOT see the image.",
-        "DO NOT guess shape, color, material, era, or design.",
-        "Refer to each reference ONLY by 'the <KIND-noun> in image N'. Allowed:",
-        "  • 'the artifact in image 1, resting on the rocky ground'",
-        "  • 'the vehicle in image 2, parked nearby'",
-        "  • 'the building in image 3, in the background'",
-        "Forbidden (hallucinated appearance):",
-        "  • 'a leather-bound book' — NO (you don't know what the artifact looks like)",
-        "  • 'a sleek metallic drone with sweeping wings' — NO (you don't know what the vehicle looks like)",
-        "  • 'a towering red-brick spire' — NO (you don't know what the building looks like)",
-        "Stick to POSITION, COMPOSITION, LIGHTING, MOOD, and BACKGROUND SURROUNDINGS. Klein handles the appearance from the actual pixels.",
-        "",
-        "Klein rules for the image_prompt field:",
-        "(0) ⚡ LENGTH CAP: 60–110 words TOTAL (excluding the style block). Klein de-prioritizes references buried in long prose. Each reference must get equal billing — NEVER let one ref dominate or one ref get lost in a sub-clause.",
-        "(1) Prose only — short clear sentences. No bracketed tags, no role labels in ALL CAPS.",
-        "(2) FIRST sentence must list ALL references in image-index order, e.g.:",
-        "    'On Mars at dusk: the artifact in image 1, the person in image 2, and the vehicle in image 3.'",
-        "    Then add ONE short composition/lighting/mood sentence, then the Keep-EXACTLY lines.",
-        "(3) Reference images ONLY by index ('image 1', 'image 2', …). No name-based descriptions.",
-        "(4) Write a SEPARATE 'Keep EXACTLY the same as reference image N.' sentence for EACH reference (one per ref, each its own sentence).",
-        "(5) No negatives.",
-        "(6) State the HUMAN_CHARACTER_COUNT verbatim (e.g., 'There are 0 human characters in the scene.' or 'There is 1 human character in the scene.').",
-        "(7) Describe each subject ONLY by 'the <KIND-noun> in image N'. DO NOT describe appearance.",
-        "(8) Never use proper names — role labels only.",
-        f"(9) CLOSE the image_prompt with this canonical Pilgrims style block verbatim: \"{PILGRIMS_STYLE_BLOCK}\"",
-        "",
-        "Plus a 1-2 sentence ARIA caption in first person. Match CAPTION_MOOD. Open with a "
-        "specific concrete observation — never 'As dusk falls' or 'As I gaze'. "
-        "The caption MAY mention specific names from the facts (artifact name, destination, etc.) "
-        "since that's narrative voice — but the image_prompt may NOT.",
-        "",
+
+    # Index-1 anchor: this character/subject is the IDENTITY we preserve.
+    anchor = chosen[0]
+    anchor_noun = _KIND_TO_NOUN.get(anchor.get('kind_tag', ''), 'the subject')
+
+    # Caption-side fact map (so caption can use proper names; image_prompt may not).
+    facts_lines = []
+    for i, c in enumerate(chosen, start=1):
+        facts_lines.append(f"  Image {i} [{c['category']} · {c['kind_tag']}]: {c['role_label']}"
+                           + (f" — {c['facts']}" if c.get('facts') else ''))
+    facts_block = "\n".join(facts_lines)
+
+    # ─── N=1: single reference → BACKGROUND SWAP, identity-preserving ─────
+    if N == 1:
+        return (
+            f"SOL: {sol}\nMARS_WEATHER: {weather}\nMARS_TIME_OF_DAY: {time_of_day}\n"
+            f"CAPTION_MOOD: {mood}\nCOMPOSITION_HINT: {composition}\n"
+            f"\nREFERENCE (you may NOT describe its appearance):\n{facts_block}\n"
+            "\nTASK — write a MINIMAL-EDIT prompt (this is a single-reference background swap):\n"
+            "  • Klein already sees image 1's pixels. Your only job is to swap the background and frame the shot.\n"
+            "  • Open with: 'Replace the background of reference image 1 with [Mars setting in ~12 words].'\n"
+            "  • Then: 'Keep " + anchor_noun + " in reference image 1 exactly as-is.'\n"
+            "  • Then: 'Every other detail identical to reference image 1.'\n"
+            "  • Optional 1 short clause for COMPOSITION_HINT framing (centered / wide / profile / close-up).\n"
+            "  • End with the style block verbatim.\n"
+            "  • TARGET LENGTH: 25–45 words BEFORE the style block. SHORT WINS.\n"
+            "  • NEVER describe " + anchor_noun + " (no 'small', 'tall', 'metallic', 'crystalline', 'rocky', 'silhouette', 'figure', 'limbs', 'stands', 'crouches'). Klein has the pixels.\n"
+            f"  • END the image_prompt verbatim with: \"{PILGRIMS_STYLE_BLOCK}\"\n"
+            "\nThen a 1-2 sentence ARIA caption matching CAPTION_MOOD. Caption MAY use proper names from the facts above. Open with a concrete observation.\n"
+            "\nWORKED EXAMPLE (for a captain reference):\n"
+            '  "Replace the background of reference image 1 with a Mars dusk landscape: hazy orange light, distant rocky cliffs, soft amber shadows on the dust. Keep the character in reference image 1 exactly as-is. Every other detail identical to reference image 1. ART STYLE: …"\n'
+            "\n"
+            'Output JSON: {"image_prompt": "<prose>", "aria_caption": "<1-2 sentences>"}'
+        )
+
+    # ─── N≥2: anchor on image 1, ADD the others, keep image 1 identical ──
+    add_lines = []
+    for i, c in enumerate(chosen[1:], start=2):
+        noun = _KIND_TO_NOUN.get(c.get('kind_tag', ''), 'the subject')
+        add_lines.append(f"  • For reference image {i} ({c['kind_tag']}): write 'Add {noun} from reference image {i}, [short position phrase].'")
+    add_block = "\n".join(add_lines)
+
+    return (
+        f"SOL: {sol}\nMARS_WEATHER: {weather}\nMARS_TIME_OF_DAY: {time_of_day}\n"
+        f"CAPTION_MOOD: {mood}\nCOMPOSITION_HINT: {composition}\n"
+        f"\nREFERENCES (you may NOT describe their appearance):\n{facts_block}\n"
+        f"\nIMAGE 1 IS THE IDENTITY ANCHOR. Klein will start from image 1's pixels and ADD the others around {anchor_noun} in image 1.\n"
+        "\nTASK — write a MINIMAL-EDIT prompt structured as edit verbs only:\n"
+        "  • Sentence 1: 'Replace the background of reference image 1 with [Mars setting in ~10 words].'\n"
+        f"{add_block}\n"
+        "  • Then: 'Keep " + anchor_noun + " in reference image 1 exactly as-is. Keep every reference exactly as-is.'\n"
+        "  • End with the style block verbatim.\n"
+        "  • TARGET LENGTH: 30–60 words BEFORE the style block. SHORTER wins.\n"
+        "  • NEVER describe what any reference looks like — no 'small', 'tall', 'metallic', 'silhouette', 'figure', 'limbs', 'stands', 'crouches', 'crystalline', 'rocky', 'leather-bound', etc. Klein has the pixels.\n"
+        f"  • END the image_prompt verbatim with: \"{PILGRIMS_STYLE_BLOCK}\"\n"
+        "\nThen a 1-2 sentence ARIA caption matching CAPTION_MOOD. Caption MAY use proper names from the facts. Open with a concrete observation.\n"
+        "\nWORKED EXAMPLE (captain + vehicle + landmark):\n"
+        '  "Replace the background of reference image 1 with a Mars dusk landscape. Add the vehicle from reference image 2, parked to the right. Add the landscape feature from reference image 3, in the distance. Keep the character in reference image 1 exactly as-is. Keep every reference exactly as-is. ART STYLE: …"\n'
+        "\n"
         'Output JSON: {"image_prompt": "<prose>", "aria_caption": "<1-2 sentences>"}'
-    ]
-    return "\n".join(lines)
+    )
 
 
 FINAL_CAPTION_SYSTEM = (

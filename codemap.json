@@ -1410,7 +1410,7 @@
     "exports": [
       "build_recent_pool — Returns {CATEGORY: [item, ...]}. Each item has role_label, facts, url, kind_tag.",
       "random_pick — Roll N (0–4 weighted), pick N distinct categories, 1 item per category.",
-      "build_llm_user_payload — Format the user-side LLM prompt. The LLM authors the scene; we only",
+      "build_llm_user_payload — Format the user-side LLM prompt. Branches by N because Klein responds",
       "build_caption_reconciliation_prompt — Give the strong LLM the first-pass caption AS THE STARTING POINT,",
       "parse_llm_json — Best-effort JSON extraction. Tolerates ```json fences + leading prose.",
       "synthesize_scene — Run the full pipeline through the LLM synth stage. Does NOT render yet.",
@@ -3603,7 +3603,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
