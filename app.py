@@ -2422,22 +2422,22 @@ def api_admin_kumori_usage():
                             options='-c statement_timeout=10000')
     try:
         cur = conn.cursor()
-        # Free-tier rows only: provider LIKE 'kumori_free_%' from the new
-        # kumori main.py wiring. Fallback also pulls anthropic-logged
-        # rows for the admin to see the LLM volume.
+        # Show EVERY row in kumori_api_usage for today — across all consumer
+        # apps (kindness_social, heathers_plate, dandy, etc.), not just galactica.
+        # This page is the debug console for the endpoint, so visibility matters
+        # more than narrow filtering. Per Andy 2026-05-11.
         cur.execute("""
             SELECT
-                provider, model, feature, app_name,
+                provider, model, feature, COALESCE(app_name, '(null)') AS app_name,
                 COUNT(*) AS calls,
                 SUM(image_count) AS images,
                 AVG(duration_ms)::int AS avg_ms,
                 SUM(estimated_cost_usd)::numeric(10,4) AS cost
             FROM kumori_api_usage
             WHERE created_at::date = CURRENT_DATE
-              AND (provider LIKE 'kumori_free_%' OR app_name='galactica' OR feature ILIKE '%aria%')
             GROUP BY 1,2,3,4
             ORDER BY calls DESC
-            LIMIT 50
+            LIMIT 200
         """)
         cols = [d[0] for d in cur.description]
         today_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
