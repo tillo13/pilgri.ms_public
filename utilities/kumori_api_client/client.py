@@ -271,24 +271,43 @@ def llm_backoff_until():
 
 # ─── Image generation ─────────────────────────────────────────────────────────
 
-def imggen_generate(prompt, width=1024, height=1024, mode='roundrobin'):
+def imggen_generate(prompt, width=1024, height=1024, mode='roundrobin',
+                    feature=None, verbiage=None, caller_user_id=None, tags=None):
     """Text→image via free providers. Klein-4B size rules apply (multiples of
     16; max 4 MP — see kumori_free_image_generations/SIZES.md). Returns
-    {ok, image_b64, provider, mode, ms, bytes}."""
+    {ok, image_b64, provider, mode, ms, bytes}.
+
+    Attribution kwargs (post 2026-05-11 — strongly encouraged for every call):
+        feature: sub-operation like 'aria_journal.generate' or
+                 'admin.test_pixel'. Surfaces in /admin/api-costs dashboards
+                 and kumori_api_usage.feature.
+        verbiage: human-readable description (the prompt is fine if you
+                  don't have a separate label). Stored in
+                  kumori_api_usage.verbiage truncated to 500 chars.
+        caller_user_id: end-user behind the call.
+        tags: arbitrary dict; stored as kumori_api_usage.tags JSONB."""
     body = {'prompt': prompt, 'width': width, 'height': height, 'mode': mode}
+    if feature: body['feature'] = feature
+    if verbiage: body['verbiage'] = verbiage
+    if caller_user_id: body['caller_user_id'] = caller_user_id
+    if tags: body['tags'] = tags
     data = _request('POST', '/api/v1/imggen/generate', body, timeout=(5, 90))
     return data
 
 
 def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
                 width=1024, height=1024, app_name=None, character=None,
-                ref_filename=None, debug=False):
+                ref_filename=None, debug=False,
+                feature=None, verbiage=None, caller_user_id=None, tags=None):
     """Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference
     images allowed (target + 3 refs = 4 image inputs total). Size rules same
     as imggen_generate. Returns {ok, image_b64, provider, ms, [_debug]}.
 
     When debug=True, response includes `_debug.upstream_calls` listing every
-    HTTP call kumori made to Cloudflare (with payloads + response details)."""
+    HTTP call kumori made to Cloudflare (with payloads + response details).
+
+    Attribution kwargs (post 2026-05-11 — strongly encouraged for every call,
+    see imggen_generate doc for what each one does)."""
     if not target_image_b64:
         raise ValueError('imggen_edit requires target_image_b64')
     refs = reference_images_b64 or []
@@ -300,8 +319,36 @@ def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
     if character: body['character'] = character
     if ref_filename: body['ref_filename'] = ref_filename
     if debug: body['debug'] = True
+    if feature: body['feature'] = feature
+    if verbiage: body['verbiage'] = verbiage
+    if caller_user_id: body['caller_user_id'] = caller_user_id
+    if tags: body['tags'] = tags
     data = _request('POST', '/api/v1/imggen/edit', body, timeout=(5, 180))
     return data
+
+
+def imggen_usage(date=None, platform=None, limit=50):
+    """Per-platform imggen usage view (primary source: kumori_api_usage with
+    rich attribution; secondary: CF GraphQL reconciliation block).
+
+    Replaces consumer-side neuron math (× 147 / × 492 constants) — kumori is
+    the single source of truth. Galactica's /admin/kumori-journal etc render
+    this directly instead of querying kumori_api_usage themselves.
+
+    Returns the same JSON shape as /api/v1/imggen/usage:
+      {ok, date, totals, per_platform, per_model, recent_calls,
+       cf_reconciliation}
+
+    Args:
+        date: 'YYYY-MM-DD' UTC date (default: today UTC).
+        platform: filter to one platform (default: all).
+        limit: number of recent calls to include (default 50, max 200)."""
+    qs = []
+    if date: qs.append(f'date={date}')
+    if platform: qs.append(f'platform={platform}')
+    if limit and limit != 50: qs.append(f'limit={limit}')
+    path = '/api/v1/imggen/usage' + (('?' + '&'.join(qs)) if qs else '')
+    return _request('GET', path)
 
 
 # ─── Image describe ───────────────────────────────────────────────────────────

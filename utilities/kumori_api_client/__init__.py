@@ -14,5 +14,7 @@ from .client import (
     llm_is_backed_off,
     imggen_generate,
     imggen_edit,
+    imggen_usage,
     describe_image,
+    set_request_log,
 )
