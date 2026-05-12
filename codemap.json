@@ -3005,6 +3005,7 @@
     "description": "Admin / kumori ARIA journal DEBUG CONSOLE — bug #1457.",
     "exports": [
       "loadUsage",
+      "hasLimit",
       "loadCaptains",
       "fmt",
       "renderHttpCalls",

@@ -30,32 +30,39 @@
         const c = caps[k];
         if (!c) continue;
         const isInfo = informational.has(k);
-        const pct = Math.min(100, Math.round((c.used / c.limit) * 100));
-        // Informational bars never go red/yellow — pilgrims doesn't enforce these.
+        // limit can be null for klein_4b_calls now — the old 30/day was a
+        // fake soft cap. Treat null as "no enforced ceiling, just count".
+        const hasLimit = (c.limit != null && c.limit > 0);
+        const used = Number(c.used) || 0;
+        const pct = hasLimit ? Math.min(100, Math.round((used / c.limit) * 100)) : 0;
         const color = isInfo ? 'var(--text-secondary)'
                      : pct >= 90 ? 'var(--color-danger)'
                      : pct >= 60 ? 'var(--color-warning)'
                      : 'var(--color-success)';
         const tag = isInfo ? ' <span class="kj-mini" style="opacity:0.7;">(not enforced)</span>' : '';
-        // Per-consumer-app breakdown — which sibling project (galactica,
-        // kindness_social, heathers_plate, etc.) contributed to this number.
         let perAppHtml = '';
         if (c.per_app && c.per_app.length) {
           const unit = k === 'cloudflare_neurons_shared_pool' ? ' neurons' : '';
           perAppHtml = '<div class="kj-cap-per-app">'
-            + c.per_app.map(a => `<span class="kj-cap-chip"><strong>${a.app}</strong>: ${a.used.toLocaleString()}${unit}</span>`).join('')
+            + c.per_app.map(a => `<span class="kj-cap-chip"><strong>${a.app}</strong>: ${Number(a.used).toLocaleString()}${unit}</span>`).join('')
             + '</div>';
         } else {
           perAppHtml = '<div class="kj-cap-per-app"><span class="kj-mini" style="opacity:0.6;">no calls today</span></div>';
         }
+        const valStr = hasLimit
+          ? `${used.toLocaleString()} / ${c.limit.toLocaleString()} (${pct}%)`
+          : `${used.toLocaleString()} <span class="kj-mini" style="opacity:0.7;">(no enforced limit)</span>`;
+        const barHtml = hasLimit
+          ? `<div class="kj-cap-bar"><div class="kj-cap-fill" style="width:${pct}%; background:${color};"></div></div>`
+          : '';
         const row = document.createElement('div');
         row.className = 'kj-cap-row';
         row.innerHTML = `
           <div class="kj-cap-head">
             <span class="kj-cap-name">${labels[k]}${tag}</span>
-            <span class="kj-cap-val">${c.used.toLocaleString()} / ${c.limit.toLocaleString()} (${pct}%)</span>
+            <span class="kj-cap-val">${valStr}</span>
           </div>
-          <div class="kj-cap-bar"><div class="kj-cap-fill" style="width:${pct}%; background:${color};"></div></div>
+          ${barHtml}
           <div class="kj-mini">${c.note}</div>
           ${perAppHtml}`;
         bars.appendChild(row);
