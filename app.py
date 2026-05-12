@@ -2401,124 +2401,84 @@ def admin_kumori_journal():
 @app.route('/api/admin/kumori-journal/usage', methods=['GET'])
 @handle_api_error
 def api_admin_kumori_usage():
-    """Today's free-tier kumori usage — pulled from kumori-404602.kumori_api_usage.
+    """Today's free-tier kumori usage — fully delegated to kumori.
 
-    Shows: total calls today, breakdown by provider/model/feature/app, the daily
-    caps (klein=30, cloudflare shared pool=20 per provider · 10K neurons total),
-    plus the shared-pool ledger so the admin sees how close we are to the
-    cap before clicking Generate again."""
+    Was: ~100 lines of `× 147 / × 492` neuron math + direct queries against
+    kumori_api_usage. Verified 2026-05-11 the constants were wrong: estimate
+    said 2,352 neurons; CF GraphQL said 2,503 with per-call variance 43-438.
+    Kumori now owns the math and the data; this endpoint is a thin pass-through
+    that reshapes kumori's response for this admin page's frontend contract."""
     real_user_id = session.get('_real_uid') or session.get('user_id')
     if not is_admin(real_user_id):
         return jsonify({'success': False, 'error': 'Admin only'}), 403
 
-    import psycopg2
-    from utilities.anthropic_logger import _get_db_creds
-    creds = _get_db_creds()
-    is_gcp = os.environ.get('GAE_ENV', '').startswith('standard') or os.path.exists('/cloudsql')
-    host = (f"{os.environ.get('DB_SOCKET_DIR', '/cloudsql')}/{creds['connection_name']}"
-            if is_gcp else creds['host'])
-    conn = psycopg2.connect(host=host, dbname=creds['dbname'], user=creds['user'],
-                            password=creds['password'], connect_timeout=5,
-                            options='-c statement_timeout=10000')
-    try:
-        cur = conn.cursor()
-        # Show EVERY row in kumori_api_usage for today — across all consumer
-        # apps (kindness_social, heathers_plate, dandy, etc.), not just galactica.
-        # This page is the debug console for the endpoint, so visibility matters
-        # more than narrow filtering. Per Andy 2026-05-11.
-        cur.execute("""
-            SELECT
-                provider, model, feature, COALESCE(app_name, '(null)') AS app_name,
-                COUNT(*) AS calls,
-                SUM(image_count) AS images,
-                AVG(duration_ms)::int AS avg_ms,
-                SUM(estimated_cost_usd)::numeric(10,4) AS cost
-            FROM kumori_api_usage
-            WHERE created_at::date = CURRENT_DATE
-            GROUP BY 1,2,3,4
-            ORDER BY calls DESC
-            LIMIT 200
-        """)
-        cols = [d[0] for d in cur.description]
-        today_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+    from utilities.kumori_api_client import imggen_usage
+    usage = imggen_usage(limit=200)
+    # usage = {ok, date, totals, per_platform, per_model, recent_calls,
+    #          cf_reconciliation}
 
-        # Shared-pool tally + Klein cap — per-app breakdown so the admin
-        # console can show WHICH sibling project (kindness_social, etc.) is
-        # burning the cap, not just the total. Cloudflare 10K-neuron daily
-        # budget covers flux-1-schnell + dreamshaper + flux-2-klein-4b combined.
-        # Klein ≈ 147 neurons/call; flux schnell ≈ 492; dreamshaper ≈ 492.
-        cur.execute("""
-            SELECT COALESCE(app_name, '(null)') AS app, model, COUNT(*) AS n
-            FROM kumori_api_usage
-            WHERE created_at::date = CURRENT_DATE
-              AND provider = 'kumori_free_imggen'
-              AND model IN ('cloudflare_flux2_klein_edit', 'cloudflare_flux', 'cloudflare_dreamshaper')
-            GROUP BY 1, 2
-        """)
-        cf_by_app_model = cur.fetchall()
-        # Aggregate totals
-        cf_calls = {}
-        for _, model, n in cf_by_app_model:
-            cf_calls[model] = cf_calls.get(model, 0) + n
-        cf_neurons = (cf_calls.get('cloudflare_flux2_klein_edit', 0) * 147
-                     + cf_calls.get('cloudflare_flux', 0) * 492
-                     + cf_calls.get('cloudflare_dreamshaper', 0) * 492)
-        klein_today = cf_calls.get('cloudflare_flux2_klein_edit', 0)
-        # Per-app rollups
-        klein_per_app = {}
-        cf_neurons_per_app = {}
-        for app, model, n in cf_by_app_model:
-            if model == 'cloudflare_flux2_klein_edit':
-                klein_per_app[app] = klein_per_app.get(app, 0) + n
-                cf_neurons_per_app[app] = cf_neurons_per_app.get(app, 0) + n * 147
-            elif model in ('cloudflare_flux', 'cloudflare_dreamshaper'):
-                cf_neurons_per_app[app] = cf_neurons_per_app.get(app, 0) + n * 492
-        klein_per_app_list = sorted(
-            ({'app': a, 'used': u} for a, u in klein_per_app.items()),
-            key=lambda r: r['used'], reverse=True)
-        cf_per_app_list = sorted(
-            ({'app': a, 'used': u} for a, u in cf_neurons_per_app.items()),
-            key=lambda r: r['used'], reverse=True)
+    # Reshape today_rows for the frontend's current contract (provider/model/
+    # feature/app/calls/images/avg_ms/cost). Frontend renders this as a table;
+    # keeping the shape stable lets the migration land without a template edit.
+    # Once the frontend is updated to consume kumori's native shape, this
+    # reshape goes away too.
+    recent = usage.get('recent_calls') or []
+    today_rows = []
+    rollup = {}
+    for c in recent:
+        key = (c.get('model'), c.get('feature'), c.get('platform') or '(null)')
+        if key not in rollup:
+            rollup[key] = {
+                'provider': c.get('model'),
+                'model': c.get('model'),
+                'feature': c.get('feature'),
+                'app_name': c.get('platform') or '(null)',
+                'calls': 0, 'images': 0,
+                'avg_ms_sum': 0, 'cost': 0,
+            }
+        rollup[key]['calls'] += 1
+        rollup[key]['avg_ms_sum'] += (c.get('duration_ms') or 0)
+        if c.get('ok'):
+            rollup[key]['images'] += 1
+    for r in rollup.values():
+        r['avg_ms'] = int(r['avg_ms_sum'] / r['calls']) if r['calls'] else 0
+        del r['avg_ms_sum']
+    today_rows = sorted(rollup.values(), key=lambda r: r['calls'], reverse=True)
 
-        # Pilgrims-key daily count + per-app breakdown across ALL apps so
-        # the admin sees the spread (the PILGRIMS_KUMORI_API_KEY total only
-        # covers galactica calls, but we ALSO show every consumer's count
-        # against the kumori_api_usage table for full visibility).
-        cur.execute("""
-            SELECT request_count FROM kumori_api_key_usage
-            WHERE usage_date = CURRENT_DATE
-              AND key_hash = (SELECT key_hash FROM kumori_api_keys WHERE label LIKE '%pilgrims%' LIMIT 1)
-        """)
-        r = cur.fetchone()
-        pilgrims_today = r[0] if r else 0
-        # Per-app total calls today (any provider) — gives a 'who's hitting
-        # the endpoint at all' view, even for sibling apps with their own keys.
-        cur.execute("""
-            SELECT COALESCE(app_name, '(null)') AS app, COUNT(*) AS n
-            FROM kumori_api_usage
-            WHERE created_at::date = CURRENT_DATE
-            GROUP BY 1 ORDER BY n DESC
-        """)
-        all_calls_per_app = [{'app': r[0], 'used': r[1]} for r in cur.fetchall()]
-
-        cur.close()
-    finally:
-        conn.close()
+    # Per-platform klein + CF-pool ledger — pulled from kumori's authoritative
+    # response. CF GraphQL provides the real neuron count (no more × 147 math).
+    cf = usage.get('cf_reconciliation') or {}
+    per_model = usage.get('per_model') or {}
+    klein_calls = (per_model.get('@cf/black-forest-labs/flux-2-klein-4b', {}).get('calls', 0)
+                   or per_model.get('cloudflare_flux2_klein_edit', {}).get('calls', 0))
+    cf_neurons_authoritative = cf.get('cf_neurons_today') or 0
+    per_platform = usage.get('per_platform') or {}
+    cf_per_app_list = sorted(
+        ({'app': name, 'used': data.get('neurons_estimated', 0),
+          'calls': data.get('calls', 0)}
+         for name, data in per_platform.items()),
+        key=lambda r: r['used'], reverse=True)
 
     return jsonify({
         'success': True,
-        'today_rows': [{k: (float(v) if hasattr(v, 'as_tuple') else v) for k, v in r.items()} for r in today_rows],
+        'today_rows': today_rows,
         'caps': {
-            'klein_4b_calls': {'used': klein_today, 'limit': 30,
+            'klein_4b_calls': {
+                'used': klein_calls, 'limit': 30,
                 'note': 'cloudflare flux-2-klein-4b: 30 edits/day per kumori config',
-                'per_app': klein_per_app_list},
-            'cloudflare_neurons_shared_pool': {'used': cf_neurons, 'limit': 10000,
-                'note': 'shared across flux-1-schnell + dreamshaper + klein-4b',
-                'per_app': cf_per_app_list},
-            'pilgrims_api_key_calls': {'used': pilgrims_today, 'limit': 20000,
-                'note': 'PILGRIMS_KUMORI_API_KEY daily quota — galactica only. Per-app row below shows all consumers hitting the endpoint.',
-                'per_app': all_calls_per_app},
+                'per_app': cf_per_app_list,  # full per-platform breakdown
+            },
+            'cloudflare_neurons_shared_pool': {
+                'used': cf_neurons_authoritative, 'limit': 10000,
+                'note': ('CF-reported neurons (authoritative via GraphQL '
+                         'aiInferenceAdaptiveGroups). Shared across '
+                         'flux-1-schnell + dreamshaper + klein-4b.'),
+                'per_app': cf_per_app_list,
+                'kumori_estimate': cf.get('kumori_neurons_estimated_today'),
+                'drift_pct': cf.get('drift_pct'),
+            },
         },
+        'cf_reconciliation': cf,
     })
 
 
