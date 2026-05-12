@@ -168,11 +168,30 @@ def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
         if 500 <= r.status_code < 600 and attempt == 1 and retry_on_5xx:
             logger.warning(f"kumori {path} HTTP {r.status_code}, retrying")
             continue
-        raise KumoriAPIError(
-            f'kumori {path} HTTP {r.status_code}: {data.get("error", "unknown")}',
-            status_code=r.status_code,
-            payload=data,
-        )
+        # Build a CLEAN error string from whatever structured fields the
+        # server returned. Imggen failures now include error_code (kumori
+        # classification: daily_cap_exhausted | cf_4006_capacity |
+        # cf_5026_timeout | other), the verbatim upstream message, the CF
+        # numeric error code, and (for daily_cap_exhausted) the UTC-midnight
+        # reset time. Prefer these structured fields over a generic
+        # "image edit failed" — consumers should never have to guess.
+        if isinstance(data, dict):
+            parts = [f'kumori {path} HTTP {r.status_code}']
+            ec = data.get('error_code')
+            if ec:
+                parts.append(f'[{ec}]')
+            cfc = data.get('cf_error_code')
+            if cfc:
+                parts.append(f'cf_code={cfc}')
+            reset = data.get('reset_in_human')
+            if reset:
+                parts.append(f'resets in {reset}')
+            verbatim = data.get('error') or data.get('detail') or 'unknown'
+            parts.append(f': {verbatim}')
+            msg = ' '.join(parts)
+        else:
+            msg = f'kumori {path} HTTP {r.status_code}: {str(data)[:200]}'
+        raise KumoriAPIError(msg, status_code=r.status_code, payload=data)
     # Should not reach
     raise KumoriAPIError(f'kumori {path} failed after retry: {last_exc}')
 
