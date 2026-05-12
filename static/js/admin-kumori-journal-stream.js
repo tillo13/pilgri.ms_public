@@ -14,25 +14,34 @@
       const j = await r.json();
       if (!j.success) { bars.textContent = j.error || 'failed'; return; }
       const caps = j.caps || {};
-      // Only show the REAL upstream limit (PILGRIMS_KUMORI_API_KEY 20K/day).
-      // The other two ("Klein 4B 30/day", "Cloudflare neurons 10K shared pool")
-      // were self-imposed soft caps — dropped per Andy 2026-05-11: pilgrims
-      // gets full reign; anything beyond simply fails upstream and that's fine.
-      const order = ['pilgrims_api_key_calls'];
+      // Show all three counters for visibility. Pilgrims has full reign —
+      // we NEVER block the user. The Klein/Cloudflare numbers are upstream
+      // soft caps shown for awareness; if we exceed them the upstream just
+      // returns an error and we move on. Per Andy 2026-05-11.
+      const order = ['pilgrims_api_key_calls', 'klein_4b_calls', 'cloudflare_neurons_shared_pool'];
       const labels = {
-        pilgrims_api_key_calls: 'Pilgrims API key calls',
+        pilgrims_api_key_calls: 'Pilgrims API key calls (real quota — 20K/day)',
+        klein_4b_calls: 'Klein 4B edits today (upstream soft cap — informational)',
+        cloudflare_neurons_shared_pool: 'Cloudflare neurons today (shared pool — informational)',
       };
+      const informational = new Set(['klein_4b_calls', 'cloudflare_neurons_shared_pool']);
       bars.innerHTML = '';
       for (const k of order) {
         const c = caps[k];
         if (!c) continue;
+        const isInfo = informational.has(k);
         const pct = Math.min(100, Math.round((c.used / c.limit) * 100));
-        const color = pct >= 90 ? 'var(--color-danger)' : pct >= 60 ? 'var(--color-warning)' : 'var(--color-success)';
+        // Informational bars never go red/yellow — pilgrims doesn't enforce these.
+        const color = isInfo ? 'var(--text-secondary)'
+                     : pct >= 90 ? 'var(--color-danger)'
+                     : pct >= 60 ? 'var(--color-warning)'
+                     : 'var(--color-success)';
+        const tag = isInfo ? ' <span class="kj-mini" style="opacity:0.7;">(not enforced)</span>' : '';
         const row = document.createElement('div');
         row.className = 'kj-cap-row';
         row.innerHTML = `
           <div class="kj-cap-head">
-            <span class="kj-cap-name">${labels[k]}</span>
+            <span class="kj-cap-name">${labels[k]}${tag}</span>
             <span class="kj-cap-val">${c.used.toLocaleString()} / ${c.limit.toLocaleString()} (${pct}%)</span>
           </div>
           <div class="kj-cap-bar"><div class="kj-cap-fill" style="width:${pct}%; background:${color};"></div></div>
