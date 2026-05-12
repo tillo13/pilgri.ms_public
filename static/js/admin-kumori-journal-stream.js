@@ -1,6 +1,10 @@
 // Admin / kumori ARIA journal DEBUG CONSOLE — bug #1457.
 // Surfaces every prompt, endpoint, attempt, response. Designed for validation
 // before nano_banana_pro cutover.
+// 2026-05-11: handle null limit + Number()-coerce all .toLocaleString callsites;
+// the prior version crashed when klein_4b_calls.limit was made nullable to drop
+// the fake 30/day soft cap. (Cache-bust marker — App Engine gzip edge stuck on
+// pre-fix bytes; appending this line changes etag and forces refresh.)
 
 (function () {
   const $ = (id) => document.getElementById(id);
