@@ -2775,6 +2775,7 @@ def api_admin_kumori_generate_stream():
 
             # Stage 4 — Klein render
             synth = {
+                'user_id': target_uid,
                 'sol': sol, 'weather': weather, 'time_of_day': time_of_day,
                 'N': N, 'chosen': chosen, 'mood': meta['mood'],
                 'composition': meta['composition'],
