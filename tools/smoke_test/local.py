@@ -300,6 +300,33 @@ def test_foundry_level_prereqs():
     return True
 
 
+@test("Every Lab summary chip key has breakdown coverage (#1461)", tier=1, features=['effects', 'tech'], mode='local')
+def test_lab_chip_keys_have_breakdown_rows():
+    """Bug #1461 (Luke 2026-05-12 "only the Research Page needs this redesign"):
+    we wired the Lab summary chips on /research to openBonusBreakdown, reusing
+    /api/upgrade-effects/breakdown. If a chip's key isn't in SURFACED_KEYS, the
+    popup shows "No contributions tracked" — broken click. Lock the invariant:
+    every key surfaced on Andy's Lab global_bonuses must have at least one row
+    in get_user_effect_breakdown.
+    """
+    from utilities.tech_utils import get_tech_summary
+    from utilities.upgrades.breakdown import get_user_effect_breakdown, SURFACED_KEYS
+
+    summary = get_tech_summary(45)
+    chip_keys = [b['key'] for b in summary.get('global_bonuses', [])]
+    if not chip_keys:
+        return "Andy has zero global_bonuses chips — fixture drift (he had 11 pre-test)"
+
+    bdn = get_user_effect_breakdown(45)
+    missing_from_surfaced = [k for k in chip_keys if k not in SURFACED_KEYS]
+    if missing_from_surfaced:
+        return f"Lab chip key(s) missing from SURFACED_KEYS: {missing_from_surfaced}"
+    empty_rows = [k for k in chip_keys if not bdn.get(k)]
+    if empty_rows:
+        return f"Lab chip key(s) with zero breakdown rows (popup would show 'no contributions tracked'): {empty_rows}"
+    return True
+
+
 @test("Breakdown popup deduplicates buildings (#1442 Issue 2)", tier=1, features=['effects'], mode='local')
 def test_breakdown_dedups_infrastructure():
     """Bug #1442 Issue 2 (Luke 2026-05-12): infrastructure level rows live in

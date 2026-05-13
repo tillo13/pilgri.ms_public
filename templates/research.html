@@ -162,6 +162,9 @@ document.addEventListener('DOMContentLoaded', function() {
 .tech-summary-branch-head .branch-lvl strong { color: var(--color-sepolia); font-size: 12px; }
 .tech-summary-branch-bonuses { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .tech-summary-branch-bonuses .summary-chip { font-size: 12px; color: #fff; background: rgba(168, 85, 247, 0.22); padding: 4px 10px; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+/* Bug #1461: clickable chip affordance — same hover lift as the tech-pills below + Expedition chips. */
+.summary-chip-link { text-decoration: none; cursor: pointer; transition: background 0.15s, transform 0.1s, border-color 0.15s; border: 1px solid transparent; }
+.summary-chip-link:hover { background: rgba(168, 85, 247, 0.35); border-color: rgba(168, 85, 247, 0.55); transform: translateY(-1px); }
 .tech-summary-tech-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .tech-summary-tech-list .tech-pill { padding: 5px 10px; background: rgba(255,255,255,0.06); border-radius: 4px; font-size: 12px; color: #fff; cursor: pointer; transition: background 0.15s, transform 0.1s; border: 1px solid rgba(255,255,255,0.04); display: inline-flex; align-items: center; gap: 5px; }
 .tech-summary-tech-list .tech-pill:hover { background: rgba(168, 85, 247, 0.20); border-color: rgba(168, 85, 247, 0.35); transform: translateY(-1px); }
@@ -273,11 +276,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     {% if tech_summary.global_bonuses %}
     <div class="tech-summary-global">
-        <div class="tech-summary-global-label">Cumulative Bonuses (stacked across all branches)</div>
+        <div class="tech-summary-global-label">Cumulative Bonuses (stacked across all branches) <span style="font-size:10px; color: var(--text-muted); font-weight: 400;">— click a chip for the breakdown</span></div>
         {% for bonus in tech_summary.global_bonuses %}
-        <span class="summary-chip">
+        {# Bug #1461 (Luke 2026-05-12 "only the Research Page needs this redesign"):
+           reuse the Expeditions bonus-breakdown modal — same pattern, same endpoint. #}
+        <a href="#" class="summary-chip summary-chip-link" data-bonus-key="{{ bonus.key }}"
+           onclick="return openBonusBreakdown(event, this);"
+           title="Click to see where this {{ bonus.value_display }} comes from">
             <img src="{{ icons[bonus.icon] }}" alt="" class="inline-icon-sm"> {{ bonus.value_display }}
-        </span>
+        </a>
         {% endfor %}
     </div>
     {% elif tech_summary.total_completed == 0 %}
@@ -303,7 +310,10 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if branch.bonuses %}
         <div class="tech-summary-branch-bonuses">
             {% for bonus in branch.bonuses %}
-            <span class="summary-chip"><img src="{{ icons[bonus.icon] }}" alt="" class="inline-icon-sm"> {{ bonus.value_display }}</span>
+            {# Bug #1461 — per-branch chips also clickable; same breakdown endpoint as the global chips above. #}
+            <a href="#" class="summary-chip summary-chip-link" data-bonus-key="{{ bonus.key }}"
+               onclick="return openBonusBreakdown(event, this);"
+               title="Click to see where this {{ bonus.value_display }} comes from"><img src="{{ icons[bonus.icon] }}" alt="" class="inline-icon-sm"> {{ bonus.value_display }}</a>
             {% endfor %}
         </div>
         {% endif %}
@@ -779,4 +789,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+{% endblock %}
+
+{% block extra_js %}
+{# Bug #1461 (Luke 2026-05-12): reuse the Expeditions bonus-breakdown modal on the
+   Research/Lab page. Same JS, same /api/upgrade-effects/breakdown endpoint, same
+   MarsModal UI — clicking any summary-chip on this page now opens the per-source
+   contribution view that already lives on /expeditions. #}
+<script src="/static/js/expeditions-bonus-breakdown.js?v={{ static_v }}" defer></script>
 {% endblock %}

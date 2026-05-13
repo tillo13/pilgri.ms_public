@@ -39,6 +39,17 @@ SURFACED_KEYS = {
     'cargo_slots':             ('Cargo Slots',             'add'),
     'signal_detection_enabled':('Signal Detection',        'or'),
     'dust_storm_immune':       ('Dust Storm Immune',       'or'),
+    # Bug #1461 (Luke 2026-05-12): Lab summary chips include these keys too,
+    # so the breakdown popup needs to surface them or clicks on those chips
+    # would render "no contributions tracked". Op tags match the aggregator's
+    # actual rules in utilities/upgrades/effects.py + tech_utils.py.
+    'cargo_capacity_mult':     ('Cargo Capacity',          'max_then_mult'),
+    'passive_income_mult':     ('Passive Income',          'max_then_mult'),
+    'night_generation_mult':   ('Night Generation',        'max_then_mult'),
+    'all_generation_mult':     ('All Generation',          'max_then_mult'),
+    'extraction_bonus':        ('Extraction Yield',        'add'),
+    'rare_value_mult':         ('Rare Discovery Value',    'max_then_mult'),
+    'legendary_value_mult':    ('Legendary Discovery Value','max_then_mult'),
 }
 
 
@@ -114,6 +125,11 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
                     out['life_support_cost_mult'].append(_row('infra', source, 'life_support_cost_mult', 1.0 - value))
                 elif raw_key == 'discovery_bonus':
                     out['discovery_chance_bonus'].append(_row('infra', source, 'discovery_chance_bonus', value))
+                elif raw_key == 'night_generation':
+                    # Bug #1461 — infra catalog field renames to night_generation_mult
+                    # via infrastructure/effects.py:57-58. Mirror it here so the popup
+                    # row aligns with the chip the captain clicked.
+                    out['night_generation_mult'].append(_row('infra', source, 'night_generation_mult', value))
                 elif raw_key == 'discovery_value_mult':
                     out['discovery_value_mult'].append(_row('infra', source, 'discovery_value_mult', value))
                 elif raw_key == 'bio_value_mult':
