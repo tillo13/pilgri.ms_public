@@ -60,6 +60,16 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
     try:
         from utilities.upgrades.state import get_all_user_upgrades, get_upgrade_stats
         for category, items in get_all_user_upgrades(user_id).items():
+            # Bug #1442 Part B (Luke 2026-05-12): infrastructure level upgrades
+            # are tracked in pilgrim.player_upgrades with category="infrastructure",
+            # so get_all_user_upgrades returns them alongside vehicles/scanners/etc.
+            # Emitting them here AND in step 2's infra walker double-listed every
+            # leveled building under both "Player Upgrades" and "Infrastructure"
+            # (e.g. Sepolia Studies Institute appeared twice at ×1.4 on Luke's
+            # screenshot). The infra walker is the canonical source for buildings
+            # — skip them here so the popup shows distinct sources.
+            if category == 'infrastructure':
+                continue
             for item_key, level in items.items():
                 if not level:
                     continue

@@ -300,6 +300,65 @@ def test_foundry_level_prereqs():
     return True
 
 
+@test("Breakdown popup deduplicates buildings (#1442 Issue 2)", tier=1, features=['effects'], mode='local')
+def test_breakdown_dedups_infrastructure():
+    """Bug #1442 Issue 2 (Luke 2026-05-12): infrastructure level rows live in
+    pilgrim.player_upgrades with category="infrastructure", so the breakdown
+    walker's upgrade phase used to emit them AS WELL AS the dedicated infra
+    phase — producing 'Sepolia Studies Institute' under both 'Player Upgrades'
+    and 'Infrastructure' in Luke's screenshot. Lock the dedup: no source string
+    should appear in both 'upgrade' and 'infra' layers for any key.
+    """
+    from utilities.upgrades.breakdown import get_user_effect_breakdown
+    # Andy is the canary user with broad upgrade + infra coverage.
+    bdn = get_user_effect_breakdown(45)
+    for key, rows in bdn.items():
+        upgrade_sources = {r['source'] for r in rows if r['layer'] == 'upgrade'}
+        infra_sources = {r['source'] for r in rows if r['layer'] == 'infra'}
+        overlap = upgrade_sources & infra_sources
+        if overlap:
+            return f"{key}: source(s) double-listed across upgrade+infra layers: {sorted(overlap)}"
+    return True
+
+
+@test("Upgrades × infra compounds for non-cost _mult (#1442 Issue 1)", tier=1, features=['effects'], mode='local')
+def test_effects_upgrades_infra_compound():
+    """Bug #1442 Issue 1 (Luke 2026-05-12 'Option A works for me'): the breakdown
+    popup documents `Final = max(upgrades) × max(infra) × tech × bond` but
+    effects.py:145 used to do max(running_effects, infra) — masking the infra
+    contribution whenever an upgrade existed at the same key. Lock the rule:
+    when a real user has BOTH an upgrade and an infra source on the same _mult
+    key, the aggregated effect must be ≥ max(upgrade_max, infra_max) × 1.01
+    (proves multiplication happened; pre-fix would equal one or the other).
+    """
+    from utilities.upgrades.breakdown import get_user_effect_breakdown
+    from utilities.upgrades.effects import get_user_upgrade_effects
+
+    bdn = get_user_effect_breakdown(45)
+    eff = get_user_upgrade_effects(45)
+    checked = 0
+    for key, rows in bdn.items():
+        if not key.endswith('_mult') or 'cost' in key:
+            continue
+        upgrades = [r['value'] for r in rows if r['layer'] == 'upgrade']
+        infras = [r['value'] for r in rows if r['layer'] == 'infra']
+        if not upgrades or not infras:
+            continue
+        u_max, i_max = max(upgrades), max(infras)
+        if u_max <= 1.0 or i_max <= 1.0:
+            continue  # neutral contributions — multiplication wouldn't change much
+        # Post-fix value must be >= u_max * i_max (other layers can only add to it).
+        expected_floor = u_max * i_max * 0.999  # tolerance for float math
+        actual = float(eff.get(key, 0))
+        if actual < expected_floor:
+            return f"{key}: actual={actual:.4f} but u_max×i_max={u_max*i_max:.4f} — cross-layer is still max(), not multiply"
+        checked += 1
+
+    if checked == 0:
+        return "No key with both upgrade and infra contributions found for user 45 — test fixture drifted (Andy used to have at least discovery_value_mult)"
+    return True
+
+
 @test("Lab summary _mult chips match game effects (#1443 Part 1)", tier=1, features=['tech'], mode='local')
 def test_tech_summary_matches_game_for_mult():
     """Bug #1443 Part 1 (Luke 2026-05-12 'Ship part 1'): Lab summary display

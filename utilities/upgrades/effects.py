@@ -81,6 +81,16 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
 
     # Apply upgrade effects from UPGRADE_CATALOG
     for category, items in user_upgrades.items():
+        # Bug #1442 follow-up (exposed by Part A fix): infrastructure level
+        # rows live in pilgrim.player_upgrades with category="infrastructure",
+        # so get_all_user_upgrades returns them here alongside vehicles/scanners/
+        # etc. The dedicated infra phase below (line 130+) is the canonical source
+        # for building effects — processing them here too produced a hidden double-
+        # count (1.33 × 1.33 instead of 1.33) once Part A switched the cross-layer
+        # rule from max to multiply. Skip them here so the math matches the
+        # documented "max(upgrades) × max(infra)" rule.
+        if category == 'infrastructure':
+            continue
         for item_key, level in items.items():
             if level == 0:
                 continue  # Not unlocked
@@ -142,7 +152,18 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
                 if 'cost' in key:
                     effects[key] = current * value  # Stack cost reductions
                 else:
-                    effects[key] = max(current, value)
+                    # Bug #1442 Part A (Luke 2026-05-12 "Option A works for me"):
+                    # the breakdown-popup footer documents
+                    #     Final = max(upgrades) × max(infra) × tech × bond
+                    # but this line was max(max(upgrades), max(infra)) — so when a
+                    # _mult key existed in BOTH an upgrade and a building the
+                    # infra contribution was silently masked. Tech and bond
+                    # already multiplied across layers (lines 169 + later); only
+                    # the upgrades→infra hop was broken. Fix aligns code with the
+                    # documented intent. Game-balance: BUFF for any captain with
+                    # both an upgrade and a building hitting the same key (Luke's
+                    # screenshot example: Discovery Value 1.4× → 1.694×).
+                    effects[key] = current * value
             elif key.endswith('_bonus'):
                 effects[key] = current + value
             elif isinstance(value, bool):
