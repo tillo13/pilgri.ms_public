@@ -113,14 +113,20 @@ function maybeShowBuildCompletionsModal() {
     if (!completions.length) return;
 
     const shardIcon = DEPOT_DATA.shardIcon || '';
+    // Bug #1458 (Luke 2026-05-09 P1): Build-Complete modal images were 72×72 —
+    // Luke screenshotted them and asked for "at least 4x increase" (especially
+    // mobile). Bumped to clamp(120px, 32vw, 180px) — on desktop ~180px (2.5×
+    // linear ≈ 6× area), on mobile down to 120px so two side-by-side + arrow
+    // still fit in a narrow viewport. Border-radius scaled up to match.
+    const imgSize = 'width:clamp(120px,32vw,180px);height:clamp(120px,32vw,180px)';
     const cards = completions.map(c => {
         const beforeImg = c.prev_image_url
-            ? `<img src="${c.prev_image_url}" alt="Lv ${c.old_level}" loading="lazy" style="width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,0.15);opacity:0.7;">`
-            : `<div style="width:72px;height:72px;border-radius:6px;background:rgba(255,255,255,0.05);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-muted);border:1px solid rgba(255,255,255,0.08);">Lv ${c.old_level}</div>`;
-        const arrow = `<div style="display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-success);font-size:20px;font-weight:700;">→</div>`;
+            ? `<img src="${c.prev_image_url}" alt="Lv ${c.old_level}" loading="lazy" style="${imgSize};border-radius:12px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,0.15);opacity:0.7;">`
+            : `<div style="${imgSize};border-radius:12px;background:rgba(255,255,255,0.05);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text-muted);border:1px solid rgba(255,255,255,0.08);">Lv ${c.old_level}</div>`;
+        const arrow = `<div style="display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--color-success);font-size:28px;font-weight:700;">→</div>`;
         const afterImg = c.image_url
-            ? `<img src="${c.image_url}" alt="Lv ${c.new_level}" loading="lazy" style="width:72px;height:72px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,180,50,0.5);box-shadow:0 0 8px rgba(255,180,50,0.2);">`
-            : `<div style="width:72px;height:72px;border-radius:6px;background:rgba(255,180,50,0.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--color-warning);border:1px solid rgba(255,180,50,0.5);">Lv ${c.new_level}</div>`;
+            ? `<img src="${c.image_url}" alt="Lv ${c.new_level}" loading="lazy" style="${imgSize};border-radius:12px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,180,50,0.5);box-shadow:0 0 12px rgba(255,180,50,0.25);">`
+            : `<div style="${imgSize};border-radius:12px;background:rgba(255,180,50,0.1);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--color-warning);border:1px solid rgba(255,180,50,0.5);">Lv ${c.new_level}</div>`;
         const costLine = c.cost
             ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;"><img src="${shardIcon}" alt="" class="inline-icon-sm"> ${c.cost.toLocaleString()}</div>`
             : '';
