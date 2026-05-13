@@ -870,8 +870,36 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
     for row in rows:
         by_branch.setdefault(row['branch'], []).append(row)
 
-    def _merge(dst: dict, add: dict):
-        """Same merge rules as _get_branch_effects so behavior stays identical."""
+    # Bug #1443 Part 1 (Luke 2026-05-12 "Ship part 1"): the Lab summary display
+    # MUST mirror _get_tech_effects_uncached's aggregation rules so the chips at
+    # the top of /research match what the game actually applies. Pre-fix, _merge
+    # multiplied _mult across every (tech_key, branch_level) row — producing
+    # 18.57× speed when the game itself was using 1.88×. Game path was corrected
+    # in #1413 (max-within-branch for _mult); this brings the display in line.
+    #
+    # Part 2 (additive _bonus keys still summed per same-tech-level rows in BOTH
+    # game and display) is a real game-balance change Luke deferred to a separate
+    # bug — do not touch additive rules here.
+    def _merge_within(dst: dict, add: dict):
+        """Stacking rule for rows inside the same branch / same tech.
+        _mult: max() (or min() for cost keys, matching game path's inversion).
+        Additive int/float: sum (unchanged — Part 2 territory).
+        Bool: or.
+        """
+        for k, v in add.items():
+            if k not in dst:
+                dst[k] = v
+            elif k.endswith('_mult'):
+                dst[k] = max(dst[k], v) if 'cost' not in k else min(dst[k], v)
+            elif isinstance(v, (int, float)):
+                dst[k] = dst[k] + v
+            elif isinstance(v, bool):
+                dst[k] = dst[k] or v
+
+    def _merge_across_branches(dst: dict, add: dict):
+        """Stacking rule for combining branch totals into the global total.
+        _mult: multiply (independent branches compound). Additive: sum. Bool: or.
+        """
         for k, v in add.items():
             if k not in dst:
                 dst[k] = v
@@ -938,17 +966,18 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
             if not tech_data:
                 continue
 
-            # Merge effects from EVERY row for this tech (matches _get_branch_effects
-            # so per-pill totals roll up cleanly into branch + global stacks).
+            # Bug #1443 Part 1: merge same-tech multi-level rows with the
+            # within-branch rule (max-_mult, sum-additive) so per-pill chips
+            # and the branch total match what the game applies. global_effects
+            # is built AFTER the branch loop using the across-branches rule.
             per_tech_effects: Dict[str, Any] = {}
             highest_level = 1
             for r in tech_rows:
                 lvl = r['branch_level']
                 highest_level = max(highest_level, lvl)
                 scaled = scale_effects(tech_data.get('effects', {}), lvl)
-                _merge(per_tech_effects, scaled)
-                _merge(branch_effects, scaled)
-                _merge(global_effects, scaled)
+                _merge_within(per_tech_effects, scaled)
+                _merge_within(branch_effects, scaled)
 
             tech_cards.append({
                 'tech_key': tech_key,
@@ -979,6 +1008,12 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
                     'tier': td.get('tier', 1),
                 }
                 break
+
+        # Bug #1443 Part 1: each branch's stacked total compounds into the
+        # global total under the across-branches rule (multiply _mult, sum
+        # additive). This is the same rule _get_tech_effects_uncached uses, so
+        # the displayed chip and the game value land on the same number.
+        _merge_across_branches(global_effects, branch_effects)
 
         branches_out.append({
             'branch_key': branch_key,

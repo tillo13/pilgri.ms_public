@@ -288,6 +288,101 @@ def llm_backoff_until():
     return {name: data['until_ts'] for name, data in state.items()}
 
 
+# ─── Embed / Rerank / Transcribe ──────────────────────────────────────────────
+
+def embed_text(texts, input_type='search_document'):
+    """Embed a list of strings via the shared free-LLM pool. Auto-selects
+    a backend (Cohere v3+v4, Mistral, NVIDIA, etc.). Returns
+    (vectors, backend_name). `input_type` only matters for Cohere
+    (search_document/search_query/classification/clustering)."""
+    if isinstance(texts, str):
+        texts = [texts]
+    data = _request('POST', '/api/v1/llm/embed-text',
+                    {'texts': list(texts), 'input_type': input_type})
+    return data.get('vectors'), data.get('backend')
+
+
+def embed_image(images):
+    """Embed images via Cohere v3-image variants. Accepts a list of base64
+    strings or data: URIs. Returns (vectors, backend_name)."""
+    if isinstance(images, (str, bytes)):
+        images = [images]
+    if images and isinstance(images[0], bytes):
+        import base64
+        images = [base64.b64encode(i).decode() for i in images]
+    data = _request('POST', '/api/v1/llm/embed-image', {'images': list(images)})
+    return data.get('vectors'), data.get('backend')
+
+
+def rerank(query, documents, top_n=None):
+    """Rerank documents by relevance to query (Cohere). Returns
+    (results, backend_name) where results is a list of
+    {'index': <int>, 'relevance_score': <float>} sorted descending."""
+    body = {'query': query, 'documents': list(documents)}
+    if top_n is not None:
+        body['top_n'] = int(top_n)
+    data = _request('POST', '/api/v1/llm/rerank', body)
+    return data.get('results'), data.get('backend')
+
+
+def transcribe(audio_bytes, language='en', content_type='audio/wav'):
+    """Transcribe audio bytes (≤25MB) to text via the free pool (Cohere).
+    Returns (text, backend_name)."""
+    import base64
+    audio_b64 = base64.b64encode(audio_bytes).decode()
+    data = _request('POST', '/api/v1/llm/transcribe',
+                    {'audio_b64': audio_b64, 'language': language,
+                     'content_type': content_type},
+                    timeout=(5, 120))
+    return data.get('text'), data.get('backend')
+
+
+def quality_catalog(days=7):
+    """Read the dual-judged free-LLM quality catalog. Scoped via
+    'catalog.read' on the calling kmr_live_* key (NOT admin-gated —
+    principle of least privilege per industry consensus).
+
+    Returns the raw response dict:
+        {window_days, judge_kind, backends: [{backend, modality,
+                                              quality_when_works, error_rate,
+                                              n_ok, n_total}, ...]}
+
+    Pre-release: response includes a 'note' field flagging it's not yet
+    public. Will eventually drop auth + the gate at Phase 8.
+    """
+    return _request('GET', f'/catalog/quality.json?days={int(days)}', None)
+
+
+def emit_quality_sample(backend, score, ok=True, judge_kind='kindness_live_v1',
+                        response_excerpt=None, duration_ms=None,
+                        judge_notes=None, error=None, modality='chat',
+                        probe_id=None):
+    """Emit a real-world quality sample to the catalog. Scoped via
+    'quality.write'. Fire-and-forget: failures are logged and swallowed —
+    never raises into the caller, never blocks the reply path.
+
+    Caller must have already produced `score` (0-100). For failed LLM calls
+    pass ok=False, score=0, and an error string. judge_kind must be one of
+    the kumori allowlist ('kindness_live_v1', 'kindness_peer_v1' at time of
+    writing); the server rejects others with 400.
+
+    Short timeout (3s connect / 8s read) because this is telemetry, not a
+    critical path.
+    """
+    body = {'backend': backend, 'modality': modality, 'judge_kind': judge_kind,
+            'score': int(score), 'ok': bool(ok)}
+    if response_excerpt: body['response_excerpt'] = response_excerpt[:2000]
+    if duration_ms is not None: body['duration_ms'] = int(duration_ms)
+    if judge_notes: body['judge_notes'] = judge_notes
+    if error: body['error'] = error
+    if probe_id: body['probe_id'] = probe_id
+    try:
+        _request('POST', '/api/v1/llm/quality-sample', body,
+                 timeout=(3, 8), retry_on_5xx=False)
+    except Exception as e:
+        logger.warning(f"emit_quality_sample failed for {backend}/{judge_kind}: {e}")
+
+
 # ─── Image generation ─────────────────────────────────────────────────────────
 
 def imggen_generate(prompt, width=1024, height=1024, mode='roundrobin',

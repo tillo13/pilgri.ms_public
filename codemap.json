@@ -2836,8 +2836,8 @@
       "llm_backoff_state — Current per-backend backoff state. Returns",
       "llm_is_backed_off — Convenience: True if backend is currently in backoff.",
       "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as",
-      "imggen_generate — Text→image via free providers. Klein-4B size rules apply (multiples of",
-      "imggen_edit — Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference"
+      "embed_text — Embed a list of strings via the shared free-LLM pool. Auto-selects",
+      "embed_image — Embed images via Cohere v3-image variants. Accepts a list of base64"
     ]
   },
   "utilities/email/__init__.py": {
@@ -3589,7 +3589,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

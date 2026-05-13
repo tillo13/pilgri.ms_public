@@ -300,6 +300,50 @@ def test_foundry_level_prereqs():
     return True
 
 
+@test("Lab summary _mult chips match game effects (#1443 Part 1)", tier=1, features=['tech'], mode='local')
+def test_tech_summary_matches_game_for_mult():
+    """Bug #1443 Part 1 (Luke 2026-05-12 'Ship part 1'): Lab summary display
+    must mirror _get_tech_effects_uncached for _mult keys. Pre-fix the Lab chip
+    showed 18.57× speed while the game used 1.88× — display lied.
+
+    Lock the rule: for any user with completed techs, every _mult key in
+    get_tech_effects(user_id) must equal the same key extracted from
+    get_tech_summary(user_id)['global_bonuses'] (within 0.01 tolerance for
+    display rounding). Additive _bonus keys are intentionally NOT checked here —
+    Part 2 (additive nerf) was deferred by Luke to a future bug.
+    """
+    import re
+    from utilities.tech_utils import get_tech_effects, get_tech_summary
+
+    # Pick a user known to have completed techs (Andy, user 45).
+    uid = 45
+    game = get_tech_effects(uid)
+    summary = get_tech_summary(uid)
+
+    # Reverse-parse '1.88x speed' style strings into floats keyed by effect.
+    display_mults = {}
+    for row in summary.get('global_bonuses', []):
+        key = row.get('key', '')
+        if not key.endswith('_mult'):
+            continue
+        m = re.match(r'^(\d+\.\d+)x\b', row.get('value_display', ''))
+        if m:
+            display_mults[key] = float(m.group(1))
+
+    if not display_mults:
+        return "No _mult chips on the Lab summary for Andy — expected at least one. Has tech state changed?"
+
+    for key, display_val in display_mults.items():
+        game_val = game.get(key)
+        if game_val is None:
+            return f"Lab summary shows {key}={display_val} but game effects has no entry for {key}"
+        # Display rounds to 2 decimals — game value rounded the same way must match.
+        if abs(round(float(game_val), 2) - display_val) > 0.01:
+            return f"{key} drift: game={game_val:.4f}, display={display_val}"
+
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals
