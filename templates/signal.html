@@ -59,10 +59,23 @@
         <div class="signal-stat-value text-success">{{ stats.total_echo_claims }}</div>
         <div class="signal-stat-label">Memories Recovered</div>
     </div>
-    <div class="signal-stat">
-        <div class="signal-stat-value text-muted">[CALCULATING]</div>
-        <div class="signal-stat-label">Network Status</div>
-    </div>
+    {# Bug #1448 (Luke 2026-05-06 P1): the placeholder "Network Status / [CALCULATING]"
+       tile was wasted real-estate while Puzzle Fragments — a real Phase 2.3c feature —
+       was buried mid-page. Surface it here so captains see their progress without
+       scrolling, with a click target that drops them into the detail section. #}
+    <a href="#puzzle-fragments" class="signal-stat signal-stat-link"
+       style="display: block; text-decoration: none;"
+       title="Puzzle Fragments — collect 14 across regular expeditions">
+        <div class="signal-stat-value text-sepolia">
+            {{ puzzle_fragments.collected_count if puzzle_fragments else 0 }}/{{ puzzle_fragments.total if puzzle_fragments else 14 }}
+        </div>
+        <div class="signal-stat-label">
+            Puzzle Fragments
+            {% if pending_whispers and pending_whispers|length > 0 %}
+            <span class="signal-pending-pulse" title="{{ pending_whispers|length }} unread whisper{% if pending_whispers|length != 1 %}s{% endif %}">●</span>
+            {% endif %}
+        </div>
+    </a>
 </div>
 
 <!-- Origin Sites Section -->
@@ -244,7 +257,9 @@
 </details>
 
 <!-- Phase 2.3c: Puzzle Fragments — Collectibles with ARIA Whispers -->
-<details class="signal-section" {% if puzzle_fragments and puzzle_fragments.collected_count > 0 %}open{% endif %}>
+<!-- Bug #1448: id anchor lets the top stats-grid chip scroll here; always-open
+     so the section is visible the moment the scroll lands (even for 0-collected). -->
+<details class="signal-section" id="puzzle-fragments" open>
     <summary class="signal-summary">
         <span class="signal-icon">&#x2756;</span>
         <span class="signal-section-title">Puzzle Fragments</span>

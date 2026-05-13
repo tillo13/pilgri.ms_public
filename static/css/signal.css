@@ -75,6 +75,13 @@ body.page-signal .main-content { scrollbar-width: none; -ms-overflow-style: none
     margin-top: 4px;
 }
 
+/* Bug #1448: clickable Puzzle Fragments stat tile — hover affordance + a
+   pulsing dot when there are unread ARIA whispers waiting. */
+.signal-stat-link { transition: transform 0.12s, border-color 0.15s, background 0.15s; cursor: pointer; }
+.signal-stat-link:hover { transform: translateY(-2px); border-color: rgba(168, 85, 247, 0.55); background: rgba(168, 85, 247, 0.08); }
+.signal-pending-pulse { display: inline-block; margin-left: 4px; color: var(--color-mars); animation: signal-pulse 1.4s ease-in-out infinite; font-size: 14px; line-height: 1; }
+@keyframes signal-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
 /* Section Styling */
 .signal-section {
     background: var(--bg-secondary);

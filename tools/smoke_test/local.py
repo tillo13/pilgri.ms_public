@@ -303,6 +303,28 @@ def test_foundry_level_prereqs():
     return True
 
 
+@test("Signal page exposes Puzzle Fragments stat tile + anchor (#1448)", tier=1, features=['template'], mode='local')
+def test_signal_puzzle_fragments_visible():
+    """Bug #1448 (Luke 2026-05-06): Luke had 1 unacknowledged fragment for 4 days
+    and asked "Is this live?" because the section was buried. Lock the wiring:
+    /signal must have a clickable top-of-page stat that links to the section
+    anchor. If either side breaks, this test catches it.
+    """
+    import os
+    path = os.path.join(os.path.dirname(__file__), '..', '..', 'templates', 'signal.html')
+    with open(path) as f:
+        html = f.read()
+    if 'href="#puzzle-fragments"' not in html:
+        return "Missing top-stats-grid link to #puzzle-fragments — captains can't jump to the section"
+    if 'id="puzzle-fragments"' not in html:
+        return "Missing id='puzzle-fragments' anchor on the section — link target gone"
+    if 'signal-stat-link' not in html:
+        return "Missing .signal-stat-link class — hover affordance regressed"
+    if 'puzzle_fragments.collected_count' not in html:
+        return "Top stat no longer reads puzzle_fragments.collected_count — count display regressed"
+    return True
+
+
 @test("days_hours filter formats per Luke spec (#1444)", tier=1, features=['template'], mode='local')
 def test_days_hours_filter():
     """Bug #1444 (Luke 2026-05-12): depot countdowns must show "5d 12h" not
