@@ -105,6 +105,32 @@ try:
     app.jinja_env.globals['ga_snippet'] = _ga_snippet
 except Exception:
     pass
+
+# Bug #1444 (Luke 2026-05-12): shared "5d 12h" formatter mirroring the JS
+# formatDaysHours helper in core.js. Every depot countdown / build-time chip
+# server-rendered through Jinja goes through this filter so we don't drift
+# from the JS-side rendering.
+def _format_days_hours(seconds):
+    if seconds is None:
+        return ''
+    try:
+        sec = max(0, int(float(seconds)))
+    except (TypeError, ValueError):
+        return ''
+    if sec >= 86400:
+        d = sec // 86400
+        h = (sec % 86400) // 3600
+        return f"{d}d {h}h" if h else f"{d}d"
+    if sec >= 3600:
+        h = sec // 3600
+        m = (sec % 3600) // 60
+        return f"{h}h {m}m" if m else f"{h}h"
+    if sec >= 60:
+        m = sec // 60
+        s = sec % 60
+        return f"{m}m {s}s" if s else f"{m}m"
+    return f"{sec}s"
+app.jinja_env.filters['days_hours'] = _format_days_hours
 # Cross-app visitor logging → kumori_ops.visitor_log
 try:
     from utilities.visitor_logging import install_middleware as _install_visitor_logging

@@ -56,8 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let buildingItems = [];
         {% if building_items %}
         {% for item in building_items %}
-        {% set days = (item.seconds_remaining / 86400)|round(1) %}
-        buildingItems.push('{{ item.name }} ({{ days }}d remaining, ready {{ item.ready_at_str }})');
+        buildingItems.push('{{ item.name }} ({{ item.seconds_remaining|days_hours }} remaining, ready {{ item.ready_at_str }})');
         {% endfor %}
         {% endif %}
 
@@ -264,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <p class="depot-card-desc">{{ structure.definition.description }}</p>
             <div class="depot-card-stats">
-                <span>{% set seconds = structure.definition.build_time_seconds * (build_time_mult|default(1.0)) %}{% if seconds >= 86400 %}{{ (seconds / 86400)|round(1) }}d{% elif seconds >= 3600 %}{{ (seconds / 3600)|round(1) }}h{% else %}{{ (seconds / 60)|round(0) }}m{% endif %} build{% if build_time_mult|default(1.0) < 1.0 %} <span style="color: var(--color-success); font-size: 10px;">{{ ((1 - build_time_mult) * 100)|round|int }}% faster</span>{% endif %}</span>
+                <span>{% set seconds = (structure.definition.build_time_seconds * (build_time_mult|default(1.0)))|int %}{{ seconds|days_hours }} build{% if build_time_mult|default(1.0) < 1.0 %} <span style="color: var(--color-success); font-size: 10px;">{{ ((1 - build_time_mult) * 100)|round|int }}% faster</span>{% endif %}</span>
                 {% if structure.generation_rate > 0 %}<span class="stat-highlight">{{ "%.0f"|format(structure.generation_rate) }}/hr</span>{% endif %}
             </div>
             {% if not structure.can_build and structure.missing_requirements %}
@@ -331,12 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
         {% if is_building %}
         <div class="build-progress-overlay">
-            <div class="build-timer" data-item-id="{{ item.id }}">
-                {% set remaining = item.seconds_remaining %}
-                {% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d
-                {% elif remaining > 3600 %}{{ (remaining / 3600)|round(1) }}h
-                {% else %}{{ (remaining / 60)|round(0) }}m{% endif %}
-            </div>
+            <div class="build-timer" data-item-id="{{ item.id }}">{{ item.seconds_remaining|days_hours }}</div>
             <div class="build-label"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Building</div>
         </div>
         {% endif %}
@@ -348,12 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <p class="depot-card-desc">{{ item.description }}</p>
             {% if is_building %}
             <div class="depot-card-build-info">
-                <span class="build-time-remaining" data-item-id="{{ item.id }}">
-                    {% set remaining = item.seconds_remaining %}
-                    {% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d remaining
-                    {% elif remaining > 3600 %}{{ (remaining / 3600)|round(1) }}h remaining
-                    {% else %}{{ (remaining / 60)|round(0) }}m remaining{% endif %}
-                </span>
+                <span class="build-time-remaining" data-item-id="{{ item.id }}">{{ item.seconds_remaining|days_hours }} remaining</span>
             </div>
             <a href="/colony?tab=assets&item={{ item.id }}" class="btn btn-building btn-block" style="text-decoration: none;"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> View in Colony</a>
             {% elif not item.can_afford and not item.owned %}
@@ -365,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% elif item.owned %}
             <button class="btn btn-secondary btn-block" disabled>{% if item.current_owned >= item.max_owned %}Max Owned{% else %}Owned ({{ item.current_owned }}/{{ item.max_owned }}){% endif %}</button>
             {% elif item.can_purchase %}
-            <div class="depot-card-stats"><span>{{ (item.build_time_seconds / 86400)|round(0)|int }}d build</span></div>
+            <div class="depot-card-stats"><span>{{ item.build_time_seconds|days_hours }} build</span></div>
             <button class="btn btn-purple btn-block" onclick="purchaseUpgrade('{{ item.id }}')">Get</button>
             {% else %}
             <button class="btn btn-secondary btn-block" disabled>Locked</button>
@@ -406,12 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
         {% if is_building and build_status and build_status.seconds_remaining %}
         <div class="build-progress-overlay">
-            <div class="build-timer">
-                {% set remaining = build_status.seconds_remaining|int %}
-                {% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d
-                {% elif remaining > 3600 %}{{ (remaining / 3600)|round(0)|int }}h
-                {% else %}{{ (remaining / 60)|round(0)|int }}m{% endif %}
-            </div>
+            <div class="build-timer">{{ build_status.seconds_remaining|days_hours }}</div>
             <div class="build-label"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Upgrading</div>
         </div>
         {% endif %}
@@ -542,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endif %}
 
             {% if is_building and build_status and build_status.seconds_remaining %}
-            <button class="btn btn-building btn-block" disabled onclick="event.stopPropagation()"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Building... <span class="build-time-remaining">{% set remaining = build_status.seconds_remaining|int %}{% if remaining > 86400 %}{{ (remaining / 86400)|round(3) }}d{% elif remaining > 3600 %}{{ (remaining / 3600)|round(0)|int }}h{% else %}{{ (remaining / 60)|round(0)|int }}m{% endif %}</span></button>
+            <button class="btn btn-building btn-block" disabled onclick="event.stopPropagation()"><img src="{{ icons.gear_settings }}" alt="" class="inline-icon-sm"> Building... <span class="build-time-remaining">{{ (build_status.seconds_remaining|int)|days_hours }}</span></button>
             {% elif is_max %}
             <button class="btn btn-secondary btn-block" disabled onclick="event.stopPropagation()">Max Level</button>
             {% elif is_locked and can_afford %}

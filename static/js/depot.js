@@ -186,29 +186,15 @@ function initBuildCountdowns() {
         card._remainingSeconds = parseInt(card.dataset.secondsRemaining) || 0;
     });
 
-    // Format time helper
-    function formatTime(remaining) {
-        if (remaining > 86400) {
-            return (remaining / 86400).toFixed(3) + 'd';
-        } else if (remaining > 3600) {
-            const hours = Math.floor(remaining / 3600);
-            const mins = Math.floor((remaining % 3600) / 60);
-            return hours + 'h ' + mins + 'm';
-        } else if (remaining > 60) {
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            return mins + 'm ' + secs + 's';
-        } else {
-            return remaining + 's';
-        }
-    }
+    // Bug #1444: use the shared formatDaysHours helper (core.js) so days
+    // render as "5d 12h" instead of the old "5.5d" decimal format.
 
     // Update every second
     setInterval(() => {
         buildingCards.forEach(card => {
             if (card._remainingSeconds <= 0) return;
             card._remainingSeconds--;
-            const timeStr = formatTime(card._remainingSeconds);
+            const timeStr = formatDaysHours(card._remainingSeconds);
 
             const timerEl = card.querySelector('.build-timer');
             if (timerEl) timerEl.textContent = timeStr;
@@ -228,26 +214,13 @@ function initBuildQueueCountdowns() {
     const countdownEls = document.querySelectorAll('.build-countdown');
     if (!countdownEls.length) return;
 
-    function formatTime(remaining) {
-        if (remaining > 86400) {
-            return (remaining / 86400).toFixed(1) + 'd';
-        } else if (remaining > 3600) {
-            const hours = Math.floor(remaining / 3600);
-            const mins = Math.floor((remaining % 3600) / 60);
-            return hours + 'h ' + mins + 'm';
-        } else if (remaining > 60) {
-            const mins = Math.floor(remaining / 60);
-            const secs = remaining % 60;
-            return mins + 'm ' + secs + 's';
-        } else {
-            return remaining + 's';
-        }
-    }
+    // Bug #1444: shared formatDaysHours (core.js) — same "5d 12h" format
+    // across every depot countdown.
 
     // Initialize each countdown
     countdownEls.forEach(el => {
         el._seconds = parseInt(el.dataset.seconds) || 0;
-        el.textContent = formatTime(el._seconds);
+        el.textContent = formatDaysHours(el._seconds);
     });
 
     // Update every second
@@ -255,7 +228,7 @@ function initBuildQueueCountdowns() {
         countdownEls.forEach(el => {
             if (el._seconds <= 0) return;
             el._seconds--;
-            el.textContent = formatTime(el._seconds);
+            el.textContent = formatDaysHours(el._seconds);
             if (el._seconds <= 0) {
                 el.textContent = 'Done!';
                 el.style.color = 'var(--color-success)';
@@ -310,12 +283,11 @@ function formatBuildTime(seconds) {
     const mult = (window.DEPOT_DATA && DEPOT_DATA.buildTimeMult) || 1.0;
     const adjusted = Math.max(60, seconds * mult);
     const savedPct = mult < 1.0 ? Math.round((1 - mult) * 100) : 0;
+    // Bug #1444: route through the shared formatDaysHours helper so "Build Time"
+    // labels match the in-progress countdowns ("5d 12h" not "5.5 days").
     let label;
     if (adjusted >= 86400 * 365) label = `${(adjusted / (86400 * 365)).toFixed(1)} years`;
-    else if (adjusted >= 86400) label = `${(adjusted / 86400).toFixed(3)} days`;
-    else if (adjusted >= 3600) label = `${(adjusted / 3600).toFixed(1)} hours`;
-    else if (adjusted >= 60) label = `${Math.round(adjusted / 60)} min`;
-    else label = `${Math.round(adjusted)}s`;
+    else label = formatDaysHours(adjusted);
     return savedPct > 0 ? `${label} (−${savedPct}%)` : label;
 }
 
@@ -336,9 +308,8 @@ function showDepotItemDetail(card) {
     let priceText = owned ? '✓ Owned' : (price ? `${price} Shards` : '');
 
     if (isBuilding) {
-        const r = secondsRemaining;
-        const timeStr = r > 86400 ? (r / 86400).toFixed(3) + ' days' : r > 3600 ? Math.floor(r / 3600) + 'h ' + Math.floor((r % 3600) / 60) + 'm' : r > 60 ? Math.floor(r / 60) + 'm' : r + 's';
-        priceText = '🔧 ' + timeStr + ' remaining';
+        // Bug #1444: shared formatDaysHours helper across every depot countdown.
+        priceText = '🔧 ' + formatDaysHours(secondsRemaining) + ' remaining';
     }
 
     // Infrastructure items - rich data from INFRA_ITEMS

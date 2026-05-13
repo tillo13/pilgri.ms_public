@@ -169,6 +169,31 @@ function showVideoModal(src) {
 }
 function formatDuration(sec) { const d = sec / 86400, h = sec / 3600, m = sec / 60; return d >= 1 ? `${d.toFixed(1)} days` : h >= 1 ? `${h.toFixed(1)} hours` : m >= 1 ? `${m.toFixed(1)} minutes` : `${sec} seconds`; }
 
+// Bug #1444 (Luke 2026-05-12): depot countdowns showed "5.5d" decimal days
+// instead of "5d 12h". Shared helper so every surface (build buttons, queue,
+// detail rows, depot card stats) renders the same way. Granularity collapses
+// once a unit dominates — "5d 12h" hides minutes (irrelevant at multi-day
+// scale), "12h 30m" hides seconds, etc.
+function formatDaysHours(sec) {
+    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    if (sec >= 86400) {
+        const d = Math.floor(sec / 86400);
+        const h = Math.floor((sec % 86400) / 3600);
+        return h > 0 ? `${d}d ${h}h` : `${d}d`;
+    }
+    if (sec >= 3600) {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    }
+    if (sec >= 60) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    }
+    return `${sec}s`;
+}
+
 // Shared countdown formatter (used by colony.js, available globally)
 function formatCountdown(seconds) {
     if (seconds <= 0) return 'Complete!';

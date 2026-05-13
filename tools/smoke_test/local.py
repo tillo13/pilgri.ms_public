@@ -71,6 +71,9 @@ def test_all_templates_parse():
     from jinja2 import Environment, FileSystemLoader
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'templates'))
     env = Environment(loader=FileSystemLoader(root))
+    # Register custom filters that templates use (mirrors app.py registration).
+    from app import _format_days_hours  # #1444
+    env.filters['days_hours'] = _format_days_hours
     broken = []
     for dirpath, _, files in os.walk(root):
         for f in files:
@@ -297,6 +300,31 @@ def test_foundry_level_prereqs():
     # Catalog name matches Luke's renaming
     if INFRASTRUCTURE_CATALOG['robotics_lab']['name'] != 'Narog Foundry':
         return "robotics_lab.name should be 'Narog Foundry'"
+    return True
+
+
+@test("days_hours filter formats per Luke spec (#1444)", tier=1, features=['template'], mode='local')
+def test_days_hours_filter():
+    """Bug #1444 (Luke 2026-05-12): depot countdowns must show "5d 12h" not
+    "5.5d" decimal days. Lock the helper output against drift.
+    """
+    from app import _format_days_hours
+    cases = [
+        (0,              '0s'),
+        (45,             '45s'),
+        (90,             '1m 30s'),
+        (3600,           '1h'),
+        (5400,           '1h 30m'),
+        (86400,          '1d'),
+        (86400 + 12*3600, '1d 12h'),
+        (5*86400 + 12*3600, '5d 12h'),
+        (None,           ''),
+        ('not a number', ''),
+    ]
+    for sec, want in cases:
+        got = _format_days_hours(sec)
+        if got != want:
+            return f"days_hours({sec!r}) = {got!r}, expected {want!r}"
     return True
 
 
