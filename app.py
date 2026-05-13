@@ -50,7 +50,7 @@ from utilities.expeditions.page_data import get_expeditions_page_data
 from utilities.expeditions.preview import (
     get_expedition_cost_preview_formatted, get_expedition_cost_preview_bulk_formatted, get_expedition_preview,
 )
-from utilities.expeditions.trails import handle_trail_build_request, get_trail_consumables_data
+from utilities.expeditions.trails import handle_trail_build_request
 from utilities.discovery_utils import shard_all_discoveries
 from utilities.depot_utils import (
     purchase_stat_reroll, purchase_character_modification,
@@ -1662,11 +1662,8 @@ def api_trail_complete():
     return jsonify(handle_trail_complete_request(g.user_id, request.json or {}))
 
 
-@app.route('/api/trail/consumables', methods=['GET'])
-@login_required
-def api_trail_consumables():
-    """Get available consumables and scanner bonus for trail building."""
-    return jsonify(get_trail_consumables_data(g.user_id))
+# Bug #1430: /api/trail/consumables endpoint removed along with the
+# scanner+consumable trail-speed-bonus loop.
 
 
 @app.route('/api/aria/skills', methods=['GET'])

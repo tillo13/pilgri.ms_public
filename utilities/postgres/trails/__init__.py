@@ -40,14 +40,14 @@ from utilities.postgres.trails.aria_skills import (  # noqa: F401
     use_aria_resonance,
 )
 from utilities.postgres.trails.crew import (  # noqa: F401
+    # Bug #1430: get_trail_consumable_discoveries + consume_discovery_for_trail
+    # removed along with the scanner+consumable trail-speed-bonus loop.
     ensure_crew_missions_schema,
     get_crew_mission_status,
     get_crew_mission_status_with_stats,
     get_crew_nearby_payload,
     start_crew_mission,
     complete_crew_mission,
-    get_trail_consumable_discoveries,
-    consume_discovery_for_trail,
     get_nearby_trails_for_missions,
     get_visited_sites_for_trails,
     _format_trail_sites,

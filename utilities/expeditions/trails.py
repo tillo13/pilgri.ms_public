@@ -2,8 +2,11 @@
 Trail-building crew mission orchestration.
 
 When a captain/scientist/aria is dispatched to build a trail segment, this
-module computes km-to-add from stats × scanner × suit × consumables, finds
-the nearest trail node to chain from, and kicks off the crew mission.
+module computes km-to-add from crew stat × EVA suit, finds the nearest trail
+node to chain from, and kicks off the crew mission.
+
+Bug #1430 (Luke 2026-04-29): the scanner-bonus and consumable-burn-for-bonus
+loops were removed — neither Luke nor Andy ever used them.
 """
 
 import logging
@@ -18,12 +21,11 @@ def handle_trail_build_request(user_id, data):
     but the actual target is auto-resolved to the next unbuilt segment of the
     captain's active chain direction.
     """
-    from utilities.postgres.trails import get_crew_mission_status, start_crew_mission, consume_discovery_for_trail
+    from utilities.postgres.trails import get_crew_mission_status, start_crew_mission
     from utilities.postgres.trails.chains import (
         ensure_user_trail_chains_table, get_user_active_direction, get_active_chain_segments,
     )
     from utilities.postgres.core import db_cursor
-    from utilities.shop_utils import get_scanner_trail_bonus
     from config import get_scientist_trail_bonus, COLONY_SCIENTISTS
 
     worker_type = data.get('worker_type', '').lower()
@@ -91,25 +93,12 @@ def handle_trail_build_request(user_id, data):
             stat_multiplier = 1.0 + (resonance_level / 20) + (lore_memory_level / 200)
             stat_bonus_desc = f"Resonance Lv{resonance_level} + Lore Lv{lore_memory_level} ({stat_multiplier:.1f}x)"
 
-    scanner_bonus = get_scanner_trail_bonus(user_id)
-    scanner_multiplier = scanner_bonus['multiplier']
-
-    # EVA Suit bonus: +5% trail speed per suit level (Lv10 = +50%)
+    # EVA Suit bonus: +5% trail speed per suit level (Lv10 = +50%).
     from utilities.upgrades_utils import get_user_upgrade_level
     suit_level = get_user_upgrade_level(user_id, 'gear', 'suit')
     suit_multiplier = 1.0 + (suit_level * 0.05)
 
-    # Consumable bonus (optional)
-    consumable_multiplier = 1.0
-    consumable_used = None
-    consumable_id = data.get('consumable_id')
-    if consumable_id:
-        consume_result = consume_discovery_for_trail(user_id, int(consumable_id))
-        if consume_result.get('success'):
-            consumable_multiplier = 1.0 + consume_result['bonus']
-            consumable_used = consume_result
-
-    total_multiplier = stat_multiplier * scanner_multiplier * suit_multiplier * consumable_multiplier
+    total_multiplier = stat_multiplier * suit_multiplier
     trail_calc = calculate_trail_km(total_multiplier)
     duration_minutes = trail_calc['duration_minutes']
     km_to_add = trail_calc['km_to_add']
@@ -125,12 +114,8 @@ def handle_trail_build_request(user_id, data):
         result['chain_segment_index'] = next_seg['segment_index']
         result['stat_multiplier'] = round(stat_multiplier, 2)
         result['stat_bonus'] = stat_bonus_desc
-        result['scanner_multiplier'] = round(scanner_multiplier, 2)
-        result['scanner_bonus'] = scanner_bonus
         result['suit_multiplier'] = round(suit_multiplier, 2)
         result['suit_level'] = suit_level
-        result['consumable_multiplier'] = round(consumable_multiplier, 2)
-        result['consumable_used'] = consumable_used
         result['total_multiplier'] = round(total_multiplier, 2)
         if from_landmark == 'HOME':
             result['message'] = f'{worker_type.title()} heading to {destination} for {duration_minutes} min session'
@@ -140,39 +125,5 @@ def handle_trail_build_request(user_id, data):
     return result
 
 
-def get_trail_consumables_data(user_id):
-    """Get available consumables and scanner bonus for trail building."""
-    from utilities.postgres.trails import get_trail_consumable_discoveries
-    from utilities.shop_utils import get_scanner_trail_bonus
-    from config import TRAIL_CONSUMABLE_BONUSES
-
-    scanner = get_scanner_trail_bonus(user_id)
-    discoveries = get_trail_consumable_discoveries(user_id)
-
-    for d in discoveries:
-        item_type = d.get('item_type', '')
-        item_name = (d.get('item_name') or '').lower()
-        type_bonuses = TRAIL_CONSUMABLE_BONUSES.get(item_type, {})
-        bonus = type_bonuses.get('default', 0.05)
-        for kw, val in type_bonuses.items():
-            if kw != 'default' and kw in item_name:
-                bonus = val
-                break
-        d['trail_bonus'] = bonus
-        d['trail_bonus_percent'] = int(bonus * 100)
-
-    # Group consumables by name+bonus, keep oldest ID for FIFO
-    grouped = {}
-    for d in sorted(discoveries, key=lambda x: x.get('claimed_at', '')):
-        key = f"{d['item_name']}|{d['trail_bonus_percent']}"
-        if key not in grouped:
-            grouped[key] = {
-                'id': d['id'],
-                'item_name': d['item_name'],
-                'trail_bonus_percent': d['trail_bonus_percent'],
-                'count': 1
-            }
-        else:
-            grouped[key]['count'] += 1
-
-    return {'success': True, 'scanner': scanner, 'consumables': list(grouped.values())}
+# Bug #1430: get_trail_consumables_data() deleted along with the
+# /api/trail/consumables endpoint and the entire scanner+consumable bonus loop.

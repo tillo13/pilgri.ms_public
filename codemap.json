@@ -1815,7 +1815,6 @@
   "utilities/shop_utils.py": {
     "description": "Shop Utilities — equipment effects, trail bonuses, commander stats.",
     "exports": [
-      "get_scanner_trail_bonus — Get trail building bonus from scanner upgrade level.",
       "get_passive_income_source — Find which upgrade provides passive income multiplier.",
       "get_user_upgrade_effects — Wrapper → utilities.upgrades_utils.get_user_upgrade_effects()",
       "get_suit_stat_bonuses — Get EVA Suit stat bonus PERCENTAGES for UI display.",
@@ -2244,8 +2243,6 @@
       "start_crew_mission — Start a trail building mission for captain, scientist, or ARIA.",
       "handle_trail_complete_request — Route-glue wrapper for POST /api/trail/complete.",
       "complete_crew_mission — Complete a trail building mission and award XP + km built",
-      "get_trail_consumable_discoveries — Get claimed discoveries that can be consumed for trail building bonuses.",
-      "consume_discovery_for_trail — Consume a discovery item for trail building bonus.",
       "get_nearby_trails_for_missions — DEPRECATED: Use get_visited_sites_for_trails instead",
       "get_visited_sites_for_trails — v3 (#1414): return the 4 cardinal chains as 4 trail sites.",
       "get_crew_mission_status_with_stats — Mission status enriched with per-crew stat multipliers — used by the",
@@ -2349,8 +2346,7 @@
   "utilities/expeditions/trails.py": {
     "description": "Trail-building crew mission orchestration.",
     "exports": [
-      "handle_trail_build_request — v3 (#1414): trail build mission targets the captain's active chain segment.",
-      "get_trail_consumables_data — Get available consumables and scanner bonus for trail building."
+      "handle_trail_build_request — v3 (#1414): trail build mission targets the captain's active chain segment."
     ],
     "keywords": "handle_trail_build_request, EVA suit trail bonus, consumables"
   },
@@ -3181,11 +3177,6 @@
   "static/js/crew-missions.js": {
     "description": "CREW-MISSIONS.JS - Trail Missions, Bonuses, Status, Notifications",
     "exports": [
-      "getDurationFromBonus",
-      "loadTrailBonuses",
-      "updateTrailBonusUI",
-      "onConsumableChange",
-      "updateTotalBonus",
       "loadCrewMissions",
       "autoClaimTrailMission",
       "updateMissionUI",
@@ -3195,7 +3186,12 @@
       "updateXPBars",
       "startCrewMission",
       "renderTrailList",
-      "speedMult"
+      "speedMult",
+      "selectChainDirection",
+      "selectTrail",
+      "selectTrailForAria",
+      "closeMissionPicker",
+      "isAuthenticated"
     ]
   },
   "static/js/crew-notifications.js": {
@@ -3605,7 +3601,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

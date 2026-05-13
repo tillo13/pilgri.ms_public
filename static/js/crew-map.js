@@ -712,8 +712,8 @@ function openChartTrailModal(trail) {
     // Update crew member availability in modal
     updateCrewModalStatus();
 
-    // Load trail bonuses (scanner + consumables)
-    loadTrailBonuses();
+    // Bug #1430: removed loadTrailBonuses() call — scanner/consumable speed-bonus
+    // UI was deleted along with /api/trail/consumables endpoint.
 
     // Show modal
     document.getElementById('chart-trail-modal').style.display = 'flex';
@@ -757,11 +757,9 @@ function updateCrewModalStatus() {
             card.style.opacity = '1';
             card.style.borderColor = member === 'captain' ? 'var(--color-success)' : member === 'scientist' ? 'var(--color-sepolia)' : '#a855f7';
             const multiplier = status?.stat_multiplier || 1.0;
-            // Estimate duration based on visible bonuses (stat included in multiplier)
-            const equipmentBonus = trailScannerBonus.bonus_percent || 0;
-            const consumableBonus = selectedConsumableId ? (trailConsumables.find(x => x.id == selectedConsumableId)?.trail_bonus_percent || 0) : 0;
-            const totalEquipBonus = equipmentBonus + consumableBonus;
-            const estimatedDuration = getDurationFromBonus(totalEquipBonus + (multiplier - 1) * 100);
+            // Bug #1430: scanner+consumable bonuses removed. Trip duration is a
+            // server-driven constant for now (15 min baseline × stat × EVA suit).
+            const estimatedDuration = 15;
             const kmEstimate = (0.15 * multiplier * estimatedDuration / 60).toFixed(3);
             const svEstimate = Math.floor(parseFloat(kmEstimate) * 5);
             if (buildRateEl) buildRateEl.textContent = `~${kmEstimate} km (+${svEstimate} SV)`;
@@ -808,30 +806,20 @@ async function selectCrewMember(member) {
     showToast?.(`${memberName} heading to ${trailName}...`, 'info');
 
     try {
-        // Build request body with optional consumable (duration calculated server-side)
-        const requestBody = {
+        // Bug #1430: consumable burn-for-bonus loop removed — no more consumable_id.
+        const data = await apiPost('/api/trail/build', {
             destination_name: trailName,
-            worker_type: member
-        };
-        if (selectedConsumableId) {
-            requestBody.consumable_id = parseInt(selectedConsumableId);
-        }
-
-        const data = await apiPost('/api/trail/build', requestBody);
+            worker_type: member,
+        });
 
         if (data.success) {
             // Show toast with chain routing info
             const routeDesc = data.from_landmark && data.from_landmark !== 'HOME'
                 ? `${data.from_landmark} → ${trailName}`
                 : trailName;
-            let msg = `${memberName} departed! Building ${routeDesc} ~${data.km_to_add.toFixed(3)} km in ${data.duration_minutes} min`;
-            if (data.consumable_used) {
-                msg += ` (used ${data.consumable_used.item_name}!)`;
-            }
+            const msg = `${memberName} departed! Building ${routeDesc} ~${data.km_to_add.toFixed(3)} km in ${data.duration_minutes} min`;
             showToast?.(msg, 'success');
-            selectedConsumableId = null; // Clear consumed item
             loadCrewMissions(); // Refresh to show countdown
-            loadTrailBonuses(); // Refresh consumables list (count changed)
         } else {
             showToast?.(data.error || 'Failed to start mission', 'error');
         }

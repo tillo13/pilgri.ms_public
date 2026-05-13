@@ -8,30 +8,8 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
-# TRAIL BUILDING - Scanner bonus from upgrade level
-# ============================================================================
-
-def get_scanner_trail_bonus(user_id: int) -> dict:
-    """
-    Get trail building bonus from scanner upgrade level.
-    Higher scanner level = better trail building speed bonus.
-    """
-    from config_shop import TRAIL_SCANNER_BONUSES_BY_LEVEL
-    from utilities.upgrades_utils import get_user_upgrade_level, get_upgrade_stats
-
-    level = get_user_upgrade_level(user_id, 'equipment', 'scanner')
-    bonus = TRAIL_SCANNER_BONUSES_BY_LEVEL.get(level, 0.0)
-    stats = get_upgrade_stats('equipment', 'scanner', level) or {}
-    scanner_name = stats.get('name', 'Scanner') if level > 0 else None
-
-    return {
-        'bonus': bonus,
-        'bonus_percent': int(bonus * 100),
-        'multiplier': 1.0 + bonus,
-        'scanner_id': f'scanner_lv{level}' if level > 0 else None,
-        'scanner_name': scanner_name,
-    }
+# Bug #1430 (Luke 2026-04-29): get_scanner_trail_bonus() removed — the
+# scanner→trail-speed loop it powered was never used in practice.
 
 
 # ============================================================================

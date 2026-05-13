@@ -248,8 +248,8 @@ from config_infrastructure import INFRASTRUCTURE_CATALOG
 # TRAIL CONFIG - Trail building bonuses and durations (config_shop.py)
 ##############################################################################
 from config_shop import (
-    TRAIL_SCANNER_BONUSES_BY_LEVEL,
-    TRAIL_CONSUMABLE_BONUSES, TRAIL_MULTIPLIER_DURATIONS,
+    # Bug #1430: TRAIL_SCANNER_BONUSES_BY_LEVEL + TRAIL_CONSUMABLE_BONUSES removed.
+    TRAIL_MULTIPLIER_DURATIONS,
     get_trail_duration_from_multiplier,
 )
 
