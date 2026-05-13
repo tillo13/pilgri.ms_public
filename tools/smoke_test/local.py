@@ -300,6 +300,48 @@ def test_foundry_level_prereqs():
     return True
 
 
+@test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
+def test_level_unlocks_reverse_index():
+    """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals
+    must surface 'Lv3 unlocks Narog Foundry Lv3' etc. The reverse-index helper is
+    the data source for that UI; lock it against catalog drift in either direction.
+    """
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    from utilities.upgrades.catalog import get_infrastructure_level_unlocks_index
+
+    # Force a fresh build so the test is independent of process state.
+    import utilities.upgrades.catalog as _cat
+    _cat._LEVEL_UNLOCKS_INDEX_CACHE = None
+    index = get_infrastructure_level_unlocks_index()
+
+    # Round-trip: every level_requires entry must appear in the reverse index.
+    for target_key, target_cfg in INFRASTRUCTURE_CATALOG.items():
+        for target_lvl, lvl_stats in (target_cfg.get('levels') or {}).items():
+            for prereq_key, prereq_lvl in (lvl_stats.get('level_requires') or {}).items():
+                hits = index.get(prereq_key, {}).get(int(prereq_lvl), [])
+                if not any(h['key'] == target_key and h['level'] == int(target_lvl) for h in hits):
+                    return f"{prereq_key} Lv{prereq_lvl} → {target_key} Lv{target_lvl} missing from reverse index"
+
+    # And the inverse: every reverse-index entry must come from a real catalog requirement.
+    for prereq_key, by_lvl in index.items():
+        for prereq_lvl, hits in by_lvl.items():
+            for h in hits:
+                req = (INFRASTRUCTURE_CATALOG.get(h['key'], {}).get('levels', {}).get(h['level'], {}).get('level_requires') or {})
+                if req.get(prereq_key) != prereq_lvl:
+                    return f"Reverse-index hit {h} doesn't match catalog level_requires"
+
+    # Spec spot-check: Habitat Module Lv3 + Lv9 unlock Narog Foundry; Greenhouse + RS Lv6/Lv9 also.
+    hab_unlocks = {(h['key'], h['level']) for lvl in (3, 9) for h in index.get('habitat_module', {}).get(lvl, [])}
+    if ('robotics_lab', 3) not in hab_unlocks or ('robotics_lab', 9) not in hab_unlocks:
+        return f"Habitat Module reverse-unlocks drift: {hab_unlocks}"
+
+    # Display name surfaces in payload (drives the "Narog Foundry Lv3" copy on the prereq modal).
+    sample = next(iter(index['habitat_module'][3]))
+    if sample.get('name') != 'Narog Foundry':
+        return f"Reverse-index display name drift: {sample}"
+    return True
+
+
 @test("Chassis Reinforcement gives range, not speed (#1447)", tier=1, features=['config', 'tech'], mode='local')
 def test_chassis_reinforcement_range_swap():
     """Bug #1447 (Luke 2026-05-06): Chassis swapped speed for range so Drone/Rover stay relevant.

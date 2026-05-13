@@ -2566,6 +2566,7 @@
       "get_all_infrastructure_levels — Bulk-fetch all infrastructure levels in ONE query. Returns {building_key: level}.",
       "get_infrastructure_level — Get the current level of an infrastructure building.",
       "get_next_upgrade_cost — Get cost to upgrade from current_level to next level. Returns None if max.",
+      "get_infrastructure_level_unlocks_index — Returns {prereq_key: {prereq_level: [{key, name, level}, ...]}}.",
       "get_upgrade_catalog_for_user — Get the full upgrade catalog enriched with user's current levels and affordability."
     ]
   },
@@ -3588,7 +3589,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3604,7 +3605,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

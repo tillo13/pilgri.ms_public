@@ -157,6 +157,37 @@ def get_next_upgrade_cost(category: str, item_key: str, current_level: int) -> O
     return next_stats.get('cost', 0)
 
 
+# Bug #1436 (Luke): reverse-index of INFRASTRUCTURE_CATALOG[*].levels[N].level_requires.
+# Surfaces "Habitat Module Lv3 unlocks Narog Foundry Lv3" on the prereq side. Catalog
+# is static within a process, so cache once.
+_LEVEL_UNLOCKS_INDEX_CACHE = None
+
+
+def get_infrastructure_level_unlocks_index() -> dict:
+    """Returns {prereq_key: {prereq_level: [{key, name, level}, ...]}}.
+
+    Inversion of every level_requires entry in INFRASTRUCTURE_CATALOG, so a
+    building's modal can render "Lv3 unlocks Narog Foundry Lv3" without
+    re-scanning the catalog per request.
+    """
+    global _LEVEL_UNLOCKS_INDEX_CACHE
+    if _LEVEL_UNLOCKS_INDEX_CACHE is not None:
+        return _LEVEL_UNLOCKS_INDEX_CACHE
+    index: Dict[str, Dict[int, list]] = {}
+    for target_key, target_cfg in INFRASTRUCTURE_CATALOG.items():
+        target_name = target_cfg.get('name', target_key)
+        for target_lvl, lvl_stats in (target_cfg.get('levels') or {}).items():
+            requires = lvl_stats.get('level_requires') or {}
+            for prereq_key, prereq_lvl in requires.items():
+                index.setdefault(prereq_key, {}).setdefault(int(prereq_lvl), []).append({
+                    'key': target_key,
+                    'name': target_name,
+                    'level': int(target_lvl),
+                })
+    _LEVEL_UNLOCKS_INDEX_CACHE = index
+    return index
+
+
 def get_upgrade_catalog_for_user(user_id: int, _prefetch_structures=None, _prefetch_balance=None) -> Dict[str, Any]:
     """
     Get the full upgrade catalog enriched with user's current levels and affordability.
@@ -269,6 +300,10 @@ def get_upgrade_catalog_for_user(user_id: int, _prefetch_structures=None, _prefe
         result['infrastructure'] = {}
         owned_types = {b['structure_type'] for b in user_structures if b.get('status') == 'active'}
 
+        # Bug #1436 (Luke): reverse-index for the modal ladder — "Lv3 unlocks Narog
+        # Foundry Lv3" on Habitat / Greenhouse / Research Station modals.
+        unlocks_index = get_infrastructure_level_unlocks_index()
+
         for item_key, item_config in INFRASTRUCTURE_CATALOG.items():
             if item_key not in owned_types:
                 continue
@@ -286,13 +321,31 @@ def get_upgrade_catalog_for_user(user_id: int, _prefetch_structures=None, _prefe
 
             display_image = get_best_available_image_from_map('infrastructure', item_key, current_level, image_map)
 
-            # All levels data for modal - pass all stats through
+            # All levels data for modal - pass all stats through.
+            # #1436: enrich level_requires (forward) with display names + attach
+            # level_unlocks (reverse) so the depot upgrade modal's ladder can render
+            # both directions of the prereq chain on each level row.
+            this_buildings_unlocks = unlocks_index.get(item_key, {})
             all_levels = {}
             for lv, lv_stats in item_config.get('levels', {}).items():
                 level_entry = {k: v for k, v in lv_stats.items() if k != 'image_url'}
                 level_entry.setdefault('name', f'Lv{lv}')
                 level_entry.setdefault('cost', 0)
                 level_entry.setdefault('build_time_days', 0)
+                raw_req = level_entry.get('level_requires') or {}
+                if raw_req:
+                    level_entry['level_requires_display'] = [
+                        {
+                            'key': k,
+                            'name': INFRASTRUCTURE_CATALOG.get(k, {}).get('name', k),
+                            'level': int(v),
+                            'have': int(infra_levels.get(k, 0)),
+                        }
+                        for k, v in raw_req.items()
+                    ]
+                unlocks = this_buildings_unlocks.get(int(lv))
+                if unlocks:
+                    level_entry['level_unlocks'] = unlocks
                 all_levels[int(lv)] = level_entry
 
             if is_building:

@@ -256,6 +256,24 @@ function showUpgradeModal(category, itemKey) {
         const statsLine = formatLevelStats(stats, category);
         const milestone = getMilestoneNote(itemKey, lv);
 
+        // Bug #1436 (Luke): both directions of the prereq chain on each level row.
+        // Forward — "Lv3 requires Habitat Module Lv3 (you have Lv1)" on Narog Foundry.
+        // Reverse — "Lv3 unlocks Narog Foundry Lv3" on Habitat / Greenhouse / Research Station.
+        let prereqLine = '';
+        if (stats.level_requires_display && stats.level_requires_display.length) {
+            const parts = stats.level_requires_display.map(r => {
+                const ok = r.have >= r.level;
+                const haveStr = r.have > 0 ? `have Lv${r.have}` : 'not built';
+                return `<span style="color: ${ok ? 'var(--color-success)' : 'var(--color-warning)'};">${r.name} Lv${r.level}${ok ? ' ✓' : ` (${haveStr})`}</span>`;
+            });
+            prereqLine = `<div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;"><strong style="color: var(--text-secondary);">Requires:</strong> ${parts.join(', ')}</div>`;
+        }
+        let unlocksLine = '';
+        if (stats.level_unlocks && stats.level_unlocks.length) {
+            const parts = stats.level_unlocks.map(u => `${u.name} Lv${u.level}`).join(', ');
+            unlocksLine = `<div style="font-size: 10px; color: var(--color-sepolia); margin-top: 2px;"><strong>Unlocks:</strong> ${parts}</div>`;
+        }
+
         levelsHtml += `
             <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px;
                         background: ${isCurrent ? 'rgba(var(--color-success-rgb), 0.1)' : isNext ? 'rgba(var(--color-sepolia-rgb), 0.1)' : 'var(--bg-tertiary)'};
@@ -267,6 +285,8 @@ function showUpgradeModal(category, itemKey) {
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">${stats.name || 'Lv' + lv}</div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${statsLine}</div>
+                    ${prereqLine}
+                    ${unlocksLine}
                     ${milestone ? `<div style="font-size: 10px; color: var(--color-sepolia); margin-top: 2px; font-weight: 600;">${milestone}</div>` : ''}
                 </div>
                 <div style="text-align: right; font-size: 11px;">
