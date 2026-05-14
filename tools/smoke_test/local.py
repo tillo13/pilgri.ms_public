@@ -1679,6 +1679,134 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("PilgrimBot coverage gate: every pilgrim.* table is exposed or explicitly allowlisted", tier=1, features=['api', 'db'], mode='local')
+def test_pilgrimbot_table_coverage():
+    """HARD GATE. Every table in pilgrim.* schema MUST be one of:
+      (a) referenced by utilities/pilgrimbot_data.py (PB has a query category that uses it), OR
+      (b) referenced by math_registry.json (PB's keyword search can surface it), OR
+      (c) in _PB_INTERNAL_ALLOWLIST (justified as internal/admin/audit — no player-facing surface), OR
+      (d) in _PB_PENDING (real gap, follow-up bug filed, ticket # in the comment).
+
+    When you add a new pilgrim.* table this test fails until you wire one of the
+    four above. This is the layered defense after the 2026-05-14 #1470 incident
+    where Luke asked PB three direct questions (rarity drop rates, total
+    destinations) and PB hallucinated table names because nobody wired the new
+    state into PB. Memory: feedback_pb_coverage_gate.
+
+    Allowlist + pending lists are INTENTIONALLY verbose with reasons — if you
+    can't write a one-line reason, you probably need to wire it in."""
+    import os, re
+    from utilities.postgres.core import db_cursor
+
+    # (a) + (b): scan source text for table-name references
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    with open(os.path.join(project_root, 'utilities', 'pilgrimbot_data.py')) as f:
+        pb_text = f.read()
+    with open(os.path.join(project_root, 'math_registry.json')) as f:
+        mr_text = f.read()
+
+    # (c) internal/admin/audit tables — no player-facing surface, PB doesn't need to see them
+    _PB_INTERNAL_ALLOWLIST = {
+        # Chat / PB internals — circular by definition
+        'aria_conversations':         'ARIA chat history (PB-internal storage)',
+        'aria_hint_log':              'ARIA hint dedupe log (PB-internal)',
+        'pilgrimbot_calls':           'PB tool-call audit log (PB-internal)',
+        'pilgrimbot_conversations':   'PB chat history (PB-internal storage)',
+        'pilgrimbot_reports':         'PB self-reports (PB-internal)',
+        # Bug tracker internals — PB queries bugs but not the substructure
+        'brainstorm_comments':        'Brainstorm subsystem internals',
+        'bug_comments':               'Bug-tracker substructure (accessed via PB bug tooling, not query_player_data)',
+        'bug_history':                'Bug-tracker substructure (accessed via PB bug tooling, not query_player_data)',
+        # Audit / transaction logs — effects surface through balance + upgrades; raw logs are admin only
+        'depot_transactions':         'Audit log; effects visible via balance + upgrades categories',
+        'upgrade_transactions':       'Audit log; effects visible via upgrades + infrastructure categories',
+        'robot_history':              'Robot audit; live state on robot table is exposed',
+        'robot_stage_log':            'Forge stage audit; current build status exposed via robot category',
+        'signal_messages':            'Signal-claim audit; claim state exposed via signal_claims category',
+        # Content / seed data — static, not per-player
+        'commander_quotes':           'Static seed content; not player state',
+        'mars_mission_messages':      'Static seed content (208 ARG quotes); not player state',
+        # Internal idempotency / metadata
+        'captain_stats_meta':         'Bookkeeping for V2 cutover (go_live_at etc.); event data is captain_stat_events (#1474 to wire)',
+        'used_action_tokens':         'Replay-attack idempotency; pure internal',
+        'generated_images':           'Admin/kumori-journal blob storage; not gameplay state',
+    }
+
+    # (d) PENDING: real player-facing tables that SHOULD be PB-aware but aren't yet —
+    # each MUST have a filed bug. Adding to this list without a ticket is forbidden.
+    _PB_PENDING = {
+        'captain_stat_events':        '#1474 (P2): captain_stat_events event log + per-source contributions',
+        'puzzle_fragments':           '#1475 (P3): Puzzle Fragments table',
+        'user_puzzle_fragments':      '#1475 (P3): Puzzle Fragments table — user-side join',
+        'puzzle_solvers':             '#1475 (P3): Puzzle Fragments table — solver tracking',
+        'signal_puzzles':             '#1475 (P3): Puzzle Fragments table — puzzle catalog',
+        'aria_bond_bonuses':          'TODO file: ARIA bond bonus surfacing for PB',
+        'echo_sites':                 'TODO file: echo_sites is player-visible Mars geography — PB has no category',
+        'trail_segments':             'TODO file: trail_segments is per-landmark trail state, currently invisible to PB',
+    }
+
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'pilgrim' AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+        """)
+        live_tables = {r['table_name'] for r in cur.fetchall()}
+
+    uncovered = []
+    # Match canonical references: pilgrim.<table>, "<table>", '<table>'.
+    # This is more accurate than \b boundary matching (which fails inside compound
+    # function names like get_all_user_upgrades) AND avoids false positives from
+    # substring collisions (e.g. 'bugs' matching 'debugs').
+    def _is_covered(table, text):
+        # pilgrim.<table> qualified SQL reference (case-insensitive — SQL is)
+        if re.search(rf"pilgrim\.{re.escape(table)}\b", text, re.IGNORECASE):
+            return True
+        # String literal '<table>' or "<table>" (e.g. ORM access, dict keys)
+        if f"'{table}'" in text or f'"{table}"' in text:
+            return True
+        # Identifier/path segment match: table name appears as a segment in an
+        # identifier or file path. Boundary before = `_`, `.`, or `/`. Boundary
+        # after = `_`, `.`, `/`, `(`, or end-of-word. Catches:
+        #   get_all_user_upgrades, compute_user_trail_chains, get_discovery_items_catalog,
+        #   utilities/postgres/trails/aria_skills.py, utilities.sv_milestones
+        if re.search(rf"(?:^|[_./]){re.escape(table)}(?:[_./(]|\b)", text):
+            return True
+        return False
+
+    for table in sorted(live_tables):
+        in_pb = _is_covered(table, pb_text)
+        in_mr = _is_covered(table, mr_text)
+        in_internal = table in _PB_INTERNAL_ALLOWLIST
+        in_pending = table in _PB_PENDING
+        if not (in_pb or in_mr or in_internal or in_pending):
+            uncovered.append(table)
+
+    # Also flag stale allowlist entries (table was dropped but still listed)
+    stale_internal = sorted(set(_PB_INTERNAL_ALLOWLIST) - live_tables)
+    stale_pending = sorted(set(_PB_PENDING) - live_tables)
+
+    msg_parts = []
+    if uncovered:
+        msg_parts.append(
+            "NEW pilgrim.* tables without PilgrimBot coverage:\n"
+            + "\n".join(f"  - pilgrim.{t}" for t in uncovered)
+            + "\n\nEvery new table MUST be one of:\n"
+            "  (a) referenced by utilities/pilgrimbot_data.py (add a query_player_data category), OR\n"
+            "  (b) referenced by math_registry.json (with keywords for PB's keyword search), OR\n"
+            "  (c) added to _PB_INTERNAL_ALLOWLIST in this test with a one-line justification, OR\n"
+            "  (d) file a follow-up bug and add to _PB_PENDING with the ticket #.\n"
+            "Do NOT just allowlist player-facing state — that's how Luke ends up arguing with a hallucinating PB."
+        )
+    if stale_internal:
+        msg_parts.append(f"Stale _PB_INTERNAL_ALLOWLIST entries (tables no longer exist): {stale_internal}")
+    if stale_pending:
+        msg_parts.append(f"Stale _PB_PENDING entries (tables no longer exist): {stale_pending}")
+
+    assert not msg_parts, "\n\n".join(msg_parts)
+    return True
+
+
 @test("PilgrimBot: map_geography wired + fog formula reachable", tier=1, features=['api'], mode='local')
 def test_pilgrimbot_map_geography():
     """Luke 2026-05-14 PB chat: asked 'how many destinations on Mars / visible / visited?' —

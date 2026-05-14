@@ -205,18 +205,25 @@ def llm_generate(prompt, max_tokens=500, temperature=1.0):
     return data.get('text'), data.get('backend')
 
 
-def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=None):
-    """Pinned-backend multi-turn chat. Returns (text, backend_name)."""
+def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=None,
+             app_name=None):
+    """Pinned-backend multi-turn chat. Returns (text, backend_name).
+
+    app_name: optional consumer attribution (e.g. 'dos_bros', 'galactica').
+    When set, lands in kumori_api_usage.app_name for this call's detail row.
+    """
     body = {'backend': backend_name, 'messages': messages,
             'max_tokens': max_tokens, 'temperature': temperature}
     if system:
         body['system'] = system
+    if app_name:
+        body['app_name'] = app_name
     data = _request('POST', '/api/v1/llm/chat', body)
     return data.get('text'), data.get('backend')
 
 
 def llm_chat_resilient(backends, messages, max_tokens=500, temperature=0.3,
-                       system=None, min_chars=1, debug=False):
+                       system=None, min_chars=1, debug=False, app_name=None):
     """Server-side fallback chat. Tries each backend in `backends` (list, in
     order); rotates on empty / 5xx / transient errors. Returns
     (text, winning_backend, attempt_log_list, debug_info). debug_info is None
@@ -225,6 +232,8 @@ def llm_chat_resilient(backends, messages, max_tokens=500, temperature=0.3,
 
     min_chars: response-shape gate — backend response shorter than this counts
     as a failure and rotation continues.
+    app_name: optional consumer attribution (e.g. 'dos_bros'). Lands in
+    kumori_api_usage.app_name for each rotation attempt's detail row.
     """
     body = {'backends': list(backends), 'messages': messages,
             'max_tokens': max_tokens, 'temperature': temperature,
@@ -233,6 +242,8 @@ def llm_chat_resilient(backends, messages, max_tokens=500, temperature=0.3,
         body['system'] = system
     if debug:
         body['debug'] = True
+    if app_name:
+        body['app_name'] = app_name
     data = _request('POST', '/api/v1/llm/chat-resilient', body, timeout=(5, 120))
     return data.get('text'), data.get('backend'), data.get('attempts', []), data.get('_debug')
 
@@ -412,13 +423,23 @@ def imggen_generate(prompt, width=1024, height=1024, mode='roundrobin',
 def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
                 width=1024, height=1024, app_name=None, character=None,
                 ref_filename=None, debug=False,
-                feature=None, verbiage=None, caller_user_id=None, tags=None):
-    """Image+text → image edit via Cloudflare flux-2-klein-4b. Up to 3 reference
-    images allowed (target + 3 refs = 4 image inputs total). Size rules same
-    as imggen_generate. Returns {ok, image_b64, provider, ms, [_debug]}.
+                feature=None, verbiage=None, caller_user_id=None, tags=None,
+                provider=None):
+    """Image+text → image edit. Default routes through Cloudflare flux-2-klein-4b;
+    pass `provider=` to target a specific edit endpoint:
+      - 'cloudflare_flux2_klein_edit' (default, 4 refs max, 60/day combined w/ _2)
+      - 'cloudflare_flux2_klein_edit_2' (sibling CF account)
+      - 'huggingface_qwen_2511' (20B, single ref, 4/day) — added 2026-05-13
+      - 'huggingface_kontext_dev' (12B, single ref, 4/day) — added 2026-05-13
+      - 'huggingface_qwen_2511_fast' (20B distilled, single ref, 30/day) — added 2026-05-13
+
+    Up to 3 reference images allowed for CF (target + 3 refs = 4 inputs total);
+    HF Spaces typically use only the target image. Size rules per endpoint_specs.json.
+
+    Returns {ok, image_b64, provider, ms, [_debug]}.
 
     When debug=True, response includes `_debug.upstream_calls` listing every
-    HTTP call kumori made to Cloudflare (with payloads + response details).
+    HTTP call kumori made to the upstream provider (with payloads + response details).
 
     Attribution kwargs (post 2026-05-11 — strongly encouraged for every call,
     see imggen_generate doc for what each one does)."""
@@ -437,7 +458,8 @@ def imggen_edit(prompt, target_image_b64, reference_images_b64=None,
     if verbiage: body['verbiage'] = verbiage
     if caller_user_id: body['caller_user_id'] = caller_user_id
     if tags: body['tags'] = tags
-    data = _request('POST', '/api/v1/imggen/edit', body, timeout=(5, 180))
+    if provider: body['provider'] = provider
+    data = _request('POST', '/api/v1/imggen/edit', body, timeout=(5, 300))
     return data
 
 
@@ -467,9 +489,15 @@ def imggen_usage(date=None, platform=None, limit=50):
 
 # ─── Image describe ───────────────────────────────────────────────────────────
 
-def describe_image(image_url=None, image_b64=None, prompt=None, mime=None, skip=None):
+def describe_image(image_url=None, image_b64=None, prompt=None, mime=None, skip=None,
+                   app_name=None):
     """Describe an image via free vision LLMs. Pass either image_url OR
-    image_b64. Returns {text, backend, ms, attempts}."""
+    image_b64. Returns {text, backend, ms, attempts}.
+
+    app_name: optional consumer attribution (e.g. 'dos_bros', 'galactica').
+    When set, lands in kumori_api_usage.app_name for this call's detail row.
+    Without it, server defaults to 'kumori_free_stack'.
+    """
     if not image_url and not image_b64:
         raise ValueError('describe_image requires image_url or image_b64')
     body = {}
@@ -483,5 +511,7 @@ def describe_image(image_url=None, image_b64=None, prompt=None, mime=None, skip=
         body['mime'] = mime
     if skip:
         body['skip'] = skip
+    if app_name:
+        body['app_name'] = app_name
     data = _request('POST', '/api/v1/describe/describe', body, timeout=(5, 60))
     return data
