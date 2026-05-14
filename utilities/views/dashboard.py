@@ -449,34 +449,10 @@ def get_dashboard_page_data(user_id, auth):
     except Exception as e:
         logger.warning(f"Could not fetch last buggy expedition: {e}")
 
-    # Narog passive contribution summary — only included for captains who've
-    # actually built a Narog. Drives the Base HQ "🤖 NAROG" status chip.
-    narog_summary = None
-    try:
-        from utilities.postgres.robot import get_robot
-        from utilities.postgres.trails.segments import _compute_robot_trail_contribution
-        robot = get_robot(user_id)
-        if robot and robot.get('build_status') == 'complete':
-            with db_cursor() as cur:
-                # robot_km lives on user_trail_chains (per-chain lifetime sum),
-                # NOT on trail_segments (which is just the per-segment build state).
-                cur.execute(
-                    "SELECT COALESCE(SUM(robot_km), 0) AS total_km FROM pilgrim.user_trail_chains WHERE user_id = %s",
-                    (user_id,))
-                row = cur.fetchone()
-                lifetime_km = float(row['total_km'] or 0) if row else 0.0
-            km_per_hour = float(_compute_robot_trail_contribution(user_id) or 0.0)
-            dial = robot.get('dial') or {}
-            narog_summary = {
-                'name': robot.get('name') or 'Narog',
-                'visual_stage': int(robot.get('visual_stage') or 0),
-                'exploration_pct': int(dial.get('exploration', 0) or 0),
-                'km_per_hour': round(km_per_hour, 4),
-                'km_per_day': round(km_per_hour * 24, 2),
-                'lifetime_km': round(lifetime_km, 2),
-            }
-    except Exception as e:
-        logger.warning(f"narog summary build failed for user {user_id}: {e}")
+    # Bug #1441 (Luke 2026-05-14 P1): the Narog "Passive Trails" summary chip
+    # moved from /home Base HQ hero to /crew Narog tab. The helper now lives at
+    # utilities/postgres/robot.py::build_narog_summary and is invoked from
+    # utilities/views/arrival.py::get_crew_page_data_authenticated.
 
     return {
         'user': user, 'wallets': wallets, 'primary_wallet': primary_wallet,
@@ -484,7 +460,6 @@ def get_dashboard_page_data(user_id, auth):
         'commander': commander_data, 'commander_stats': commander_stats,
         'recent_activity': build_recent_activity(user_id, 10),
         'active_expeditions': active_expeditions,
-        'narog_summary': narog_summary,
         'has_infrastructure': len(user_infrastructure) > 0,
         'expedition_stats': {
             'total': total_expeditions,

@@ -187,6 +187,42 @@ def compute_craftsmanship_score(sources: List[Dict[str, Any]]) -> int:
 # READ
 # ============================================================================
 
+def build_narog_summary(user_id: int) -> Optional[Dict[str, Any]]:
+    """Shared builder for the Narog "Passive Trails" chip.
+
+    Bug #1441 (Luke 2026-05-14 P1): originally rendered on /home Base HQ hero.
+    Luke wants it on /crew Narog tab where it logically belongs. Helper lives
+    here so multiple views can call it (or in this case, just /crew — but
+    keeping it portable in case home wants a stripped variant later).
+
+    Returns None if the captain has no completed Narog.
+    """
+    try:
+        from utilities.postgres.trails.segments import _compute_robot_trail_contribution
+        robot = get_robot(user_id)
+        if not robot or robot.get('build_status') != 'complete':
+            return None
+        with db_cursor() as cur:
+            cur.execute(
+                "SELECT COALESCE(SUM(robot_km), 0) AS total_km FROM pilgrim.user_trail_chains WHERE user_id = %s",
+                (user_id,))
+            row = cur.fetchone()
+            lifetime_km = float(row['total_km'] or 0) if row else 0.0
+        km_per_hour = float(_compute_robot_trail_contribution(user_id) or 0.0)
+        dial = robot.get('dial') or {}
+        return {
+            'name': robot.get('name') or 'Narog',
+            'visual_stage': int(robot.get('visual_stage') or 0),
+            'exploration_pct': int(dial.get('exploration', 0) or 0),
+            'km_per_hour': round(km_per_hour, 4),
+            'km_per_day': round(km_per_hour * 24, 2),
+            'lifetime_km': round(lifetime_km, 2),
+        }
+    except Exception as e:
+        logger.warning(f"build_narog_summary failed for user {user_id}: {e}")
+        return None
+
+
 def get_robot(user_id: int) -> Optional[Dict[str, Any]]:
     """Return the captain's robot row, or None if they haven't started one."""
     try:

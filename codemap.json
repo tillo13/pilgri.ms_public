@@ -2136,6 +2136,7 @@
       "compute_robot_stat_value — Linear stat = 5 + foundry_level × 9.5, integer-rounded, clamped [5,100].",
       "compute_robot_stats — For each of the 4 Narog stats return the current value, whether the",
       "compute_craftsmanship_score",
+      "build_narog_summary — Shared builder for the Narog \"Passive Trails\" chip.",
       "get_robot — Return the captain's robot row, or None if they haven't started one.",
       "get_stage_log — Return all logged stages for a captain in order.",
       "class RobotGateError — Captain doesn't have the minimum components to start a Narog build.",
@@ -2145,8 +2146,7 @@
       "log_stage — Append a completed stage to the log AND advance the robot row.",
       "broadcast_stage_async — Fire-and-forget Sepolia broadcast for one narog stage.",
       "set_robot_name — Set or rename the captain's robot. Names are trimmed and capped at 64 chars.",
-      "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5",
-      "class ReforgeError — Raised when a recalibration action can't proceed (cap hit, insufficient"
+      "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5"
     ]
   },
   "utilities/postgres/shop.py": {
@@ -3587,7 +3587,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3603,7 +3603,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3668,7 +3668,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

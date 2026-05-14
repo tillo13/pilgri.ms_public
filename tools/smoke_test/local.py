@@ -1679,6 +1679,53 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("Bug #1441: Narog Passive Trails chip moved /home → /crew Narog tab", tier=1, features=['api'], mode='local')
+def test_narog_passive_trails_relocated():
+    """Luke 2026-05-14 P1: 'This summary makes more sense on Crew Page.' The chip's
+    Jinja block must live in templates/crew/_tab_robot.html, NOT in
+    templates/home/_auth_hero.html. dashboard.py no longer emits narog_summary;
+    arrival.py::get_crew_page_data_authenticated calls the new
+    utilities/postgres/robot.py::build_narog_summary helper."""
+    import os
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    with open(os.path.join(project_root, 'templates', 'home', '_auth_hero.html')) as f:
+        hero = f.read()
+    with open(os.path.join(project_root, 'templates', 'crew', '_tab_robot.html')) as f:
+        crew = f.read()
+    with open(os.path.join(project_root, 'utilities', 'views', 'dashboard.py')) as f:
+        dash = f.read()
+    with open(os.path.join(project_root, 'utilities', 'views', 'arrival.py')) as f:
+        arrival = f.read()
+    with open(os.path.join(project_root, 'utilities', 'postgres', 'robot.py')) as f:
+        robot = f.read()
+
+    # Chip removed from /home hero (only the comment trail remains)
+    assert '{% if narog_summary %}' not in hero, \
+        "#1441 regression: narog_summary chip re-introduced in templates/home/_auth_hero.html"
+    assert 'narog_summary.lifetime_km' not in hero, \
+        "#1441 regression: lifetime_km render re-introduced in _auth_hero.html"
+    # Chip now lives on /crew Narog tab
+    assert '{% if narog_summary %}' in crew, "#1441: chip must render on /crew Narog tab"
+    assert 'Passive Trails' in crew, "#1441: 'Passive Trails' label must be on crew tab"
+    # dashboard.py no longer passes narog_summary to /home template
+    assert "'narog_summary': narog_summary" not in dash, \
+        "#1441 regression: dashboard.py is still passing narog_summary into the /home template context"
+    # arrival.py calls the new helper for /crew
+    assert 'build_narog_summary' in arrival, \
+        "#1441: arrival.py must call build_narog_summary so /crew can render the chip"
+    # Helper exists in robot.py
+    assert 'def build_narog_summary' in robot, \
+        "#1441: utilities/postgres/robot.py must export build_narog_summary helper"
+
+    # Live: helper actually returns a dict for a captain with a completed Narog (Luke=112)
+    from utilities.postgres.robot import build_narog_summary
+    summary = build_narog_summary(112)
+    if summary is not None:  # Luke has a Narog; assertion only fires if he does
+        for k in ('name', 'exploration_pct', 'km_per_day', 'lifetime_km'):
+            assert k in summary, f"build_narog_summary missing key {k!r}"
+    return True
+
+
 @test("Bug #1132: research_enabled dead flag deleted everywhere", tier=1, features=['api'], mode='local')
 def test_no_research_enabled_flag():
     """Luke 2026-05-13 reopened: 'enables xenobiology research' chip on Xenobiology Lab

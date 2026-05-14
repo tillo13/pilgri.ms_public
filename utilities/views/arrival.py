@@ -8,11 +8,14 @@ logger = logging.getLogger(__name__)
 def get_crew_page_data_authenticated(user_id):
     """Full data bundle for the authenticated crew page (reuses command page data)."""
     from utilities.depot_utils import get_pricing_info
-    from utilities.postgres.robot import get_robot_page_data
+    from utilities.postgres.robot import get_robot_page_data, build_narog_summary
     from utilities.upgrades_utils import get_user_upgrade_level
     data = get_command_page_data(user_id)
     data['pricing'] = get_pricing_info(user_id)
     data['robot_data'] = get_robot_page_data(user_id)
+    # Bug #1441 (Luke 2026-05-14 P1): Narog "Passive Trails" chip moved from
+    # /home Base HQ hero to /crew Narog tab. Render guarded on completed Narog.
+    data['narog_summary'] = build_narog_summary(user_id)
     # Bug #1303: trails tab needs to know whether to surface a Drone card +
     # Narog card in the "Your Crew" contribution row. Drone km is fed by the
     # maintenance + mining drone upgrades' trail_km_per_hour values (see
