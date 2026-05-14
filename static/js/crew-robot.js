@@ -564,7 +564,9 @@
         return inst && inst.el.dataset.locked !== 'true';
     }
 
-    // Apply state to all allocator instances + active/idle summary.
+    // Apply state to all allocator instances + active summary.
+    // Bug #1450 (Luke 2026-05-14): no more idle — sum across unlocked dials is
+    // always 100, so the status line just reads "Fully allocated (100%)".
     function repaint() {
         if (!dialState) return;
         DIAL_KEYS.forEach(k => {
@@ -573,20 +575,24 @@
         const status = document.getElementById('robot-dial-status');
         if (status) {
             const total = DIAL_KEYS.reduce((s, k) => s + dialState[k], 0);
-            const idle = Math.max(0, 100 - total);
-            status.textContent = `Active ${total}% · Idle ${idle}%`;
+            status.textContent = `Fully allocated · ${total}%`;
             status.style.color = 'var(--text-secondary)';
         }
     }
 
-    // Set `key` to `newVal`. Two regimes:
-    //   1. Solo mode (only this row unlocked): set freely 0-100, no rebalance.
-    //      Unallocated time is "idle" — the robot just doesn't burn cycles.
-    //      Lets captains preview the mechanic at Phase 1 (e.g. set 38% to see
-    //      ~1.9% effective trail bonus on a 5/100 base).
-    //   2. Multi-row mode (2+ unlocked): rebalance across other unlocked rows
-    //      to keep sum ≤ 100. Adding to this row steals from largest others;
-    //      subtracting donates to smallest. Sum can stay below 100 (idle time).
+    // Bug #1450 (Luke 2026-05-14): "auto allocate to whatever the 'highest'
+    // ability is. ie: if Captain sets Exploration to 85%, (and they have
+    // Logistics unlocked), then it should auto set Logistics to 15%. I don't
+    // see any real gameplay advantage/reason for having an idle %."
+    //
+    // New regime:
+    //   1. Solo mode (only this row unlocked): always pinned at 100. No idle.
+    //   2. Multi-row mode: sum across unlocked dials MUST equal 100. When the
+    //      captain moves a slider, the delta flows into/out of the OTHER
+    //      unlocked slot with the highest current value. If the highest
+    //      doesn't have enough to give, we cascade to the next-highest, etc.
+    //      Single-recipient (not proportional) preserves the captain's other
+    //      manual edits — only the largest "donor" moves.
     function setDialValue(key, newVal) {
         if (!dialState || !isUnlocked(key)) return;
         newVal = Math.max(0, Math.min(100, Math.round(newVal / DIAL_STEP) * DIAL_STEP));
@@ -595,19 +601,65 @@
         const others = DIAL_KEYS.filter(k => k !== key && isUnlocked(k));
 
         if (!others.length) {
-            // Solo mode: freely settable 0-100. No rebalance, no clamp on total.
-            dialState[key] = newVal;
+            // Solo mode: locked at 100% regardless of input. The slider can
+            // appear to move but state pins to 100 on every interaction.
+            dialState[key] = 100;
+            repaint();
+            scheduleDialSave();
+            return;
+        }
+
+        let delta = newVal - cur;
+        // Sort others by current value desc — Luke's "highest" rule.
+        // Ties broken by DIAL_KEYS canonical order (stable sort).
+        const sortedOthers = others.slice().sort((a, b) => dialState[b] - dialState[a]);
+
+        if (delta > 0) {
+            // Take `delta` from other slots, draining the highest first.
+            // If they all hit 0 before we're satisfied, clamp newVal to what
+            // was actually achievable (defensive — UI normally prevents this).
+            let owed = delta;
+            for (const k of sortedOthers) {
+                if (owed <= 0) break;
+                const take = Math.min(dialState[k], owed);
+                dialState[k] -= take;
+                owed -= take;
+            }
+            dialState[key] = newVal - owed;
         } else {
-            // Multi-row mode: enforce sum-across-unlocked ≤ 100.
-            const otherSum = others.reduce((s, k) => s + dialState[k], 0);
-            const headroom = 100 - otherSum;
-            if (newVal > headroom) newVal = headroom;
+            // Subtracting: hand the freed % entirely to the highest other.
+            dialState[sortedOthers[0]] = Math.min(100, dialState[sortedOthers[0]] + (-delta));
             dialState[key] = newVal;
-            // No auto-redistribute when subtracting — let the freed % stay idle.
-            // Captain can manually pull it into another row if they want it used.
         }
         repaint();
         scheduleDialSave();
+    }
+
+    // Bug #1450: normalize loaded state so sum across unlocked slots == 100.
+    // Older Narogs persisted with idle %; on first page-load post-deploy we
+    // bring them up to a fully-allocated state. Proportional fill from the
+    // current highest (or all-to-exploration if everything was zero).
+    function normalizeDialOnLoad() {
+        if (!dialState) return false;
+        const unlocked = DIAL_KEYS.filter(isUnlocked);
+        if (!unlocked.length) return false;
+        const sum = unlocked.reduce((s, k) => s + dialState[k], 0);
+        if (sum === 100) return false;
+        if (sum < 100) {
+            // Donate the gap to the highest unlocked slot (or exploration if all 0).
+            const target = unlocked.slice().sort((a, b) => dialState[b] - dialState[a])[0] || 'exploration';
+            dialState[target] = Math.min(100, dialState[target] + (100 - sum));
+        } else {
+            // Over 100 (legacy): scale down proportionally then nudge to exact 100.
+            const scale = 100 / sum;
+            unlocked.forEach(k => { dialState[k] = Math.round((dialState[k] * scale) / DIAL_STEP) * DIAL_STEP; });
+            const drift = 100 - unlocked.reduce((s, k) => s + dialState[k], 0);
+            if (drift !== 0) {
+                const tgt = unlocked.slice().sort((a, b) => dialState[b] - dialState[a])[0];
+                dialState[tgt] = Math.max(0, Math.min(100, dialState[tgt] + drift));
+            }
+        }
+        return true;
     }
 
     function scheduleDialSave() {
@@ -726,6 +778,12 @@
                 card.addEventListener('click', () => showLockedDialModal(key));
             }
         });
+        // Bug #1450: bring legacy persisted dials up to sum=100 across unlocked
+        // slots on first paint. If we touched the state, persist immediately so
+        // ARIA + admin views see the cleaned dial.
+        if (normalizeDialOnLoad()) {
+            scheduleDialSave();
+        }
         repaint();
     }
 
@@ -1259,7 +1317,7 @@
                         ${allocRow('logistics',   'Logistics')}
                         ${allocRow('research',    'Research')}
                         ${allocRow('expeditions', 'Expeditions')}
-                        <div style="font-size:10px; color:var(--text-muted); border-top:1px dashed rgba(255,200,140,0.2); margin-top:6px; padding-top:6px;">Active ${totalAllocation}% · Idle ${idle}%</div>
+                        <div style="font-size:10px; color:var(--text-muted); border-top:1px dashed rgba(255,200,140,0.2); margin-top:6px; padding-top:6px;">Fully allocated · ${totalAllocation}%</div>
                     </div>
 
                     <div style="font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-sepolia); margin:14px 0 6px;">Awakening Video</div>

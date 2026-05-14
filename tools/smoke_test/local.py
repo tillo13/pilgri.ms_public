@@ -1679,6 +1679,36 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("Bug #1450: Narog dial auto-allocates leftover to highest unlocked — no idle", tier=1, features=['api'], mode='local')
+def test_narog_dial_no_idle():
+    """Luke 2026-05-14: 'I don't see any real gameplay advantage/reason for having
+    an idle %. Auto allocate to whatever the highest ability is.' Solo mode pins
+    to 100; multi-row mode flows the delta into/out of the highest other unlocked
+    slot so sum=100 always."""
+    import os
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    with open(os.path.join(project_root, 'static', 'js', 'crew-robot.js')) as f:
+        js = f.read()
+    with open(os.path.join(project_root, 'templates', 'crew', '_tab_robot.html')) as f:
+        tpl = f.read()
+
+    # (a) Initial DOM no longer advertises Idle.
+    assert 'Idle 0%' not in tpl, \
+        "#1450 regression: templates/crew/_tab_robot.html still renders 'Idle 0%' in robot-dial-status initial state"
+    assert 'Fully allocated' in tpl, "Initial dial status must read 'Fully allocated · 100%'"
+
+    # (b) JS sum logic — no more "Active X% · Idle Y%" rendering and the new normalize helper exists.
+    assert 'Idle ${idle}%' not in js, "#1450 regression: repaint() still renders 'Idle Y%' template literal"
+    assert 'function normalizeDialOnLoad' in js, "#1450: normalizeDialOnLoad helper missing"
+    # Solo-mode pin to 100 — the new behavior, replacing "set freely 0-100"
+    assert 'Solo mode: locked at 100%' in js, "#1450: solo-mode 100% pin missing from setDialValue"
+    # Delta-flow-to-highest-other — Luke's literal rule
+    assert "Luke's \"highest\" rule" in js, "#1450: setDialValue must document + implement the 'highest other' rule"
+    # normalize must run on init so legacy idle-state captains auto-heal first paint
+    assert 'normalizeDialOnLoad()' in js, "#1450: wireDial must invoke normalizeDialOnLoad on init"
+    return True
+
+
 @test("Bug #1469 + #1471: expeditions undiscovered grid not [:6]-capped + vehicle filter wired", tier=1, features=['api'], mode='local')
 def test_expeditions_sort_and_filter():
     """#1469 (Luke 2026-05-13): template was hardcoded `undiscovered[:6]` so
