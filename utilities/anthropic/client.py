@@ -411,6 +411,26 @@ class ClaudeClient:
                     elif event.type == 'message_stop':
                         elapsed_time = time.time() - start_time
 
+                        # Bug #1477 (Andy 2026-05-14 P1): kumori anthropic_leak_detector
+                        # flagged $258/mo unaccounted spend on sonnet-4-5 because this
+                        # block USED TO log a hand-built {input_tokens, output_tokens}
+                        # dict — which drops cache_creation_input_tokens (~42k/hr),
+                        # cache_read_input_tokens (~64k/hr), thinking_tokens, and
+                        # server_tool_use entirely. log_api_usage reads all of those
+                        # via getattr off a real SDK usage object. The SDK exposes
+                        # the complete usage on stream.get_final_message().usage at
+                        # exit time. Use that instead of the partial event-loop counters.
+                        try:
+                            final_usage = stream.get_final_message().usage
+                            total_input_tokens = getattr(final_usage, 'input_tokens', total_input_tokens)
+                            total_output_tokens = getattr(final_usage, 'output_tokens', total_output_tokens)
+                        except Exception as _e:
+                            # Defensive fallback — never break the user-facing stream
+                            # because the post-stream usage read failed. The partial
+                            # counters from the event loop still get logged.
+                            logger.warning(f"stream_chat: get_final_message() failed, logging partial usage: {_e}")
+                            final_usage = {'input_tokens': total_input_tokens, 'output_tokens': total_output_tokens}
+
                         total_tokens = total_input_tokens + total_output_tokens
                         model_pricing = get_model_pricing(self.model)
                         total_cost = (total_input_tokens * model_pricing['input']) + (total_output_tokens * model_pricing['output'])
@@ -424,7 +444,7 @@ class ClaudeClient:
 
                         log_api_usage(
                             model=self.model,
-                            usage={'input_tokens': total_input_tokens, 'output_tokens': total_output_tokens},
+                            usage=final_usage,
                             feature=feature or 'stream_chat',
                             streaming=True,
                             duration_ms=int(elapsed_time * 1000),

@@ -66,68 +66,33 @@ WEB_SEARCH_TOOL_VERSION = "web_search_20260209"  # update here when Anthropic re
 APP_NAME = 'galactica'
 
 
-def _get_kumori_connection():
-    """Get a connection to the kumori DB specifically for usage logging."""
-    import psycopg2
-    from utilities.postgres.core import get_secret
-    host = get_secret('KUMORI_POSTGRES_IP')
-    dbname = get_secret('KUMORI_POSTGRES_DB_NAME')
-    user = get_secret('KUMORI_POSTGRES_USERNAME')
-    password = get_secret('KUMORI_POSTGRES_PASSWORD')
-    return psycopg2.connect(host=host, dbname=dbname, user=user, password=password)
-
-
 def log_api_usage(model, usage, feature=None, streaming=False,
                   image_count=0, user_id=None, duration_ms=None):
-    """Log an API call to kumori_api_usage in a background thread.
-    Never blocks the caller. Never raises."""
-    import threading
+    """Thin compatibility shim — routes to the canonical kumori logger.
 
-    def _do_log():
-        try:
-            pricing = get_model_pricing(model)
+    Bug #1477 (Andy 2026-05-14): used to be 60 lines of duplicate logging
+    machinery that paralleled utilities/anthropic_logger.py::log_usage_async.
+    Both wrote to the same kumori_api_usage table with the same column shape,
+    same cost formula, same DB connection pattern — and the parallel impl is
+    exactly what made the streaming cache-token leak possible (stream_chat
+    passed a partial dict that this function silently logged as zeros for
+    every cache field). One canonical logger means one place to fix it.
 
-            input_tokens = getattr(usage, 'input_tokens', None) or (usage.get('input_tokens', 0) if isinstance(usage, dict) else 0) or 0
-            output_tokens = getattr(usage, 'output_tokens', None) or (usage.get('output_tokens', 0) if isinstance(usage, dict) else 0) or 0
-            cache_creation = getattr(usage, 'cache_creation_input_tokens', None) or (usage.get('cache_creation_input_tokens', 0) if isinstance(usage, dict) else 0) or 0
-            cache_read = getattr(usage, 'cache_read_input_tokens', None) or (usage.get('cache_read_input_tokens', 0) if isinstance(usage, dict) else 0) or 0
-            thinking = getattr(usage, 'thinking_tokens', None) or (usage.get('thinking_tokens', 0) if isinstance(usage, dict) else 0) or 0
+    Pattern: kumori-canonical (see ~/.claude/skills/kumori-infrastructure/).
+    When kumori exports a utility for a cross-cutting concern (Anthropic
+    logging, Postgres connection, Gmail send, GCP secrets), every downstream
+    in ~/Desktop/code/* routes through it. Local re-implementations are
+    DRY violations that produce reconciliation drift — exhibit A: this bug.
 
-            server_tools = getattr(usage, 'server_tool_use', None) or (usage.get('server_tool_use') if isinstance(usage, dict) else None) or {}
-            web_searches = getattr(server_tools, 'web_search_requests', None) or (server_tools.get('web_search_requests', 0) if isinstance(server_tools, dict) else 0) or 0
-            web_fetches = getattr(server_tools, 'web_fetch_requests', None) or (server_tools.get('web_fetch_requests', 0) if isinstance(server_tools, dict) else 0) or 0
-            code_exec = getattr(server_tools, 'code_execution_requests', None) or (server_tools.get('code_execution_requests', 0) if isinstance(server_tools, dict) else 0) or 0
-
-            cost = (
-                input_tokens * pricing['input']
-                + output_tokens * pricing['output']
-                + cache_creation * pricing['input'] * CACHE_WRITE_MULTIPLIER
-                + cache_read * pricing['input'] * CACHE_READ_MULTIPLIER
-                + thinking * pricing['output']
-                + web_searches * WEB_SEARCH_COST
-            )
-
-            conn = _get_kumori_connection()
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO kumori_api_usage
-                        (app_name, feature, model, input_tokens, output_tokens,
-                         cache_creation_tokens, cache_read_tokens, thinking_tokens,
-                         web_search_requests, web_fetch_requests, code_execution_requests,
-                         image_count, estimated_cost_usd, streaming, user_id, duration_ms)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    """, (APP_NAME, feature, model, input_tokens, output_tokens,
-                          cache_creation, cache_read, thinking,
-                          web_searches, web_fetches, code_exec,
-                          image_count, cost, streaming, user_id, duration_ms))
-                conn.commit()
-            finally:
-                conn.close()
-        except Exception as e:
-            logger.warning(f"Failed to log API usage: {e}")
-
-    threading.Thread(target=_do_log, daemon=True).start()
+    All 9 historical callers keep their imports + signatures unchanged.
+    """
+    from utilities.anthropic_logger import log_usage_async
+    log_usage_async(
+        app_name=APP_NAME, model=model, usage=usage,
+        feature=feature, user_id=user_id,
+        duration_ms=duration_ms, streaming=streaming,
+        image_count=image_count,
+    )
 
 
 def get_model_pricing(model_name: str) -> Dict[str, float]:

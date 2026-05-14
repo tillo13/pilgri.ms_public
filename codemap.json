@@ -2637,7 +2637,7 @@
   "utilities/anthropic/pricing.py": {
     "description": "Claude model catalog, pricing, and kumori_api_usage logging.",
     "exports": [
-      "log_api_usage — Log an API call to kumori_api_usage in a background thread.",
+      "log_api_usage — Thin compatibility shim — routes to the canonical kumori logger.",
       "get_model_pricing — Get accurate pricing per token for different Claude models"
     ]
   },

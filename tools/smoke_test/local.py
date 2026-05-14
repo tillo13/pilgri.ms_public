@@ -1679,6 +1679,68 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("Bug #1477: anthropic logging is canonical (single source, no parallel stack)", tier=1, features=['api'], mode='local')
+def test_anthropic_logging_canonical():
+    """Andy 2026-05-14 P1: kumori anthropic_leak_detector flagged $258/mo unaccounted
+    spend because utilities/anthropic/pricing.py had a 60-line parallel log_api_usage
+    duplicating utilities/anthropic_logger.py::log_usage_async, AND stream_chat in
+    utilities/anthropic/client.py logged a hand-built {input_tokens, output_tokens}
+    dict that dropped all 4 cache + thinking + server_tool_use fields.
+
+    Holistic fix locks:
+      (a) pricing.log_api_usage is now a THIN WRAPPER around log_usage_async — no
+          parallel DB connection, no parallel cost formula, no parallel INSERT.
+      (b) stream_chat captures stream.get_final_message().usage (full SDK usage
+          object) at message_stop — log_api_usage already reads cache fields via
+          getattr, the bug was the partial dict, not the logger.
+      (c) Pattern: kumori-canonical — any downstream sibling project routing
+          through a kumori utility (anthropic_logger, postgres_utils, etc.) MUST
+          use it directly OR a thin shim. Local re-implementations are DRY
+          violations that produce reconciliation drift.
+    """
+    import os
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    with open(os.path.join(project_root, 'utilities', 'anthropic', 'pricing.py')) as f:
+        pricing = f.read()
+    with open(os.path.join(project_root, 'utilities', 'anthropic', 'client.py')) as f:
+        client = f.read()
+
+    # (a) pricing.log_api_usage MUST delegate to log_usage_async — no parallel impl.
+    assert 'from utilities.anthropic_logger import log_usage_async' in pricing, \
+        "#1477 regression: pricing.log_api_usage is no longer a thin shim around the canonical logger"
+    assert 'log_usage_async(' in pricing, "#1477: log_api_usage must invoke log_usage_async"
+    # The smoking-gun line of the duplicate impl was its own INSERT statement.
+    assert 'INSERT INTO kumori_api_usage' not in pricing, \
+        "#1477 regression: pricing.py has reintroduced its own INSERT into kumori_api_usage — that's the parallel-stack violation"
+    # The duplicate DB connection helper was the other smoking gun.
+    assert 'def _get_kumori_connection' not in pricing, \
+        "#1477 regression: pricing.py reintroduced _get_kumori_connection — kumori_api_usage writes go through anthropic_logger only"
+
+    # (b) stream_chat must use stream.get_final_message().usage on message_stop,
+    # NOT a hand-built {input_tokens, output_tokens} dict.
+    assert 'stream.get_final_message().usage' in client, \
+        "#1477 regression: stream_chat must read final usage from the SDK stream object so cache fields land in kumori_api_usage"
+    # The exact partial-dict pattern that caused the leak.
+    bad_partial = "{'input_tokens': total_input_tokens, 'output_tokens': total_output_tokens}"
+    # Allow the fallback partial dict in the except-branch (defensive), but the
+    # primary log_api_usage call MUST pass final_usage from get_final_message().
+    # Quick heuristic: count how many times we pass usage=final_usage vs usage={...}.
+    assert 'usage=final_usage,' in client, \
+        "#1477: stream_chat must pass usage=final_usage (full SDK object) to log_api_usage"
+
+    # (c) Live: pricing.log_api_usage and log_usage_async are the SAME logical write.
+    # Easiest invariant: both must read identical fields from a fake usage object.
+    # We can't double-write to kumori_api_usage in a smoke test, but we can verify
+    # the wrapper signature is intact.
+    from utilities.anthropic.pricing import log_api_usage
+    assert log_api_usage.__module__ == 'utilities.anthropic.pricing', "log_api_usage origin moved"
+    import inspect
+    src = inspect.getsource(log_api_usage)
+    assert 'log_usage_async' in src and 'INSERT' not in src, \
+        "#1477: log_api_usage must be a wrapper, not a parallel writer"
+    return True
+
+
 @test("Bug #1441: Narog Passive Trails chip moved /home → /crew Narog tab", tier=1, features=['api'], mode='local')
 def test_narog_passive_trails_relocated():
     """Luke 2026-05-14 P1: 'This summary makes more sense on Crew Page.' The chip's
