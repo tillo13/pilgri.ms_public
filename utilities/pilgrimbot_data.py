@@ -20,7 +20,8 @@ PLAYER_DATA_TOOL = {
                 "type": "string",
                 "enum": ["balance", "shard_generation", "sv_sources", "upgrades", "infrastructure", "building_queue",
                          "expeditions", "research", "crew_missions", "discoveries",
-                         "signal_claims", "overview", "leaderboard", "robot"],
+                         "signal_claims", "overview", "leaderboard", "robot",
+                         "discovery_catalog", "discovery_analytics", "map_geography"],
                 "description": "Which data category to fetch"
             },
             "user_id": {
@@ -47,6 +48,9 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   signal_claims     — Origin site claims, ARIA bonds
   robot             — Fourth crew member (Step 4d): Narog Foundry level, build status, current visual stage, time until next stage, role dial split, source manifest of items used to forge each stage
   leaderboard       — Top players by shards, expeditions, and research (no user_id needed)
+  discovery_catalog — Full discovery-item catalog grouped by rarity (Common/Uncommon/Rare/Legendary): count + % of catalog per rarity, top items by trade value, distance bands. USE THIS when user asks about what items exist or rarity tiers.
+  discovery_analytics — Per-user discovery audit: actual rarity finds vs expected (computed by replaying each expedition's stored captain stats + distance through the actual drop-weight formula in discovery_utils.get_progressive_weights). Shows expedition-band breakdown so users can see WHY their drop rate is what it is (e.g. legendary weight is 0 below 300 km AND for first 19 expeditions). USE THIS when user suspects rare/legendary finds are too low.
+  map_geography     — Mars destination geography: total named landmarks on the planet (pilgrim.mars_mappings), total origin sites, captain's home coords, current fog-of-war radius + formula, landmarks inside fog right now, unique landmarks visited, total trips taken. USE THIS for ANY question about "how many destinations", "how many can I visit", "how big is the map", "what can I see", "places I've been".
 """
 
 
@@ -501,6 +505,178 @@ def query_player_data(category, user_id):
             lines.append("Top by Research:")
             for i, r in enumerate(top_tech):
                 lines.append(f"  {i+1}. {r['name']} — {r['tech_count']} techs")
+            return "\n".join(lines)
+
+        elif category == 'discovery_catalog':
+            from utilities.postgres.expeditions import get_discovery_items_catalog
+            items = get_discovery_items_catalog()
+            if not items:
+                return "Discovery catalog is empty."
+            buckets = {'common': [], 'uncommon': [], 'rare': [], 'legendary': []}
+            for it in items:
+                r = (it.get('rarity') or 'common').lower()
+                if r in buckets:
+                    buckets[r].append(it)
+            total = len(items)
+            lines = ["=== DISCOVERY ITEM CATALOG ==="]
+            lines.append(f"Total active items: {total}")
+            lines.append("")
+            lines.append("CATALOG COMPOSITION (what % of distinct items are each rarity — NOT drop rates):")
+            for r in ('common', 'uncommon', 'rare', 'legendary'):
+                n = len(buckets[r])
+                pct = (n / total * 100) if total else 0
+                lines.append(f"  {r.title():10s}: {n} items ({pct:.1f}%)")
+            for r in ('legendary', 'rare', 'uncommon', 'common'):
+                bucket = buckets[r]
+                if not bucket:
+                    continue
+                lines.append("")
+                lines.append(f"--- {r.upper()} ({len(bucket)}) — top 5 by trade value ---")
+                top = sorted(bucket, key=lambda x: float(x.get('base_trade_value_eth') or 0), reverse=True)[:5]
+                for it in top:
+                    shards = float(it.get('base_trade_value_eth') or 0) * 10000000
+                    sv = it.get('base_scientific_value') or 0
+                    mind = it.get('min_distance_km') or 0
+                    maxd = it.get('max_distance_km') or 0
+                    lines.append(f"  • {it.get('item_name','?')} ({it.get('item_type','?')}) — {shards:,.0f} shards, {sv} SV, distance band {mind}-{maxd} km")
+            lines.append("")
+            lines.append("NOTE: Drop rates per expedition are NOT this distribution. They're tiered by expedition # and distance — see discovery_analytics for the actual formula.")
+            return "\n".join(lines)
+
+        elif category == 'discovery_analytics':
+            from utilities.postgres.expeditions import get_user_expedition_history
+            history = get_user_expedition_history(user_id, limit=500)
+            expeditions = history.get('expeditions') or []
+            completed = [e for e in expeditions if e.get('completed_at')]
+            completed.sort(key=lambda e: e.get('departed_at') or e.get('completed_at'))
+            lines = ["=== DISCOVERY ANALYTICS ==="]
+            lines.append("Drop-rate tiers (source: utilities/discovery_utils.py::get_progressive_weights):")
+            lines.append("  Exp #  1-3:  common 50, uncommon 25, rare 15, legendary 0")
+            lines.append("  Exp #  4-9:  common 75, uncommon 20, rare  5, legendary 0")
+            lines.append("  Exp # 10-19: common 60, uncommon 25, rare 12, legendary 0")
+            lines.append("  Exp # 20+:   common 60, uncommon 25, rare 12, legendary 0.5")
+            lines.append("Then distance multipliers stack (legendary stays 0 below 300 km):")
+            lines.append("  <100km: common ×1.5, uncommon ×1.0, rare ×0.5, legendary ×0")
+            lines.append("  <300km: common ×1.0, uncommon ×1.0, rare ×1.0, legendary ×0")
+            lines.append("  <600km: common ×0.75, uncommon ×1.0, rare ×1.5, legendary ×0.5")
+            lines.append("  <1000km: common ×0.5, uncommon ×1.0, rare ×2.0, legendary ×1.5")
+            lines.append("  <2000km: common ×0.4, uncommon ×1.0, rare ×2.5, legendary ×2.5")
+            lines.append("  2000+km: common ×0.3, uncommon ×0.8, rare ×3.0, legendary ×4.0")
+            lines.append("Exploration stat boosts rare (×(1+expl/90)) and legendary (×(1+(expl/90)²)). Strategy boosts rare (up to ×1.5).")
+            lines.append("")
+            if not completed:
+                lines.append("No completed expeditions yet — nothing to analyze.")
+                return "\n".join(lines)
+            actual = {'common': 0, 'uncommon': 0, 'rare': 0, 'legendary': 0}
+            band_counts = {'<300km': 0, '300-600km': 0, '600-1000km': 0, '1000-2000km': 0, '2000+km': 0}
+            exp_band_counts = {'1-3': 0, '4-9': 0, '10-19': 0, '20+': 0}
+            sum_discoveries = 0
+            legendary_eligible = 0  # trips where legendary CAN drop (exp # >= 20 AND distance >= 300km)
+            for idx, exp in enumerate(completed, start=1):
+                actual['common']    += exp.get('common_count')    or 0
+                actual['uncommon']  += exp.get('uncommon_count')  or 0
+                actual['rare']      += exp.get('rare_count')      or 0
+                actual['legendary'] += exp.get('legendary_count') or 0
+                n_disc = exp.get('discovery_count') or 0
+                sum_discoveries += n_disc
+                dist = float(exp.get('distance_km') or 0)
+                if dist < 300: band_counts['<300km'] += 1
+                elif dist < 600: band_counts['300-600km'] += 1
+                elif dist < 1000: band_counts['600-1000km'] += 1
+                elif dist < 2000: band_counts['1000-2000km'] += 1
+                else: band_counts['2000+km'] += 1
+                if idx <= 3: exp_band_counts['1-3'] += 1
+                elif idx <= 9: exp_band_counts['4-9'] += 1
+                elif idx <= 19: exp_band_counts['10-19'] += 1
+                else: exp_band_counts['20+'] += 1
+                if idx >= 20 and dist >= 300:
+                    legendary_eligible += 1
+            lines.append(f"YOUR TRIPS: {len(completed)} completed | {sum_discoveries} total discoveries")
+            lines.append("")
+            lines.append("ACTUAL RARITY BREAKDOWN OF YOUR FINDS:")
+            for r in ('legendary', 'rare', 'uncommon', 'common'):
+                a = actual[r]
+                pct = (a / sum_discoveries * 100) if sum_discoveries else 0
+                lines.append(f"  {r.title():10s}: {a:4d} ({pct:5.1f}%)")
+            lines.append("")
+            lines.append("YOUR TIER EXPOSURE (what gate did each trip fall into?):")
+            lines.append(f"  Expedition # bands: 1-3:{exp_band_counts['1-3']}  4-9:{exp_band_counts['4-9']}  10-19:{exp_band_counts['10-19']}  20+:{exp_band_counts['20+']}")
+            lines.append(f"  Distance bands:     <300km:{band_counts['<300km']}  300-600:{band_counts['300-600km']}  600-1000:{band_counts['600-1000km']}  1000-2000:{band_counts['1000-2000km']}  2000+:{band_counts['2000+km']}")
+            lines.append(f"  Legendary-eligible trips (exp # >= 20 AND >= 300 km): {legendary_eligible} of {len(completed)}")
+            lines.append("")
+            lines.append("WHY EXACT 'EXPECTED' NUMBERS ARE NOT SHOWN:")
+            lines.append("  The drop pipeline has filters that the tier table alone can't model accurately:")
+            lines.append("  • Slot 0 of every trip is a GUARANTEED common stackable (`generate_expedition_discoveries` lines 297-340) — this fixes a hard floor on common count.")
+            lines.append("  • Each rare item ID can drop at most ONCE per trip (`rare_items_found` dedupe) — caps rare yield, since only 12 distinct rare items exist in the catalog.")
+            lines.append("  • Per-checkpoint terrain matching: items with `preferred_mars_features` not matching `nearby_feature.type` are filtered from the weighted draw at that checkpoint.")
+            lines.append("  • Item-level `min_distance_km`/`max_distance_km` re-filter the pool at each checkpoint (not just the trip's total distance).")
+            lines.append("  • Cargo capacity overflow keeps highest-`enhanced_value` items — value-weighted, so rarity mix can shift after the cap.")
+            lines.append("  • Equipment effects (scanner/drone rare+legendary bonuses) at time of trip are not stored historically.")
+            lines.append("")
+            lines.append("INTERPRETATION GUIDE: cross-reference the tier table at the top with YOUR TIER EXPOSURE. If legendary-eligible trips are low, low legendary count is by design. If exposure is high but actual count is still near zero, that's the signal to investigate the spawn pipeline.")
+            return "\n".join(lines)
+
+        elif category == 'map_geography':
+            from utilities.postgres.map import get_or_set_user_mars_home, get_mars_landmarks_within_radius, get_available_landmarks_by_discovery
+            home = get_or_set_user_mars_home(user_id) or {}
+            base_lat = home.get('latitude')
+            base_lon = home.get('longitude')
+            with db_cursor() as cur:
+                cur.execute("SELECT COUNT(*) AS n FROM pilgrim.mars_mappings")
+                total_mappings = cur.fetchone()['n']
+                cur.execute("SELECT COUNT(*) AS n FROM pilgrim.origin_sites")
+                total_origins = cur.fetchone()['n']
+                cur.execute("SELECT COUNT(DISTINCT landmark_name) AS uniq FROM pilgrim.landmark_discoveries WHERE user_id = %s", (user_id,))
+                uniq_visited = cur.fetchone()['uniq']
+                cur.execute("SELECT COUNT(DISTINCT destination_name) AS uniq_dests, COUNT(*) AS trips FROM pilgrim.expeditions WHERE user_id = %s AND status = 'complete'", (user_id,))
+                erow = cur.fetchone()
+                uniq_dests = erow['uniq_dests']
+                trips = erow['trips']
+            # Fog radius from math_registry formula: min(1000, 300 + uniq_visited × 50), then × Launch Pad range_mult
+            base_radius = min(1000, 300 + uniq_visited * 50)
+            range_mult = 1.0
+            try:
+                from utilities.infrastructure_utils import get_user_infrastructure_effects
+                effects = get_user_infrastructure_effects(user_id) or {}
+                range_mult = float(effects.get('expedition_range_mult', 1.0) or 1.0)
+            except Exception:
+                pass
+            effective_fog_km = int(base_radius * range_mult)
+            # Live count inside the fog right now
+            in_fog_count = 0
+            if base_lat is not None and base_lon is not None:
+                try:
+                    in_fog_count = len(get_mars_landmarks_within_radius(base_lat, base_lon, effective_fog_km))
+                except Exception:
+                    in_fog_count = -1
+            # Visible-on-page-right-now (the actual fog-of-war pool, capped at 30 on the expeditions page)
+            visible_on_page = 0
+            if base_lat is not None and base_lon is not None:
+                try:
+                    visible_on_page = len(get_available_landmarks_by_discovery(user_id, {'latitude': base_lat, 'longitude': base_lon}, limit=30))
+                except Exception:
+                    visible_on_page = -1
+            lines = ["=== MARS GEOGRAPHY ==="]
+            lines.append(f"Planet destination pool: {total_mappings + total_origins} ({total_mappings} named Mars landmarks + {total_origins} origin sites)")
+            lines.append(f"  Source: pilgrim.mars_mappings ({total_mappings}) + pilgrim.origin_sites ({total_origins}).")
+            lines.append("")
+            lines.append("YOUR LOCATION & FOG-OF-WAR:")
+            if base_lat is not None:
+                lines.append(f"  Base coords: ({base_lat:.4f}, {base_lon:.4f})")
+            else:
+                lines.append("  Base coords: NOT SET (user has no home tile yet)")
+            lines.append(f"  Fog formula: min(1000, 300 + unique_discoveries × 50) × Launch Pad range_mult")
+            lines.append(f"  Your fog radius right now: min(1000, 300 + {uniq_visited} × 50) × {range_mult:.2f} = {effective_fog_km} km")
+            lines.append(f"  Landmarks inside your fog radius right now: {in_fog_count}")
+            lines.append(f"  Total available on /expeditions page (fog candidates + all already-discovered): {visible_on_page}")
+            lines.append("")
+            lines.append("YOUR VISIT HISTORY:")
+            lines.append(f"  Unique landmarks discovered: {uniq_visited} (from pilgrim.landmark_discoveries)")
+            lines.append(f"  Unique destinations attempted (may include unnamed waypoints): {uniq_dests}")
+            lines.append(f"  Total completed trips (revisits counted): {trips}")
+            lines.append(f"  Coverage: {uniq_visited}/{total_mappings + total_origins} = {(uniq_visited / max(1, total_mappings + total_origins)) * 100:.2f}% of the planet")
+            lines.append("")
+            lines.append("NOTE: 'Unique destinations attempted' can differ from 'unique landmarks discovered' if some trips target points that aren't in mars_mappings (e.g. origin-site claim destinations, ARIA-bond meetups). The 168-vs-125 type gap is expected — it's not a bug.")
             return "\n".join(lines)
 
         else:

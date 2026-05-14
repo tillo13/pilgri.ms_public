@@ -1649,6 +1649,72 @@ def test_narog_no_fake_tx_hashes():
     return True
 
 
+@test("PilgrimBot: discovery_catalog + discovery_analytics wired", tier=1, features=['api'], mode='local')
+def test_pilgrimbot_discovery_categories():
+    """#1470: query_player_data must expose discovery_catalog + discovery_analytics
+    so PB can answer rarity questions. Catalog must group by rarity and include
+    composition %; analytics must publish the get_progressive_weights tier table
+    verbatim (so the documented drop rates can never silently drift from the live
+    formula without this test failing)."""
+    from utilities.pilgrimbot_data import PLAYER_DATA_TOOL, query_player_data
+    enum = PLAYER_DATA_TOOL['input_schema']['properties']['category']['enum']
+    assert 'discovery_catalog' in enum, "discovery_catalog must be in query_player_data enum"
+    assert 'discovery_analytics' in enum, "discovery_analytics must be in query_player_data enum"
+    cat = query_player_data('discovery_catalog', 45)
+    assert 'DISCOVERY ITEM CATALOG' in cat, "catalog output must have header"
+    for rarity in ('Common', 'Uncommon', 'Rare', 'Legendary'):
+        assert rarity in cat, f"catalog must surface {rarity}"
+    assert 'Drop rates per expedition are NOT this distribution' in cat, \
+        "catalog must warn that composition != drop rate"
+    ana = query_player_data('discovery_analytics', 45)
+    assert 'DISCOVERY ANALYTICS' in ana
+    for line in (
+        'Exp #  1-3:  common 50, uncommon 25, rare 15, legendary 0',
+        'Exp #  4-9:  common 75, uncommon 20, rare  5, legendary 0',
+        'Exp # 10-19: common 60, uncommon 25, rare 12, legendary 0',
+        'Exp # 20+:   common 60, uncommon 25, rare 12, legendary 0.5',
+    ):
+        assert line in ana, f"analytics tier table drifted from get_progressive_weights — missing line: {line!r}"
+    assert 'Legendary-eligible trips' in ana, "analytics must surface tier-exposure split"
+    return True
+
+
+@test("PilgrimBot: map_geography wired + fog formula reachable", tier=1, features=['api'], mode='local')
+def test_pilgrimbot_map_geography():
+    """Luke 2026-05-14 PB chat: asked 'how many destinations on Mars / visible / visited?' —
+    PB hallucinated table names and said 'I don't have a direct query'. Real answer is
+    pilgrim.mars_mappings (2,038) + pilgrim.origin_sites (14) = 2,052. This test locks:
+    (a) map_geography category is wired,
+    (b) it returns plausible counts (>= 2000 destinations on the planet),
+    (c) math_registry's map.fog_of_war entry now has the synonym keywords so
+        find_relevant_math surfaces the formula when users ask 'destinations' or 'visible'."""
+    from utilities.pilgrimbot_data import PLAYER_DATA_TOOL, query_player_data
+    enum = PLAYER_DATA_TOOL['input_schema']['properties']['category']['enum']
+    assert 'map_geography' in enum, "map_geography must be in query_player_data enum"
+    out = query_player_data('map_geography', 45)
+    assert 'MARS GEOGRAPHY' in out, "geography output missing header"
+    assert 'Planet destination pool:' in out, "must surface total destination count"
+    assert 'Fog formula:' in out, "must surface fog-of-war formula"
+    assert 'Unique landmarks discovered:' in out, "must surface user visit history"
+    # Make sure the number isn't garbage — must be at least 2000
+    import re
+    m = re.search(r"Planet destination pool: (\d+)", out)
+    assert m and int(m.group(1)) >= 2000, f"planet destination pool must be >= 2000, got {m and m.group(1)}"
+    # Lock the math_registry keyword expansion — so 'destinations' / 'visible' / 'map' surface fog_of_war
+    from utilities.pilgrimbot_context import find_relevant_math
+    for question in (
+        "how many destinations are on Mars",
+        "how many landmarks are visible on my map",
+        "how big is the planet",
+    ):
+        relevant = find_relevant_math(question)
+        assert relevant and any(
+            f.get('name') == 'Fog-of-War Visibility Radius'
+            for f in relevant.get('formulas', [])
+        ), f"math_registry keyword search must surface fog_of_war for: {question!r}"
+    return True
+
+
 @test("GCS bucket accessible", tier=3, features=['api'], mode='local')
 def test_gcs_bucket():
     import requests
