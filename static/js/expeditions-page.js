@@ -73,6 +73,9 @@ function showConditionsHelp() {
 // SORTING
 // ============================================================================
 
+// Bug #1471: persistent vehicle filter state. Reset on page reload (no sessionStorage).
+let currentVehicleFilter = 'all';
+
 function sortExpeditions(value) {
     const [field, dir] = value.split('-');
     const grids = [document.getElementById('newExpeditionsGrid'), document.getElementById('visitedExpeditionsGrid')];
@@ -91,6 +94,31 @@ function sortExpeditions(value) {
             return dir === 'asc' ? aVal - bVal : bVal - aVal;
         });
         cards.forEach(card => grid.appendChild(card));
+    });
+    // Re-apply current vehicle filter after sort so filtered cards stay hidden in new order
+    applyVehicleFilter();
+}
+
+// Bug #1471: single-select vehicle filter. Hides exp-card elements whose
+// data-reachable-by doesn't include the chosen vehicle type. 'all' shows
+// every card. Sort order is preserved (we toggle display, not DOM order).
+function filterExpeditionsByVehicle(vtype, btn) {
+    currentVehicleFilter = vtype;
+    document.querySelectorAll('#vehicleFilterBar .vehicle-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    applyVehicleFilter();
+}
+
+function applyVehicleFilter() {
+    const v = currentVehicleFilter;
+    document.querySelectorAll('#newExpeditionsGrid .exp-card, #visitedExpeditionsGrid .exp-card').forEach(card => {
+        if (v === 'all') {
+            card.style.display = '';
+            return;
+        }
+        let reachable = {};
+        try { reachable = JSON.parse(card.dataset.reachableBy || '{}'); } catch (e) { reachable = {}; }
+        card.style.display = reachable[v] ? '' : 'none';
     });
 }
 

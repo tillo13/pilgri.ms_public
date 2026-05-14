@@ -1679,6 +1679,60 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("Bug #1469 + #1471: expeditions undiscovered grid not [:6]-capped + vehicle filter wired", tier=1, features=['api'], mode='local')
+def test_expeditions_sort_and_filter():
+    """#1469 (Luke 2026-05-13): template was hardcoded `undiscovered[:6]` so
+    sort-by-distance never saw the actual farthest landmarks — only the top 6
+    by cost were rendered, then re-sorted in place. Fix: drop the slice.
+    #1471 (Luke 2026-05-14 RFD): single-select vehicle filter bar must be
+    rendered; backend must enrich each landmark with reachable_by dict.
+
+    Locks: (a) template doesn't truncate undiscovered, (b) page_data emits
+    reachable_by on every landmark in landmarks_json, (c) filter bar HTML
+    renders, (d) JS hooks exist."""
+    import os
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+    # (a) template must NOT slice undiscovered to a fixed cap
+    with open(os.path.join(project_root, 'templates', 'expeditions.html')) as f:
+        tpl = f.read()
+    assert 'undiscovered[:6]' not in tpl, \
+        "#1469 regression: templates/expeditions.html re-introduced undiscovered[:6] cap. " \
+        "Sort-by-distance can't surface anything outside the cap. Remove the slice."
+    assert '{% for landmark in undiscovered %}' in tpl, \
+        "Template must iterate full undiscovered list, not a slice"
+    # (c) vehicle filter bar rendered
+    assert 'vehicleFilterBar' in tpl, "#1471: vehicle filter bar div missing from template"
+    assert 'filterExpeditionsByVehicle' in tpl, "#1471: filter button onclick wiring missing"
+    assert 'data-reachable-by' in tpl, "#1471: per-card data-reachable-by attribute missing"
+
+    # (b) backend enriches landmarks_json with reachable_by
+    from utilities.expeditions.page_data import get_expeditions_page_data
+    data = get_expeditions_page_data(45)
+    landmarks = data['landmarks']
+    assert landmarks, "Andy (45) should have at least one landmark for this test"
+    for l in landmarks:
+        assert 'reachable_by' in l, f"landmark {l.get('name')!r} missing reachable_by — backend enrichment broken"
+        assert isinstance(l['reachable_by'], dict)
+        # at least one vehicle type owned should have a bool entry
+        assert all(isinstance(v, bool) for v in l['reachable_by'].values()), \
+            "reachable_by values must be bool"
+    import json as _json
+    js_landmarks = _json.loads(data['landmarks_json'])
+    assert all('reachable_by' in jl for jl in js_landmarks), \
+        "js_landmarks must carry reachable_by for JS-side filter"
+
+    # (d) JS filter functions exist
+    with open(os.path.join(project_root, 'static', 'js', 'expeditions-page.js')) as f:
+        js = f.read()
+    assert 'function filterExpeditionsByVehicle' in js, "#1471: filterExpeditionsByVehicle missing in JS"
+    assert 'function applyVehicleFilter' in js, "#1471: applyVehicleFilter missing in JS"
+    assert 'currentVehicleFilter' in js, "#1471: filter state var missing"
+    # Sort must re-apply filter so hidden cards stay hidden across sort changes
+    assert 'applyVehicleFilter()' in js, "#1471: sortExpeditions must re-apply filter after re-ordering"
+    return True
+
+
 @test("PilgrimBot coverage gate: every pilgrim.* table is exposed or explicitly allowlisted", tier=1, features=['api', 'db'], mode='local')
 def test_pilgrimbot_table_coverage():
     """HARD GATE. Every table in pilgrim.* schema MUST be one of:

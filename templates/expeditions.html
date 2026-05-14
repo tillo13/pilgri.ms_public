@@ -284,6 +284,14 @@ document.addEventListener('DOMContentLoaded', function() {
     </select>
 </div>
 
+<!-- Bug #1471: vehicle-type filter (single-select). Mirrors the Expedition Circle pattern. -->
+<div class="vehicle-filter-bar" id="vehicleFilterBar">
+    <button class="vehicle-filter-btn active" data-vehicle="all" onclick="filterExpeditionsByVehicle('all', this)">All Vehicles</button>
+    {% for v in owned_vehicles %}
+    <button class="vehicle-filter-btn" data-vehicle="{{ v.vehicle_type }}" onclick="filterExpeditionsByVehicle('{{ v.vehicle_type }}', this)">{{ v.vehicle_type|capitalize }}</button>
+    {% endfor %}
+</div>
+
 <!-- NEW DESTINATIONS Tab -->
 <div id="tab-new" class="expedition-tab-content">
     {% if undiscovered|length == 0 %}
@@ -294,11 +302,13 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     {% else %}
     <div class="expedition-grid" id="newExpeditionsGrid">
-        {% for landmark in undiscovered[:6] %}
+        {# Bug #1469 (Luke 2026-05-13): was [:6] which made sort-by-distance never see actual farthest landmarks (top-6-by-cost was preselected, then re-sorted in-place). Removed cap so all undiscovered render; get_available_landmarks_by_discovery already caps the upstream pool at limit=30 in page_data.py. #}
+        {% for landmark in undiscovered %}
         <div class="exp-card"
              data-expedition-index="{{ loop.index0 }}"
              data-distance="{{ landmark.distance_km }}"
              data-landmark-index="{{ landmarks.index(landmark) }}"
+             data-reachable-by='{{ landmark.reachable_by|tojson }}'
              data-slots-full="{% if active_expeditions and (active_expeditions|selectattr('status', 'in', ['traveling','recalled'])|list|length) >= (max_concurrent_expeditions|default(1)) %}true{% else %}false{% endif %}">
             <div class="exp-card-header">
                 <div>

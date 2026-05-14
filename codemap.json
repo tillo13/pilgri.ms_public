@@ -3416,6 +3416,8 @@
       "switchExpeditionTab",
       "showConditionsHelp",
       "sortExpeditions",
+      "filterExpeditionsByVehicle",
+      "applyVehicleFilter",
       "loadExpeditionHistory",
       "renderLedger",
       "travelDays",

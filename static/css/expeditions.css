@@ -51,6 +51,21 @@
 }
 .expedition-tab.active .tab-count { background: var(--overlay-white-30); }
 
+/* Bug #1471: Vehicle filter bar — mirrors vehicle-range-bar pattern (single-select, active state on color-mars). */
+.vehicle-filter-bar {
+    display: flex; gap: 6px; margin-bottom: 16px; padding: 6px;
+    background: var(--bg-secondary); border-radius: 10px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.vehicle-filter-btn {
+    flex-shrink: 0; padding: 8px 14px; border: 2px solid transparent;
+    background: var(--bg-tertiary); border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    transition: all 0.15s; white-space: nowrap;
+}
+.vehicle-filter-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.vehicle-filter-btn.active { border-color: var(--color-mars); color: var(--color-mars); background: rgba(224, 96, 48, 0.1); }
+
 /* Sort Controls */
 .expedition-controls {
     display: flex; justify-content: space-between; align-items: center; gap: 12px;

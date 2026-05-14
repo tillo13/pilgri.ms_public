@@ -166,6 +166,21 @@ def get_expeditions_page_data(user_id: int) -> dict:
         v['effective_range_km'] = int(base_range * range_mult * scanner_range_mult * tech_range_mult)
         v['available'] = vtype not in active_vehicle_types
 
+    # Bug #1471: per-landmark reachability for vehicle-type filter on /expeditions.
+    # Map each owned vehicle type to its max effective range. A landmark is reachable
+    # by a vehicle if effective_range >= distance. This is patched onto landmarks
+    # (template uses it) AND js_landmarks (JS map-marker filter reads it).
+    vtype_range = {}
+    for v in owned_vehicles:
+        vt = v.get('vehicle_type', 'rover')
+        vtype_range[vt] = max(vtype_range.get(vt, 0), v.get('effective_range_km', 0))
+    for landmark in landmarks:
+        dist = float(landmark.get('distance_km', 0) or 0)
+        landmark['reachable_by'] = {vt: rng >= dist for vt, rng in vtype_range.items()}
+    # Patch js_landmarks too (same order as landmarks, built earlier)
+    for js_l, landmark in zip(js_landmarks, landmarks):
+        js_l['reachable_by'] = landmark['reachable_by']
+
     # Bug #1454 (Luke 2026-05-10 picked Option A): Active Bonuses panel must render
     # one Speed chip per owned vehicle showing THIS vehicle's launch multiplier
     # (vehicle.speed_mult × tech-only speed mult). The aggregate expedition_speed_mult
