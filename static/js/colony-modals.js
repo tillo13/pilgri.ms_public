@@ -147,7 +147,7 @@ function showInfrastructureModal(el) {
         else if (d.effect === 'discovery_value_mult') stats.push({ label: 'Special', value: 'Increases value of all discoveries' });
         else if (d.effect === 'discovery_chance_bonus') stats.push({ label: 'Special', value: 'More discoveries per expedition' });
         else if (d.effect === 'fuel_cost_mult') stats.push({ label: 'Special', value: 'Reduces expedition costs' });
-        else if (d.effect === 'research_enabled') stats.push({ label: 'Special', value: 'Unlocks Xenobiology experiments' });
+        // Bug #1132: dropped 'research_enabled' case — dead flag, never gated anything.
     }
     if (d.requirements) {
         stats.push({ label: '\u2500\u2500\u2500 REQUIREMENTS \u2500\u2500\u2500', value: '' });

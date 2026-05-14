@@ -1679,6 +1679,41 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("Bug #1132: research_enabled dead flag deleted everywhere", tier=1, features=['api'], mode='local')
+def test_no_research_enabled_flag():
+    """Luke 2026-05-13 reopened: 'enables xenobiology research' chip on Xenobiology Lab
+    upgrade cards was misleading — research_enabled was a dead flag never gated
+    anywhere. This test asserts no LIVE references re-introduce it. Comments
+    explaining the removal (with the dash 'dropped') are allowed; live code is not."""
+    import os
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    paths = [
+        'config_infrastructure.py',
+        'utilities/infrastructure/effects.py',
+        'static/js/depot-shop.js',
+        'static/js/depot.js',
+        'static/js/colony-modals.js',
+        'templates/colony.html',
+    ]
+    # Any line that mentions research_enabled MUST also carry a removal marker —
+    # i.e. it's explicitly a "this was dropped / dead flag" comment, not live code.
+    REMOVAL_MARKERS = ('dropped', 'deleted', 'dead flag')
+    for rel in paths:
+        full = os.path.join(project_root, rel)
+        with open(full) as f:
+            text = f.read()
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            if 'research_enabled' not in line:
+                continue
+            if any(m in line for m in REMOVAL_MARKERS):
+                continue
+            raise AssertionError(
+                f"#1132 regression: research_enabled re-introduced as LIVE code at {rel}:{line_no}: {line.strip()!r}. "
+                f"This is a dead flag — never gate anything on it. If you need real gating, file a new ticket."
+            )
+    return True
+
+
 @test("Bug #1450: Narog dial auto-allocates leftover to highest unlocked — no idle", tier=1, features=['api'], mode='local')
 def test_narog_dial_no_idle():
     """Luke 2026-05-14: 'I don't see any real gameplay advantage/reason for having

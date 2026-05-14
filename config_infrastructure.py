@@ -473,52 +473,52 @@ INFRASTRUCTURE_CATALOG = {
         'levels': {
             1: {
                 'name': 'Basic Xeno Lab', 'cost': 2000, 'build_time_days': 0.042,
-                'research_enabled': True, 'bio_value_mult': 1.10, 'discovery_chance_bonus': 0.02,
+                'bio_value_mult': 1.10, 'discovery_chance_bonus': 0.02,
                 'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/xenobiology_lab_1770262697.png',
             },
             2: {
                 'name': 'Specimen Analysis Bay', 'cost': 2240, 'build_time_days': 3,
-                'research_enabled': True, 'bio_value_mult': 1.15, 'discovery_chance_bonus': 0.03, 'science_generation_rate': 1.0,
+                'bio_value_mult': 1.15, 'discovery_chance_bonus': 0.03, 'science_generation_rate': 1.0,
                 'image_url': '',
             },
             3: {
                 'name': 'Microbe Culture Lab', 'cost': 2509, 'build_time_days': 4,
-                'research_enabled': True, 'bio_value_mult': 1.21, 'discovery_chance_bonus': 0.04, 'science_generation_rate': 2.0,
+                'bio_value_mult': 1.21, 'discovery_chance_bonus': 0.04, 'science_generation_rate': 2.0,
                 'image_url': '',
             },
             4: {
                 'name': 'Life Detection Array', 'cost': 4128, 'build_time_days': 5,
-                'research_enabled': True, 'bio_value_mult': 1.28, 'discovery_chance_bonus': 0.05, 'science_generation_rate': 3.0,
+                'bio_value_mult': 1.28, 'discovery_chance_bonus': 0.05, 'science_generation_rate': 3.0,
                 'image_url': '',
             },
             5: {
                 'name': 'Advanced Xeno Studies', 'cost': 4623, 'build_time_days': 7,
-                'research_enabled': True, 'bio_value_mult': 1.35, 'discovery_chance_bonus': 0.06, 'science_generation_rate': 5.0, 'rare_chance_bonus': 0.02,
+                'bio_value_mult': 1.35, 'discovery_chance_bonus': 0.06, 'science_generation_rate': 5.0, 'rare_chance_bonus': 0.02,
                 'image_url': '',
             },
             6: {
                 'name': 'Crystal Bio-Resonance Lab', 'cost': 5178, 'build_time_days': 8,
-                'research_enabled': True, 'bio_value_mult': 1.42, 'discovery_chance_bonus': 0.07, 'science_generation_rate': 7.0, 'rare_chance_bonus': 0.03,
+                'bio_value_mult': 1.42, 'discovery_chance_bonus': 0.07, 'science_generation_rate': 7.0, 'rare_chance_bonus': 0.03,
                 'image_url': '',
             },
             7: {
                 'name': 'Deep Life Sciences', 'cost': 5800, 'build_time_days': 10,
-                'research_enabled': True, 'bio_value_mult': 1.50, 'discovery_chance_bonus': 0.08, 'science_generation_rate': 9.0, 'rare_chance_bonus': 0.04,
+                'bio_value_mult': 1.50, 'discovery_chance_bonus': 0.08, 'science_generation_rate': 9.0, 'rare_chance_bonus': 0.04,
                 'image_url': '',
             },
             8: {
                 'name': 'Ancient Biology Institute', 'cost': 54640, 'build_time_days': 11,
-                'research_enabled': True, 'bio_value_mult': 1.58, 'discovery_chance_bonus': 0.09, 'science_generation_rate': 12.0, 'rare_chance_bonus': 0.05,
+                'bio_value_mult': 1.58, 'discovery_chance_bonus': 0.09, 'science_generation_rate': 12.0, 'rare_chance_bonus': 0.05,
                 'image_url': '',
             },
             9: {
                 'name': 'Sepolia Life Studies', 'cost': 61197, 'build_time_days': 13,
-                'research_enabled': True, 'bio_value_mult': 1.65, 'discovery_chance_bonus': 0.10, 'science_generation_rate': 15.0, 'rare_chance_bonus': 0.06,
+                'bio_value_mult': 1.65, 'discovery_chance_bonus': 0.10, 'science_generation_rate': 15.0, 'rare_chance_bonus': 0.06,
                 'image_url': '',
             },
             10: {
                 'name': 'Xeno Genesis Complex', 'cost': 68540, 'build_time_days': 14,
-                'research_enabled': True, 'bio_value_mult': 1.75, 'discovery_chance_bonus': 0.12, 'science_generation_rate': 20.0, 'rare_chance_bonus': 0.08,
+                'bio_value_mult': 1.75, 'discovery_chance_bonus': 0.12, 'science_generation_rate': 20.0, 'rare_chance_bonus': 0.08,
                 'image_url': '',
             },
         }

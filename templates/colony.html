@@ -426,8 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             {% elif building.effect == 'discovery_value_mult' %}+{{ ((building.effect_value - 1) * 100)|int }}% Value
                             {% elif building.effect == 'discovery_chance_bonus' %}+{{ (building.effect_value * 100)|int }}% Discovery
                             {% elif building.effect == 'fuel_cost_mult' %}-{{ ((1 - building.effect_value) * 100)|int }}% Cost
-                            {% elif building.effect == 'research_enabled' %}Research
-                            {% else %}{{ building.effect|replace('_', ' ')|title }}{% endif %}
+                            {% else %}{{ building.effect|replace('_', ' ')|title }}{% endif %}{# Bug #1132: dropped research_enabled branch — dead flag #}
                         </span>
                     </div>
                     {% endif %}

@@ -267,7 +267,7 @@ const EFFECT_LABELS = {
     'dust_storm_immune': 'Storm Immunity', 'night_generation': 'Night Shards',
     'fuel_cost_reduction': 'Cost Savings', 'expedition_capacity': 'Max Expeditions',
     'discovery_bonus': 'Discovery Chance', 'all_generation_mult': 'All Generation',
-    'legendary_discovery_chance': 'Legendary Chance', 'research_enabled': 'Xenobiology Research',
+    'legendary_discovery_chance': 'Legendary Chance',
     'expedition_range': 'Expedition Range', 'passive_income_base': 'Base Income'
 };
 
@@ -443,7 +443,6 @@ function showStructureDetailFromData(el) {
             'dust_storm_immune': 'Dust Storm Immunity',
             'all_generation_mult': 'All Generation',
             'legendary_discovery_chance': 'Legendary Chance',
-            'research_enabled': 'Research',
             'passive_income_base': 'Passive Income'
         };
         const effectName = effectNames[d.buildingEffect] || d.buildingEffect;

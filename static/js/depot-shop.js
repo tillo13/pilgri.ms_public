@@ -153,7 +153,10 @@ function formatLevelStats(stats, category) {
     }
     if (stats.expedition_capacity) parts.push(`${stats.expedition_capacity} expedition slots`);
     if (stats.legendary_discovery_chance) parts.push(gold(`${(1 + stats.legendary_discovery_chance).toFixed(2)}x legendary`));
-    if (stats.research_enabled === true) parts.push(green('enables xenobiology research'));
+    // Bug #1132 (Luke 2026-05-14): dropped 'enables xenobiology research' chip — `research_enabled`
+    // was a dead flag (never gated anything downstream). Real Xenobiology Lab effects are
+    // bio_value_mult / discovery_chance_bonus / science_generation_rate / rare_chance_bonus,
+    // all already surfaced as chips above.
 
     return parts.length > 0 ? parts.join(' · ') : '';
 }
