@@ -213,8 +213,8 @@ def test_depot_cost_floors():
     can't silently undo Luke's calibration. If a path's cost drops below the
     floor at any level in [4..7] or [8..10], surface it. Either re-run
     tools/apply_depot_cost_rebalance.py or update the floors here with a note."""
-    MID_L4_FLOOR = 4128   # 40h × Andy's 103.2 shards/hr
-    LATE_L8_FLOOR = 54640  # 100h × Luke's 546.4 shards/hr
+    MID_L4_FLOOR = 4128     # 40h × Andy's 103.2 shards/hr
+    LATE_L8_FLOOR = 382480  # 700h × Luke's 546.4 shards/hr (v2 anchor — Luke ReOpen 2026-05-09)
     from config_infrastructure import INFRASTRUCTURE_CATALOG
     from config_upgrades import UPGRADE_CATALOG
 

@@ -159,7 +159,7 @@
     ]
   },
   "tools/apply_depot_cost_rebalance.py": {
-    "description": "Bug #1405 — apply the depot cost rebalance computed by tools/analyze_depot_costs.py.",
+    "description": "Bug #1405 — apply the depot cost rebalance.",
     "exports": [
       "proposed_cost",
       "collect_diffs — Return list of (file_path, item_key, level, old_cost, new_cost).",
@@ -3587,7 +3587,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3603,7 +3603,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -3668,7 +3668,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

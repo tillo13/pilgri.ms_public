@@ -58,17 +58,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Resonant Solar Grid', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Resonant Solar Grid', 'cost': 382480, 'build_time_days': 11,
                 'generation_rate': 40.0,
                 'image_url': '',
             },
             9: {
-                'name': 'Sepolia Excitation Array', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Sepolia Excitation Array', 'cost': 428378, 'build_time_days': 13,
                 'generation_rate': 50.0,
                 'image_url': '',
             },
             10: {
-                'name': 'Monolithic Power Station', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Monolithic Power Station', 'cost': 479783, 'build_time_days': 14,
                 'generation_rate': 65.0,
                 'image_url': '',
             },
@@ -121,17 +121,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Sepolia Battery Core', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Sepolia Battery Core', 'cost': 382480, 'build_time_days': 11,
                 'night_generation': 0.70,
                 'image_url': '',
             },
             9: {
-                'name': 'Deep Resonance Bank', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Deep Resonance Bank', 'cost': 428378, 'build_time_days': 13,
                 'night_generation': 0.80,
                 'image_url': '',
             },
             10: {
-                'name': 'Perpetual Power Core', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Perpetual Power Core', 'cost': 479783, 'build_time_days': 14,
                 'night_generation': 0.90,  # 90% at night
                 'image_url': '',
             },
@@ -187,17 +187,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Deep Core Drill', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Deep Core Drill', 'cost': 382480, 'build_time_days': 11,
                 'fuel_cost_reduction': 0.36,
                 'image_url': '',
             },
             9: {
-                'name': 'Resonant Water Mine', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Resonant Water Mine', 'cost': 428378, 'build_time_days': 13,
                 'fuel_cost_reduction': 0.40,
                 'image_url': '',
             },
             10: {
-                'name': 'Hydro Core Complex', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Hydro Core Complex', 'cost': 479783, 'build_time_days': 14,
                 'fuel_cost_reduction': 0.45,  # -45% fuel costs
                 'image_url': '',
             },
@@ -250,17 +250,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Sepolia Extraction Core', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Sepolia Extraction Core', 'cost': 382480, 'build_time_days': 11,
                 'generation_rate': 90.0,
                 'image_url': '',
             },
             9: {
-                'name': 'Resonant Processing Hub', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Resonant Processing Hub', 'cost': 428378, 'build_time_days': 13,
                 'generation_rate': 110.0,
                 'image_url': '',
             },
             10: {
-                'name': 'Monolithic Refinery', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Monolithic Refinery', 'cost': 479783, 'build_time_days': 14,
                 'generation_rate': 135.0,
                 'image_url': '',
             },
@@ -316,17 +316,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Resonant Living Core', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Resonant Living Core', 'cost': 382480, 'build_time_days': 11,
                 'expedition_capacity': 5,
                 'image_url': '',
             },
             9: {
-                'name': 'Deep Mars Settlement', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Deep Mars Settlement', 'cost': 428378, 'build_time_days': 13,
                 'expedition_capacity': 5,
                 'image_url': '',
             },
             10: {
-                'name': 'Monolithic Colony', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Monolithic Colony', 'cost': 479783, 'build_time_days': 14,
                 'expedition_capacity': 6,
                 'image_url': '',
             },
@@ -379,17 +379,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Biosphere Module', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Biosphere Module', 'cost': 382480, 'build_time_days': 11,
                 'life_support_reduction': 0.36, 'science_generation_rate': 3.0,
                 'image_url': '',
             },
             9: {
-                'name': 'Self-Sustaining Ecosystem', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Self-Sustaining Ecosystem', 'cost': 428378, 'build_time_days': 13,
                 'life_support_reduction': 0.40, 'science_generation_rate': 3.5,
                 'image_url': '',
             },
             10: {
-                'name': 'Mars Eden', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Mars Eden', 'cost': 479783, 'build_time_days': 14,
                 'life_support_reduction': 0.45, 'science_generation_rate': 4.0,
                 'image_url': '',
             },
@@ -444,17 +444,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Sepolia Studies Institute', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Sepolia Studies Institute', 'cost': 382480, 'build_time_days': 11,
                 'science_generation_rate': 58.0, 'discovery_value_mult': 1.40,
                 'image_url': '',
             },
             9: {
-                'name': 'Mars Science Academy', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Mars Science Academy', 'cost': 428378, 'build_time_days': 13,
                 'science_generation_rate': 72.0, 'discovery_value_mult': 1.46,
                 'image_url': '',
             },
             10: {
-                'name': 'Ancient Studies Monolith', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Ancient Studies Monolith', 'cost': 479783, 'build_time_days': 14,
                 'science_generation_rate': 90.0, 'discovery_value_mult': 1.54,
                 'image_url': '',
             },
@@ -507,17 +507,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Ancient Biology Institute', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Ancient Biology Institute', 'cost': 382480, 'build_time_days': 11,
                 'bio_value_mult': 1.58, 'discovery_chance_bonus': 0.09, 'science_generation_rate': 12.0, 'rare_chance_bonus': 0.05,
                 'image_url': '',
             },
             9: {
-                'name': 'Sepolia Life Studies', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Sepolia Life Studies', 'cost': 428378, 'build_time_days': 13,
                 'bio_value_mult': 1.65, 'discovery_chance_bonus': 0.10, 'science_generation_rate': 15.0, 'rare_chance_bonus': 0.06,
                 'image_url': '',
             },
             10: {
-                'name': 'Xeno Genesis Complex', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Xeno Genesis Complex', 'cost': 479783, 'build_time_days': 14,
                 'bio_value_mult': 1.75, 'discovery_chance_bonus': 0.12, 'science_generation_rate': 20.0, 'rare_chance_bonus': 0.08,
                 'image_url': '',
             },
@@ -570,17 +570,17 @@ INFRASTRUCTURE_CATALOG = {
                 'image_url': '',
             },
             8: {
-                'name': 'Sepolia Resonance Relay', 'cost': 54640, 'build_time_days': 11,
+                'name': 'Sepolia Resonance Relay', 'cost': 382480, 'build_time_days': 11,
                 'discovery_bonus': 0.20,
                 'image_url': '',
             },
             9: {
-                'name': 'Ancient Signal Array', 'cost': 61197, 'build_time_days': 13,
+                'name': 'Ancient Signal Array', 'cost': 428378, 'build_time_days': 13,
                 'discovery_bonus': 0.23,
                 'image_url': '',
             },
             10: {
-                'name': 'Deep Space Beacon', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Deep Space Beacon', 'cost': 479783, 'build_time_days': 14,
                 'discovery_bonus': 0.25,
                 'image_url': '',
             },
@@ -603,27 +603,27 @@ INFRASTRUCTURE_CATALOG = {
         'unlock_requirements': {'refinery': 7},  # Unlocks when refinery hits Lv7
         'levels': {
             1: {
-                'name': 'Basic Forge', 'cost': 20000, 'build_time_days': 0.042,
+                'name': 'Basic Forge', 'cost': 382480, 'build_time_days': 0.042,
                 'generation_rate': 50.0, 'science_generation_rate': 3.0,
                 'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/regolith_forge_1770262697.png',
             },
             2: {
-                'name': 'Improved Forge', 'cost': 22400, 'build_time_days': 7,
+                'name': 'Improved Forge', 'cost': 382480, 'build_time_days': 7,
                 'generation_rate': 60.0, 'science_generation_rate': 3.5,
                 'image_url': '',
             },
             3: {
-                'name': 'High-Output Forge', 'cost': 25088, 'build_time_days': 8,
+                'name': 'High-Output Forge', 'cost': 382480, 'build_time_days': 8,
                 'generation_rate': 72.0, 'science_generation_rate': 4.0,
                 'image_url': '',
             },
             4: {
-                'name': 'Industrial Forge', 'cost': 28099, 'build_time_days': 9,
+                'name': 'Industrial Forge', 'cost': 382480, 'build_time_days': 9,
                 'generation_rate': 86.0, 'science_generation_rate': 4.5,
                 'image_url': '',
             },
             5: {
-                'name': 'Crystal-Heated Forge', 'cost': 31471, 'build_time_days': 10,
+                'name': 'Crystal-Heated Forge', 'cost': 382480, 'build_time_days': 10,
                 'generation_rate': 103.0, 'science_generation_rate': 5.0,
                 'image_url': '',
                 'stat_exploration_bonus': 1,
@@ -633,7 +633,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 1,
             },
             6: {
-                'name': 'Deep Core Forge', 'cost': 35247, 'build_time_days': 11,
+                'name': 'Deep Core Forge', 'cost': 382480, 'build_time_days': 11,
                 'generation_rate': 124.0, 'science_generation_rate': 5.5,
                 'image_url': '',
                 'stat_exploration_bonus': 2,
@@ -643,7 +643,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 2,
             },
             7: {
-                'name': 'Resonant Forge', 'cost': 39477, 'build_time_days': 12,
+                'name': 'Resonant Forge', 'cost': 382480, 'build_time_days': 12,
                 'generation_rate': 149.0, 'science_generation_rate': 6.0,
                 'image_url': '',
                 'stat_exploration_bonus': 3,
@@ -653,7 +653,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 3,
             },
             8: {
-                'name': 'Sepolia Forge Complex', 'cost': 54640, 'build_time_days': 13,
+                'name': 'Sepolia Forge Complex', 'cost': 382480, 'build_time_days': 13,
                 'generation_rate': 178.0, 'science_generation_rate': 7.0,
                 'image_url': '',
                 'stat_exploration_bonus': 4,
@@ -663,7 +663,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 4,
             },
             9: {
-                'name': 'Ancient Forge', 'cost': 61197, 'build_time_days': 14,
+                'name': 'Ancient Forge', 'cost': 428378, 'build_time_days': 14,
                 'generation_rate': 214.0, 'science_generation_rate': 8.0,
                 'image_url': '',
                 'stat_exploration_bonus': 5,
@@ -673,7 +673,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 5,
             },
             10: {
-                'name': 'Monolithic Forge', 'cost': 68540, 'build_time_days': 14,
+                'name': 'Monolithic Forge', 'cost': 479783, 'build_time_days': 14,
                 'generation_rate': 257.0, 'science_generation_rate': 9.0,
                 'image_url': '',
                 'stat_exploration_bonus': 6,
@@ -697,31 +697,31 @@ INFRASTRUCTURE_CATALOG = {
         'unlock_requirements': {'regolith_forge': 5},  # Unlocks when forge hits Lv5
         'levels': {
             1: {
-                'name': 'Basic Chamber', 'cost': 80000, 'build_time_days': 0.042,
+                'name': 'Basic Chamber', 'cost': 382480, 'build_time_days': 0.042,
                 'generation_rate': 100.0, 'science_generation_rate': 5.0,
                 'all_generation_mult': 1.15,
                 'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/resonance_chamber_1770262697.png',
             },
             2: {
-                'name': 'Tuned Chamber', 'cost': 89600, 'build_time_days': 9,
+                'name': 'Tuned Chamber', 'cost': 382480, 'build_time_days': 9,
                 'generation_rate': 115.0, 'science_generation_rate': 5.5,
                 'all_generation_mult': 1.18,
                 'image_url': '',
             },
             3: {
-                'name': 'Harmonic Chamber', 'cost': 100352, 'build_time_days': 10,
+                'name': 'Harmonic Chamber', 'cost': 382480, 'build_time_days': 10,
                 'generation_rate': 132.0, 'science_generation_rate': 6.0,
                 'all_generation_mult': 1.21,
                 'image_url': '',
             },
             4: {
-                'name': 'Crystal Resonator', 'cost': 112394, 'build_time_days': 11,
+                'name': 'Crystal Resonator', 'cost': 382480, 'build_time_days': 11,
                 'generation_rate': 152.0, 'science_generation_rate': 6.5,
                 'all_generation_mult': 1.25,
                 'image_url': '',
             },
             5: {
-                'name': 'Deep Resonance Array', 'cost': 125882, 'build_time_days': 12,
+                'name': 'Deep Resonance Array', 'cost': 382480, 'build_time_days': 12,
                 'generation_rate': 175.0, 'science_generation_rate': 7.0,
                 'all_generation_mult': 1.28,
                 'image_url': '',
@@ -732,7 +732,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 1,
             },
             6: {
-                'name': 'Sepolia Amplifier', 'cost': 140988, 'build_time_days': 12,
+                'name': 'Sepolia Amplifier', 'cost': 382480, 'build_time_days': 12,
                 'generation_rate': 201.0, 'science_generation_rate': 7.5,
                 'all_generation_mult': 1.32,
                 'image_url': '',
@@ -743,7 +743,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 2,
             },
             7: {
-                'name': 'Quantum Chamber', 'cost': 157906, 'build_time_days': 13,
+                'name': 'Quantum Chamber', 'cost': 382480, 'build_time_days': 13,
                 'generation_rate': 231.0, 'science_generation_rate': 8.0,
                 'all_generation_mult': 1.36,
                 'image_url': '',
@@ -754,7 +754,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 3,
             },
             8: {
-                'name': 'Ancient Resonance Core', 'cost': 176855, 'build_time_days': 13,
+                'name': 'Ancient Resonance Core', 'cost': 382480, 'build_time_days': 13,
                 'generation_rate': 266.0, 'science_generation_rate': 9.0,
                 'all_generation_mult': 1.40,
                 'image_url': '',
@@ -765,7 +765,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 4,
             },
             9: {
-                'name': 'Planetary Harmonics', 'cost': 198078, 'build_time_days': 14,
+                'name': 'Planetary Harmonics', 'cost': 428378, 'build_time_days': 14,
                 'generation_rate': 306.0, 'science_generation_rate': 10.0,
                 'all_generation_mult': 1.45,
                 'image_url': '',
@@ -776,7 +776,7 @@ INFRASTRUCTURE_CATALOG = {
                 'stat_charisma_bonus': 5,
             },
             10: {
-                'name': 'Monolithic Resonance', 'cost': 221847, 'build_time_days': 14,
+                'name': 'Monolithic Resonance', 'cost': 479783, 'build_time_days': 14,
                 'generation_rate': 352.0, 'science_generation_rate': 11.0,
                 'all_generation_mult': 1.50,
                 'image_url': '',
@@ -801,25 +801,25 @@ INFRASTRUCTURE_CATALOG = {
         'unlock_requirements': {'resonance_chamber': 5},  # Unlocks when chamber hits Lv5
         'levels': {
             1: {
-                'name': 'Basic Vent Tap', 'cost': 250000, 'build_time_days': 0.042,
+                'name': 'Basic Vent Tap', 'cost': 382480, 'build_time_days': 0.042,
                 'generation_rate': 200.0, 'science_generation_rate': 8.0,
                 'dust_storm_immune': True,
                 'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/thermal_vent_tap_1770262697.png',
             },
             2: {
-                'name': 'Improved Tap', 'cost': 280000, 'build_time_days': 11,
+                'name': 'Improved Tap', 'cost': 382480, 'build_time_days': 11,
                 'generation_rate': 230.0, 'science_generation_rate': 9.0,
                 'dust_storm_immune': True,
                 'image_url': '',
             },
             3: {
-                'name': 'Deep Vent Bore', 'cost': 313600, 'build_time_days': 11,
+                'name': 'Deep Vent Bore', 'cost': 382480, 'build_time_days': 11,
                 'generation_rate': 265.0, 'science_generation_rate': 10.0,
                 'dust_storm_immune': True,
                 'image_url': '',
             },
             4: {
-                'name': 'Thermal Extractor', 'cost': 351232, 'build_time_days': 12,
+                'name': 'Thermal Extractor', 'cost': 382480, 'build_time_days': 12,
                 'generation_rate': 305.0, 'science_generation_rate': 11.0,
                 'dust_storm_immune': True,
                 'image_url': '',
@@ -1016,55 +1016,55 @@ INFRASTRUCTURE_CATALOG = {
         # STAT_UNLOCK_FOUNDRY_LEVEL.
         'levels': {
             1: {
-                'name': 'Salvage Workbench', 'cost': 150000, 'build_time_days': 7,
+                'name': 'Salvage Workbench', 'cost': 382480, 'build_time_days': 7,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.00,
                 'image_url': 'https://storage.googleapis.com/galactica-pilgrim-assets/infrastructure_items/robotics_lab_1775872908.png',
             },
             2: {
-                'name': 'Assembly Bay', 'cost': 168000, 'build_time_days': 8,
+                'name': 'Assembly Bay', 'cost': 382480, 'build_time_days': 8,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.10,
                 'image_url': '',
             },
             3: {
-                'name': 'Calibration Pit', 'cost': 188160, 'build_time_days': 9,
+                'name': 'Calibration Pit', 'cost': 382480, 'build_time_days': 9,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.20,
                 'level_requires': {'habitat_module': 3},  # #1436 Luke
                 'image_url': '',
             },
             4: {
-                'name': 'Manipulator Forge', 'cost': 210739, 'build_time_days': 10,
+                'name': 'Manipulator Forge', 'cost': 382480, 'build_time_days': 10,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.30,
                 'image_url': '',
             },
             5: {
-                'name': 'Servo Atelier', 'cost': 236028, 'build_time_days': 11,
+                'name': 'Servo Atelier', 'cost': 382480, 'build_time_days': 11,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.40,
                 'image_url': '',
             },
             6: {
-                'name': 'Crystal-Servo Lab', 'cost': 264352, 'build_time_days': 12,
+                'name': 'Crystal-Servo Lab', 'cost': 382480, 'build_time_days': 12,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.50,
                 'level_requires': {'research_station': 6, 'greenhouse': 6},  # #1436 Luke
                 'image_url': '',
             },
             7: {
-                'name': 'Resonant Assembly', 'cost': 296074, 'build_time_days': 13,
+                'name': 'Resonant Assembly', 'cost': 382480, 'build_time_days': 13,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.65,
                 'image_url': '',
             },
             8: {
-                'name': 'Cognition Chamber', 'cost': 331603, 'build_time_days': 13,
+                'name': 'Cognition Chamber', 'cost': 382480, 'build_time_days': 13,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.80,
                 'image_url': '',
             },
             9: {
-                'name': 'Autonomy Reactor', 'cost': 371396, 'build_time_days': 14,
+                'name': 'Autonomy Reactor', 'cost': 428378, 'build_time_days': 14,
                 'robot_unlocked': True, 'robot_build_speed_mult': 1.90,
                 'level_requires': {'habitat_module': 9, 'greenhouse': 9, 'research_station': 9},  # #1436 Luke
                 'image_url': '',
             },
             10: {
-                'name': 'Sentient Forge', 'cost': 415963, 'build_time_days': 14,
+                'name': 'Sentient Forge', 'cost': 479783, 'build_time_days': 14,
                 'robot_unlocked': True, 'robot_build_speed_mult': 2.00,
                 'image_url': '',
             },
