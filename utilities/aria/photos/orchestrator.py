@@ -299,6 +299,11 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
             logger.error(f"  ✗ Failed to generate snapshot {i + 1}: {e}")
             import traceback
             traceback.print_exc()
+            results.append({
+                'error': f'{type(e).__name__}: {e}',
+                'snapshot_index': i + 1,
+                'gcs_url': None,
+            })
             continue
 
     return results
@@ -337,12 +342,21 @@ def generate_daily_snapshots(dry_run=False, limit=None):
         email = user['email']
         try:
             results = generate_daily_snapshots_for_user(user_id, email, flux, dry_run)
+            successes = [r for r in results if r.get('gcs_url')]
+            failures = [r for r in results if not r.get('gcs_url')]
             summary['processed_users'] += 1
-            summary['total_snapshots'] += len(results)
-            summary['cost_estimate'] += len(results) * 0.20
+            summary['total_snapshots'] += len(successes)
+            summary['cost_estimate'] += len(successes) * 0.20
+            if failures:
+                # All per-snapshot errors land here so they're visible in the
+                # admin summary instead of silently swallowed.
+                summary['failed_users'].append({
+                    'email': email, 'user_id': user_id,
+                    'snapshot_errors': [f.get('error') for f in failures],
+                })
         except Exception as e:
             logger.error(f"Failed to process user {email}: {e}")
-            summary['failed_users'].append({'email': email, 'error': str(e)})
+            summary['failed_users'].append({'email': email, 'user_id': user_id, 'error': str(e)})
 
         # Pause to avoid pinning the App Engine instance.
         if not dry_run:
