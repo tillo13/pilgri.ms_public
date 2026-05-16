@@ -68,6 +68,20 @@
     </div>
   </div>
 
+  <div class="kj-card">
+    <h3 class="kj-section-h">Daily-snapshot cron — production path</h3>
+    <p class="kj-mini" style="margin:0 0 10px 0; opacity:0.7">
+      Fires <code>utilities/aria/photos/orchestrator.py</code> exactly as the 06:00 PT cron runs it.
+      Each captain's snapshot is rendered via the kumori cascade (HF Qwen 2511 → Kontext-Dev → Qwen Fast → CF Klein → CF Klein 2) and saved to <code>/aria-album</code>.
+    </p>
+    <div class="kj-row kj-row-actions">
+      <button id="kj-cron-one" class="btn btn-primary">▶ Fire for selected captain</button>
+      <button id="kj-cron-all" class="btn btn-secondary">▶ Fire for ALL active captains</button>
+      <span id="kj-cron-status" class="kj-status"></span>
+    </div>
+    <pre id="kj-cron-result" style="display:none; max-height:400px; overflow:auto; background:#0f1419; color:#e6e6e6; padding:12px; border-radius:6px; font-size:11px; margin-top:10px;"></pre>
+  </div>
+
   <div id="kj-result" class="kj-result" style="display:none">
     <!-- LEFT: rendered image + caption + the EXACT prompt Klein got -->
     <div class="kj-preview">

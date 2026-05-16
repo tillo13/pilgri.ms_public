@@ -504,5 +504,53 @@
         setTimeout(() => $('kj-copy-prompt').textContent = '📋 copy', 1500);
       });
     });
+
+    // ─── Daily-cron firing — production path ────────────────────────────
+    async function fireCron(body, label) {
+      const statusEl = $('kj-cron-status');
+      const resultEl = $('kj-cron-result');
+      $('kj-cron-one').disabled = true;
+      $('kj-cron-all').disabled = true;
+      statusEl.textContent = `Firing ${label}…`;
+      resultEl.style.display = 'block';
+      resultEl.textContent = `Firing ${label} — this hits utilities/aria/photos/orchestrator.py exactly as the daily cron does. Multi-image renders + kumori cascade — can take 30-120s per captain.\n`;
+      const t0 = Date.now();
+      try {
+        const r = await fetch('/api/admin/generate_snapshots', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(body || {}),
+        });
+        const data = await r.json();
+        const dt = ((Date.now() - t0) / 1000).toFixed(1);
+        resultEl.textContent = `[${dt}s] HTTP ${r.status}\n\n` + JSON.stringify(data, null, 2);
+        statusEl.textContent = data.success ? `✓ done in ${dt}s` : `✗ ${data.error || 'failed'}`;
+      } catch (e) {
+        resultEl.textContent += `\n\n✗ network error: ${e.message}`;
+        statusEl.textContent = `✗ network error`;
+      } finally {
+        $('kj-cron-one').disabled = false;
+        $('kj-cron-all').disabled = false;
+      }
+    }
+
+    $('kj-cron-one').addEventListener('click', () => {
+      const uid = parseInt($('kj-captain').value, 10);
+      if (!uid) { $('kj-cron-status').textContent = 'pick a captain first'; return; }
+      const name = $('kj-captain').selectedOptions[0]?.textContent || `uid${uid}`;
+      fireCron({user_id: uid}, `daily-cron for ${name}`);
+    });
+    $('kj-cron-all').addEventListener('click', () => {
+      MarsModal.show({
+        title: 'Fire daily-snapshot cron for ALL active captains?',
+        body: '<p style="font-size:13px; line-height:1.5">Runs the same code that runs at 06:00 PT daily — for every captain active in the last 48h. Each one burns a kumori render call (free-tier cascade, but counts against daily quota).</p>',
+        footer: '<button class="btn btn-secondary" id="kj-cron-cancel">Cancel</button> <button class="btn btn-primary" id="kj-cron-confirm">Fire it</button>',
+      });
+      document.getElementById('kj-cron-cancel').addEventListener('click', () => MarsModal.hide());
+      document.getElementById('kj-cron-confirm').addEventListener('click', () => {
+        MarsModal.hide();
+        fireCron({}, 'daily-cron for ALL active captains');
+      });
+    });
   });
 })();
