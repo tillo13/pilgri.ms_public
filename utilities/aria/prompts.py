@@ -425,10 +425,6 @@ def generate_aria_snapshot_narrative(caption: str, snapshot_type: str = None,
     Returns:
         A 2-4 sentence narrative in ARIA's voice
     """
-    from utilities.anthropic_logger import new_client
-    from utilities.anthropic.client import _get_anthropic_api_key
-    from utilities.anthropic.pricing import log_api_usage
-
     commander = commander_name or "the Captain"
 
     # Map snapshot types to context
@@ -461,29 +457,13 @@ The Captain's name: {commander}
 Write a brief narrative in ARIA's voice describing this moment, like an Instagram post caption but more thoughtful."""
 
     try:
-        api_key = _get_anthropic_api_key()
-
-        client = new_client()
-        _start = time.time()
-        response = client.messages.create(
-            model="claude-3-haiku-20240307",  # Fast and cheap
-            max_tokens=200,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
+        from utilities.kumori_utils import kumori_llm_chat
+        text, backend, _attempts, _debug = kumori_llm_chat(
+            system=system_prompt, user_prompt=user_prompt,
+            max_tokens=200, temperature=0.6, min_chars=20,
         )
-        _elapsed = time.time() - _start
-
-        log_api_usage(
-            model="claude-3-haiku-20240307",
-            usage=response.usage,
-            feature='aria_snapshot_narrative',
-            duration_ms=int(_elapsed * 1000),
-            user_id=str(user_id) if user_id else "system:galactica_snapshot_narrative",
-        )
-
-        if response.content and len(response.content) > 0:
-            return response.content[0].text.strip()
-        return ""
+        logger.info(f"aria_snapshot_narrative via kumori backend={backend}")
+        return (text or '').strip() or f"Another moment preserved for the archives. {commander} and I continue our work here on Mars."
 
     except Exception as e:
         logger.error(f"Error generating ARIA snapshot narrative: {e}")
@@ -505,9 +485,6 @@ def generate_aria_snapshot_prompt(user_context: dict, forced_category: str = Non
     """
     import random
     from datetime import datetime
-    from utilities.anthropic_logger import new_client
-    from utilities.anthropic.client import _get_anthropic_api_key
-    from utilities.anthropic.pricing import log_api_usage
 
     # SCENE CATEGORIES with their character/item requirements
     # Python picks the category randomly to ensure variety!
@@ -826,29 +803,15 @@ Create a prompt and caption for this SPECIFIC scene type. Reference destinations
 Return ONLY valid JSON."""
 
     try:
-        api_key = _get_anthropic_api_key()
-
-        # Use direct Anthropic client (lightweight call)
-        client = new_client()
-        _start = time.time()
-        response = client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=800,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
+        from utilities.kumori_utils import kumori_llm_chat
+        text, backend, _attempts, _debug = kumori_llm_chat(
+            system=system_prompt, user_prompt=user_prompt,
+            max_tokens=800, temperature=0.5, min_chars=80,
         )
-        _elapsed = time.time() - _start
+        logger.info(f"aria_snapshot_prompt via kumori backend={backend}")
 
-        log_api_usage(
-            model="claude-3-haiku-20240307",
-            usage=response.usage,
-            feature='aria_snapshot_prompt',
-            duration_ms=int(_elapsed * 1000),
-            user_id=str(user_context.get('user_id')) if user_context and user_context.get('user_id') else "system:galactica_snapshot_prompt",
-        )
-
-        if response.content and len(response.content) > 0:
-            result_text = response.content[0].text.strip()
+        if text:
+            result_text = text.strip()
 
             # Handle markdown code blocks
             if result_text.startswith('```'):
