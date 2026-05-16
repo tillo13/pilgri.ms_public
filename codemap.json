@@ -2514,6 +2514,7 @@
     "exports": [
       "get_source_image — Resolve a single reference image URL for a given source tag.",
       "get_source_images — Resolve multiple reference image URLs (Nano Banana Pro multi-char scenes).",
+      "get_source_actor — Return {type, name, image_url} for an actor whose URL was resolved by",
       "generate_snapshot — Generate a snapshot by editing an existing image with Flux Kontext.",
       "generate_nano_banana_snapshot — Multi-character snapshot via Nano Banana Pro.",
       "generate_snapshot_for_user — Generate one snapshot for a user looked up by email (partial match)."
@@ -3589,7 +3590,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3670,7 +3671,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

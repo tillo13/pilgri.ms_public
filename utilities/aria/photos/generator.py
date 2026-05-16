@@ -74,6 +74,25 @@ def get_source_images(source_types, user_data):
     return images
 
 
+def get_source_actor(source_type, user_data, url):
+    """Return {type, name, image_url} for an actor whose URL was resolved by
+    get_source_image. Used to build scene_actors metadata so the album modal
+    can render a "what's in this scene" chip row with proper names."""
+    if source_type == 'captain':
+        c = user_data.get('captain') or {}
+        return {'type': 'captain',
+                'name': c.get('commander_name') or c.get('captain_name') or 'Captain',
+                'image_url': url}
+    if source_type in ('aria', 'aria_selfie'):
+        return {'type': 'aria', 'name': 'ARIA', 'image_url': url}
+    if source_type == 'discovery':
+        name = next((d.get('name') for d in (user_data.get('discoveries') or []) if d.get('gcs_url') == url), None) or 'Discovery'
+        return {'type': 'discovery', 'name': name, 'image_url': url}
+    if source_type == 'rover':
+        return {'type': 'vehicle', 'name': 'Rover', 'image_url': url}
+    return {'type': source_type, 'name': source_type.title(), 'image_url': url}
+
+
 # ---------------------------------------------------------------------------
 # Context builders
 # ---------------------------------------------------------------------------
@@ -199,6 +218,7 @@ def generate_snapshot(user_id, snapshot_type, user_data, flux, dry_run=False):
         raise Exception("Failed to upload to GCS")
     logger.info(f"Uploaded to GCS: {gcs_url}")
 
+    scene_actors = [get_source_actor(template['source'], user_data, source_image_url)]
     save_generated_image(
         user_id=user_id,
         category='aria_snapshot',
@@ -211,6 +231,7 @@ def generate_snapshot(user_id, snapshot_type, user_data, flux, dry_run=False):
         metadata={
             'time_of_day': tod,
             'mars_sol': context.get('sol_number'),
+            'scene_actors': scene_actors,
             'context': {k: v for k, v in context.items() if isinstance(v, (str, int, float))},
         },
     )
@@ -326,6 +347,13 @@ def generate_nano_banana_snapshot(user_id, snapshot_type, user_data, flux, dry_r
         raise Exception("Failed to upload to GCS")
     logger.info(f"Uploaded to GCS: {gcs_url}")
 
+    # Build scene_actors from template sources, one per actual URL that
+    # made it into the call (pruning + dedup means count may differ from sources).
+    scene_actors = []
+    sources_used = [target_url] + refs
+    for src_type, url in zip(template['sources'], source_image_urls):
+        if url in sources_used:
+            scene_actors.append(get_source_actor(src_type, user_data, url))
     save_generated_image(
         user_id=user_id,
         category='aria_snapshot',
@@ -340,6 +368,7 @@ def generate_nano_banana_snapshot(user_id, snapshot_type, user_data, flux, dry_r
             'mars_sol': context.get('sol_number'),
             'generator': 'nano_banana_pro',
             'source_count': len(source_image_urls),
+            'scene_actors': scene_actors,
             'context': {k: v for k, v in context.items() if isinstance(v, (str, int, float))},
         },
     )

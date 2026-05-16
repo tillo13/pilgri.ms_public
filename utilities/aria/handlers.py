@@ -224,5 +224,6 @@ def get_aria_album_data(user_id):
                 'mars_sol': mars_sol,
                 'earth_date': earth_date,
                 'earth_time': earth_time,
+                'scene_actors': metadata.get('scene_actors') or [],
             })
     return snapshots

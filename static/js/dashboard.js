@@ -666,13 +666,31 @@ let snapshotGallery = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.snapshot-card').forEach(card => {
+        let sceneActors = [];
+        try { sceneActors = JSON.parse(card.dataset.sceneActors || '[]'); } catch (e) {}
         snapshotGallery.push({
             id: card.dataset.id, imageUrl: card.dataset.imageUrl, caption: card.dataset.caption,
             type: card.dataset.type, marsSol: card.dataset.marsSol,
-            earthDate: card.dataset.earthDate, earthTime: card.dataset.earthTime
+            earthDate: card.dataset.earthDate, earthTime: card.dataset.earthTime,
+            sceneActors: sceneActors,
         });
     });
 });
+
+function _snapshotActorChips(actors) {
+    if (!actors || !actors.length) return '';
+    const TYPE_LABEL = { captain: 'Captain', scientist: 'Scientist', aria: 'ARIA', discovery: 'Discovery', vehicle: 'Vehicle' };
+    const chips = actors.map(a => {
+        const label = TYPE_LABEL[a.type] || (a.type || 'Actor');
+        const name = a.name || label;
+        const img = a.image_url || '';
+        return `<a href="${img}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;background:rgba(138,112,219,0.10);border:1px solid rgba(138,112,219,0.25);border-radius:999px;text-decoration:none;color:var(--text-primary);font-size:11px;line-height:1;">
+            <img src="${img}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <span><span style="color:var(--text-muted);font-size:10px;">${label}</span> <strong style="font-weight:600;">${name}</strong></span>
+        </a>`;
+    }).join('');
+    return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">${chips}</div>`;
+}
 
 function _snapshotBody(snap) {
     let dateStr = '';
@@ -684,6 +702,7 @@ function _snapshotBody(snap) {
         <div style="font-size:11px;color:var(--text-muted);">${dateStr}</div></div>
     </div>
     <div class="mm-aria">"${snap.caption}"</div>
+    ${_snapshotActorChips(snap.sceneActors)}
     <div id="snapshot-narrative" style="font-size:14px;color:var(--text-secondary);line-height:1.6;">
         <span style="color:var(--text-muted);">Loading ARIA's thoughts...</span>
     </div>`;

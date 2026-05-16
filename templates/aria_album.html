@@ -37,6 +37,7 @@
          data-type="{{ snapshot.type }}"
          data-mars-sol="{{ snapshot.mars_sol or '' }}"
          data-created-at="{{ snapshot.created_at or '' }}"
+         data-scene-actors='{{ (snapshot.scene_actors or [])|tojson }}'
          onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(138,112,219,0.3)';"
          onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
         <!-- Image - Use thumbnail for fast loading in grid -->
@@ -110,16 +111,33 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('.snapshot-card').forEach((card, index) => {
+        let sceneActors = [];
+        try { sceneActors = JSON.parse(card.dataset.sceneActors || '[]'); } catch (e) {}
         snapshotGallery.push({
             id: card.dataset.id,
             imageUrl: card.dataset.imageUrl,
             caption: card.dataset.caption,
             type: card.dataset.type,
             marsSol: card.dataset.marsSol,
-            createdAt: card.dataset.createdAt
+            createdAt: card.dataset.createdAt,
+            sceneActors: sceneActors
         });
     });
 });
+
+function renderActorChips(actors) {
+    if (!actors || !actors.length) return '';
+    const TYPE_LABEL = { captain: 'Captain', scientist: 'Scientist', aria: 'ARIA', discovery: 'Discovery', vehicle: 'Vehicle' };
+    return actors.map(a => {
+        const label = TYPE_LABEL[a.type] || (a.type || 'Actor');
+        const name = a.name || label;
+        const img = a.image_url || '';
+        return `<a href="${img}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;background:rgba(138,112,219,0.15);border:1px solid rgba(138,112,219,0.35);border-radius:999px;text-decoration:none;color:white;font-size:11px;line-height:1.2;">
+            <img src="${img}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <span><span style="color:rgba(255,255,255,0.55);font-size:10px;">${label}</span> <strong style="font-weight:600;">${name}</strong></span>
+        </a>`;
+    }).join('');
+}
 
 function openSnapshotModal(id, imageUrl, caption, type, marsSol, createdAt) {
     // Find current index in gallery
@@ -148,6 +166,7 @@ function openSnapshotModal(id, imageUrl, caption, type, marsSol, createdAt) {
                         </div>
                     </div>
                     <p id="snapshot-modal-caption" style="font-size: 16px; color: white; font-style: italic; line-height: 1.6; margin: 0; text-align: left;"></p>
+                    <div id="snapshot-modal-actors" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;text-align:left;"></div>
                     <div id="snapshot-modal-narrative" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6; text-align: left;"></div>
                 </div>
             </div>
@@ -194,6 +213,9 @@ function updateNavButtons() {
 function updateSnapshotContent(id, imageUrl, caption, type, marsSol, createdAt) {
     document.getElementById('snapshot-modal-image').src = imageUrl;
     document.getElementById('snapshot-modal-caption').textContent = '"' + caption + '"';
+    // Render the "what's in this scene" chip row from sceneActors stored on the gallery entry
+    const snap = snapshotGallery.find(s => s.id === id);
+    document.getElementById('snapshot-modal-actors').innerHTML = renderActorChips(snap && snap.sceneActors);
     document.getElementById('snapshot-modal-narrative').innerHTML = '<span style="color: rgba(255,255,255,0.4);">Loading ARIA\'s thoughts...</span>';
     document.getElementById('snapshot-modal-narrative').style.display = 'block';
 

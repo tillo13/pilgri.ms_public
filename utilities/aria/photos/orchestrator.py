@@ -194,18 +194,29 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
                 })
                 continue
 
-            # Collect reference images based on Claude's scene flags
+            # Collect reference images based on Claude's scene flags.
+            # scene_actors mirrors source_image_urls 1:1 with human-readable names
+            # so the album modal can render a "what's in this scene" chip row.
             source_image_urls = []
+            scene_actors = []
             if involves_captain and captain_url:
                 source_image_urls.append(captain_url)
+                scene_actors.append({'type': 'captain', 'name': captain_name, 'image_url': captain_url})
             if involves_aria:
                 source_image_urls.append(ARIA_IMAGE_URL)
+                scene_actors.append({'type': 'aria', 'name': 'ARIA', 'image_url': ARIA_IMAGE_URL})
             if involves_scientist and scientist_url:
                 source_image_urls.append(scientist_url)
+                _sci_name = (scientist.get('name') if scientist else None) or 'Scientist'
+                scene_actors.append({'type': 'scientist', 'name': _sci_name, 'image_url': scientist_url})
             if involves_discovery and discovery_url:
                 source_image_urls.append(discovery_url)
+                _disc_name = next((d.get('name') for d in discoveries if d.get('gcs_url') == discovery_url), None) or 'Discovery'
+                scene_actors.append({'type': 'discovery', 'name': _disc_name, 'image_url': discovery_url})
             if involves_vehicle and vehicles and vehicles[0].get('image_url'):
                 source_image_urls.append(vehicles[0]['image_url'])
+                _veh_name = vehicles[0].get('name') or (vehicles[0].get('type') or 'Vehicle').title()
+                scene_actors.append({'type': 'vehicle', 'name': _veh_name, 'image_url': vehicles[0]['image_url']})
 
             from utilities.kumori_utils import kumori_klein_edit, kumori_klein_generate
             refs_used_count = 0
@@ -287,6 +298,7 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
                     'involves_vehicle': involves_vehicle,
                     'pure_landscape': pure_landscape,
                     'reference_image_count': len(source_image_urls),
+                    'scene_actors': scene_actors,
                 },
             )
 
