@@ -242,6 +242,47 @@ def upload_blob_from_url_with_thumbnail(source_url, destination_blob_name, conte
     return None
 
 
+def upload_blob_from_bytes_with_thumbnail(image_bytes, destination_blob_name, content_type='image/png',
+                                          thumbnail_width=400, max_retries=3):
+    """In-memory mirror of upload_blob_from_url_with_thumbnail — used by the
+    kumori-routed aria_snapshot pipeline (bytes come back from kumori, no temp
+    URL to download).
+
+    Returns {url, thumbnail_url} or None on failure.
+    """
+    import time as time_module
+    if not image_bytes:
+        logger.error(f"[{content_type}] upload_blob_from_bytes_with_thumbnail: empty bytes")
+        return None
+    for attempt in range(max_retries):
+        try:
+            storage_client = storage.Client(project=GCP_PROJECT_ID)
+            bucket = storage_client.bucket(BUCKET_NAME)
+            blob = bucket.blob(destination_blob_name)
+            blob.cache_control = 'public, max-age=604800'
+            blob.upload_from_string(image_bytes, content_type=content_type, timeout=180)
+            full_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{destination_blob_name}"
+            logger.info(f"Uploaded full image ({len(image_bytes)/1024:.1f} KB): {full_url}")
+
+            thumbnail_data = create_thumbnail(image_bytes, max_width=thumbnail_width)
+            thumbnail_url = None
+            if thumbnail_data:
+                thumb_blob_name = destination_blob_name.replace('.png', '_thumb.jpg').replace('.jpg', '_thumb.jpg')
+                if '_thumb_thumb' in thumb_blob_name:
+                    thumb_blob_name = thumb_blob_name.replace('_thumb_thumb', '_thumb')
+                thumb_blob = bucket.blob(thumb_blob_name)
+                thumb_blob.cache_control = 'public, max-age=604800'
+                thumb_blob.upload_from_string(thumbnail_data, content_type='image/jpeg', timeout=60)
+                thumbnail_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{thumb_blob_name}"
+                logger.info(f"Uploaded thumbnail ({len(thumbnail_data)/1024:.1f} KB): {thumbnail_url}")
+            return {'url': full_url, 'thumbnail_url': thumbnail_url}
+        except Exception as e:
+            logger.error(f"upload_blob_from_bytes_with_thumbnail error (attempt {attempt + 1}): {e}")
+            if attempt < max_retries - 1:
+                time_module.sleep(2 ** attempt)
+    return None
+
+
 def save_character_image(replicate_url, user_id=None, commander_stats=None, commander_name=None):
     """
     Save character image from Replicate to GCS and record in database

@@ -534,7 +534,7 @@ def synthesize_scene(user_id: int, *, seed: Optional[int] = None,
     Raises KumoriAPIError if the LLM fallback chain exhausts.
     """
     from utilities.mars_environment_utils import get_mars_sol_number
-    from utilities.kumori_image import kumori_llm_chat
+    from utilities.kumori_utils import kumori_llm_chat
 
     if sol is None:
         sol = get_mars_sol_number()
@@ -571,7 +571,7 @@ def synthesize_scene(user_id: int, *, seed: Optional[int] = None,
 
     parsed = parse_llm_json(text)
     if not parsed:
-        from utilities.kumori_image import KumoriAPIError
+        from utilities.kumori_utils import KumoriAPIError
         raise KumoriAPIError(f"LLM returned unparseable JSON: {text[:200]}")
     image_prompt = (parsed.get('image_prompt') or '').strip()
     caption = (parsed.get('aria_caption') or '').strip()
@@ -603,7 +603,7 @@ def render_scene(synth: dict, *, preset: str = 'aria_journal',
     When debug=True the response includes the upstream HTTP calls
     kumori made to Cloudflare (or other Klein providers).
     """
-    from utilities.kumori_image import kumori_klein_edit, PRESETS
+    from utilities.kumori_utils import kumori_klein_edit, PRESETS
     chosen = synth['chosen']
     image_prompt = synth['image_prompt']
     # Safety net: the LLM is INSTRUCTED to close with the canonical Pilgrims
@@ -626,6 +626,11 @@ def render_scene(synth: dict, *, preset: str = 'aria_journal',
         character=f'uid{synth["user_id"]}',
         ref_filename=f'sol{synth["sol"]}_N{synth["N"]}',
         debug=debug,
+        feature='aria_journal.render',
+        verbiage=image_prompt[:500],
+        caller_user_id=synth['user_id'],
+        tags={'sol': synth['sol'], 'preset': preset, 'N': synth['N'],
+              'pool_size_total': synth.get('pool_size_total')},
     )
     return res
 
@@ -639,7 +644,7 @@ def verify_and_caption(synth: dict, image_bytes: bytes, *, debug: bool = False) 
     Returns a dict that the caller merges into the synth result, surfacing
     every byte of the verification stages for the debug console.
     """
-    from utilities.kumori_image import kumori_describe, kumori_llm_chat
+    from utilities.kumori_utils import kumori_describe, kumori_llm_chat
 
     VISION_PROMPT = (
         "Describe everything visible in this single image, clearly and factually, in 3-4 short sentences. "
@@ -739,6 +744,7 @@ def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
     synth['render_ms'] = rendered['ms']
     synth['render_total_ms'] = render_total_ms
     synth['used_size'] = rendered['used_size']
+    synth['render_ladder_trace'] = rendered.get('ladder_trace', [])
     synth['verification_total_ms'] = verify_ms
 
     if debug:

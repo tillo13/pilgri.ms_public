@@ -1565,6 +1565,7 @@
       "upload_blob_from_bytes — Upload raw bytes (in-memory) to GCS. Mirror of upload_blob_from_url, but",
       "create_thumbnail — Create a thumbnail from image data using Pillow.",
       "upload_blob_from_url_with_thumbnail — Download from URL, create thumbnail, and upload both to GCS.",
+      "upload_blob_from_bytes_with_thumbnail — In-memory mirror of upload_blob_from_url_with_thumbnail — used by the",
       "save_character_image — Save character image from Replicate to GCS and record in database",
       "save_edited_image — Save edited character image from Replicate to GCS and record in database",
       "save_character_video — Save character video from Replicate to GCS and record in database"
@@ -1623,12 +1624,13 @@
       "check_killswitch — Raise KillswitchTripped if `provider` is disabled OR MTD + est >= cap."
     ]
   },
-  "utilities/kumori_image.py": {
-    "description": "Galactica → kumori.ai free-tier image stack.",
+  "utilities/kumori_utils.py": {
+    "description": "Galactica → kumori.ai free-tier stack (image + text + describe).",
     "exports": [
       "init_kumori — Call once at app boot. Wires the vendored client to Secret Manager.",
       "validate_klein_size — Snap to multiple-of-16 + cap to 4 MP. Returns (w, h) Klein will actually",
-      "kumori_klein_edit — Render an image via Cloudflare flux-2-klein-4b.",
+      "kumori_klein_edit — Render an image via kumori's edit router.",
+      "kumori_klein_generate — Text→image via kumori. No reference images. kumori cascades server-side",
       "kumori_describe — Vision LLM → text. Returns (description_text, backend_used).",
       "kumori_llm_chat — LLM with server-side backend fallback. Returns"
     ]
@@ -3587,7 +3589,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3603,7 +3605,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3668,7 +3670,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

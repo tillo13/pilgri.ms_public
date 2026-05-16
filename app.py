@@ -161,7 +161,7 @@ auth = SimpleGoogleAuth(app)
 # in galactica-character-game. galactica's get_secret() defaults to
 # galactica-character-game; we have to explicitly point it at kumori-404602.
 try:
-    from utilities.kumori_image import init_kumori
+    from utilities.kumori_utils import init_kumori
     init_kumori(
         get_secret_fn=lambda name: get_secret(name, project_id='kumori-404602'),
         api_key_name='PILGRIMS_KUMORI_API_KEY',
@@ -2604,7 +2604,7 @@ def api_admin_kumori_generate():
         return jsonify({'success': False, 'error': 'user_id required'}), 400
 
     from utilities.aria_journal import generate_journal_entry
-    from utilities.kumori_image import PRESETS, validate_klein_size
+    from utilities.kumori_utils import PRESETS, validate_klein_size
     import base64 as _b64
 
     # Custom W×H overrides preset if both provided (snapped to multiples of 16 + 4 MP cap)
@@ -2671,6 +2671,7 @@ def api_admin_kumori_generate():
         'render_provider': result.get('render_provider'),
         'render_ms': result.get('render_ms'),
         'render_total_ms': result.get('render_total_ms'),
+        'render_ladder_trace': result.get('render_ladder_trace', []),
 
         # Stage 5 — Vision LLM describes the ACTUAL rendered image (ground truth)
         'verification_endpoint': 'POST /api/v1/describe/describe',
@@ -2752,7 +2753,7 @@ def api_admin_kumori_generate_stream():
         build_recent_pool, random_pick, build_llm_user_payload, LLM_SYSTEM,
         parse_llm_json, render_scene, verify_and_caption,
     )
-    from utilities.kumori_image import PRESETS, validate_klein_size, kumori_llm_chat
+    from utilities.kumori_utils import PRESETS, validate_klein_size, kumori_llm_chat
     from utilities.kumori_api_client.client import set_request_log
     from utilities.mars_environment_utils import get_mars_sol_number
     import base64 as _b64
@@ -2865,7 +2866,7 @@ def api_admin_kumori_generate_stream():
             })
 
             # Stages 5 + 6 — Verify + final caption (split for progressive UX)
-            from utilities.kumori_image import kumori_describe
+            from utilities.kumori_utils import kumori_describe
             from utilities.aria_journal import (FINAL_CAPTION_SYSTEM,
                                                   build_caption_reconciliation_prompt)
 

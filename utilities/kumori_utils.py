@@ -1,18 +1,20 @@
-"""Galactica → kumori.ai free-tier image stack.
+"""Galactica → kumori.ai free-tier stack (image + text + describe).
 
-Thin wrapper over the vendored `utilities/kumori_api_client/`. Exposes a small,
-opinionated surface for Galactica's image-gen needs:
+Thin wrapper over the vendored `utilities/kumori_api_client/`. Single home for
+every kumori-routed call Galactica makes. Future video / TTS / music fold in
+here as new top-level functions — keep the surface narrow and opinionated:
 
-  - kumori_klein_edit()      — multi-ref image edit via Cloudflare flux-2-klein-4b
-  - kumori_describe()        — vision LLM (image-to-text)
-  - kumori_llm_chat()        — text LLM with backend fallback chain
+  - kumori_klein_edit()         — image edit; kumori cascades HF→CF server-side
+  - kumori_klein_generate()     — text→image (no reference); kumori cascades
+  - kumori_describe()           — vision LLM (image-to-text)
+  - kumori_llm_chat()           — text LLM with backend fallback chain
 
-All three return Python bytes / strings — no Replicate-style temp URLs to chase.
+All return Python bytes / strings — no Replicate-style temp URLs to chase.
 Size constraints for Klein come from kumori/shared/.../SIZES.md (multiples of 16,
 ≤4 MP). This module documents the recommended sizes in PRESETS.
 
 Init at app boot:
-    from utilities.kumori_image import init_kumori
+    from utilities.kumori_utils import init_kumori
     init_kumori(get_secret)  # uses PILGRIMS_KUMORI_API_KEY from Secret Manager
 """
 
@@ -76,7 +78,7 @@ def init_kumori(get_secret_fn=None, api_key_name: str = 'PILGRIMS_KUMORI_API_KEY
     global _initialized
     _kc_init(get_secret_fn=get_secret_fn, api_key_name=api_key_name)
     _initialized = True
-    logger.info(f"✅ kumori_image initialized (key={api_key_name})")
+    logger.info(f"✅ kumori_utils initialized (key={api_key_name})")
 
 
 def _snap16(n: int) -> int:
@@ -129,15 +131,27 @@ def _pack_image_url_or_bytes(image_url_or_bytes, max_long_side: int = 1024) -> s
 def kumori_klein_edit(prompt: str, target_image, reference_images: Optional[List] = None,
                      preset: Optional[str] = None, width: int = 1024, height: int = 1024,
                      app_name: str = 'galactica', character: str = '',
-                     ref_filename: str = '', debug: bool = False) -> Dict[str, Any]:
-    """Render an image via Cloudflare flux-2-klein-4b.
+                     ref_filename: str = '', debug: bool = False,
+                     feature: Optional[str] = None, verbiage: Optional[str] = None,
+                     caller_user_id: Optional[int] = None,
+                     tags: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Render an image via kumori's edit router.
+
+    Since 2026-05-16 kumori cascades server-side across the full edit stack
+    (HF Qwen-2511 → HF Kontext-Dev → HF Qwen-2511-fast → CF Klein → CF Klein-2),
+    skipping rungs in daily-cap cooldown. Caller passes prompt+images and
+    kumori picks the best available rung. No client-side ladder needed.
 
     target_image / reference_images: each can be a URL, file path, or raw bytes.
-    Up to 3 reference images (target + 3 refs = 4 total — Klein's hard cap).
+    Up to 3 reference images supported across all rungs.
 
-    Returns {ok, image_bytes, provider, ms, used_size:(w,h), [upstream_calls]}
-    on success. When debug=True, the response includes the upstream HTTP calls
-    kumori made to Cloudflare so the caller can see the raw payloads.
+    Attribution kwargs (logged to kumori_api_usage per call):
+      feature='aria_journal.render' etc, verbiage=prompt-or-label,
+      caller_user_id=end-user, tags=arbitrary JSONB.
+
+    Returns {ok, image_bytes, provider, ms, used_size, ladder_trace,
+             [upstream_calls]}. ladder_trace lists every rung kumori tried
+     ([{provider, ok, ms, error_code, skipped_reason}, ...]).
     """
     if preset:
         if preset not in PRESETS:
@@ -150,21 +164,56 @@ def kumori_klein_edit(prompt: str, target_image, reference_images: Optional[List
     res = _kc_imggen_edit(prompt=prompt, target_image_b64=target_b64,
                           reference_images_b64=refs_b64, width=width, height=height,
                           app_name=app_name, character=character or 'anon',
-                          ref_filename=ref_filename or 'ref', debug=debug)
+                          ref_filename=ref_filename or 'ref', debug=debug,
+                          feature=feature, verbiage=verbiage,
+                          caller_user_id=caller_user_id, tags=tags)
     ms = int((time.time() - t0) * 1000)
     if not res.get('ok'):
-        raise KumoriAPIError(f"klein edit failed: {res.get('error')}", payload=res)
-    image_bytes = base64.b64decode(res['image_b64'])
+        raise KumoriAPIError(f"kumori edit failed: {res.get('error')}", payload=res)
     out = {
         'ok': True,
-        'image_bytes': image_bytes,
+        'image_bytes': base64.b64decode(res['image_b64']),
         'provider': res.get('provider'),
         'ms': res.get('ms') or ms,
         'used_size': (width, height),
+        'ladder_trace': res.get('ladder_trace', []),
     }
     if debug and res.get('_debug'):
         out['upstream_calls'] = res['_debug'].get('upstream_calls', [])
     return out
+
+
+def kumori_klein_generate(prompt: str, *, preset: Optional[str] = None,
+                          width: int = 1024, height: int = 1024,
+                          feature: Optional[str] = None, verbiage: Optional[str] = None,
+                          caller_user_id: Optional[int] = None,
+                          tags: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Text→image via kumori. No reference images. kumori cascades server-side
+    across the free-tier generate stack (CF + HF + Pollinations + Horde rungs).
+
+    Returns {ok, image_bytes, provider, ms, used_size, ladder_trace}.
+    Raises KumoriAPIError on full-ladder failure.
+    """
+    if preset:
+        if preset not in PRESETS:
+            raise ValueError(f"unknown preset {preset!r}; valid: {list(PRESETS)}")
+        width, height = PRESETS[preset]
+    width, height = validate_klein_size(width, height)
+    t0 = time.time()
+    res = _kc_imggen_generate(prompt=prompt, width=width, height=height,
+                              feature=feature, verbiage=verbiage,
+                              caller_user_id=caller_user_id, tags=tags)
+    ms = int((time.time() - t0) * 1000)
+    if not res.get('ok'):
+        raise KumoriAPIError(f"kumori generate failed: {res.get('error')}", payload=res)
+    return {
+        'ok': True,
+        'image_bytes': base64.b64decode(res['image_b64']),
+        'provider': res.get('provider'),
+        'ms': res.get('ms') or ms,
+        'used_size': (width, height),
+        'ladder_trace': res.get('ladder_trace', []),
+    }
 
 
 def kumori_describe(image_url_or_bytes, prompt: str = "Describe this image briefly.") -> Tuple[str, str]:

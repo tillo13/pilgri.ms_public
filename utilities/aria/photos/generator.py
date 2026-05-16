@@ -9,7 +9,7 @@ import logging
 import random
 import time
 
-from utilities.google_cloud_storage_utils import upload_blob_from_url
+from utilities.google_cloud_storage_utils import upload_blob_from_bytes
 
 from utilities.aria.photos.data import (
     get_user_by_email,
@@ -178,14 +178,23 @@ def generate_snapshot(user_id, snapshot_type, user_data, flux, dry_run=False):
             'prompt': prompt,
         }
 
-    logger.info("Generating image with Flux Kontext...")
+    logger.info("Generating image via kumori (HF→CF cascade)...")
     start_time = time.time()
-    replicate_url = flux.kontext_edit(source_image_url, prompt)
-    logger.info(f"Image generated in {time.time() - start_time:.1f}s: {replicate_url}")
+    from utilities.kumori_utils import kumori_klein_edit
+    res = kumori_klein_edit(
+        prompt=prompt, target_image=source_image_url,
+        app_name='galactica_aria_snapshot',
+        character=f'uid{user_id}',
+        ref_filename=snapshot_type,
+        feature='aria_snapshot.kontext',
+        verbiage=prompt[:500], caller_user_id=user_id,
+        tags={'snapshot_type': snapshot_type},
+    )
+    logger.info(f"Image generated in {time.time() - start_time:.1f}s via {res['provider']}")
 
     timestamp = int(time.time())
     blob_name = f"aria_snapshots/user_{user_id}/{snapshot_type}_{timestamp}.png"
-    gcs_url = upload_blob_from_url(replicate_url, blob_name, 'image/png')
+    gcs_url = upload_blob_from_bytes(res['image_bytes'], blob_name, 'image/png')
     if not gcs_url:
         raise Exception("Failed to upload to GCS")
     logger.info(f"Uploaded to GCS: {gcs_url}")
@@ -285,19 +294,32 @@ def generate_nano_banana_snapshot(user_id, snapshot_type, user_data, flux, dry_r
             'prompt': prompt,
         }
 
-    logger.info("⚠️  Generating with Nano Banana Pro (premium, ~$0.20)...")
+    # kumori caps refs at 3 (target + up to 3 = first source is target, next 3 are refs).
+    # source_image_urls is already priority-ordered upstream by get_source_images().
+    target_url = source_image_urls[0]
+    refs = source_image_urls[1:4]  # at most 3 refs
+    dropped = source_image_urls[4:]
+    if dropped:
+        logger.info(f"Pruned {len(dropped)} refs over kumori's 3-ref cap: {[u[:50] for u in dropped]}")
+
+    logger.info(f"Generating via kumori (target + {len(refs)} refs, was {len(source_image_urls)} total)...")
     start_time = time.time()
-    replicate_url = flux.nano_banana_edit(
-        prompt=prompt,
-        image_urls=source_image_urls,
-        resolution="2K",
-        aspect_ratio="4:3",
+    from utilities.kumori_utils import kumori_klein_edit
+    res = kumori_klein_edit(
+        prompt=prompt, target_image=target_url, reference_images=refs,
+        app_name='galactica_aria_snapshot',
+        character=f'uid{user_id}',
+        ref_filename=snapshot_type,
+        feature='aria_snapshot.multiref',
+        verbiage=prompt[:500], caller_user_id=user_id,
+        tags={'snapshot_type': snapshot_type, 'ref_count_in': len(source_image_urls),
+              'ref_count_used': 1 + len(refs)},
     )
-    logger.info(f"Image generated in {time.time() - start_time:.1f}s: {replicate_url}")
+    logger.info(f"Image generated in {time.time() - start_time:.1f}s via {res['provider']}")
 
     timestamp = int(time.time())
     blob_name = f"aria_snapshots/user_{user_id}/{snapshot_type}_{timestamp}.png"
-    gcs_url = upload_blob_from_url(replicate_url, blob_name, 'image/png')
+    gcs_url = upload_blob_from_bytes(res['image_bytes'], blob_name, 'image/png')
     if not gcs_url:
         raise Exception("Failed to upload to GCS")
     logger.info(f"Uploaded to GCS: {gcs_url}")

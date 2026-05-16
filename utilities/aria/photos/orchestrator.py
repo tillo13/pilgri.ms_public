@@ -15,7 +15,7 @@ import time
 
 from config import FLUX_MODEL
 from utilities.claude_utils import generate_aria_snapshot_prompt
-from utilities.google_cloud_storage_utils import upload_blob_from_url_with_thumbnail
+from utilities.google_cloud_storage_utils import upload_blob_from_bytes_with_thumbnail
 from utilities.postgres.core import db_cursor
 
 from utilities.aria.photos.data import (
@@ -207,33 +207,48 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
             if involves_vehicle and vehicles and vehicles[0].get('image_url'):
                 source_image_urls.append(vehicles[0]['image_url'])
 
+            from utilities.kumori_utils import kumori_klein_edit, kumori_klein_generate
+            refs_used_count = 0
             if pure_landscape or len(source_image_urls) == 0:
-                logger.info("  Generating with Flux Pro (pure landscape, no reference images)...")
+                logger.info("  Generating via kumori text-to-image (pure landscape)...")
                 start_time = time.time()
-                from utilities.replicate_utils import _killswitched_run
-                result = _killswitched_run(flux.client, FLUX_MODEL,
-                                            {'prompt': prompt, 'aspect_ratio': '4:3'},
-                                            feature='aria_snapshot')
-                replicate_url = result[0] if isinstance(result, list) else str(result)
-                generator_type = 'claude_dynamic + flux_pro'
-            else:
-                logger.info(f"  Generating with Nano Banana Pro ({len(source_image_urls)} reference images)...")
-                logger.info(f"    Images: {[url[:50] + '...' for url in source_image_urls]}")
-                start_time = time.time()
-                replicate_url = flux.nano_banana_edit(
-                    prompt=prompt,
-                    image_urls=source_image_urls,
-                    resolution="2K",
-                    aspect_ratio="4:3",
+                res = kumori_klein_generate(
+                    prompt=prompt, preset='aria_journal',
+                    feature='aria_snapshot.landscape',
+                    verbiage=prompt[:500], caller_user_id=user_id,
+                    tags={'scene_type': scene_type, 'pure_landscape': True},
                 )
-                generator_type = 'claude_dynamic + nano_banana_pro'
+                generator_type = f'claude_dynamic + kumori_generate ({res.get("provider")})'
+            else:
+                # kumori caps refs at 3 (target + 3 = 4 inputs). source_image_urls
+                # already priority-ordered by Claude (captain → aria → scientist → discovery → vehicle).
+                target_url = source_image_urls[0]
+                refs = source_image_urls[1:4]
+                dropped = source_image_urls[4:]
+                refs_used_count = 1 + len(refs)
+                if dropped:
+                    logger.info(f"  Pruned {len(dropped)} refs over kumori's 3-ref cap")
+                logger.info(f"  Generating via kumori edit (target + {len(refs)} refs, was {len(source_image_urls)})...")
+                start_time = time.time()
+                res = kumori_klein_edit(
+                    prompt=prompt, target_image=target_url, reference_images=refs,
+                    preset='aria_journal',
+                    app_name='galactica_aria_snapshot',
+                    character=f'uid{user_id}',
+                    ref_filename=scene_type,
+                    feature='aria_snapshot.multiref',
+                    verbiage=prompt[:500], caller_user_id=user_id,
+                    tags={'scene_type': scene_type, 'ref_count_in': len(source_image_urls),
+                          'ref_count_used': refs_used_count},
+                )
+                generator_type = f'claude_dynamic + kumori_edit ({res.get("provider")})'
 
             logger.info(f"  Image generated in {time.time() - start_time:.1f}s")
 
             timestamp = int(time.time())
             blob_name = f"aria_snapshots/user_{user_id}/{scene_type}_{timestamp}.png"
-            upload_result = upload_blob_from_url_with_thumbnail(
-                replicate_url, blob_name, 'image/png', thumbnail_width=400,
+            upload_result = upload_blob_from_bytes_with_thumbnail(
+                res['image_bytes'], blob_name, 'image/png', thumbnail_width=400,
             )
             if not upload_result:
                 raise Exception("Failed to upload to GCS")
