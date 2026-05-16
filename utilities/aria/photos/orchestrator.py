@@ -220,11 +220,17 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
                 )
                 generator_type = f'claude_dynamic + kumori_generate ({res.get("provider")})'
             else:
-                # kumori caps refs at 3 (target + 3 = 4 inputs). source_image_urls
-                # already priority-ordered by Claude (captain → aria → scientist → discovery → vehicle).
+                # kumori per-rung ref caps (live_state.max_refs, 2026-05-16):
+                #   CF Klein=4, HF Qwen=3, HF Qwen Fast=3, HF Kontext-Dev=1
+                # Galactica caps at 3 — the highest value the vendored kumori_api_client
+                # currently asserts (client.py:449 `len(refs) > 3` raises). Once kumori's
+                # imggen_edit asserts is bumped to 4, raise this to KUMORI_MAX_REFS=4
+                # to unlock CF Klein's 4-ref headroom. source_image_urls is already
+                # priority-ordered by Claude (captain → aria → scientist → discovery → vehicle).
+                KUMORI_MAX_REFS = 3
                 target_url = source_image_urls[0]
-                refs = source_image_urls[1:4]
-                dropped = source_image_urls[4:]
+                refs = source_image_urls[1:1 + KUMORI_MAX_REFS]
+                dropped = source_image_urls[1 + KUMORI_MAX_REFS:]
                 refs_used_count = 1 + len(refs)
                 if dropped:
                     logger.info(f"  Pruned {len(dropped)} refs over kumori's 3-ref cap")

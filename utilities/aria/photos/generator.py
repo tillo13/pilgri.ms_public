@@ -294,13 +294,15 @@ def generate_nano_banana_snapshot(user_id, snapshot_type, user_data, flux, dry_r
             'prompt': prompt,
         }
 
-    # kumori caps refs at 3 (target + up to 3 = first source is target, next 3 are refs).
-    # source_image_urls is already priority-ordered upstream by get_source_images().
+    # Per-rung ref caps: CF Klein=4, HF Qwen=3, HF Kontext-Dev=1.
+    # Capped at 3 — kumori_api_client.client.py:449 asserts `len(refs) > 3` raises.
+    # Bump to 4 once kumori-side assertion is relaxed (see commit notes).
+    KUMORI_MAX_REFS = 3
     target_url = source_image_urls[0]
-    refs = source_image_urls[1:4]  # at most 3 refs
-    dropped = source_image_urls[4:]
+    refs = source_image_urls[1:1 + KUMORI_MAX_REFS]
+    dropped = source_image_urls[1 + KUMORI_MAX_REFS:]
     if dropped:
-        logger.info(f"Pruned {len(dropped)} refs over kumori's 3-ref cap: {[u[:50] for u in dropped]}")
+        logger.info(f"Pruned {len(dropped)} refs over kumori's {KUMORI_MAX_REFS}-ref cap: {[u[:50] for u in dropped]}")
 
     logger.info(f"Generating via kumori (target + {len(refs)} refs, was {len(source_image_urls)} total)...")
     start_time = time.time()

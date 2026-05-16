@@ -802,8 +802,10 @@ function _wbBuildCard(item) {
     }
     let hero;
     if (item.image_url) {
+        // height:auto + width:auto guarantees natural aspect ratio.
+        // max-height: 320px gives room for 4:3 (1024x768) and 1:1 (1024x1024) renders.
         hero = `<div style="text-align:center;padding:6px 0;">
-            <img src="${item.image_url}" alt="" style="max-width:100%;max-height:160px;border-radius:10px;border:2px solid ${color}40;box-shadow:0 4px 20px ${color}30;">
+            <img src="${item.image_url}" alt="" style="max-width:100%;max-height:320px;width:auto;height:auto;border-radius:10px;border:2px solid ${color}40;box-shadow:0 4px 20px ${color}30;">
         </div>`;
     } else {
         hero = `<div style="text-align:center;padding:12px 0;">
