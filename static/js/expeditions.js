@@ -173,85 +173,101 @@ function setVehicleRange(btn, vehicleType) {
 
     const rangeKm = parseInt(btn.dataset.range) || 0;
 
-    // Bug #1394 ReOpen v4 (2026-05-04): three prior fixes (L.circle with Earth scale →
-    // geodesic L.polygon → geodesic L.polyline + antimeridian split) all converged on
-    // mathematically correct geodesic projections. Luke rejected each because Mercator
-    // can't make a 69°-radius cap on Mars look like a circle — for bases where δ + |lat|
-    // > 90° the cap contains a pole and the projection becomes a "bell" shape.
+    // ============================================================================
+    // 🛑 DO NOT TOUCH WITHOUT READING BUGS #1057, #1112, #1394, #1460 IN FULL.
+    // ============================================================================
+    // This function has been broken FIVE times. Each break re-introduced a
+    // constraint Luke had already rejected in a prior bug. The next break will
+    // make him very tired. Read the predecessor bugs before changing anything.
     //
-    // Luke 2026-04-30: "Per the comment about 'weird shape', it's Ok for the circle to
-    //   not be a perfect circle, it just has to connect on all sides and show up on the
-    //   map in a user friendly way."
+    // LOCKED INVARIANTS — every one is a direct Luke quote. Violating any of
+    // these will cause Luke to file another P1 within days.
     //
-    // He also confirmed (2026-04-29) that the dim/bright dot classification is the
-    // source of truth: "The distances seem to be calculating correctly now (dots greyed
-    // out if they are not reachable, and outside circle)."
+    // 1. WHITE STROKE — never orange/red/anything blendable with Mars terrain.
+    //    Luke is severely colorblind. Bug #1112 (2026-03-22):
+    //    > "the 'orange' on that Martian background map is TERRIBLE for me,
+    //    >  i can't see it at all... can we make the circle white?"
     //
-    // Bug #1428 (Backlog, P5) acknowledges Mercator's fundamental limit: "flat map makes
-    // game code around estimating destinations, and vehicle circles around the poles
-    // harder to calculate and visualize in UI."
+    // 2. BASE-CENTERED, SHOWS WHAT'S REACHABLE. Never invert to show the
+    //    unreachable region. Luke's origin ask, bug #1057 (2026-03-21):
+    //    > "adding some kind of circle that shows the max distance a vehicle
+    //    >  can go on Expedition Map."
     //
-    // Fix:
-    //   - Drop the geodesic-polyline approach. Use L.circle (screen-space ellipse) for
-    //     a CONNECTED visual — fast to render, always a clean closed shape on Mercator.
-    //   - Mars-correction factor 6371/3396 ≈ 1.876: convert Mars km → Earth meters that
-    //     Leaflet uses for its local-scale circle approximation. Mathematically correct
-    //     for small δ; visually a stretched ellipse for large δ — but always connected.
-    //   - For δ > 90° (Buggy at 8000+ km on Mars), the cap is more than half the planet
-    //     and L.circle around the base would be enormous and visually meaningless. Draw
-    //     a SMALL circle around the antipode labeled "out of range — only this zone is
-    //     too far" instead. Inverts the visual but conveys the same information cleanly.
-    //   - After every vehicle change, fitBounds() to base + ring so the user always
-    //     sees the ring without scrolling. Solves Luke's "still don't see Buggy circle".
-    //   - Dim/bright dot classification (haversine ≤ rangeKm) is unchanged and remains
-    //     authoritative. The visual ring is an approximation; boundary dots may visually
-    //     fall on the "wrong" side because Mercator distortion ≠ true Mars geodesic at
-    //     large δ — that's accepted per Luke's relaxation above.
+    // 3. CLOSED SHAPE — must connect on all sides. Bug #1394 (2026-04-30):
+    //    > "it's Ok for the circle to not be a perfect circle, it just has to
+    //    >  connect on all sides and show up on the map in a user friendly way."
+    //
+    // 4. VISIBLE IN VIEWPORT — auto-fitBounds() so Luke never has to scroll
+    //    to find the ring. Bug #1394 (2026-04-29):
+    //    > "Still don't see Buggy Circle at all."
+    //
+    // 5. DOT DIM/BRIGHT CLASSIFICATION IS SOURCE OF TRUTH. The visible ring
+    //    is allowed to be a Mercator approximation. Bug #1394 (2026-04-29):
+    //    > "The distances seem to be calculating correctly now (dots greyed
+    //    >  out if they are not reachable, and outside circle)."
+    //
+    // 6. "COVERS THE WHOLE PLANET" IS FINE — preferable to no ring at all.
+    //    Bug #1394 (2026-04-29):
+    //    > "I want the Buggy circle back, even if it 'covers' the whole planet."
+    //
+    // 7. NO INVERTED / "OUT OF RANGE" / ANTIPODE FRAMING EVER. Bug #1460
+    //    (2026-05-09) — Luke filed a fresh P1 the moment v4 hit case (b):
+    //    > "Rover circle not showing up. But i do see a dotted 'orange' circle,
+    //    >  but not sure what it is trying to highlight. The message in the text
+    //    >  box says 'only this zone is too far to reach'...no idea what this
+    //    >  means."
+    //    Translation: orange = invisible (#1112) + inverted = wrong mental
+    //    model (#1057). Violating either is an automatic P1.
+    //
+    // ============================================================================
+    // PRIOR ATTEMPT HISTORY — every version Luke rejected, lined up so the
+    // next person to touch this code can avoid re-attempting a failed shape:
+    //
+    //   v0/v1  L.circle, Earth/Mars scale       → dots in/out didn't match.
+    //   v2     128-pt geodesic polygon          → antimeridian straight lines.
+    //   v3     geodesic polyline + AM splitter  → "sin wave" / "bell" at δ>90°
+    //                                             from pole-crossing; Buggy
+    //                                             ring offscreen.
+    //   v4     L.circle base ring (δ<90°)       → violated #1057 + #1112 in
+    //          + ORANGE ANTIPODE (90°≤δ<180°)     case (b); Luke filed #1460.
+    //          + Global Reach label (δ≥180°)
+    //   v5 (current — bug #1460 fix, 2026-05-17): collapse v4's case (b) into
+    //          case (a). Single white L.circle around base for ALL δ < 180°.
+    //          Yes the ellipse is huge and stretched at δ≈110-150°. Per
+    //          INVARIANTS 3 + 6 above, that is explicitly Luke-approved.
+    //          Bug #1428 (Backlog P5) tracks the eventual sphere-map switch
+    //          that would let us draw geodesic-correct rings.
+    // ============================================================================
     const MARS_RADIUS_KM = 3396;
     const EARTH_RADIUS_KM = 6371;
     const marsCorrection = EARTH_RADIUS_KM / MARS_RADIUS_KM;
     const angularRad = rangeKm / MARS_RADIUS_KM;
     const angularDeg = angularRad * 180 / Math.PI;
 
-    if (angularDeg < 90) {
-        // Cap is less than a hemisphere — draw a "you can reach inside this" ring around base.
-        rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
-            radius: rangeKm * 1000 * marsCorrection,
-            color: '#ffffff',
-            weight: 2,
-            opacity: 0.75,
-            fillOpacity: 0.04,
-            dashArray: '8, 6',
-            interactive: false,
-        }).addTo(map);
-        rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
-    } else if (angularDeg < 180) {
-        // Cap is MORE than a hemisphere but less than the full sphere — draw a "this
-        // antipode zone is the only place you CAN'T reach" ring around the antipode.
-        const antipodeLat = -baseCoords.latitude;
-        let antipodeLon = baseCoords.longitude + 180;
-        if (antipodeLon > 180) antipodeLon -= 360;
-        const inverseAngularRad = Math.PI - angularRad;
-        const inverseRangeKm = inverseAngularRad * MARS_RADIUS_KM;
-        rangeCircle = L.circle([antipodeLat, antipodeLon], {
-            radius: inverseRangeKm * 1000 * marsCorrection,
-            color: '#ff6030',
-            weight: 2,
-            opacity: 0.85,
-            fillOpacity: 0.06,
-            dashArray: '8, 6',
-            interactive: false,
-        }).addTo(map);
-        rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range — only this zone is too far to reach`, { permanent: true, direction: 'top', className: 'range-circle-label' });
-    } else {
-        // angularDeg ≥ 180° — vehicle range exceeds the entire planet's half-circumference,
-        // so EVERY landmark is in range. No meaningful ring; pin a "Global Reach" label
-        // to the base instead.
+    // δ ≥ 180°: range exceeds half-circumference, every landmark is reachable.
+    // No meaningful ring to draw; pin a "Global Reach" label at base instead.
+    // (Luke approved this branch in v4 QA.)
+    if (angularDeg >= 180) {
         rangeCircle = L.marker([baseCoords.latitude, baseCoords.longitude], {
             opacity: 0,
             interactive: false,
         }).addTo(map);
         rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range — Global Reach (every landmark is in range)`, { permanent: true, direction: 'top', className: 'range-circle-label' });
+    } else {
+        // δ < 180°: single white-dashed L.circle around base. ALWAYS base-centered.
+        // ALWAYS white. ALWAYS shows reach. At δ approaching 180° the ellipse will
+        // visually cover most of the map — that is explicitly Luke-approved per
+        // INVARIANTS 3 + 6.
+        rangeCircle = L.circle([baseCoords.latitude, baseCoords.longitude], {
+            radius: rangeKm * 1000 * marsCorrection,
+            color: '#ffffff',
+            weight: 2,
+            opacity: 0.85,
+            fillOpacity: 0.05,
+            dashArray: '8, 6',
+            interactive: false,
+        }).addTo(map);
+        rangeCircle.bindTooltip(`${rangeKm.toLocaleString()} km range`, { permanent: true, direction: 'top', className: 'range-circle-label' });
     }
 
     // Auto-fit map so base + ring are both visible. Solves Luke's "Buggy ring missing"

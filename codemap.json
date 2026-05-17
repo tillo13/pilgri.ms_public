@@ -600,6 +600,22 @@
       "cmd_note — Add note to an idea (parking lot bug)."
     ]
   },
+  "tools/playwright_expedition_range.js": {
+    "description": "Expedition range circle regression gate — bug #1460.",
+    "exports": [
+      "fetchApiKey",
+      "parseColor",
+      "samplePixels",
+      "colorIsWhiteish",
+      "colorIsOrangeish",
+      "clickVehicleAndAssert",
+      "errHandler",
+      "pageErrHandler",
+      "angularDeg",
+      "main",
+      "vehicleName"
+    ]
+  },
   "tools/playwright_live_walk.js": {
     "description": "Live Playwright walkthrough — Pilgrims production smoke test.",
     "exports": [
@@ -3480,6 +3496,7 @@
       "initializeMapResizeHandlers",
       "addExpeditionMarkers",
       "setVehicleRange",
+      "has",
       "geodesicCirclePoints",
       "theta",
       "splitRingAtAntimeridian",
@@ -3487,8 +3504,7 @@
       "buildMarkerPopup",
       "slotsAvailable",
       "fetchLandmarkCost",
-      "updateAllExpeditionCosts",
-      "updateCostDisplay"
+      "updateAllExpeditionCosts"
     ],
     "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
   },
