@@ -1679,6 +1679,32 @@ def test_pilgrimbot_discovery_categories():
     return True
 
 
+@test("PilgrimBot: discovery_ledger wired (per-item rarity + timestamps)", tier=1, features=['api', 'db'], mode='local')
+def test_pilgrimbot_discovery_ledger():
+    """#1478 (Luke 2026-05-17 P2 RFD): query_player_data must expose a per-item
+    discovery ledger so PB can answer "when did I last find a legendary/rare?"
+    Tests against user 112 (Luke) who is documented to have 11 legendary + 60+
+    rare finds. If this test ever fails because Luke's totals dropped to zero,
+    that's a data issue not a code issue — adjust the user or the assertions
+    rather than weakening the ledger output."""
+    from utilities.pilgrimbot_data import PLAYER_DATA_TOOL, PLAYER_DATA_MAP, query_player_data
+    enum = PLAYER_DATA_TOOL['input_schema']['properties']['category']['enum']
+    assert 'discovery_ledger' in enum, "discovery_ledger must be in query_player_data enum"
+    assert 'discovery_ledger' in PLAYER_DATA_MAP, "discovery_ledger must appear in PLAYER_DATA_MAP docstring"
+    out = query_player_data('discovery_ledger', 112)
+    assert 'DISCOVERY LEDGER' in out, "ledger output must have header"
+    assert 'PER-RARITY TOTALS' in out, "ledger must include per-rarity totals section"
+    assert 'LAST FIND PER RARITY' in out, "ledger must include last-per-rarity section"
+    for rarity_label in ('Legendary', 'Rare', 'Uncommon', 'Common'):
+        assert rarity_label in out, f"ledger must surface {rarity_label} totals"
+    # Luke has at least 1 legendary and 1 rare on file (sanity floor).
+    assert '[LEGENDARY]' in out, "Luke's ledger must surface his last legendary"
+    assert '[RARE]' in out, "Luke's ledger must surface his last rare"
+    # Output must include the unlocked_at timestamp (PB needs this for "when?" questions).
+    assert 'unlocked' in out, "ledger must surface unlocked_at timestamp on each row"
+    return True
+
+
 @test("Bug #1477: anthropic logging is canonical (single source, no parallel stack)", tier=1, features=['api'], mode='local')
 def test_anthropic_logging_canonical():
     """Andy 2026-05-14 P1: kumori anthropic_leak_detector flagged $258/mo unaccounted

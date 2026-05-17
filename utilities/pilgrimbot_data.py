@@ -21,7 +21,7 @@ PLAYER_DATA_TOOL = {
                 "enum": ["balance", "shard_generation", "sv_sources", "upgrades", "infrastructure", "building_queue",
                          "expeditions", "research", "crew_missions", "discoveries",
                          "signal_claims", "overview", "leaderboard", "robot",
-                         "discovery_catalog", "discovery_analytics", "map_geography"],
+                         "discovery_catalog", "discovery_analytics", "discovery_ledger", "map_geography"],
                 "description": "Which data category to fetch"
             },
             "user_id": {
@@ -50,6 +50,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   leaderboard       — Top players by shards, expeditions, and research (no user_id needed)
   discovery_catalog — Full discovery-item catalog grouped by rarity (Common/Uncommon/Rare/Legendary): count + % of catalog per rarity, top items by trade value, distance bands. USE THIS when user asks about what items exist or rarity tiers.
   discovery_analytics — Per-user discovery audit: actual rarity finds vs expected (computed by replaying each expedition's stored captain stats + distance through the actual drop-weight formula in discovery_utils.get_progressive_weights). Shows expedition-band breakdown so users can see WHY their drop rate is what it is (e.g. legendary weight is 0 below 300 km AND for first 19 expeditions). USE THIS when user suspects rare/legendary finds are too low.
+  discovery_ledger — Per-user discovery LEDGER (item-level granularity): last legendary/rare/uncommon find with item_name + destination + distance_km + unlocked_at timestamp + claim status, plus per-rarity totals and the last 15 discoveries chronologically. USE THIS when user asks "when did I last find a legendary/rare?", "what was my most recent discovery?", "show me my finds over time", or any per-item question with timestamps.
   map_geography     — Mars destination geography: total named landmarks on the planet (pilgrim.mars_mappings), total origin sites, captain's home coords, current fog-of-war radius + formula, landmarks inside fog right now, unique landmarks visited, total trips taken. USE THIS for ANY question about "how many destinations", "how many can I visit", "how big is the map", "what can I see", "places I've been".
 """
 
@@ -677,6 +678,112 @@ def query_player_data(category, user_id):
             lines.append(f"  Coverage: {uniq_visited}/{total_mappings + total_origins} = {(uniq_visited / max(1, total_mappings + total_origins)) * 100:.2f}% of the planet")
             lines.append("")
             lines.append("NOTE: 'Unique destinations attempted' can differ from 'unique landmarks discovered' if some trips target points that aren't in mars_mappings (e.g. origin-site claim destinations, ARIA-bond meetups). The 168-vs-125 type gap is expected — it's not a bug.")
+            return "\n".join(lines)
+
+        elif category == 'discovery_ledger':
+            # Bug #1478 (Luke 2026-05-17 P2 RFD escalation, dup of #1479):
+            # discovery_catalog (added in #1470) returns the game-wide item catalog;
+            # discovery_analytics returns actual-vs-expected counts. Neither answers
+            # "when did I last find a legendary?" — the per-item ledger.
+            #
+            # Schema verified 2026-05-17 against information_schema.columns:
+            #   pilgrim.expedition_discoveries.unlocked_at  → when the item was found
+            #   pilgrim.expedition_discoveries.claimed_at   → when extracted to inventory
+            #   pilgrim.expedition_discoveries.claimed_by_user (bool)
+            #   pilgrim.discovery_items.item_name + .rarity + .base_trade_value_eth
+            #   pilgrim.expeditions.destination_name + .distance_km + .completed_at
+            #
+            # One SQL pass — no N+1. Newest-first, limited to last 50 rows; per-rarity
+            # totals come from a separate aggregate query.
+            from datetime import datetime, timezone
+            ROW_COLS = """
+                di.rarity, di.item_name, di.base_trade_value_eth, di.base_scientific_value,
+                e.destination_name, e.distance_km,
+                ed.unlocked_at, ed.claimed_at, ed.claimed_by_user, ed.enhanced_value, ed.quantity
+            """
+            with db_cursor() as cur:
+                # Per-rarity totals (full history)
+                cur.execute("""
+                    SELECT di.rarity, COUNT(*) AS n
+                    FROM pilgrim.expedition_discoveries ed
+                    JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+                    JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
+                    WHERE e.user_id = %s
+                    GROUP BY di.rarity
+                """, (user_id,))
+                totals = {r['rarity']: r['n'] for r in cur.fetchall()}
+                # Last find per rarity (one row per rarity from FULL history, not the 15-row payload).
+                # DISTINCT ON in PG returns one row per rarity ordered by unlocked_at DESC.
+                cur.execute(f"""
+                    SELECT DISTINCT ON (di.rarity) {ROW_COLS}
+                    FROM pilgrim.expedition_discoveries ed
+                    JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+                    JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
+                    WHERE e.user_id = %s AND ed.unlocked_at IS NOT NULL
+                    ORDER BY di.rarity, ed.unlocked_at DESC
+                """, (user_id,))
+                last_per_rarity = {r['rarity']: r for r in cur.fetchall()}
+                # Newest-first payload (last 15 overall)
+                cur.execute(f"""
+                    SELECT {ROW_COLS}
+                    FROM pilgrim.expedition_discoveries ed
+                    JOIN pilgrim.discovery_items di ON di.id = ed.discovery_item_id
+                    JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
+                    WHERE e.user_id = %s AND ed.unlocked_at IS NOT NULL
+                    ORDER BY ed.unlocked_at DESC
+                    LIMIT 15
+                """, (user_id,))
+                rows = cur.fetchall()
+
+            if not rows and not totals:
+                return "DISCOVERY LEDGER: no discoveries yet for this user."
+
+            def fmt_ago(ts):
+                if not ts: return "?"
+                try:
+                    dt = ts if hasattr(ts, 'tzinfo') and ts.tzinfo else ts.replace(tzinfo=timezone.utc) if ts else None
+                    if not dt: return "?"
+                    now = datetime.now(timezone.utc)
+                    delta = now - dt
+                    secs = int(delta.total_seconds())
+                    if secs < 3600: return f"{secs // 60}m ago"
+                    if secs < 86400: return f"{secs // 3600}h ago"
+                    return f"{secs // 86400}d ago"
+                except Exception:
+                    return str(ts)
+
+            def fmt_row(r, include_rarity=False):
+                claim = "CLAIMED" if r.get('claimed_by_user') else "UNCLAIMED"
+                qty = f"x{r['quantity']}" if r.get('quantity') and r['quantity'] > 1 else ""
+                prefix = f"[{r['rarity'].upper()}] " if include_rarity else ""
+                return (f"  {prefix}{r['item_name']}{qty} @ {r.get('destination_name') or '?'} "
+                        f"({int(r.get('distance_km') or 0)} km) — "
+                        f"unlocked {r['unlocked_at']} ({fmt_ago(r['unlocked_at'])}) — {claim}")
+
+            lines = ["=== DISCOVERY LEDGER ==="]
+            lines.append("")
+            lines.append("PER-RARITY TOTALS:")
+            for rar in ('legendary', 'rare', 'uncommon', 'common'):
+                lines.append(f"  {rar.capitalize():10} {totals.get(rar, 0)}")
+            lines.append(f"  {'TOTAL':10} {sum(totals.values())}")
+            lines.append("")
+            # Last-find-per-rarity is the answer to "when did I last find a legendary/rare?"
+            # Uses DISTINCT ON from the SQL above against FULL history — not capped by the 15-row payload.
+            lines.append("LAST FIND PER RARITY (most recent unlocked_at per rarity, full history):")
+            for rar in ('legendary', 'rare', 'uncommon'):
+                last = last_per_rarity.get(rar)
+                if last:
+                    lines.append(fmt_row(last, include_rarity=True))
+                else:
+                    lines.append(f"  [{rar.upper()}] none yet")
+            lines.append("")
+            lines.append(f"LAST {len(rows)} DISCOVERIES OVERALL (newest first):")
+            for r in rows:
+                lines.append(fmt_row(r, include_rarity=True))
+            lines.append("")
+            lines.append("Source: pilgrim.expedition_discoveries JOIN pilgrim.discovery_items JOIN pilgrim.expeditions. "
+                         "Payload list capped at 15 newest rows; last-per-rarity scan covers full history. "
+                         "For tier-band drop-rate audits, use discovery_analytics instead.")
             return "\n".join(lines)
 
         else:
