@@ -1435,6 +1435,8 @@
     "exports": [
       "get_client — Returns the shared Anthropic client (cached). Use only when you need raw",
       "new_client — Return a FRESH Anthropic client with the canonical API key + any extra",
+      "class _TracingMessages",
+      "class _TracingAnthropic — Duck-typed proxy that intercepts .messages.create / .messages.stream.",
       "log_usage_async — Log to kumori_api_usage.",
       "logged_create — Drop-in replacement for client.messages.create(...). Auto-logs usage.",
       "logged_stream — Context manager wrapping client.messages.stream(...). Logs final usage on exit."
@@ -3641,7 +3643,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3706,7 +3708,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
