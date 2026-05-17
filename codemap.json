@@ -179,6 +179,12 @@
       "backfill"
     ]
   },
+  "tools/backfill_aria_scene_actors.py": {
+    "description": "One-shot backfill: reconstruct scene_actors metadata for existing",
+    "exports": [
+      "main"
+    ]
+  },
   "tools/backfill_narog_history.py": {
     "description": "One-shot backfill of pilgrim.robot_history from existing GCS narog images.",
     "exports": [
@@ -3590,7 +3596,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3671,7 +3677,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

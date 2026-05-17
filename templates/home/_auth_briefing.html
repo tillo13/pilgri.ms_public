@@ -328,6 +328,9 @@
                      data-type="{{ snapshot.type }}"
                      data-mars-sol="{{ snapshot.mars_sol or '' }}"
                      data-created-at="{{ snapshot.created_at or '' }}"
+                     data-earth-date="{{ snapshot.earth_date or '' }}"
+                     data-earth-time="{{ snapshot.earth_time or '' }}"
+                     data-scene-actors='{{ (snapshot.scene_actors or [])|tojson }}'
                      style="cursor: pointer; transition: transform 0.2s; flex: 0 0 auto; width: 100px;">
                     <div style="position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; border: 2px solid rgba(138,112,219,0.3);">
                         <img src="{{ snapshot.thumbnail_url or snapshot.image_url }}" alt="{{ snapshot.caption|e }}"

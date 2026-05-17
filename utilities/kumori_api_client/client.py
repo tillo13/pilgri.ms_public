@@ -30,6 +30,16 @@ _get_secret_fn = None
 _api_key_name = None
 _api_key_cache = None
 
+# Optional client-side pacing — set via init(min_inter_call_sec=N) or per-call
+# kwarg. Useful for batch consumers (anchor_bulk_fill, aria_daily_cron) that
+# fire many calls in quick succession against a shared free-tier pool and
+# want to avoid tripping the upstream's burst gate. Module-level last-call
+# timestamp; not thread-safe (intended for the dominant single-threaded
+# pacing case).
+_min_inter_call_sec = 0.0
+_last_call_at = 0.0
+_pacing_lock = None  # lazy-init threading.Lock when needed
+
 
 class KumoriAPIError(Exception):
     """Raised when kumori.ai/api/v1/* call fails after retry."""
@@ -40,17 +50,45 @@ class KumoriAPIError(Exception):
         self.payload = payload
 
 
-def init(get_secret_fn=None, api_key_name=None):
+def init(get_secret_fn=None, api_key_name=None, min_inter_call_sec=0.0):
     """Inject Secret Manager fetcher + which secret holds this app's API key.
 
     api_key_name: e.g. 'KINDNESS_KUMORI_API_KEY' (per-consumer secret in
     kumori-404602 Secret Manager). If None, falls back to KUMORI_API_KEY
     env var.
+
+    min_inter_call_sec: floor on time between requests. The client sleeps
+    `max(0, min_inter_call_sec - (now - last_call))` before each request.
+    Set when a batch consumer is hammering a shared free-tier pool and
+    needs to space calls to avoid tripping the upstream burst gate
+    (e.g. dos_bros anchor_bulk_fill saw 6/13 503s with no pacing).
+    Default 0 = no pacing; recommended ~6s for CF Klein bursts.
     """
-    global _get_secret_fn, _api_key_name, _api_key_cache
+    global _get_secret_fn, _api_key_name, _api_key_cache, _min_inter_call_sec
     _get_secret_fn = get_secret_fn
     _api_key_name = api_key_name
     _api_key_cache = None  # invalidate cache
+    _min_inter_call_sec = float(min_inter_call_sec or 0.0)
+
+
+def _pace_before_request():
+    """Sleep just enough to respect the configured min_inter_call_sec floor.
+    No-op when the floor is 0. Lazy-inits the lock on first use so consumers
+    that never enable pacing don't pay the lock-init cost."""
+    global _last_call_at, _pacing_lock
+    if _min_inter_call_sec <= 0:
+        return
+    import time as _t
+    import threading as _th
+    if _pacing_lock is None:
+        _pacing_lock = _th.Lock()
+    with _pacing_lock:
+        now = _t.monotonic()
+        wait = _min_inter_call_sec - (now - _last_call_at)
+        if wait > 0:
+            _t.sleep(wait)
+            now = _t.monotonic()
+        _last_call_at = now
 
 
 def _api_key():
@@ -126,6 +164,11 @@ def _request(method, path, body=None, timeout=(5, 60), retry_on_5xx=True):
     import time as _time
     last_exc = None
     for attempt in (1, 2):
+        # Client-side pacing on attempt 1 only — retries from the same call
+        # don't re-pace (the upstream already saw the first attempt land at
+        # the spacing boundary). Configured via init(min_inter_call_sec=N).
+        if attempt == 1:
+            _pace_before_request()
         t0 = _time.time()
         try:
             r = requests.request(method, url, json=body, headers=headers, timeout=timeout)

@@ -354,6 +354,7 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
                         'time_of_day': time_of_day,
                         'earth_date': earth_date,
                         'earth_time': earth_time,
+                        'scene_actors': metadata.get('scene_actors') or [],
                     })
             except Exception:
                 pass
