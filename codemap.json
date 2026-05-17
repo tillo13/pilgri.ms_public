@@ -600,6 +600,19 @@
       "cmd_note — Add note to an idea (parking lot bug)."
     ]
   },
+  "tools/playwright_depot_vehicle_chips.js": {
+    "description": "Depot vehicle upgrade chip regression gate — bug #1445.",
+    "exports": [
+      "fetchApiKey",
+      "main",
+      "directly",
+      "txt",
+      "color",
+      "verdict",
+      "fcount",
+      "sample"
+    ]
+  },
   "tools/playwright_expedition_range.js": {
     "description": "Expedition range circle regression gate — bug #1460.",
     "exports": [
@@ -3628,7 +3641,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

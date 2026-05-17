@@ -92,17 +92,26 @@ function formatLevelStats(stats, category) {
         if (stats.fuel_cost_mult < 1.0) parts.push(green(`${stats.fuel_cost_mult.toFixed(2)}x cost`));
         else parts.push(red(`${stats.fuel_cost_mult.toFixed(2)}x cost`));
     }
-    // Drone/buggy discovery bonuses (can be negative!)
-    if (stats.discovery_bonus !== undefined && stats.discovery_bonus !== 0) {
-        parts.push(stats.discovery_bonus > 0 ? green(`${(1 + stats.discovery_bonus).toFixed(2)}x disc`) : red(`${(1 + stats.discovery_bonus).toFixed(2)}x disc`));
+    // Bug #1445 (Luke 2026-05-04 + 2026-05-17 P1 escalation): hide negative
+    // discovery/rare/legendary bonuses on vehicle upgrade cards. The mechanic
+    // is real (early vehicle tiers have lower rarity weights than baseline),
+    // but surfacing "0.50x rare" / "0.75x legendary" in red on the upgrade
+    // ladder reads as an active penalty and confuses players. Display the
+    // positive bonuses only; the negative deltas are still applied server-side
+    // by discovery_utils.py — only the UI hides them. Cost-reduction bonuses
+    // (fuel_cost_mult < 1.0) keep their existing display because for cost,
+    // negative IS good news for the player.
+    //
+    // Luke 2026-05-17 14:59 on #1480: "Bug #1445 already accounted for this
+    // fix. Stop doing this!" — canonical ticket is #1445; #1480 is dup.
+    if (stats.discovery_bonus !== undefined && stats.discovery_bonus > 0) {
+        parts.push(green(`${(1 + stats.discovery_bonus).toFixed(2)}x disc`));
     }
-    if (stats.rare_bonus !== undefined && stats.rare_bonus !== 0) {
-        parts.push(stats.rare_bonus > 0 ? gold(`${(1 + stats.rare_bonus).toFixed(2)}x rare`) : red(`${(1 + stats.rare_bonus).toFixed(2)}x rare`));
+    if (stats.rare_bonus !== undefined && stats.rare_bonus > 0) {
+        parts.push(gold(`${(1 + stats.rare_bonus).toFixed(2)}x rare`));
     }
-    if (stats.legendary_bonus !== undefined) {
-        if (stats.legendary_bonus === -1.0) parts.push(red('no legendary'));
-        else if (stats.legendary_bonus < 0) parts.push(red(`${(1 + stats.legendary_bonus).toFixed(2)}x legendary`));
-        else if (stats.legendary_bonus > 0) parts.push(gold(`${(1 + stats.legendary_bonus).toFixed(2)}x legendary`));
+    if (stats.legendary_bonus !== undefined && stats.legendary_bonus > 0) {
+        parts.push(gold(`${(1 + stats.legendary_bonus).toFixed(2)}x legendary`));
     }
 
     // === SCANNERS (uses _chance_ suffix) ===
