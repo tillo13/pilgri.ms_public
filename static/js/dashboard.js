@@ -331,14 +331,16 @@ async function checkInfrastructureIncome() {
                 }
             }
 
-            // Fusion reactor row (show if mult > 1)
-            const fusionRow = $('fusionReactorRow');
-            if (fusionRow) {
+            // All-generation bonus row (Resonance Chamber × Power Grid tech) — bug #1484.
+            // Was mislabeled "Fusion Reactor"; show 2 decimals so the true value
+            // (e.g. ×1.34) isn't rounded to a misleading ×1.3.
+            const allGenRow = $('allGenBonusRow');
+            if (allGenRow) {
                 if (bonuses.all_generation_mult > 1.0) {
-                    fusionRow.style.display = 'flex';
-                    $('fusionReactorMult').textContent = '× ' + bonuses.all_generation_mult.toFixed(1);
+                    allGenRow.style.display = 'flex';
+                    $('allGenBonusMult').textContent = '× ' + bonuses.all_generation_mult.toFixed(2);
                 } else {
-                    fusionRow.style.display = 'none';
+                    allGenRow.style.display = 'none';
                 }
             }
 

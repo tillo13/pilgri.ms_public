@@ -79,23 +79,28 @@ def get_kontext_prompt_for_level(category: str, item_key: str, level: int) -> st
     # Tuned 2026-05-26 from the live drone Lv3->4 "E" comparison (bug #1489):
     # the wrapper below is what preserves the rendered-3D look and stops the
     # model flattening to 2D / restyling / adding smoke or damage.
+    # DISCRETE per-level features — each level bolts on a NEW, nameable part and
+    # gets visibly bulkier, so adjacent levels are clearly different (not just
+    # "more texture"). Reworked 2026-05-26 after wave-3 showed within-band
+    # adjacent levels looked identical when the step was only "add more rock"
+    # (bug #1489). Escalates: hardware -> rock armor -> basalt -> Sepolia crystals.
     PROGRESSION = {
-        2: "Bolt on a couple of small extra mechanical parts and a short antenna or bracket; light red dust weathering. Very subtle field tune-up.",
-        3: "Add a few more bolted-on hardware bits and hoses, slightly heavier weathering and grime. Still mostly the original body.",
-        4: "Rivet a few small chunks of reddish Martian rock onto the body and joints alongside the extra hardware. First clear rock bolt-ons.",
-        5: "More Martian rock plates riveted on, extra brackets and cabling; the build looks noticeably more reinforced.",
-        6: "Chunky Martian stone armor plating across much of the body, heavier mechanical reinforcement, deeper shadows. Rugged and armored.",
-        7: "Heavy basalt-like rock armor and rugged structural plating built up over the frame; clearly a fortified machine now.",
-        8: "Embed a few small glowing blue-purple Sepolia crystal shards into the rock joints and crevices; faint inner glow begins.",
-        9: "Heavy Sepolia crystal integration — multiple glowing blue-purple crystals pulsing with energy across the rock-armored body.",
-        10: "Looks grown from Mars geology itself: massive glowing blue-purple Sepolia crystal core, crystals radiating power throughout the rock-fused body. Ancient and powerful.",
+        2: "Bolt ONE small new antenna or sensor mast onto the top, plus light red dust weathering. Otherwise unchanged — a small distinct new part.",
+        3: "Add side-mounted hardware boxes and a few exposed cables/hoses running along the body. Slightly bulkier than before.",
+        4: "Rivet CHUNKY reddish Martian rock plates onto the legs/base — the first heavy rock armor. Noticeably bulkier and more rugged.",
+        5: "Bolt a bulky Martian rock-armor shell section over the main body and add an exhaust vent. Clearly bigger and more reinforced than before.",
+        6: "Wrap most of the body in heavy stacked stone plating with thick reinforcement; the whole machine looks substantially bulkier and armored.",
+        7: "Add jagged protruding basalt rock spikes and ridges over the armor — oversized, fortified, battle-hardened. Even bulkier silhouette.",
+        8: "Embed several glowing blue-purple Sepolia crystal shards into the rock joints and seams; first clear crystal accents with a faint inner glow.",
+        9: "Grow large glowing blue-purple Sepolia crystal clusters out of the rock armor, pulsing with energy. Bulky and clearly crystal-powered.",
+        10: "Add a MASSIVE central glowing blue-purple Sepolia crystal core with crystals radiating across the rock-fused body. Looks grown from Mars geology — ancient, powerful, the bulkiest form.",
     }
 
-    material_change = PROGRESSION.get(level, "Add more bolted-on Martian rock and reinforcement, more advanced and weathered.")
+    material_change = PROGRESSION.get(level, "Bolt on a distinct new Martian rock feature, bulkier and more reinforced than before.")
 
-    return f"""Keep this EXACT same object and its rendered 3D cartoon video-game art style — same soft shading, same bold dark outlines, same camera angle, same silhouette and pose, same red Mars terrain background. Do NOT flatten to 2D, do NOT redraw, do NOT restyle, do NOT change the silhouette.
-Additive upgrade ONLY, as if hand-built in the field with Martian tools: {material_change}
-The added rock and parts are deliberately attached and reinforcing — NOT broken, crumbling, falling off, or damaged. No smoke, no fire, no debris.
+    return f"""Keep this EXACT same object and its rendered 3D cartoon video-game art style — same soft shading, same bold dark outlines, same camera angle, same base silhouette and pose, same red Mars terrain background. Do NOT flatten to 2D, do NOT redraw, do NOT restyle.
+ADDITIVE upgrade only, hand-built in the field with Martian tools — add a DISTINCT NEW part this level so it looks clearly different and BULKIER than the previous version. Do NOT merely re-texture or recolor; physically bolt on new mass: {material_change}
+The added rock, crystals, and parts are deliberately attached and reinforcing — NOT broken, crumbling, falling off, or damaged. No smoke, no fire, no debris.
 Isolated on red Martian terrain, vibrant reds and oranges, video game asset style."""
 
 
