@@ -1916,14 +1916,28 @@ def api_upgrade_effects_breakdown():
     from utilities.upgrades.breakdown import get_user_effect_breakdown, SURFACED_KEYS
     from utilities.upgrades.effects import get_user_upgrade_effects
     breakdown = get_user_effect_breakdown(g.user_id)
-    finals = get_user_upgrade_effects(g.user_id)
-    finals_subset = {k: finals.get(k) for k in SURFACED_KEYS}
+
+    # Bug #1482: the Lab/Research Summary chips are TECH-ONLY (cumulative across tech
+    # branches). Luke's directive: clicking a Lab chip must list ONLY the techs that
+    # produce that number, "not add in other factors" — so the breakdown + final must
+    # exclude upgrades/infra/bonds. source=tech does exactly that; /expeditions keeps
+    # the full all-sources view (source=all, the default).
+    source = request.args.get('source', 'all')
+    if source == 'tech':
+        from utilities.tech_utils import get_tech_effects
+        breakdown = {k: [r for r in rows if r.get('layer') == 'tech'] for k, rows in breakdown.items()}
+        tech_eff = get_tech_effects(g.user_id)
+        finals_subset = {k: tech_eff.get(k) for k in SURFACED_KEYS}
+    else:
+        finals = get_user_upgrade_effects(g.user_id)
+        finals_subset = {k: finals.get(k) for k in SURFACED_KEYS}
     meta = {k: {'label': lbl, 'op': op} for k, (lbl, op) in SURFACED_KEYS.items()}
     return jsonify({
         'success': True,
         'breakdown': breakdown,
         'finals': finals_subset,
         'meta': meta,
+        'source': source,
     })
 
 

@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
         {% for bonus in tech_summary.global_bonuses %}
         {# Bug #1461 (Luke 2026-05-12 "only the Research Page needs this redesign"):
            reuse the Expeditions bonus-breakdown modal — same pattern, same endpoint. #}
-        <a href="#" class="summary-chip summary-chip-link" data-bonus-key="{{ bonus.key }}"
+        <a href="#" class="summary-chip summary-chip-link" data-bonus-key="{{ bonus.key }}" data-bonus-source="tech"
            onclick="return openBonusBreakdown(event, this);"
            title="Click to see where this {{ bonus.value_display }} comes from">
             <img src="{{ icons[bonus.icon] }}" alt="" class="inline-icon-sm"> {{ bonus.value_display }}
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="tech-summary-branch-bonuses">
             {% for bonus in branch.bonuses %}
             {# Bug #1461 — per-branch chips also clickable; same breakdown endpoint as the global chips above. #}
-            <a href="#" class="summary-chip summary-chip-link" data-bonus-key="{{ bonus.key }}"
+            <a href="#" class="summary-chip summary-chip-link" data-bonus-key="{{ bonus.key }}" data-bonus-source="tech"
                onclick="return openBonusBreakdown(event, this);"
                title="Click to see where this {{ bonus.value_display }} comes from"><img src="{{ icons[bonus.icon] }}" alt="" class="inline-icon-sm"> {{ bonus.value_display }}</a>
             {% endfor %}

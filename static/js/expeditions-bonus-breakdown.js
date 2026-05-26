@@ -7,7 +7,8 @@
 // upgrade / building / tech / bond produced each +N%.
 // ============================================================================
 
-let _bonusBreakdownCache = null;
+// Cache per source ('all' for /expeditions, 'tech' for the Lab/Research summary — bug #1482).
+const _bonusBreakdownCache = {};
 
 const LAYER_LABEL = {
     upgrade: 'Player Upgrades',
@@ -56,13 +57,15 @@ function mergeBlurb(op) {
     }
 }
 
-async function loadBonusBreakdown() {
-    if (_bonusBreakdownCache) return _bonusBreakdownCache;
+async function loadBonusBreakdown(source) {
+    source = source || 'all';
+    if (_bonusBreakdownCache[source]) return _bonusBreakdownCache[source];
     try {
-        const r = await fetch('/api/upgrade-effects/breakdown', { credentials: 'same-origin' });
+        const qs = source === 'tech' ? '?source=tech' : '';
+        const r = await fetch('/api/upgrade-effects/breakdown' + qs, { credentials: 'same-origin' });
         const data = await r.json();
         if (data && data.success) {
-            _bonusBreakdownCache = data;
+            _bonusBreakdownCache[source] = data;
             return data;
         }
     } catch (e) {
@@ -71,8 +74,9 @@ async function loadBonusBreakdown() {
     return null;
 }
 
-function renderBreakdownBody(key, data) {
+function renderBreakdownBody(key, data, source) {
     const meta = (data.meta || {})[key] || { label: key, op: 'add' };
+    const techOnly = (source || data.source) === 'tech';
     const rows = (data.breakdown || {})[key] || [];
     const finalVal = (data.finals || {})[key];
 
@@ -93,8 +97,11 @@ function renderBreakdownBody(key, data) {
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Live aggregate from ${rows.length} contribution${rows.length === 1 ? '' : 's'}</div>
     </div>`;
 
+    const stacksBlurb = techOnly
+        ? 'Tech Tree only — this is the cumulative research bonus: <strong>max within each branch, then × across branches</strong>. Other sources (upgrades, infrastructure, ARIA bonds) are excluded here. See the Expeditions page for your full stacked rate.'
+        : mergeBlurb(meta.op);
     body += `<div style="font-size:11px;color:var(--text-muted);margin:10px 2px 8px;line-height:1.55;">
-        <strong style="color:var(--text-primary);">How this stacks:</strong> ${mergeBlurb(meta.op)}
+        <strong style="color:var(--text-primary);">How this stacks:</strong> ${stacksBlurb}
     </div>`;
 
     body += `<div class="grid" style="grid-template-columns:1fr;gap:8px;">`;
@@ -125,6 +132,9 @@ window.openBonusBreakdown = function(ev, anchor) {
     if (ev) { ev.preventDefault(); ev.stopPropagation(); }
     const key = anchor && anchor.getAttribute('data-bonus-key');
     const highlight = anchor && anchor.getAttribute('data-bonus-highlight');
+    // Bug #1482: Lab/Research chips set data-bonus-source="tech" so the modal shows
+    // ONLY tech contributions + a tech-only final that matches the chip.
+    const source = (anchor && anchor.getAttribute('data-bonus-source')) || 'all';
     if (!key) {
         // Legacy chip with no key — fall back to old jump-to-Colony behavior
         const url = '/colony?tab=assets' + (highlight ? `&highlight=${encodeURIComponent(highlight)}` : '');
@@ -143,7 +153,7 @@ window.openBonusBreakdown = function(ev, anchor) {
         footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Got it</button>`,
     });
 
-    loadBonusBreakdown().then(data => {
+    loadBonusBreakdown(source).then(data => {
         if (!data) {
             MarsModal.show({
                 title: 'Bonus Breakdown',
@@ -161,7 +171,7 @@ window.openBonusBreakdown = function(ev, anchor) {
             subtitle: `<span style="color:var(--text-muted)">Where this number comes from</span>`,
             icon: '🔬',
             width: 'md',
-            body: renderBreakdownBody(key, data),
+            body: renderBreakdownBody(key, data, source),
             footer: `<div style="display:flex;gap:8px;width:100%;">
                 <a href="${colonyUrl}" class="btn btn-secondary" style="flex:1;text-align:center;text-decoration:none;">View in Colony</a>
                 <button class="btn btn-primary" onclick="MarsModal.hide()" style="flex:1;">Got it</button>

@@ -3407,8 +3407,10 @@
       "loadBonusBreakdown",
       "renderBreakdownBody",
       "meta",
+      "techOnly",
       "rows",
       "finalVal",
+      "source",
       "meta"
     ]
   },
