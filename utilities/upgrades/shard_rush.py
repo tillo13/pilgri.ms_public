@@ -56,7 +56,16 @@ def calculate_rush_cost_pct(user_id: int) -> float:
 
 
 def _upgrade_base_cost(category: str, item_key: str, target_level: int) -> int:
-    """Lookup the shards cost of an upgrade's target level from UPGRADE_CATALOG."""
+    """Lookup the shards cost of an upgrade's target level.
+
+    Bug #1459: infrastructure UPGRADES (Lv2+) rush through this path with
+    category='infrastructure', but infra items live in INFRASTRUCTURE_CATALOG,
+    NOT UPGRADE_CATALOG. The old code looked only in UPGRADE_CATALOG, so it
+    returned 0 -> rush_cost=0 -> infrastructure rushes were FREE (e.g. Research
+    Station Lv10 = 479,783 shards given away). Route infra to the right catalog.
+    """
+    if category == 'infrastructure':
+        return _infrastructure_base_cost(item_key, target_level)
     from config_upgrades import UPGRADE_CATALOG
     return int(
         UPGRADE_CATALOG.get(category, {})

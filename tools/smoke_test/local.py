@@ -112,6 +112,26 @@ def test_config_infrastructure():
     return True
 
 
+@test("Bug #1459: infra shard-rush cost uses right catalog (never free)", tier=1, features=['config', 'depot', 'upgrades'], mode='local')
+def test_shard_rush_infra_cost_nonzero():
+    # Infra UPGRADES (Lv2+) rush through rush_equipment_upgrade(category='infrastructure'),
+    # whose cost lookup MUST resolve via INFRASTRUCTURE_CATALOG. Before the fix it read
+    # UPGRADE_CATALOG (no 'infrastructure' category) -> 0 -> infra rushes were FREE.
+    from utilities.upgrades.shard_rush import _upgrade_base_cost
+    from utilities.infrastructure_utils import INFRASTRUCTURE_CATALOG
+    bad = []
+    for key, data in INFRASTRUCTURE_CATALOG.items():
+        for lv, ld in data.get('levels', {}).items():
+            if lv < 2:
+                continue
+            expected = int(ld.get('cost', 0))
+            got = _upgrade_base_cost('infrastructure', key, lv)
+            if expected > 0 and got != expected:
+                bad.append(f"{key} Lv{lv}: got {got}, expected {expected}")
+    assert not bad, "infra shard-rush base cost wrong (would rush FREE): " + "; ".join(bad[:5])
+    return True
+
+
 @test("config_tech.py loads", tier=1, features=['config', 'tech'], mode='local')
 def test_config_tech():
     import config_tech

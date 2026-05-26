@@ -1078,12 +1078,12 @@
       "test_config_loads",
       "test_config_upgrades",
       "test_config_infrastructure",
+      "test_shard_rush_infra_cost_nonzero",
       "test_config_tech",
       "test_math_registry",
       "test_upgrade_build_times",
       "test_sanitize_error",
-      "test_currency_conversion",
-      "test_get_upgrade_level"
+      "test_currency_conversion"
     ]
   },
   "docs/2026apr10plan.md": {
@@ -3643,7 +3643,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3708,7 +3708,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
