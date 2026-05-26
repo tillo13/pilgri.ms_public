@@ -954,6 +954,14 @@ def depot_recalibration_brainstorm():
     return render_template('brainstorm/depot_recalibration.html', active_tab=None, user=user)
 
 
+@app.route('/brainstorm/end-game-dynamics')
+def end_game_dynamics_brainstorm():
+    """End-Game Dynamics brainstorm — whispers, fog of war, the 14/14 payoff, and how
+    the Signal endgame pieces unify (the things the stale signal brainstorm missed)."""
+    user = auth.get_current_user() if auth.is_authenticated() else None
+    return render_template('brainstorm/end_game_dynamics.html', active_tab=None, user=user)
+
+
 @app.route('/api/brainstorm/signal-chat', methods=['POST'])
 @handle_api_error
 def api_signal_brainstorm_chat():

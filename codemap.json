@@ -3645,7 +3645,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -3710,7 +3710,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
@@ -3732,6 +3732,9 @@
   },
   "templates/brainstorm/depot_recalibration.html": {
     "description": "Page: Depot Recalibration Brainstorm — Pilgrims"
+  },
+  "templates/brainstorm/end_game_dynamics.html": {
+    "description": "Page: End-Game Dynamics — Pilgrims"
   },
   "templates/brainstorm/icon_redesign.html": {
     "description": "Page: Colony Redesign — Brainstorm"

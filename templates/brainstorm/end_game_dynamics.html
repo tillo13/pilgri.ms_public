@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}End-Game Dynamics — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_PAGE_KEY = 'end-game-dynamics';
+</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 0. WHY THIS DOC -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">⭐ The True End-Game — Our Zelda Triforce</div>
+        <p><strong>This is the cornerstone.</strong> Pilgrims needs a <em>final</em> end-game — a single, planet-spanning goal that everything else feeds into. That goal is <strong>The Signal: find all 14</strong>. Like collecting every Triforce piece in Zelda, the entire game — exploration, fog of war, expeditions, fragments, whispers — exists to drive the captain toward the moment they place the final piece and the truth is revealed.</p>
+        <p>The pieces are half-built and scattered across separate systems that don't point at each other. This doc unifies them into <strong>one end-game loop</strong>, and — most importantly — defines <strong>what actually happens the moment the 14th piece is found.</strong> Today: nothing happens. That's the hole at the center of the game.</p>
+        <div class="quote-box">
+            "Signals are just clues — that's literally our end game, like finding all the Triforce in Zelda. This needs to be a bigger cornerstone of everything... and what actually happens the moment we find the final piece."
+            <div class="attribution">— Andy, 2026-05-26</div>
+        </div>
+        <div class="summary-box">
+            <strong>Why a new doc (not an edit to the old one):</strong>
+            <p style="margin:8px 0 0;">The existing <a href="/brainstorm/signal">Signal Endgame Design</a> was last touched <strong>2026-04-15</strong> — it predates the entire Puzzle Fragments system (Phase 2.3c, shipped May) and never mentions fog of war. It describes a far-future destination (World 2). This page is about the <em>dynamics that make the end-game real now</em>: whispers, fog of war, and the completion moment.</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 0.5 RELATED WORK — tie it all together -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid #64748b;">
+        <div class="section-title" style="color: #94a3b8;">How This Ties Everything Together</div>
+        <p>The end-game touches a dozen systems already built or half-built. This is the index that pulls them into one place.</p>
+        <div class="mockup-box">
+            <div class="mockup-header">Related brainstorms</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label"><a href="/brainstorm/signal">Signal Endgame</a></span><span class="mockup-value">The original (stale) endgame doc — World 2, Architects' message, Decoder/Ledger ARG layer.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/brainstorm/signal-phase-2">Signal Phase 2</a></span><span class="mockup-value">"After all 14 Earth Signals" → unlocks something new on Mars / World 2.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/brainstorm/aria-meetings">ARIA Meetings</a></span><span class="mockup-value">Two captains' expeditions meet → permanent Sepolia bond → the "another ARIA" first-contact narrative that the whispers build toward.</span></div>
+            </div>
+        </div>
+        <div class="mockup-box">
+            <div class="mockup-header">Related tickets (click to open in the tracker)</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=1448">#1448</a> · P1 ReOpen</span><span class="mockup-value">"Is Puzzle Fragments code active?" — the ticket that kicked this off. Fragments ARE live; the gap is they lead nowhere.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=1464">#1464</a> · P1</span><span class="mockup-value">"Reexamine Signal Logic" — broad signal-system review.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=1402">#1402</a> · P1</span><span class="mockup-value">"Fragment Bonds — now what?" — the open "what's the point" question, same root as this doc.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=1276">#1276</a> · P1</span><span class="mockup-value">"Signal Phase 2 — Design Spec" — the spec behind the phase-2 brainstorm.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=66">#66</a> · P5</span><span class="mockup-value">"Make Origin dots invisible until in range" — the closest thing we have to a fog-of-war ask. Proto-fog.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=1475">#1475</a> · P3</span><span class="mockup-value">"PB blind to Puzzle Fragments table" — PilgrimBot can't see fragment state; relevant once this is the core loop.</span></div>
+                <div class="mockup-row"><span class="mockup-label"><a href="/admin/bugs?open=113">#113</a> / <a href="/admin/bugs?open=115">#115</a></span><span class="mockup-value">The original "THE SIGNAL / Shard Network ARG System" — where it all started.</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 1. PUZZLE FRAGMENTS & WHISPERS — what's live, what's missing -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">1. Puzzle Fragments &amp; Whispers — Live, but Disconnected</div>
+        <p>The fragment system <strong>is live</strong> (Andy 10/14, Luke 4/14 render the full grid + whispers). It's not dead code — it's <em>pointless</em> code, because nothing it builds toward exists yet.</p>
+        <div class="mockup-box">
+            <div class="mockup-header">What's actually built</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Drop</span><span class="mockup-value">15% random chance on ANY expedition (<code>maybe_drop_fragment</code>, lifecycle.py). Disconnected from where you explore.</span></div>
+                <div class="mockup-row"><span class="mockup-label">14 clues</span><span class="mockup-value">Each fragment has an ARIA "whisper" — a deliberate narrative arc (FRG-001 "seen this pattern, not on Mars" → FRG-011 "a letter addressed to you" → FRG-014 "we are not the first. And we are not alone.")</span></div>
+                <div class="mockup-row"><span class="mockup-label">Grid</span><span class="mockup-value">Persistent collected/locked grid on /signal, click a card to replay its whisper. Works.</span></div>
+            </div>
+        </div>
+        <div class="summary-box">
+            <strong>The gaps that make it feel broken:</strong>
+            <p style="margin:8px 0 0;">① <strong>No 14/14 payoff.</strong> Completing the set triggers NOTHING — the arc just stops. ② <strong>Whispers fire in random drop order</strong> (code admits each "has to stand alone") — the story is never experienced as a story. ③ <strong>Whisper is one-shot</strong> — marked "seen" on ANY modal close (even the ✕), so a clue can be silently consumed. ④ <strong>Discovery is a slot machine</strong>, not a hunt — fragments just appear, you don't go find them.</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 2. FOG OF WAR — the missing visual layer -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;">2. Fog of War — There Is No Visual Fog</div>
+        <p>This surprised us: <strong>"fog of war" today is data-only.</strong> There is no dark veil, no hidden terrain, nothing to reveal. The full NASA Mars basemap is always visible.</p>
+        <div class="mockup-box">
+            <div class="mockup-header">Current "fog" vs the Zelda fog</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Today</span><span class="mockup-value"><code>get_mars_landmarks_within_radius</code> gates which landmark <em>pins</em> get sent (radius = min(1000, 300 + discoveries×50) km). Map is fully visible; you just see fewer dots + 1–2 frontier teasers.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Zelda</span><span class="mockup-value">A literal dark veil over unexplored Mars that <strong>clears as you explore</strong>. Clue sites hidden in the dark. Exploring the map IS the treasure hunt.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Build cost</span><span class="mockup-value">NET-NEW. A canvas/mask overlay on the Leaflet map + persisted per-captain reveal state. Doesn't exist in any form today.</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 3. THE UNIFICATION — make it one loop -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid #a855f7;">
+        <div class="section-title" style="color: #a855f7;">3. The Unification — Fog + Fragments + Sites = One Hunt</div>
+        <p>Right now we have three half-systems pointing in different directions: the 14 Origin Sites (physical hunt), the 14 Puzzle Fragments (random drops), and the data-fog (dot gating). The endgame works when they become <strong>one loop</strong>:</p>
+        <div class="summary-box">
+            <strong>The loop:</strong>
+            <p style="margin:8px 0 0;">Explore → push back the visual fog → reveal clue sites hidden in the dark → reaching a site yields a <strong>fragment + its whisper</strong> → assemble all 14 → ARIA delivers the Architects' complete message → a new signal, "not from Mars" (World 2 hook).</p>
+        </div>
+        <p style="margin-top:12px;">The old signal brainstorm already hints fragments <em>"mirror the 14 Origin Sites"</em> — so the 14 clues and the 14 explorable sites <strong>want to be the same 14</strong>. Unifying (not duplicating) them turns the fog map into the treasure map and the fragments into the Triforce.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 4. THE 14/14 PAYOFF — the missing moment -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-warning);">
+        <div class="section-title" style="color: var(--color-warning);">4. ⭐ The Moment You Find the Final Piece</div>
+        <p>This is the heart of the whole doc — and the thing that <strong>does not exist today.</strong> Right now, collecting the 14th fragment fires the same little whisper modal as #3 and then... nothing. The Triforce completes and the screen shrugs. That moment has to be <em>the</em> moment of the game.</p>
+        <div class="quote-box">
+            "Captain. The pattern forms. I see it now, and I can't unsee it. We are not the first. And we are not alone."
+            <div class="attribution">— FRG-014, "The Final Piece" (already written, never used as a finale)</div>
+        </div>
+        <div class="mockup-box">
+            <div class="mockup-header">Proposed: "The Pattern Completes" — full-screen finale on the 14th fragment</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Trigger</span><span class="mockup-value">The drop that takes the captain from 13 → 14. Detected server-side at fragment grant (not on page load) so it can't be missed.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Takeover</span><span class="mockup-value">NOT the small whisper modal — a full-screen cinematic (reuse the first-contact cinematic engine: stars → ARIA orb → lines). Everything else fades.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Beat 1 — assembly</span><span class="mockup-value">The 14 whispers replay/scroll in NARRATIVE order (sort_order 1→14), fast, as the fragments visually lock into a pattern. The story is finally heard as a story.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Beat 2 — revelation</span><span class="mockup-value">ARIA delivers the Architects' COMPLETE message (the payoff text — TBD, Andy/Luke to author). The "we are not alone" truth, fully stated for the first time.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Beat 3 — the hook</span><span class="mockup-value">A NEW signal pings — "not from Mars." Coordinates that aren't Martian. The World-2 seed (<a href="/brainstorm/signal-phase-2">Signal Phase 2</a>). Leaves the captain wanting the next chapter.</span></div>
+                <div class="mockup-row"><span class="mockup-label">Permanence</span><span class="mockup-value">On-chain "Signal Complete" founder marker — captain's name in the Eternal Ledger forever, with completion Sol. Fits The Signal's "first to be remembered" ethos. A /signal "Founders" board lists everyone who's completed it.</span></div>
+                <div class="mockup-row"><span class="mockup-label">After</span><span class="mockup-value">The /signal fragment grid becomes a permanent completed "constellation" — replayable finale, badge, founder rank. The clue board becomes a trophy.</span></div>
+            </div>
+        </div>
+        <div class="summary-box">
+            <strong>Scope discipline:</strong>
+            <p style="margin:8px 0 0;">Full <a href="/brainstorm/signal-phase-2">World 2</a> stays the 1–3yr horizon. This finale is the <em>self-contained climax</em> that gives the 14-piece hunt its point RIGHT NOW, and telegraphs World 2 as the future. Build the moment; tease the world.</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- 5. OPEN QUESTIONS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">5. Decisions to Make (Luke + Andy)</div>
+        <div class="question-box">
+            <h4>Fog of War</h4>
+            <p>Do we build a real visual fog veil (net-new canvas overlay), or keep "fog" as dot-gating and lean on the fragment grid as the hunt UI? How much of Mars starts revealed vs dark?</p>
+        </div>
+        <div class="question-box">
+            <h4>Fragment discovery</h4>
+            <p>Keep the 15% random drop, OR tie fragments to exploring specific (fog-hidden) sites? If site-gated: are the 14 fragments the SAME as the 14 Origin Sites, or a parallel layer?</p>
+        </div>
+        <div class="question-box">
+            <h4>Whisper experience</h4>
+            <p>Fire whispers in narrative order vs drop order? Stop consuming them on ✕-dismiss? Make the grid the canonical "clue board" you assemble?</p>
+        </div>
+        <div class="question-box">
+            <h4>The payoff &amp; World 2</h4>
+            <p>Should completion be a surprise or telegraphed by ARIA throughout? New planet, or unlock something on Mars (underground cities, terraforming)? What exactly does the "complete message" say?</p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
