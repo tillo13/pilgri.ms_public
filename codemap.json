@@ -228,7 +228,6 @@
       "cmd_list — Show bugs grouped by priority.",
       "cmd_add — Add a new bug.",
       "cmd_dev — Post a TEST: validation comment + flip status to Awaiting QA.",
-      "cmd_status — Update bug status.",
       "cmd_search — Search bugs by keyword.",
       "cmd_done — Mark bug as done (QA only).",
       "cmd_qa — QA: Approve bug for completion.",
@@ -236,7 +235,8 @@
       "cmd_screenshot — Download bug screenshot to /tmp/.",
       "cmd_ideas — List ideas from parking lot.",
       "cmd_idea — Add idea to parking lot.",
-      "cmd_note — Add note to an idea (parking lot bug)."
+      "cmd_note — Add note to an idea (parking lot bug).",
+      "cmd_promote — Promote idea to active bug (status change from Parking Lot to New)."
     ]
   },
   "tools/bump_vehicle_speeds.py": {
@@ -589,7 +589,6 @@
       "cmd_list — Show bugs grouped by priority.",
       "cmd_add — Add a new bug.",
       "cmd_dev — Post a TEST: validation comment + flip status to Awaiting QA.",
-      "cmd_status — Update bug status.",
       "cmd_search — Search bugs by keyword.",
       "cmd_done — Mark bug as done (QA only).",
       "cmd_qa — QA: Approve bug for completion.",
@@ -597,7 +596,8 @@
       "cmd_screenshot — Download bug screenshot to /tmp/.",
       "cmd_ideas — List ideas from parking lot.",
       "cmd_idea — Add idea to parking lot.",
-      "cmd_note — Add note to an idea (parking lot bug)."
+      "cmd_note — Add note to an idea (parking lot bug).",
+      "cmd_promote — Promote idea to active bug (status change from Parking Lot to New)."
     ]
   },
   "tools/playwright_depot_vehicle_chips.js": {
@@ -2225,7 +2225,7 @@
       "get_all_users — Get all users from database (id, email, given_name, name).",
       "get_user_by_google_id — Get user by Google ID",
       "update_user_activity — Update last_meaningful_activity_at for a user. Called on purchases, expeditions, claims, harvests, builds.",
-      "get_user_email_info — Get user's email and name for notifications"
+      "set_haul_popup_pref — Per-captain toggle: whether the expedition haul ('Rover returned!') popup auto-shows on page load."
     ],
     "keywords": "user CRUD, auth, session hydration, get_user_by_id, get_user_by_email, get_all_users, calculate_reroll_cost, calculate_transmutation_cost"
   },
@@ -3627,7 +3627,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3643,7 +3643,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

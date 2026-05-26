@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
 window.userAuthenticated = {{ 'true' if user else 'false' }};
 window.previewBalance = {{ preview_balance|default(0) }};
 window.welcomeBack = {{ (welcome_back or {}) | tojson }};
+window.autoShowHaul = {{ 'false' if auto_show_haul is defined and not auto_show_haul else 'true' }};
 </script>
 {% endblock %}
 

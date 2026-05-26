@@ -145,6 +145,26 @@ function processStatEvents(data) {
 window.showStatToast = showStatToast;
 window.processStatEvents = processStatEvents;
 
+// Persist the per-captain "auto-show haul popup" preference. Shared by the
+// in-modal opt-out link (dashboard.js) and the Crew → Services → Auto-Popup
+// toggle (crew.js). Updates window.autoShowHaul so the home page respects it
+// without a reload; reverts on failure.
+async function setHaulPopupPref(enabled) {
+    window.autoShowHaul = enabled;
+    try {
+        const resp = await fetch('/api/user/haul_popup_pref', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            showToast(enabled ? 'Haul popup will show automatically' : "Haul popup won't auto-show anymore", 'success');
+        } else { showToast('Could not save preference', 'error'); window.autoShowHaul = !enabled; }
+    } catch (e) { showToast('Network error', 'error'); window.autoShowHaul = !enabled; }
+    return window.autoShowHaul === enabled;
+}
+window.setHaulPopupPref = setHaulPopupPref;
+
 
 function showImageModal(src, alt) {
     const m = document.createElement('div'); m.className = 'image-modal';

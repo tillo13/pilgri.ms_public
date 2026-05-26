@@ -1211,6 +1211,16 @@ def api_recent_discoveries():
     from utilities.postgres.expeditions import get_recent_discoveries_payload
     return jsonify(get_recent_discoveries_payload(g.user_id))
 
+@app.route('/api/user/haul_popup_pref', methods=['POST'])
+@login_required
+@handle_api_error
+def api_set_haul_popup_pref():
+    """Toggle whether the expedition haul popup auto-shows on page load (per-captain)."""
+    from utilities.postgres.users import set_haul_popup_pref
+    enabled = bool((request.get_json() or {}).get('enabled', True))
+    ok = set_haul_popup_pref(g.user_id, enabled)
+    return jsonify({'success': ok, 'enabled': enabled})
+
 @app.route('/api/user/balance', methods=['GET'])
 @login_required
 @handle_api_error

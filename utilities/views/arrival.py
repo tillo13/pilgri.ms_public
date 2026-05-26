@@ -25,6 +25,9 @@ def get_crew_page_data_authenticated(user_id):
         get_user_upgrade_level(user_id, 'maintenance', 'maintenance') >= 1
         or get_user_upgrade_level(user_id, 'mining', 'mining') >= 1
     )
+    # Per-captain pref for the Services → Auto-Popup toggle (haul popup on /home)
+    from utilities.postgres.users import get_user_by_id
+    data['auto_show_haul_popup'] = bool((get_user_by_id(user_id) or {}).get('auto_show_haul_popup', True))
     return data
 
 

@@ -72,25 +72,31 @@ def get_kontext_prompt_for_level(category: str, item_key: str, level: int) -> st
     Generate the Kontext edit prompt for upgrading to this level.
     Uses clean prompts - no numbers, no specific names (causes text in images).
     """
-    # Material progression by level (generic, works for any item type)
+    # "Mars-forged upgrade" progression (generic, works for any item type).
+    # The arc: light field bolt-ons early -> chunky Martian rock armor mid ->
+    # glowing Sepolia crystals + "grown from geology" at the top. Each entry is
+    # ADDITIVE only — bolted on by the hands of Mars tools — never a redraw.
+    # Tuned 2026-05-26 from the live drone Lv3->4 "E" comparison (bug #1489):
+    # the wrapper below is what preserves the rendered-3D look and stops the
+    # model flattening to 2D / restyling / adding smoke or damage.
     PROGRESSION = {
-        2: "Add dust weathering and minor wear marks, slightly more detail visible",
-        3: "Add more equipment detail, rugged field appearance with red dust accumulation",
-        4: "Clay-colored rocky components beginning to appear in the design",
-        5: "Replace some panels with compressed rocky slabs, geological textures appearing",
-        6: "More geological materials visible, basalt-like structures in the design",
-        7: "Small blue-purple crystals beginning to appear in crevices and joints",
-        8: "Heavy crystal integration, crystals embedded throughout, ancient tech feel",
-        9: "Fully integrated with rocky terrain, crystals pulsing with energy throughout",
-        10: "Grown from geology itself, massive crystal core, looks ancient and powerful",
+        2: "Bolt on a couple of small extra mechanical parts and a short antenna or bracket; light red dust weathering. Very subtle field tune-up.",
+        3: "Add a few more bolted-on hardware bits and hoses, slightly heavier weathering and grime. Still mostly the original body.",
+        4: "Rivet a few small chunks of reddish Martian rock onto the body and joints alongside the extra hardware. First clear rock bolt-ons.",
+        5: "More Martian rock plates riveted on, extra brackets and cabling; the build looks noticeably more reinforced.",
+        6: "Chunky Martian stone armor plating across much of the body, heavier mechanical reinforcement, deeper shadows. Rugged and armored.",
+        7: "Heavy basalt-like rock armor and rugged structural plating built up over the frame; clearly a fortified machine now.",
+        8: "Embed a few small glowing blue-purple Sepolia crystal shards into the rock joints and crevices; faint inner glow begins.",
+        9: "Heavy Sepolia crystal integration — multiple glowing blue-purple crystals pulsing with energy across the rock-armored body.",
+        10: "Looks grown from Mars geology itself: massive glowing blue-purple Sepolia crystal core, crystals radiating power throughout the rock-fused body. Ancient and powerful.",
     }
 
-    material_change = PROGRESSION.get(level, "Make it look more advanced and weathered")
+    material_change = PROGRESSION.get(level, "Add more bolted-on Martian rock and reinforcement, more advanced and weathered.")
 
-    return f"""Upgrade this equipment: {material_change}.
-Keep the same cartoon video game style with bold outlines.
-Maintain overall style but show material evolution.
-Isolated on red terrain, vibrant colors."""
+    return f"""Keep this EXACT same object and its rendered 3D cartoon video-game art style — same soft shading, same bold dark outlines, same camera angle, same silhouette and pose, same red Mars terrain background. Do NOT flatten to 2D, do NOT redraw, do NOT restyle, do NOT change the silhouette.
+Additive upgrade ONLY, as if hand-built in the field with Martian tools: {material_change}
+The added rock and parts are deliberately attached and reinforcing — NOT broken, crumbling, falling off, or damaged. No smoke, no fire, no debris.
+Isolated on red Martian terrain, vibrant reds and oranges, video game asset style."""
 
 
 def generate_upgrade_image_background(
@@ -103,8 +109,11 @@ def generate_upgrade_image_background(
     Generate upgrade image using Kontext (runs in background thread).
     Returns the new GCS URL or None on failure.
     """
-    from utilities.replicate_utils import FluxGenerator
-    from utilities.google_cloud_storage_utils import upload_blob_from_url
+    # kumori free-tier edit cascade (HF Qwen → CF Klein), same path as the
+    # ARIA album. Replaces the paid Replicate Flux Kontext call. See
+    # utilities/kumori_utils.py::kumori_klein_edit.
+    from utilities.kumori_utils import kumori_klein_edit
+    from utilities.google_cloud_storage_utils import upload_blob_from_bytes
     import time
 
     generation_key = f"{category}_{item_key}_{level}"
@@ -119,18 +128,26 @@ def generate_upgrade_image_background(
     try:
         logger.info(f"🎨 First-Reveal: Generating image for {category}/{item_key} level {level}")
 
-        flux = FluxGenerator()
         prompt = get_kontext_prompt_for_level(category, item_key, level)
 
-        # Generate with Kontext
-        result_url = flux.kontext_edit(previous_image_url, prompt, "png")
+        # Generate with kumori's free edit cascade — upgrade art is square 1024².
+        res = kumori_klein_edit(
+            prompt=prompt, target_image=previous_image_url,
+            preset='square_hero',
+            app_name='galactica_upgrade_image',
+            character=f'{category}_{item_key}',
+            ref_filename=f'lv{level}',
+            feature='upgrade_image.kontext',
+            verbiage=prompt[:500],
+            tags={'category': category, 'item_key': item_key, 'level': level},
+        )
 
         # Save to GCS
         timestamp = int(time.time())
         blob_name = f"upgrades/{category}_{item_key}_lv{level}_{timestamp}.png"
-        gcs_url = upload_blob_from_url(result_url, blob_name, 'image/png')
+        gcs_url = upload_blob_from_bytes(res['image_bytes'], blob_name, 'image/png')
 
-        logger.info(f"✅ First-Reveal complete: {gcs_url}")
+        logger.info(f"✅ First-Reveal complete via {res.get('provider')}: {gcs_url}")
 
         # Update config (in-memory) - the URL will persist to config file
         # For now, store in a separate tracking table
@@ -335,8 +352,8 @@ def generate_tech_branch_icons(branch: str, branch_level: int, user_id: int = No
     Called when a branch levels up (all 5 techs complete).
     """
     from config_tech import TECH_CATALOG
-    from utilities.replicate_utils import FluxGenerator
-    from utilities.google_cloud_storage_utils import upload_blob_from_url
+    from utilities.kumori_utils import kumori_klein_edit
+    from utilities.google_cloud_storage_utils import upload_blob_from_bytes
     import time
 
     branch_data = TECH_CATALOG.get(branch)
@@ -345,7 +362,6 @@ def generate_tech_branch_icons(branch: str, branch_level: int, user_id: int = No
         return
 
     techs = branch_data.get('techs', {})
-    flux = FluxGenerator()
     category = f"tech_{branch}"
 
     for tech_key, tech_data in techs.items():
@@ -366,11 +382,20 @@ def generate_tech_branch_icons(branch: str, branch_level: int, user_id: int = No
         _generation_in_progress.add(generation_key)
         try:
             prompt = get_kontext_prompt_for_level(category, tech_key, branch_level)
-            result_url = flux.kontext_edit(source_url, prompt, "png")
+            res = kumori_klein_edit(
+                prompt=prompt, target_image=source_url,
+                preset='square_hero',
+                app_name='galactica_tech_icon',
+                character=f'{branch}_{tech_key}',
+                ref_filename=f'lv{branch_level}',
+                feature='tech_icon.kontext',
+                verbiage=prompt[:500], caller_user_id=user_id,
+                tags={'branch': branch, 'tech_key': tech_key, 'level': branch_level},
+            )
 
             timestamp = int(time.time())
             blob_name = f"tech_icons/{branch}_{tech_key}_lv{branch_level}_{timestamp}.png"
-            gcs_url = upload_blob_from_url(result_url, blob_name, 'image/png')
+            gcs_url = upload_blob_from_bytes(res['image_bytes'], blob_name, 'image/png')
 
             _store_generated_image_url(category, tech_key, branch_level, gcs_url)
 

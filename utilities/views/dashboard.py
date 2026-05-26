@@ -478,4 +478,6 @@ def get_dashboard_page_data(user_id, auth):
         'welcome_back': welcome_back,
         'completed_bonds': completed_bonds,
         'last_buggy_expedition': last_buggy_expedition,
+        # Per-captain pref: auto-show the haul ('Rover returned!') popup on page load
+        'auto_show_haul': bool((user or {}).get('auto_show_haul_popup', True)),
     }

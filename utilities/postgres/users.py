@@ -287,6 +287,12 @@ def update_user_activity(user_id: int) -> bool:
     return _update('users', 'last_meaningful_activity_at = NOW()', 'id = %s', (user_id,), f'activity for user {user_id}')
 
 
+def set_haul_popup_pref(user_id: int, enabled: bool) -> bool:
+    """Per-captain toggle: whether the expedition haul ('Rover returned!') popup auto-shows on page load."""
+    return _update('users', 'auto_show_haul_popup = %s, updated_at = NOW()', 'id = %s',
+                   (bool(enabled), user_id), f'haul popup pref for user {user_id}')
+
+
 def get_user_email_info(user_id: int) -> Optional[Dict]:
     """Get user's email and name for notifications"""
     try:

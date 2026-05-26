@@ -74,6 +74,9 @@ function initLastBuggyExpedition() {
 }
 
 function autoShowReturnedExpedition() {
+    // Per-captain preference (Crew → Services → Auto-Popup): captains who opted out
+    // never get the haul modal auto-shown. They can still open it via Review Haul.
+    if (window.autoShowHaul === false) return;
     // Auto-pop haul modal for the first returned expedition on page load
     // Skip expeditions already dismissed this session
     const dismissed = JSON.parse(sessionStorage.getItem('dismissedHauls') || '[]');
@@ -137,6 +140,11 @@ function renderHaulModal(data, showClaimButton) {
     } else {
         footer = `<button class="btn btn-secondary mm-btn-full" onclick="MarsModal.hide()">Close</button>`;
     }
+    // In-modal opt-out: flips the per-captain preference so this popup stops
+    // auto-showing on page load (mirrors Crew → Services → Auto-Popup toggle).
+    if (window.autoShowHaul !== false) {
+        footer += `<a href="#" id="mmHaulOptOut" style="display:block;text-align:center;margin-top:10px;font-size:11px;color:var(--text-muted);text-decoration:underline;">Don't show this automatically</a>`;
+    }
     MarsModal.show({
         hero: exp.destination_image || null, heroHeight: 140,
         badge: 'Mission Complete', theme: 'success',
@@ -151,6 +159,8 @@ function renderHaulModal(data, showClaimButton) {
         const btn = document.getElementById('mmActionBtn');
         if (btn) btn.onclick = () => claimFleetDiscoveries(exp.id);
     }
+    const optOut = document.getElementById('mmHaulOptOut');
+    if (optOut) optOut.onclick = (e) => { e.preventDefault(); setHaulPopupPref(false); optOut.remove(); };
 }
 
 function showFleetHaulModalFallback(data) {
