@@ -2233,15 +2233,11 @@ def cron_generate_snapshots():
 @app.route('/api/cron/qa_bot', methods=['GET'])
 @cron_only
 def cron_qa_bot():
-    """QA Bot — plays the game as user 250 to catch regressions."""
-    try:
-        from tools.qa_bot import run_bot_session
-        result = run_bot_session()
-        status_code = 200 if not result.get('errors') else 207
-        return jsonify({'success': True, **result}), status_code
-    except Exception as e:
-        logger.error(f"QA Bot failed: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """QA Bot — plays the game as user 250 to catch regressions. Runs in background to avoid blocking."""
+    import threading
+    from tools.qa_bot import run_bot_session
+    threading.Thread(target=run_bot_session, daemon=True).start()
+    return jsonify({'success': True, 'status': 'started'}), 202
 
 
 @app.route('/api/cron/retry_bonds', methods=['GET'])
