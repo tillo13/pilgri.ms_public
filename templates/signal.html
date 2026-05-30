@@ -65,9 +65,9 @@
        scrolling, with a click target that drops them into the detail section. #}
     <a href="#puzzle-fragments" class="signal-stat signal-stat-link"
        style="display: block; text-decoration: none;"
-       title="Puzzle Fragments — collect 14 across regular expeditions">
+       title="Puzzle Fragments — personal relics found on regular expeditions, each carrying an ARIA whisper. Separate from Origin Nodes and Echo Fragments.">
         <div class="signal-stat-value text-sepolia">
-            {{ puzzle_fragments.collected_count if puzzle_fragments else 0 }}/{{ puzzle_fragments.total if puzzle_fragments else 14 }}
+            {{ puzzle_fragments.collected_count if puzzle_fragments else 0 }}/{{ puzzle_fragments.total if puzzle_fragments else 0 }}
         </div>
         <div class="signal-stat-label">
             Puzzle Fragments
@@ -263,9 +263,16 @@
     <summary class="signal-summary">
         <span class="signal-icon">&#x2756;</span>
         <span class="signal-section-title">Puzzle Fragments</span>
-        <span class="signal-section-subtitle">{{ puzzle_fragments.collected_count if puzzle_fragments else 0 }} / {{ puzzle_fragments.total if puzzle_fragments else 14 }} collected</span>
+        <span class="signal-section-subtitle">{{ puzzle_fragments.collected_count if puzzle_fragments else 0 }} / {{ puzzle_fragments.total if puzzle_fragments else 0 }} collected</span>
     </summary>
     <div class="signal-content">
+        {# Bug #1448 (Luke 2026-05-29): "Puzzle fragments is different than Signal fragments."
+           This note keeps the three /signal collectibles unmistakably distinct. #}
+        <p class="signal-fragment-distinct">
+            Personal relics you collect on regular expeditions — <strong>not</strong> the Origin Nodes
+            (the dormant Signal sites above) and <strong>not</strong> Echo Fragments. Each one carries
+            its own ARIA whisper.
+        </p>
         <p class="signal-intro aria-voice">
             <em>"Captain... not everything you find on these expeditions belongs to Mars.
             Some of these fragments are older than the planet you're standing on. Hold them close —

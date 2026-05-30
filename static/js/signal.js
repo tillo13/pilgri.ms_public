@@ -1,32 +1,7 @@
 /* Signal Page - Decoder Terminal & Solvers */
 
-// ── Phase 2.3c: Puzzle fragment ARIA whisper modal ──
-function showFragmentWhisper(fragmentId, name, whisperText, description, isAcknowledge) {
-    if (typeof MarsModal === 'undefined') {
-        alert((name ? name + '\n' : '') + whisperText);
-        return;
-    }
-    MarsModal.show({
-        title: name || 'A Fragment Found',
-        subtitle: '<span style="color:#a855f7">ARIA whispers...</span>',
-        icon: '🧩',
-        width: 'md',
-        body: `
-            ${description ? `<div class="mm-card-accent" style="text-align:center; font-style:italic; color:var(--text-secondary);">${description}</div>` : ''}
-            <div class="mm-aria" style="font-size:15px; line-height:1.55;">"${whisperText}"</div>
-        `,
-        footer: `<button class="btn btn-primary mm-btn-full" id="fragment-ack-btn">I'll Hold Onto It</button>`,
-        onClose: () => {
-            if (isAcknowledge && fragmentId) {
-                apiPost(`/api/signal/puzzle_fragments/${fragmentId}/whisper_seen`, {}).catch(() => {});
-            }
-        }
-    });
-    setTimeout(() => {
-        const btn = document.getElementById('fragment-ack-btn');
-        if (btn) btn.addEventListener('click', () => MarsModal.hide());
-    }, 50);
-}
+// Phase 2.3c puzzle-fragment whisper modal now lives in core.js as the shared
+// showAriaWhisper() (Bug #1448 — DRY + ack-only-on-confirm). See core.js header.
 
 document.addEventListener('DOMContentLoaded', function() {
     // Phase 2.3c: surface any pending ARIA whispers (fragments dropped on past
@@ -39,16 +14,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const pending = (sigData.pendingWhispers || []).slice(0, 1);  // Surface oldest unseen.
             if (pending.length) {
                 const w = pending[0];
-                setTimeout(() => showFragmentWhisper(w.id, w.name, w.whisper_text, null, true), 800);
+                setTimeout(() => showAriaWhisper({
+                    fragmentId: w.id, name: w.name, whisperText: w.whisper_text, ackOnConfirm: true
+                }), 800);
             }
         } catch (e) { console.warn('signalPageData parse failed', e); }
     }
 
-    // Click any collected fragment card to replay its whisper.
+    // Click any collected fragment card to replay its whisper (read-only — never acks).
     document.querySelectorAll('.signal-fragment[data-whisper]').forEach(function(card) {
         card.addEventListener('click', function() {
-            const fid = parseInt(card.dataset.fragmentId);
-            showFragmentWhisper(fid, card.dataset.name, card.dataset.whisper, card.dataset.description, false);
+            showAriaWhisper({
+                fragmentId: parseInt(card.dataset.fragmentId),
+                name: card.dataset.name,
+                whisperText: card.dataset.whisper,
+                description: card.dataset.description,
+                ackOnConfirm: false
+            });
         });
     });
 

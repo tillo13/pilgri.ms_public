@@ -20,7 +20,7 @@ PLAYER_DATA_TOOL = {
                 "type": "string",
                 "enum": ["balance", "shard_generation", "sv_sources", "upgrades", "infrastructure", "building_queue",
                          "expeditions", "research", "crew_missions", "discoveries",
-                         "signal_claims", "overview", "leaderboard", "robot",
+                         "signal_claims", "puzzle_fragments", "overview", "leaderboard", "robot",
                          "discovery_catalog", "discovery_analytics", "discovery_ledger", "map_geography"],
                 "description": "Which data category to fetch"
             },
@@ -46,6 +46,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   crew_missions     — Captain/Scientist/ARIA trail missions with time remaining
   discoveries       — Unclaimed/total discoveries, storage capacity
   signal_claims     — Origin site claims, ARIA bonds
+  puzzle_fragments  — Puzzle Fragments: how many the captain has collected (X/total), which ones, drop rate, and any UNREAD ARIA whispers. These are personal lore collectibles dropped on regular expeditions — SEPARATE from Origin Nodes and Echo Fragments. USE THIS when a captain asks "do I have any (puzzle) fragments?", "how many fragments have I found?", "any unread whispers?", "what fragment did I get?", "fragment drop rate".
   robot             — Fourth crew member (Step 4d): Narog Foundry level, build status, current visual stage, time until next stage, role dial split, source manifest of items used to forge each stage
   leaderboard       — Top players by shards, expeditions, and research (no user_id needed)
   discovery_catalog — Full discovery-item catalog grouped by rarity (Common/Uncommon/Rare/Legendary): count + % of catalog per rarity, top items by trade value, distance bands. USE THIS when user asks about what items exist or rarity tiers.
@@ -426,6 +427,29 @@ def query_player_data(category, user_id):
                     cin = 'cinematic_seen' if t['cinematic_shown_at'] else 'cinematic_pending'
                     lines.append(f"  exp#{t['id']} → {t['destination_name']}: {t['status']} ({cin})")
             lines.append("Two-step claim flow (Phase 2.3b): detect on a normal expedition → click 'Plan Claim Expedition' on /signal or the map → dedicated signal_claim trip launches → cinematic plays on arrival → site claimed.")
+            return "\n".join(lines)
+
+        elif category == 'puzzle_fragments':
+            # Bug #1475 / #1448: surface Puzzle Fragments so PB stops hallucinating.
+            # These are a SEPARATE system from Origin Nodes / Echo Fragments (Luke 2026-05-29).
+            from utilities.signal.puzzle_fragments import get_user_fragments, FRAGMENT_DROP_RATE, FRAGMENT_CATALOG
+            data = get_user_fragments(user_id)  # single fetch; unread derived below (no 2nd query)
+            unread = [f for f in data['collected'] if not f.get('whisper_seen_at')]
+            total = data['total'] or len(FRAGMENT_CATALOG)
+            lines = ["=== PUZZLE FRAGMENTS ==="]
+            lines.append(f"Collected: {data['collected_count']}/{total}  (drop rate: {int(FRAGMENT_DROP_RATE*100)}% per regular expedition, no duplicates)")
+            lines.append("These are personal lore collectibles — DISTINCT from Origin Nodes (Signal sites) and Echo Fragments. No trading; each carries an ARIA whisper.")
+            if data['collected']:
+                lines.append("Found:")
+                for f in data['collected']:
+                    lines.append(f"  {f['fragment_code']} {f['name']} ({f['rarity']})")
+            if unread:
+                lines.append(f"Unread ARIA whispers ({len(unread)}): " + ", ".join(f"{u['name']}" for u in unread)
+                             + " — open /signal to hear them (or tap the collected card to replay).")
+            else:
+                lines.append("No unread whispers.")
+            if data['collected_count'] >= total and total > 0:
+                lines.append("Full set collected — no more drops. (Completing the set is collect-only; the Signal endgame lives in the Origin Sites.)")
             return "\n".join(lines)
 
         elif category == 'robot':

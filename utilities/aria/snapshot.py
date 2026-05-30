@@ -171,6 +171,15 @@ def load_colony_snapshot(user_id: int) -> dict:
             'pending_claim_cinematic': None,
             'active_signal_claim_expedition': None
         },
+        # Puzzle Fragments are a SEPARATE system from the Signal/Origin sites above
+        # (Luke #1448 2026-05-29). Kept as a distinct top-level key so ARIA never
+        # conflates them. Personal lore collectibles dropped on regular expeditions.
+        'puzzle_fragments': {
+            'collected_count': 0,
+            'total': 0,
+            'unread_whispers': 0,
+            'collected_names': []
+        },
         'chat_history': {
             'total_messages': 0,
             'first_chat': None,
@@ -656,6 +665,20 @@ def load_colony_snapshot(user_id: int) -> dict:
                         pass
                 bonds.append(bond_info)
             snapshot['signal']['bonds'] = bonds
+
+            # Puzzle Fragments (Bug #1448/#1475: ARIA must be able to answer
+            # "how many fragments do I have?" / "any unread whispers?").
+            try:
+                from utilities.signal.puzzle_fragments import get_user_fragments
+                pf = get_user_fragments(user_id)  # single fetch; unread derived (no 2nd query)
+                snapshot['puzzle_fragments'] = {
+                    'collected_count': pf['collected_count'],
+                    'total': pf['total'],
+                    'unread_whispers': sum(1 for f in pf['collected'] if not f.get('whisper_seen_at')),
+                    'collected_names': [f['name'] for f in pf['collected']]
+                }
+            except Exception as e:
+                logger.warning(f"snapshot puzzle_fragments load failed for {user_id}: {e}")
 
             # Chat history summary
             cur.execute("""

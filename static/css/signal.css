@@ -146,6 +146,22 @@ details[open] .signal-summary::after {
     font-size: 14px;
 }
 
+/* Bug #1448: distinguishes Puzzle Fragments from Origin Nodes + Echo Fragments.
+   High-contrast callout (bright text on dark sepolia tint) — colorblind-safe. */
+.signal-fragment-distinct {
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: rgba(var(--color-sepolia-rgb), 0.08);
+    border-left: 3px solid var(--color-sepolia);
+    border-radius: 4px;
+}
+.signal-fragment-distinct strong {
+    color: var(--color-sepolia);
+}
+
 .signal-h4 {
     font-size: 13px;
     font-weight: 600;

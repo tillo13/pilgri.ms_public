@@ -542,6 +542,49 @@ const MarsModal = {
 window.MarsModal = MarsModal;
 
 // ============================================================================
+// ARIA WHISPER MODAL — shared puzzle-fragment whisper (Bug #1448)
+// Used by /signal (auto-pop pending + click-to-replay) and the expedition-complete
+// toast. Consolidates the two former copies (signal.js showFragmentWhisper +
+// expeditions-rewards.js showPuzzleFragmentWhisper) into one — DRY.
+//
+// CRITICAL (Luke 2026-05-20: "once you refresh the Signal page it goes away"):
+// the whisper_seen ack fires ONLY on the explicit "I'll Hold Onto It" button, NOT
+// from MarsModal's onClose — onClose runs on ✕/backdrop/Escape too, which silently
+// consumed the whisper so it never re-popped. With ackOnConfirm, dismissing any
+// other way leaves the whisper UNSEEN, so it re-surfaces on the next /signal visit
+// until the captain deliberately acknowledges it.
+// ============================================================================
+function showAriaWhisper({ fragmentId, name, whisperText, description, ackOnConfirm = false, footerNote = '' } = {}) {
+    if (typeof MarsModal === 'undefined') {
+        alert((name ? name + '\n' : '') + (whisperText || ''));
+        return;
+    }
+    MarsModal.show({
+        title: name || 'A Fragment Found',
+        subtitle: '<span style="color:#a855f7">ARIA whispers...</span>',
+        icon: '🧩',
+        width: 'md',
+        body: `
+            ${description ? `<div class="mm-card-accent" style="text-align:center; font-style:italic; color:var(--text-secondary);">${description}</div>` : ''}
+            <div class="mm-aria" style="font-size:15px; line-height:1.55;">"${whisperText}"</div>
+            ${footerNote}
+        `,
+        footer: `<button class="btn btn-primary mm-btn-full" id="aria-whisper-ack">I'll Hold Onto It</button>`
+    });
+    // Ack fires from the button only — never from onClose (see header note).
+    setTimeout(() => {
+        const btn = document.getElementById('aria-whisper-ack');
+        if (btn) btn.addEventListener('click', () => {
+            if (ackOnConfirm && fragmentId) {
+                apiPost(`/api/signal/puzzle_fragments/${fragmentId}/whisper_seen`, {}).catch(() => {});
+            }
+            MarsModal.hide();
+        });
+    }, 50);
+}
+window.showAriaWhisper = showAriaWhisper;
+
+// ============================================================================
 // ITEM DETAIL MODAL - Backward-compatible wrapper around MarsModal
 // Usage: ItemDetailModal.show({ name, image, category, description, price, stats, effects, action })
 // ============================================================================

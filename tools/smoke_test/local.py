@@ -1104,15 +1104,21 @@ def test_maintenance_drone_build_time_mult():
 
 @test("puzzle_fragments tables seeded", tier=1, features=['db', 'signal'], mode='local')
 def test_puzzle_fragments_seeded():
-    """Phase 2.3c: catalog has 14 fragments seeded."""
-    from utilities.signal.puzzle_fragments import ensure_puzzle_fragment_tables
+    """Phase 2.3c: catalog count is data-driven — DB must match FRAGMENT_CATALOG exactly.
+    Bug #1448 (Luke 2026-05-29): count must NOT be hardcoded to 14. This asserts the
+    seeded row count == len(FRAGMENT_CATALOG), so it follows the catalog forever AND
+    catches orphaned rows if the catalog is ever shrunk without a cleanup migration."""
+    from utilities.signal.puzzle_fragments import ensure_puzzle_fragment_tables, FRAGMENT_CATALOG
     from utilities.postgres.core import db_cursor
     ensure_puzzle_fragment_tables()
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(*) AS n FROM pilgrim.puzzle_fragments")
         n = cur.fetchone()['n']
-    if n < 14:
-        return f"Expected 14 fragments, got {n}"
+    expected = len(FRAGMENT_CATALOG)
+    if n != expected:
+        return f"Expected {expected} fragments (len(FRAGMENT_CATALOG)), got {n} — orphaned rows or seed drift"
+    if expected == 14:
+        return "FRAGMENT_CATALOG is back to 14 — Luke #1448 requires the count stay OFF 14"
     return True
 
 
@@ -2198,10 +2204,12 @@ def test_pilgrimbot_table_coverage():
     # each MUST have a filed bug. Adding to this list without a ticket is forbidden.
     _PB_PENDING = {
         'captain_stat_events':        '#1474 (P2): captain_stat_events event log + per-source contributions',
-        'puzzle_fragments':           '#1475 (P3): Puzzle Fragments table',
-        'user_puzzle_fragments':      '#1475 (P3): Puzzle Fragments table — user-side join',
-        'puzzle_solvers':             '#1475 (P3): Puzzle Fragments table — solver tracking',
-        'signal_puzzles':             '#1475 (P3): Puzzle Fragments table — puzzle catalog',
+        # puzzle_fragments + user_puzzle_fragments are now PB-covered via the
+        # query_player_data 'puzzle_fragments' category + math_registry (#1448/#1475).
+        # puzzle_solvers / signal_puzzles are the SEPARATE Signal-puzzle (riddle/solver)
+        # system — NOT Puzzle Fragments (Luke #1448: do not conflate) — still PB-blind.
+        'puzzle_solvers':             '#1475 (P3): Signal-puzzle SOLVER tracking (riddle system, distinct from Puzzle Fragments)',
+        'signal_puzzles':             '#1475 (P3): Signal-puzzle catalog (riddle system, distinct from Puzzle Fragments)',
         'aria_bond_bonuses':          'TODO file: ARIA bond bonus surfacing for PB',
         'echo_sites':                 'TODO file: echo_sites is player-visible Mars geography — PB has no category',
         'trail_segments':             'TODO file: trail_segments is per-landmark trail state, currently invisible to PB',

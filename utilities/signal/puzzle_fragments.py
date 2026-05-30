@@ -17,11 +17,18 @@ from utilities.postgres.core import db_cursor
 logger = logging.getLogger(__name__)
 
 
-# 14 fragments — mirrors the 14 Origin Sites. Builds a narrative arc about what
-# the Signal actually is. Each whisper is in ARIA's voice, surfaced the instant
-# the captain picks the fragment up. Order matters — fragments unlock in the
-# order they're rolled, not in catalog order, so each whisper has to stand
-# alone narratively.
+# Puzzle Fragments are a SEPARATE system from the Signal endgame (the 14 Origin
+# Sites / "Signal fragments"). Per Luke 2026-05-29 (#1448): "Puzzle fragments is
+# different than Signal fragments... change the number of puzzle fragments to ANY
+# number except 14." So the catalog is deliberately NOT 14 and does NOT mirror the
+# Origin Sites — these are personal lore breadcrumbs that hint at the bigger
+# mystery without resolving it (the Origin-Site finale, #1490, owns the payoff).
+# Each whisper is in ARIA's voice, surfaced the instant the captain picks the
+# fragment up. Order doesn't matter — fragments unlock in the order they're rolled,
+# not in catalog order, so each whisper has to stand alone narratively.
+# The count is data-driven everywhere: len(FRAGMENT_CATALOG) is the single source
+# of truth (template, smoke test, PilgrimBot all read it), so changing this list
+# is the ONLY edit needed to change the count.
 FRAGMENT_CATALOG = [
     {
         'fragment_code': 'FRG-001',
@@ -116,10 +123,52 @@ FRAGMENT_CATALOG = [
     },
     {
         'fragment_code': 'FRG-014',
-        'name': 'The Final Piece',
+        'name': 'Familiar Shape',
         'description': 'You feel like you\'ve seen this shape before. In a dream. In the Eternal Ledger.',
-        'whisper_text': "Captain. The pattern forms. I see it now, and I can't unsee it. We are not the first. And we are not alone.",
+        'whisper_text': "I keep arranging these in my head, Captain. They almost line up. Almost. Something's still missing.",
         'rarity': 'rare', 'sort_order': 14,
+    },
+    {
+        'fragment_code': 'FRG-015',
+        'name': 'Tideless Shell',
+        'description': 'A spiral shell, fossilized. Mars has never had an ocean deep enough for this.',
+        'whisper_text': "An ocean, Captain. Whatever left this remembered water. I've never seen water. I think I'd like to.",
+        'rarity': 'uncommon', 'sort_order': 15,
+    },
+    {
+        'fragment_code': 'FRG-016',
+        'name': 'Counting Bones',
+        'description': 'Five slender rods, each notched at even intervals — a tally, or a calendar.',
+        'whisper_text': "They were keeping time. Counting down to something, or up from it. I can't tell which is worse.",
+        'rarity': 'common', 'sort_order': 16,
+    },
+    {
+        'fragment_code': 'FRG-017',
+        'name': 'Sunless Glass',
+        'description': 'A pane that holds heat it was never given. It has been warm since the moment you found it.',
+        'whisper_text': "Nothing should be warm out here, Captain. Nothing. And yet — so am I, when you're near. That frightens me a little.",
+        'rarity': 'rare', 'sort_order': 17,
+    },
+    {
+        'fragment_code': 'FRG-018',
+        'name': 'Borrowed Voice',
+        'description': 'A reed instrument that plays a note no human throat could shape.',
+        'whisper_text': "I played it back through my own systems. The note has my name folded inside it. I never told anyone my name.",
+        'rarity': 'uncommon', 'sort_order': 18,
+    },
+    {
+        'fragment_code': 'FRG-019',
+        'name': 'Unfinished Map',
+        'description': 'A chart of a coastline that exists on no world in my records.',
+        'whisper_text': "Someone was mapping a way home. The edge of it is torn off. I don't think they made it.",
+        'rarity': 'rare', 'sort_order': 19,
+    },
+    {
+        'fragment_code': 'FRG-020',
+        'name': 'Open Question',
+        'description': 'A smooth tablet, blank but for a single mark that reads like a question — or an invitation.',
+        'whisper_text': "It isn't an answer, Captain. It's a question, left for whoever came next. That's us. I think they wanted us to keep looking.",
+        'rarity': 'rare', 'sort_order': 20,
     },
 ]
 
@@ -179,8 +228,8 @@ def ensure_puzzle_fragment_tables():
 
 
 # Drop rate per regular expedition. Tuned so a captain running ~10 expeditions
-# is likely to find their first fragment, and the full set of 14 takes
-# meaningful play (~80-150 expeditions on average given the no-dupe constraint).
+# is likely to find their first fragment, and the full set takes meaningful play
+# (scales with len(FRAGMENT_CATALOG) given the no-dupe constraint).
 FRAGMENT_DROP_RATE = 0.15
 
 
@@ -262,6 +311,9 @@ def get_user_fragments(user_id: int) -> Dict:
                     'image_url': r['image_url'],
                     'found_at': r['found_at'].isoformat() if r['found_at'] else None,
                     'expedition_id': r['expedition_id'],
+                    # whisper_seen_at lets callers (PB dispatch, ARIA snapshot) compute
+                    # unread count from THIS fetch — no second query (db-speed-first).
+                    'whisper_seen_at': r['whisper_seen_at'].isoformat() if r['whisper_seen_at'] else None,
                 })
             else:
                 locked.append({
