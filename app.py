@@ -2214,10 +2214,25 @@ def cron_generate_snapshots():
 @app.route('/api/cron/qa_bot', methods=['GET'])
 @cron_only
 def cron_qa_bot():
-    """QA Bot — plays the game as user 250 to catch regressions. Runs in background to avoid blocking."""
+    """QA Bot — plays the game as user 250 to catch regressions. Runs in a
+    background thread so the cron request returns immediately (the session takes
+    ~2.5 min and would otherwise drag App Engine p95 over the 5s alert)."""
     import threading
-    from tools.qa_bot import run_bot_session
-    threading.Thread(target=run_bot_session, daemon=True).start()
+
+    def _run():
+        from tools.qa_bot import run_bot_session
+        try:
+            summary = run_bot_session()
+            errs = (summary or {}).get('errors') or []
+            if errs:
+                logger.error(f"QA bot session finished with {len(errs)} error(s): {errs}")
+            else:
+                logger.info("QA bot session completed clean (0 errors)")
+        except Exception as e:
+            import traceback
+            logger.error(f"QA bot session crashed: {e}\n{traceback.format_exc()}")
+
+    threading.Thread(target=_run, daemon=True).start()
     return jsonify({'success': True, 'status': 'started'}), 202
 
 

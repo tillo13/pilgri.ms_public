@@ -534,12 +534,34 @@ def cron_drone_trail_build():
 
     try:
         with db_cursor() as cur:
-            # Every captain with chains is eligible; cron filters to those with drone/robot output > 0
             cur.execute("SELECT DISTINCT user_id FROM pilgrim.user_trail_chains")
-            users = cur.fetchall()
+            candidate_ids = [r['user_id'] for r in cur.fetchall()]
 
-        for u in users:
-            user_id = u['user_id']
+        if not candidate_ids:
+            return results
+
+        # Prefilter to ONLY captains who can actually contribute, via two
+        # set-based queries. Previously every chain-holder paid ~3 per-user reads
+        # (2 upgrade lookups + 1 robot lookup) just to be skipped — an N+1 that
+        # grew with total player count (worst observed 22s/run). The per-user loop
+        # below now runs only for real drone/robot owners; screening is O(1) round
+        # trips regardless of how many captains have chains.
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT user_id FROM pilgrim.player_upgrades
+                WHERE user_id = ANY(%s) AND category IN ('maintenance', 'mining')
+                  AND (COALESCE(level, 0) >= 1 OR COALESCE(pending_level, 0) >= 1)
+            """, (candidate_ids,))
+            relevant = {r['user_id'] for r in cur.fetchall()}
+            # A robot past stage 1 may contribute via its exploration dial;
+            # _compute_robot_trail_contribution() does the exact dial/nav check.
+            cur.execute("""
+                SELECT user_id FROM pilgrim.robot
+                WHERE user_id = ANY(%s) AND COALESCE(visual_stage, 0) >= 1
+            """, (candidate_ids,))
+            relevant.update(r['user_id'] for r in cur.fetchall())
+
+        for user_id in sorted(relevant):
             # Maintenance + Mining drone contributions
             km_per_hour = 0.0
             for (cat, key) in (('maintenance', 'maintenance'), ('mining', 'mining')):
