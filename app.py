@@ -267,6 +267,9 @@ def inject_global_stats():
 
 
 
+from utilities.api_throttle import throttle_per_user
+
+
 def handle_api_error(func):
     """Decorator for consistent API error handling"""
     def wrapper(*args, **kwargs):
@@ -588,9 +591,16 @@ def api_robot_history():
 @app.route('/api/robot/recalibration_state')
 @login_required
 @handle_api_error
+@throttle_per_user(ttl_seconds=2.0)
 def api_robot_recalibration_state():
     """Current counters + caps + costs + 72hr window status for the captain.
-    Powers the Recalibration card render."""
+    Powers the Recalibration card render.
+
+    throttle_per_user is the server-side backstop: this is a client-polled state
+    endpoint, so it's capped to one real DB execution per captain per 2s. Even if
+    a client loops on it (as the recal countdown did 2026-05-29), the DB is never
+    hit more than once per window. The countdown ticks locally on the client, so
+    a 2s cache is invisible to the player."""
     from utilities.postgres.robot import get_recalibration_state
     return jsonify({'success': True, 'state': get_recalibration_state(g.user_id)})
 

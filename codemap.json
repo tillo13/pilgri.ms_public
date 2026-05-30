@@ -1442,6 +1442,12 @@
       "logged_stream — Context manager wrapping client.messages.stream(...). Logs final usage on exit."
     ]
   },
+  "utilities/api_throttle.py": {
+    "description": "Server-side backstop against runaway client poll loops.",
+    "exports": [
+      "throttle_per_user — Per-captain, per-view response cache. Inside the TTL the cached response is"
+    ]
+  },
   "utilities/aria_journal.py": {
     "description": "ARIA Photo Journal — daily image + caption generator using free kumori stack.",
     "exports": [

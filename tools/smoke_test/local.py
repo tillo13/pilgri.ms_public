@@ -1899,6 +1899,71 @@ def test_narog_dial_no_idle():
     return True
 
 
+@test("Narog recal countdown can't runaway-poll recalibration_state (2026-05-29 site-wide slowdown)", tier=1, features=['api'], mode='local')
+def test_narog_recal_no_poll_storm():
+    """2026-05-29: Luke's open crew tab with an expired-but-unlocked recalibration
+    window hammered /api/robot/recalibration_state as fast as the network allowed
+    (renderRecal → paintCountdown → loadRecalState → renderRecal …), saturating the
+    shared db-f1-micro and dragging EVERY page to 10-17s site-wide. Two guards must
+    stay in crew-robot.js so the countdown can never re-arm into a fetch loop."""
+    import os, re
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    with open(os.path.join(project_root, 'static', 'js', 'crew-robot.js')) as f:
+        js = f.read()
+
+    # (a) renderRecal only arms the 1s ticker when there's real time left (> 0).
+    #     An unguarded `window_seconds_remaining != null` arm is the regression.
+    assert 'recalState.window_seconds_remaining > 0' in js, \
+        "#poll-storm: renderRecal must gate the countdown on window_seconds_remaining > 0"
+
+    # (b) paintCountdown re-syncs at most ONCE on expiry and clears its own timer —
+    #     a bare `if (s <= 0) loadRecalState();` is the exact line that caused the storm.
+    assert re.search(r'if\s*\(\s*s\s*<=\s*0\s*\)\s*loadRecalState\(\)\s*;', js) is None, \
+        "#poll-storm: unguarded 'if (s <= 0) loadRecalState();' is back — it re-arms the fetch loop"
+    assert '_expirySynced' in js, \
+        "#poll-storm: paintCountdown must guard the expiry re-sync with a one-shot _expirySynced flag"
+
+    # (c) The OTHER unbounded poll in this file (video status) must be capped so a
+    #     stalled render can't poll forever — same orphaned-loop class.
+    assert 'MAX_ATTEMPTS' in js, \
+        "#poll-storm: pollVideoStatus must have a MAX_ATTEMPTS ceiling, not poll forever"
+
+    # (d) SERVER-SIDE BACKSTOP — client guards can be removed/regressed; the server
+    #     must independently cap the polled endpoint so no client loop can ever hit
+    #     the DB unbounded again. recalibration_state must carry @throttle_per_user.
+    with open(os.path.join(project_root, 'app.py')) as f:
+        appsrc = f.read()
+    assert '@throttle_per_user' in appsrc, \
+        "#poll-storm: app.py lost the @throttle_per_user backstop"
+    # It must sit on the recalibration_state route specifically (the one that got hammered).
+    recal_block = appsrc[appsrc.index("def api_robot_recalibration_state") - 400:
+                         appsrc.index("def api_robot_recalibration_state")]
+    assert '@throttle_per_user' in recal_block, \
+        "#poll-storm: /api/robot/recalibration_state must be wrapped with @throttle_per_user"
+
+    # (e) The throttle actually suppresses the 2nd call within the TTL (no handler re-run).
+    from utilities.api_throttle import throttle_per_user
+    import flask
+    calls = {'n': 0}
+    app_t = flask.Flask('throttle_test')
+
+    @throttle_per_user(ttl_seconds=5.0)
+    def _view():
+        calls['n'] += 1
+        return flask.current_app.response_class('{"ok":true}', content_type='application/json')
+
+    with app_t.test_request_context('/'):
+        flask.g.user_id = 999
+        _view(); _view(); _view()
+    assert calls['n'] == 1, f"#poll-storm: throttle should run the handler once per TTL, ran {calls['n']}x"
+    # A different captain is NOT throttled by the first captain's entry.
+    with app_t.test_request_context('/'):
+        flask.g.user_id = 1000
+        _view()
+    assert calls['n'] == 2, "#poll-storm: throttle must key per-user, not globally"
+    return True
+
+
 @test("Bug #1469 + #1471: expeditions undiscovered grid not [:6]-capped + vehicle filter wired", tier=1, features=['api'], mode='local')
 def test_expeditions_sort_and_filter():
     """#1469 (Luke 2026-05-13): template was hardcoded `undiscovered[:6]` so

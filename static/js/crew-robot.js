@@ -950,7 +950,18 @@
     // immediately and poll for completion. On error, surface the real message
     // from the server and offer a Retry button.
     function pollVideoStatus(statusEl) {
+        // Bounded poll. 5s × 120 = 10 min hard ceiling so a stalled video render
+        // (never returns url AND never errors) can't leave this polling the DB
+        // forever in a backgrounded tab — same orphaned-loop class as the
+        // 2026-05-29 recal storm. On timeout we stop and surface a retry path.
+        var attempts = 0;
+        var MAX_ATTEMPTS = 120;
         var poll = setInterval(async function() {
+            if (++attempts > MAX_ATTEMPTS) {
+                clearInterval(poll);
+                showVideoError(statusEl, 'Video is taking longer than expected. Tap to retry.');
+                return;
+            }
             try {
                 var r = await fetch('/api/robot/video_status');
                 var s = await r.json();
@@ -1205,7 +1216,15 @@
         // 72hr countdown banner
         const banner = document.getElementById('narog-recal-window-banner');
         if (banner) {
-            if (recalState.window_seconds_remaining != null && !recalState.locked) {
+            // Only tick when there's real time left. An expired-but-unlocked
+            // window (seconds == 0, not null) must NOT arm the countdown — doing
+            // so let paintCountdown re-sync on every tick and feed back into
+            // renderRecal, producing a runaway /api/robot/recalibration_state
+            // fetch storm that saturated the shared DB and slowed the whole site
+            // (2026-05-29 incident). > 0 is the gate.
+            if (recalState.window_seconds_remaining != null
+                && recalState.window_seconds_remaining > 0
+                && !recalState.locked) {
                 banner.style.display = '';
                 paintCountdown();
                 if (recalCountdownTimer) clearInterval(recalCountdownTimer);
@@ -1226,7 +1245,17 @@
         const s = recalState.window_seconds_remaining;
         const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
         el.textContent = `${h}h ${m}m ${sec}s`;
-        if (s <= 0) loadRecalState();  // window expired — re-sync server state
+        if (s <= 0) {
+            // Window hit zero locally. Stop the ticker and re-sync server state
+            // EXACTLY ONCE. Never let this re-arm — an unguarded reload here is
+            // what created the 2026-05-29 fetch storm (renderRecal → paintCountdown
+            // → loadRecalState → renderRecal …) that hammered the DB site-wide.
+            if (recalCountdownTimer) { clearInterval(recalCountdownTimer); recalCountdownTimer = null; }
+            if (!recalState._expirySynced) {
+                recalState._expirySynced = true;
+                loadRecalState();
+            }
+        }
     }
 
     // Build a rich "review everything" modal for Lock In — captain sees the
