@@ -301,6 +301,12 @@
       "scan_project_structure — Main function to scan the project structure and write the results to a file."
     ]
   },
+  "tools/gen_proof_ladder.py": {
+    "description": "Generate a PROOF ladder (no persist) of an upgrade/infra item across levels, then",
+    "exports": [
+      "main"
+    ]
+  },
   "tools/generate_activity_icons.py": {
     "description": "Generate activity tab category icons for Colony page.",
     "exports": [
@@ -598,6 +604,12 @@
       "cmd_idea — Add idea to parking lot.",
       "cmd_note — Add note to an idea (parking lot bug).",
       "cmd_promote — Promote idea to active bug (status change from Parking Lot to New)."
+    ]
+  },
+  "tools/persist_proof_ladder.py": {
+    "description": "Persist an APPROVED proof ladder (from tools/gen_proof_ladder.py) to GCS + the",
+    "exports": [
+      "main"
     ]
   },
   "tools/playwright_depot_vehicle_chips.js": {
@@ -3637,7 +3649,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

@@ -122,13 +122,23 @@ def backfill(category_filter=None, item_filter=None, limit=None, dry_run=False):
 
         print(f"  [{i+1}/{len(generable)}] Generating {category}/{item_key} Lv{level}...")
 
-        # Generate synchronously (not background) so chain stays ordered
-        result = generate_upgrade_image_background(category, item_key, level, source_url)
+        # Bounded retry — kumori.ai throws chronic transient SSL/503 "all_providers_failed"
+        # blips; the #1489 plan requires the batch tool to ride through them (5 tries x 12s).
+        # generate_* returns None on BOTH transient failure and quota-exhaustion; for a large
+        # run, distinguishing the two for an early quota stop is a future improvement.
+        result = None
+        for attempt in range(1, 6):
+            result = generate_upgrade_image_background(category, item_key, level, source_url)
+            if result:
+                break
+            if attempt < 5:
+                print(f"    attempt {attempt} failed (transient kumori error?), retrying in 12s...")
+                time.sleep(12)
 
         if result:
             print(f"    -> {result}")
         else:
-            print(f"    -> FAILED")
+            print(f"    -> FAILED after 5 attempts")
 
         # Rate limiting
         if i < len(generable) - 1:
@@ -148,6 +158,17 @@ def main():
     print(f"\n{'='*60}")
     print(f"Upgrade Image Backfill")
     print(f"{'='*60}")
+
+    # Kumori free-edit client is wired at app boot (app.py); this standalone tool must
+    # init it itself or generate_upgrade_image_background() fails "client not initialized".
+    # PILGRIMS_KUMORI_API_KEY lives in kumori-404602 Secret Manager (not galactica's project).
+    if not args.dry_run:
+        from utilities.kumori_utils import init_kumori
+        from utilities.google_auth_utils import get_secret
+        init_kumori(
+            get_secret_fn=lambda name: get_secret(name, project_id='kumori-404602'),
+            api_key_name='PILGRIMS_KUMORI_API_KEY',
+        )
 
     backfill(
         category_filter=args.category,
