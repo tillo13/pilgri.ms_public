@@ -1502,7 +1502,10 @@ def test_page_data_db_budgets():
         ctx = None
 
     cases = [
-        ('Home /',         52, lambda: get_dashboard_page_data(user_id, auth)),
+        # #1431: re-armed 52 -> 44 after killing the crew-schema N+1 (ensure_crew_missions_schema
+        # ran ~16 cursors EVERY load — now run-once + batched to 1) and the per-bond commander-name
+        # N+1 (5 lookups -> 1 batched). Warm steady-state is now ~35; 44 = cold ceiling 42 + 2.
+        ('Home /',         44, lambda: get_dashboard_page_data(user_id, auth)),
         ('Expeditions',    40, lambda: get_expeditions_page_data(user_id)),
         ('Crew /crew',     25, lambda: get_command_page_data(user_id)),
         ('Depot /depot',   25, lambda: get_depot_page_data(user_id, auth)),

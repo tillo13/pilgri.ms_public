@@ -557,6 +557,41 @@ def _get_commander_name_uncached(user_id: int) -> str | None:
         return None
 
 
+def _get_commander_names(user_ids) -> dict:
+    """Batch commander-name lookup for many users in ONE cursor (#1431 N+1 fix).
+
+    get_bonds_for_display() previously called the per-user _get_commander_name() once
+    per bond partner — 5 bonds = 5 DB round-trips. This resolves all partners at once
+    with the SAME precedence the single-user version uses (primary character name ->
+    any character name -> given_name -> first token of full name). Returns {id: name}.
+    """
+    ids = list({u for u in (user_ids or []) if u})
+    if not ids:
+        return {}
+    names: dict = {}
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT ON (user_id) user_id, commander_name
+                FROM pilgrim.replicate_assets
+                WHERE user_id = ANY(%s) AND asset_type = 'character_image' AND commander_name IS NOT NULL
+                ORDER BY user_id, is_primary_character DESC, created_at DESC
+            """, (ids,))
+            for r in cur.fetchall():
+                if r['commander_name']:
+                    names[r['user_id']] = r['commander_name']
+            missing = [i for i in ids if i not in names]
+            if missing:
+                cur.execute("SELECT id, given_name, name FROM pilgrim.users WHERE id = ANY(%s)", (missing,))
+                for u in cur.fetchall():
+                    nm = u['given_name'] or (u['name'].split()[0] if u.get('name') else None)
+                    if nm:
+                        names[u['id']] = nm
+    except Exception as e:
+        logger.warning(f"_get_commander_names batch failed: {e}")
+    return names
+
+
 def get_user_bonds(user_id: int) -> list:
     """Get all bonds for a user."""
     with db_cursor() as cur:
@@ -590,6 +625,12 @@ def get_bonds_for_display(user_id: int) -> list:
     """Get bonds formatted for template display. Single source of truth for all pages
     (home, colony, signal, expeditions) that show bond info."""
     bonds = get_user_bonds(user_id)
+    # Batch all partner commander-name lookups up front (#1431: was 1 query per bond).
+    partner_ids = [
+        (b.get('user_id_2') if b.get('user_id_1') == user_id else b.get('user_id_1'))
+        for b in bonds if b.get('bond_tx_hash')
+    ]
+    partner_names = _get_commander_names(partner_ids)
     result = []
     for b in bonds:
         if not b.get('bond_tx_hash'):
@@ -598,7 +639,7 @@ def get_bonds_for_display(user_id: int) -> list:
         result.append({
             'id': b['id'],
             'landmark': b['landmark_name'],
-            'partner_name': _get_commander_name(partner_id) or f"Captain {partner_id}",
+            'partner_name': partner_names.get(partner_id) or f"Captain {partner_id}",
             'bond_tx_hash': b['bond_tx_hash'],
             'bond_image_url': b.get('bond_image_url', ''),
             'status': b['status'],

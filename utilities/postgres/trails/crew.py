@@ -17,9 +17,24 @@ logger = logging.getLogger(__name__)
 # CREW MISSIONS: Quick trail-building activities for captain/scientist
 # ============================================================================
 
+_crew_schema_ensured = False
+
+
 def ensure_crew_missions_schema():
-    """Add crew mission columns to users table and create missions log table"""
-    # Add mission tracking columns to users table (each in separate transaction)
+    """Add crew mission columns to users + create the missions log table.
+
+    Bug #1431 (N+1): get_crew_mission_status() calls this on EVERY page load, and it
+    was opening ~16 cursors per call (one ALTER ... ADD COLUMN IF NOT EXISTS per column
+    in its own transaction, plus the CREATE TABLE). That alone was the single biggest
+    contributor to the Home page's DB-call count. Now: (1) run-once per process via the
+    canonical _crew_schema_ensured flag (same pattern as ensure_upgrades_table /
+    ensure_scientist_column / etc.), and (2) all the idempotent DDL batched into ONE
+    cursor — so cold-start cost is 1 open, warm cost is 0.
+    """
+    global _crew_schema_ensured
+    if _crew_schema_ensured:
+        return
+
     columns_to_add = [
         ("captain_mission_ends_at", "TIMESTAMP"),
         ("captain_mission_target", "TEXT"),
@@ -40,31 +55,29 @@ def ensure_crew_missions_schema():
         ("scientist_mission_from", "TEXT DEFAULT 'HOME'"),
         ("aria_mission_from", "TEXT DEFAULT 'HOME'"),
     ]
-    for col_name, col_type in columns_to_add:
-        try:
-            with db_cursor(commit=True) as cur:
-                cur.execute(f"""
-                    ALTER TABLE pilgrim.users ADD COLUMN IF NOT EXISTS {col_name} {col_type};
-                """)
-        except Exception:
-            pass  # Column already exists or other error
-
-    # Create missions log table
-    with db_cursor(commit=True) as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS pilgrim.crew_missions (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                crew_member TEXT NOT NULL,
-                mission_type TEXT NOT NULL,
-                destination_name TEXT NOT NULL,
-                started_at TIMESTAMP DEFAULT NOW(),
-                completed_at TIMESTAMP,
-                trip_count_added INTEGER DEFAULT 1,
-                xp_gained INTEGER DEFAULT 0,
-                narrative TEXT
-            )
-        """)
+    # All statements are idempotent (ADD COLUMN / CREATE TABLE IF NOT EXISTS), so a
+    # single transaction is safe and never errors on already-present objects.
+    try:
+        with db_cursor(commit=True) as cur:
+            for col_name, col_type in columns_to_add:
+                cur.execute(f"ALTER TABLE pilgrim.users ADD COLUMN IF NOT EXISTS {col_name} {col_type};")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS pilgrim.crew_missions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    crew_member TEXT NOT NULL,
+                    mission_type TEXT NOT NULL,
+                    destination_name TEXT NOT NULL,
+                    started_at TIMESTAMP DEFAULT NOW(),
+                    completed_at TIMESTAMP,
+                    trip_count_added INTEGER DEFAULT 1,
+                    xp_gained INTEGER DEFAULT 0,
+                    narrative TEXT
+                )
+            """)
+        _crew_schema_ensured = True  # only flag success; a failed run retries next call
+    except Exception as e:
+        logger.warning(f"ensure_crew_missions_schema failed (will retry next call): {e}")
 
 
 def get_crew_mission_status(user_id: int) -> dict:

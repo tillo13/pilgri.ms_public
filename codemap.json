@@ -2285,7 +2285,7 @@
   "utilities/postgres/trails/crew.py": {
     "description": "Crew missions: schema, status, start/complete + trail consumables + nearby-sites.",
     "exports": [
-      "ensure_crew_missions_schema — Add crew mission columns to users table and create missions log table",
+      "ensure_crew_missions_schema — Add crew mission columns to users + create the missions log table.",
       "get_crew_mission_status — Get current mission status for captain, scientist, and ARIA",
       "start_crew_mission — Start a trail building mission for captain, scientist, or ARIA.",
       "handle_trail_complete_request — Route-glue wrapper for POST /api/trail/complete.",
@@ -3637,7 +3637,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3653,7 +3653,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -3718,7 +3718,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
