@@ -23,6 +23,31 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 calculate_mars_distance = haversine_distance
 
 
+def format_days_hours(seconds) -> str:
+    """Human build/travel duration: '4d 10h' / '6h 30m' / '45m'. Single source of
+    truth shared by the Jinja `days_hours` filter (depot cards) AND the construction
+    toast (#1486) so a build never shows three different time estimates."""
+    if seconds is None:
+        return ''
+    try:
+        sec = max(0, int(float(seconds)))
+    except (TypeError, ValueError):
+        return ''
+    if sec >= 86400:
+        d = sec // 86400
+        h = (sec % 86400) // 3600
+        return f"{d}d {h}h" if h else f"{d}d"
+    if sec >= 3600:
+        h = sec // 3600
+        m = (sec % 3600) // 60
+        return f"{h}h {m}m" if m else f"{h}h"
+    if sec >= 60:
+        m = sec // 60
+        s = sec % 60
+        return f"{m}m {s}s" if s else f"{m}m"
+    return f"{sec}s"
+
+
 def offset_coordinates(lat: float, lon: float, distance_km: float, bearing_deg: float) -> tuple:
     """Offset coordinates by distance in a given direction on Mars."""
     lat_rad = math.radians(lat)

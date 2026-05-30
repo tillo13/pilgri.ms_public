@@ -110,26 +110,7 @@ except Exception:
 # formatDaysHours helper in core.js. Every depot countdown / build-time chip
 # server-rendered through Jinja goes through this filter so we don't drift
 # from the JS-side rendering.
-def _format_days_hours(seconds):
-    if seconds is None:
-        return ''
-    try:
-        sec = max(0, int(float(seconds)))
-    except (TypeError, ValueError):
-        return ''
-    if sec >= 86400:
-        d = sec // 86400
-        h = (sec % 86400) // 3600
-        return f"{d}d {h}h" if h else f"{d}d"
-    if sec >= 3600:
-        h = sec // 3600
-        m = (sec % 3600) // 60
-        return f"{h}h {m}m" if m else f"{h}h"
-    if sec >= 60:
-        m = sec // 60
-        s = sec % 60
-        return f"{m}m {s}s" if s else f"{m}m"
-    return f"{sec}s"
+from utilities.mars_math import format_days_hours as _format_days_hours  # #1486: single source of truth
 app.jinja_env.filters['days_hours'] = _format_days_hours
 # Cross-app visitor logging → kumori_ops.visitor_log
 try:

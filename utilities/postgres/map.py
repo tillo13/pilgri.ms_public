@@ -151,6 +151,16 @@ def get_mars_landmarks_within_radius(center_lat: float, center_lon: float, radiu
 # FRONTIER LINE LOGIC
 # ============================================================================
 
+def _lon_delta(from_lon: float, to_lon: float) -> float:
+    """Signed shortest longitude delta in (-180, 180]. Positive = `to` is EAST of
+    `from`, negative = WEST. Mars longitude is cyclic [0,360); a flat `lon1 < lon2`
+    compare breaks at the 0/360 meridian — bug #1485, where a captain who explored
+    to lon≈0 saw ZERO 'further west' frontier dots because the entire western
+    hemisphere sat one wrap (lon≈350-360) away and the flat filter never reached it.
+    """
+    return ((to_lon - from_lon + 180) % 360) - 180
+
+
 def _get_direction_from_angle(angle_degrees: float) -> str:
     """Convert angle (0=N, 90=E, -90=W, 180=S) to 8-direction string."""
     if -22.5 <= angle_degrees < 22.5:
@@ -197,8 +207,8 @@ def get_user_furthest_expeditions_by_direction(user_id: int, home_lat: float, ho
         lat = float(exp['destination_lat'])
         lon = float(exp['destination_lon'])
         lat_diff = lat - home_lat
-        lon_diff = lon - home_lon
-        dist = math.sqrt(lat_diff**2 + lon_diff**2) * 59  # ~59km per degree
+        lon_diff = _lon_delta(home_lon, lon)  # wrap-aware (#1485) — flat diff misreads meridian crossers
+        dist = calculate_mars_distance(home_lat, home_lon, lat, lon)
 
         # Calculate direction
         angle = math.degrees(math.atan2(lon_diff, lat_diff))
@@ -255,15 +265,17 @@ def get_frontier_landmarks_beyond_point(
             lat, lon = r['latitude'], r['longitude']
             if 'N' in direction and not lat > furthest_lat: return False
             if 'S' in direction and not lat < furthest_lat: return False
-            if 'E' in direction and not lon > furthest_lon: return False
-            if 'W' in direction and not lon < furthest_lon: return False
+            # Wrap-aware E/W (#1485): "further east/west" follows the shortest arc
+            # around the sphere, so reaching lon≈0 no longer dead-ends the W/NW/SW dots.
+            if 'E' in direction and not _lon_delta(furthest_lon, lon) > 0: return False
+            if 'W' in direction and not _lon_delta(furthest_lon, lon) < 0: return False
             return True
 
         candidates = []
         for r in get_all_mars_mappings():
             if not _matches(r):
                 continue
-            dist = math.sqrt((r['latitude'] - home_lat) ** 2 + (r['longitude'] - home_lon) ** 2) * 59
+            dist = calculate_mars_distance(home_lat, home_lon, r['latitude'], r['longitude'])
             out = dict(r)
             out['distance_km'] = dist
             candidates.append(out)
@@ -338,6 +350,19 @@ def get_all_frontier_landmarks(user_id: int, home_lat: float, home_lon: float, d
                 home_lon,
                 limit=dots_per_direction
             )
+            # #1485: sparse/edge directions (poleward, or after exploring to a meridian)
+            # can still come up short. Top up with frontier dots measured from HOME so
+            # EVERY direction always offers a next step (CLAUDE.md frontier guarantee).
+            if len(frontier_dots) < dots_per_direction:
+                have = {d['name'] for d in frontier_dots}
+                for lm in get_frontier_landmarks_beyond_point(
+                        direction, home_lat, home_lon, home_lat, home_lon, limit=dots_per_direction):
+                    if lm['name'] in have:
+                        continue
+                    frontier_dots.append(lm)
+                    have.add(lm['name'])
+                    if len(frontier_dots) >= dots_per_direction:
+                        break
         else:
             # No expeditions in this direction - get frontier from home
             frontier_dots = get_frontier_landmarks_beyond_point(

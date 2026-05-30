@@ -144,7 +144,11 @@ def start_construction(user_id, structure_type, latitude, longitude):
     construction_id = create_infrastructure(
         user_id=user_id, structure_type=structure_type, structure_name=definition['name'],
         latitude=latitude, longitude=longitude, cost_sepolia=definition['cost_sepolia'],
-        build_duration=definition['build_time_seconds'], generates_resource=definition.get('generates_resource'),
+        # #1486: store the ADJUSTED duration (build_time_mult applied). check_construction_status
+        # decides completion off build_duration_seconds — storing the raw base here meant the
+        # "26% faster" discount was cosmetic on ready_at while the building actually took full
+        # base time, AND the toast/card/timer showed three different numbers.
+        build_duration=adjusted_seconds, generates_resource=definition.get('generates_resource'),
         generation_rate=generation_rate, ready_at=ready_at
     )
 
@@ -215,9 +219,10 @@ def start_construction(user_id, structure_type, latitude, longitude):
             'message': 'Welcome bonus processing'
         }
 
-    days = definition['build_time_seconds'] / 86400
-    hours = definition['build_time_seconds'] / 3600
-    time_display = f"{days:.1f} days" if days >= 1 else f"{hours:.1f} hours" if hours >= 1 else f"{definition['build_time_seconds']} seconds"
+    # #1486: same ADJUSTED seconds + same formatter as the depot card (days_hours filter),
+    # so the card, this toast, the ready-at countdown, and actual completion all match.
+    from utilities.mars_math import format_days_hours
+    time_display = format_days_hours(adjusted_seconds)
 
     if new_balance is None:
         wallet = get_user_primary_sepolia_wallet(user_id)

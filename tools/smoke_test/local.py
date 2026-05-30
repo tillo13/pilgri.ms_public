@@ -541,6 +541,55 @@ def test_tech_merge_distinct_techs_add():
     return True
 
 
+@test("Frontier dots wrap around the lon 0/360 meridian (#1485)", tier=1, features=['map'], mode='local')
+def test_frontier_longitude_wraps():
+    """Bug #1485: a captain who explored to the lon≈0 meridian saw ZERO 'further
+    west' frontier dots — the filter compared longitude as a flat axis and never
+    wrapped to the lon≈350-360 landmarks one step around the sphere. Lock the wrap.
+    """
+    from utilities.postgres.map import _lon_delta, get_frontier_landmarks_beyond_point
+
+    # Signed shortest-arc delta: 354° is just WEST of 0.1°, 5° is just EAST.
+    if not _lon_delta(0.1, 354.0) < 0:
+        return f"_lon_delta(0.1,354)={_lon_delta(0.1,354.0):.1f} should be <0 (west)"
+    if not _lon_delta(0.1, 5.0) > 0:
+        return f"_lon_delta(0.1,5)={_lon_delta(0.1,5.0):.1f} should be >0 (east)"
+
+    # The actual bug repro: furthest NW point at the western meridian must still
+    # surface frontier dots (they live at lon≈350-360, one wrap away).
+    dots = get_frontier_landmarks_beyond_point('NW', 46.0, 0.1, -30.7, 90.0, limit=3)
+    if not dots:
+        return "NW frontier from a lon≈0 furthest point returned 0 dots — meridian-wrap regression"
+    for d in dots:
+        if not _lon_delta(0.1, d['longitude']) < 0:
+            return f"NW dot {d['name']} at lon {d['longitude']} is not west (wrap) of 0.1"
+    return True
+
+
+@test("Build time: one adjusted duration drives card/toast/timer/completion (#1486)", tier=1, features=['config'], mode='local')
+def test_build_time_single_source():
+    """Bug #1486: depot card said 3d, toast 6d, final timer 4d3h. Root cause — the
+    toast used UNADJUSTED base time and build_duration stored the base, so the
+    build_time_mult discount was cosmetic on ready_at while the building actually
+    took full base time. Lock: the toast uses the same format_days_hours over the
+    ADJUSTED seconds, and build_duration stores the adjusted value.
+    """
+    import inspect
+    from utilities.mars_math import format_days_hours
+    import utilities.infrastructure.construction as c
+
+    # Formatter is shared (card uses the days_hours jinja filter = same function).
+    if format_days_hours(86400 * 4 + 3600 * 10) != '4d 10h':
+        return f"format_days_hours drift: {format_days_hours(86400*4+3600*10)!r}"
+
+    src = inspect.getsource(c.start_construction)
+    if 'build_duration=adjusted_seconds' not in src:
+        return "construction stores non-adjusted build_duration — the discount won't apply (#1486 regression)"
+    if 'format_days_hours(adjusted_seconds)' not in src:
+        return "construction toast no longer uses the shared formatter over adjusted_seconds (#1486 regression)"
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals

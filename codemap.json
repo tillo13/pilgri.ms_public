@@ -1702,6 +1702,7 @@
     "description": "Canonical Mars distance and coordinate calculations.",
     "exports": [
       "haversine_distance — Calculate great circle distance between two points on Mars in km.",
+      "format_days_hours — Human build/travel duration: '4d 10h' / '6h 30m' / '45m'. Single source of",
       "offset_coordinates — Offset coordinates by distance in a given direction on Mars.",
       "point_to_path_distance — Calculate minimum distance from a point to a great circle path (A->B) on Mars.",
       "bearing_deg — Initial bearing from one point to another on Mars, in degrees [0, 360).",
@@ -3652,7 +3653,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
