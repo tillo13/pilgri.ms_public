@@ -1907,6 +1907,7 @@
       "get_research_progress — Get active research progress for countdown display.",
       "cancel_research — Cancel active research. Refunds SV by deleting the player_techs row.",
       "get_tech_effects",
+      "merge_completed_tech_rows — Pure merge of completed-tech rows -> cumulative effect dict.",
       "get_user_tech_status — Full tech tree state for a user. Auto-completes expired research first.",
       "get_tech_summary — Lab Summary Box data (bug #1286). One DB query → all completed techs across",
       "get_research_page_data — Single call for /research template rendering."

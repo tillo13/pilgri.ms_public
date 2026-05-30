@@ -500,6 +500,47 @@ def test_tech_summary_matches_game_for_mult():
     return True
 
 
+@test("Tech merge: distinct branch techs ADD, a tech's own levels subsume (#1491)", tier=1, features=['config', 'tech'], mode='local')
+def test_tech_merge_distinct_techs_add():
+    """Bug #1491 (Luke 2026-05-28): three distinct power income techs must each
+    count (+105%), not collapse to the single highest (+50%) — while a SINGLE tech's
+    own levels still subsume to its max (the #1413 rule, preserved). Locks the
+    canonical merge so a future refactor can't silently revert to flat max() or
+    start summing a single tech's levels.
+    """
+    from utilities.tech_utils import merge_completed_tech_rows, TECH_CATALOG
+    from config_tech import scale_effects
+
+    techs = TECH_CATALOG.get('power', {}).get('techs', {})
+    trio = ('solar_optimization', 'thermal_tap', 'fusion_basics')
+    if not all(tk in techs and 'passive_income_mult' in (techs[tk].get('effects') or {}) for tk in trio):
+        return "power branch no longer has the 3 passive_income techs — catalog changed; update this test"
+
+    def row(tk, lvl):
+        return {'branch': 'power', 'tech_key': tk, 'branch_level': lvl}
+
+    # 1) DISTINCT techs ADD their bonus within a branch.
+    merged = merge_completed_tech_rows([row(tk, 1) for tk in trio])
+    got = merged.get('passive_income_mult')
+    expect = 1.0 + sum(scale_effects(techs[tk]['effects'], 1)['passive_income_mult'] - 1 for tk in trio)
+    if got is None or abs(got - expect) > 1e-6:
+        return f"distinct techs should ADD: expected {expect:.4f}, got {got}"
+
+    # Must be strictly greater than the single highest (old flat-max = the #1491 bug).
+    single_max = max(scale_effects(techs[tk]['effects'], 1)['passive_income_mult'] for tk in trio)
+    if got <= single_max + 1e-9:
+        return f"#1491 regression: distinct techs collapsed to max ({single_max:.3f})"
+
+    # 2) A SINGLE tech's own levels SUBSUME to its max (never summed — #1413 preserved).
+    f2 = scale_effects(techs['fusion_basics']['effects'], 2)['passive_income_mult']
+    merged2 = merge_completed_tech_rows([row('fusion_basics', 1), row('fusion_basics', 2)])
+    got2 = merged2.get('passive_income_mult')
+    if got2 is None or abs(got2 - f2) > 1e-6:
+        return f"same-tech levels must subsume to max ({f2:.4f}), got {got2}"
+
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals

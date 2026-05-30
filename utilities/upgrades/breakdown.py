@@ -160,13 +160,33 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
                 WHERE user_id = %s AND status = 'completed'
             """, (user_id,))
             rows = cur.fetchall()
+        # #1491: for non-cost _mult keys, collapse each tech to its HIGHEST level (one row
+        # per distinct tech) so the popup rows sum to the +N% headline — matching the
+        # game's "per-tech max, then distinct techs ADD" rule. Pre-fix the modal listed
+        # Solar Optimization at branch Lv1 AND Lv2, which don't sum to the total (the
+        # #1482 "rows don't match the headline" complaint, in a different chip).
+        # Additive keys keep one row PER LEVEL (game sums them per-level — #1443 Part 2,
+        # deferred), so their rows still reconcile too.
+        rows_by_tech = {}
         for r in rows:
-            tech = TECH_CATALOG.get(r['branch'], {}).get('techs', {}).get(r['tech_key']) or {}
-            scaled = scale_effects(tech.get('effects', {}), r['branch_level'])
-            tech_name = tech.get('name') or r['tech_key']
-            source = f"Tech: {tech_name} (branch Lv {r['branch_level']})"
-            for k, v in scaled.items():
-                if k in SURFACED_KEYS:
+            rows_by_tech.setdefault((r['branch'], r['tech_key']), []).append(r)
+        for (branch, tech_key), trows in rows_by_tech.items():
+            tech = TECH_CATALOG.get(branch, {}).get('techs', {}).get(tech_key) or {}
+            tech_name = tech.get('name') or tech_key
+            top = max(trows, key=lambda r: r['branch_level'])
+            for r in trows:
+                scaled = scale_effects(tech.get('effects', {}), r['branch_level'])
+                for k, v in scaled.items():
+                    if k not in SURFACED_KEYS:
+                        continue
+                    if k.endswith('_mult') and 'cost' not in k:
+                        # one row per tech at its best level (max value across its levels)
+                        if r is not top:
+                            continue
+                        v = max(scale_effects(tech.get('effects', {}), rr['branch_level']).get(k, v) for rr in trows)
+                        source = f"Tech: {tech_name} (branch Lv {top['branch_level']})"
+                    else:
+                        source = f"Tech: {tech_name} (branch Lv {r['branch_level']})"
                     out[k].append(_row('tech', source, k, v))
     except Exception as e:
         logger.warning(f"breakdown tech walk failed user={user_id}: {e}")

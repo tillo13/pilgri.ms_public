@@ -592,9 +592,6 @@ def _get_tech_effects_uncached(user_id: int) -> Dict[str, Any]:
     Calculate cumulative effects from all completed tech research.
     Single query across ALL branches (was N+1 per branch).
     """
-    from config_tech import scale_effects
-    effects = {}
-
     with db_cursor() as cur:
         cur.execute("""
             SELECT branch, tech_key, COALESCE(branch_level, 1) as branch_level
@@ -603,42 +600,81 @@ def _get_tech_effects_uncached(user_id: int) -> Dict[str, Any]:
         """, (user_id,))
         rows = cur.fetchall()
 
-    # Merge rule: within a branch, _mult effects take max() (the highest level of a
-    # given tech represents that tech's contribution — earlier levels are subsumed, not
-    # stacked). Across branches, _mult effects compound multiplicatively.
-    #
-    # This was accidentally introduced in a1e77bb's perf refactor (previous behavior
-    # multiplied within-branch too, producing ×14.44 expedition_speed for multi-level
-    # stacks). Luke flagged the slower feel on 2026-04-19 and explicitly endorsed it
-    # as "more realistic" — bug #1413 documents the behavior as the intended baseline.
-    per_branch: Dict[str, Dict[str, Any]] = {}
+    return merge_completed_tech_rows(rows)
+
+
+def merge_completed_tech_rows(rows) -> Dict[str, Any]:
+    """Pure merge of completed-tech rows -> cumulative effect dict.
+
+    Each row is a mapping with keys: branch, tech_key, branch_level.
+    Kept pure (no DB) so the merge rule below is unit-testable — see the
+    'tech effect merge rule' smoke test in tools/smoke_test/local.py.
+
+    Merge rule (revised by bug #1491, Luke 2026-05-28 — supersedes the distinct-tech
+    collapse half of #1413):
+      1. Per tech: a tech's HIGHEST completed level subsumes its lower levels (no
+         level-on-level compounding — the ×14.44-speed bug #1413 killed and Luke
+         endorsed). For _mult that's max(); for additive that's max() too (one tech
+         counts once).
+      2. Within a branch: DISTINCT techs each contribute — non-cost _mult bonuses ADD
+         (solar +20% + thermal +30% + fusion +50% → +100%, at branch level → +105%),
+         additive sums. The old flat max() collapsed three distinct power income techs
+         to just the single highest (+50%); that was never #1413's intent (#1413 was
+         about one tech's own levels, not different techs).
+      3. Across branches: non-cost _mult branch totals multiply (unchanged from #1413);
+         additive sums.
+      Cost _mult keys (none in the tech catalog today) keep min within a tech and ×
+         within/across branches — never additive.
+    """
+    from config_tech import scale_effects
+
+    # Accumulate two ways so ONLY non-cost _mult behavior changes (#1491); everything
+    # else (additive, cost _mult, bool) keeps its exact pre-#1491 path so #1443 Part 2's
+    # deferred additive rule is untouched.
+    #   branch_tech_mult[branch][tech_key] = {key: best non-cost _mult across that tech's levels}
+    #   branch_other[branch]               = {key: additive SUM of all rows / cost min / bool or}
+    branch_tech_mult: Dict[str, Dict[str, Dict[str, float]]] = {}
+    branch_other: Dict[str, Dict[str, Any]] = {}
     for row in rows:
         branch = row['branch']
         tech_data = TECH_CATALOG.get(branch, {}).get('techs', {}).get(row['tech_key'])
         if not tech_data:
             continue
         scaled = scale_effects(tech_data.get('effects', {}), row['branch_level'])
-        b = per_branch.setdefault(branch, {})
         for key, value in scaled.items():
-            if key not in b:
-                b[key] = value
-            elif key.endswith('_mult'):
-                b[key] = max(b[key], value) if 'cost' not in key else min(b[key], value)
-            elif isinstance(value, (int, float)):
-                b[key] = b[key] + value
-            elif isinstance(value, bool):
-                b[key] = b[key] or value
+            if key.endswith('_mult') and 'cost' not in key:
+                pt = branch_tech_mult.setdefault(branch, {}).setdefault(row['tech_key'], {})
+                pt[key] = value if key not in pt else max(pt[key], value)
+            else:
+                b = branch_other.setdefault(branch, {})
+                if key.endswith('_mult'):                 # cost _mult: lower wins (min over rows)
+                    b[key] = value if key not in b else min(b[key], value)
+                elif isinstance(value, bool):
+                    b[key] = b.get(key, False) or value
+                elif isinstance(value, (int, float)):     # additive: sum ALL rows (Part 2 deferred — unchanged)
+                    b[key] = b.get(key, 0) + value
 
-    for branch_effects in per_branch.values():
-        for key, value in branch_effects.items():
+    # Within a branch: distinct non-cost _mult techs ADD their bonus onto the additive/cost base.
+    branch_totals: Dict[str, Dict[str, Any]] = {}
+    for branch in set(branch_tech_mult) | set(branch_other):
+        bt = dict(branch_other.get(branch, {}))
+        for _tech_key, mults in branch_tech_mult.get(branch, {}).items():
+            for key, value in mults.items():
+                bt[key] = value if key not in bt else bt[key] + (value - 1.0)
+        branch_totals[branch] = bt
+
+    # Across branches: _mult branch totals multiply (#1413 unchanged), additive sums, bool ORs.
+    effects: Dict[str, Any] = {}
+    for bt in branch_totals.values():
+        for key, value in bt.items():
             if key not in effects:
                 effects[key] = value
             elif key.endswith('_mult'):
                 effects[key] = effects[key] * value
-            elif isinstance(value, (int, float)):
-                effects[key] = effects[key] + value
             elif isinstance(value, bool):
                 effects[key] = effects[key] or value
+            elif isinstance(value, (int, float)):
+                effects[key] = effects[key] + value
 
     return effects
 
@@ -881,10 +917,10 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
     # game and display) is a real game-balance change Luke deferred to a separate
     # bug — do not touch additive rules here.
     def _merge_within(dst: dict, add: dict):
-        """Stacking rule for rows inside the same branch / same tech.
-        _mult: max() (or min() for cost keys, matching game path's inversion).
-        Additive int/float: sum (unchanged — Part 2 territory).
-        Bool: or.
+        """Per-tech-card stacking: merge one tech's own multi-level rows for the pill
+        display. _mult: max() (min() for cost). Additive int/float: sum. Bool: or.
+        The branch + global TOTALS no longer use this — they route through the single
+        canonical merge_completed_tech_rows() so the chip can't drift from the game.
         """
         for k, v in add.items():
             if k not in dst:
@@ -896,23 +932,8 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
             elif isinstance(v, bool):
                 dst[k] = dst[k] or v
 
-    def _merge_across_branches(dst: dict, add: dict):
-        """Stacking rule for combining branch totals into the global total.
-        _mult: multiply (independent branches compound). Additive: sum. Bool: or.
-        """
-        for k, v in add.items():
-            if k not in dst:
-                dst[k] = v
-            elif k.endswith('_mult'):
-                dst[k] = dst[k] * v
-            elif isinstance(v, (int, float)):
-                dst[k] = dst[k] + v
-            elif isinstance(v, bool):
-                dst[k] = dst[k] or v
-
     if branch_levels is None:
         branch_levels = _get_user_branch_levels(user_id)
-    global_effects: Dict[str, Any] = {}
     branches_out = []
     total_available = 0
     # Bug #1424: lifetime totals count every (tech_key, branch_level) completion,
@@ -951,7 +972,6 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
         branch_lifetime_completed = len(branch_rows)
         lifetime_completed += branch_lifetime_completed
         completed_keys = {r['tech_key'] for r in branch_rows}
-        branch_effects: Dict[str, Any] = {}
 
         # Group rows by tech_key so we can both (a) merge per-tech effects across
         # every level for an honest per-pill display, and (b) emit one pill per
@@ -977,7 +997,6 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
                 highest_level = max(highest_level, lvl)
                 scaled = scale_effects(tech_data.get('effects', {}), lvl)
                 _merge_within(per_tech_effects, scaled)
-                _merge_within(branch_effects, scaled)
 
             tech_cards.append({
                 'tech_key': tech_key,
@@ -1009,11 +1028,10 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
                 }
                 break
 
-        # Bug #1443 Part 1: each branch's stacked total compounds into the
-        # global total under the across-branches rule (multiply _mult, sum
-        # additive). This is the same rule _get_tech_effects_uncached uses, so
-        # the displayed chip and the game value land on the same number.
-        _merge_across_branches(global_effects, branch_effects)
+        # Bug #1443 Part 1 + #1491: the branch's displayed total IS the canonical
+        # merge over that branch's rows — same function the game (get_tech_effects)
+        # uses — so the chip and the game value land on the same number.
+        branch_effects = merge_completed_tech_rows(branch_rows)
 
         branches_out.append({
             'branch_key': branch_key,
@@ -1036,6 +1054,10 @@ def get_tech_summary(user_id: int, branch_levels: Optional[Dict[str, int]] = Non
         total_distinct_completed += len(tech_cards)
 
     branches_started = sum(1 for b in branches_out if b['started'])
+
+    # Global Lab-summary chips: the canonical merge over ALL completed rows — byte-for-byte
+    # the same value get_tech_effects() feeds the game, so chip == breakdown modal == game.
+    global_effects = merge_completed_tech_rows(rows)
 
     return {
         'total_completed': total_distinct_completed,

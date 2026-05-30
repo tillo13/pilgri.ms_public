@@ -45,7 +45,7 @@ function formatFinal(value, op) {
 function mergeBlurb(op) {
     switch (op) {
         case 'max_then_mult':
-            return 'Within Player Upgrades and Infrastructure: <strong>max()</strong> wins (best level supersedes lower ones). Tech Tree groups by branch: max within branch, then × across branches. ARIA Bonds: × on top. <strong>Final = max(upgrades) × max(infra) × tech × bond</strong>.';
+            return 'Within Player Upgrades and Infrastructure: <strong>max()</strong> wins (best level supersedes lower ones). Tech Tree: each tech counts once at its highest level, distinct techs <strong>add</strong> within a branch, then × across branches. ARIA Bonds: × on top. <strong>Final = max(upgrades) × max(infra) × tech × bond</strong>.';
         case 'mult':
             return 'Cost reductions <strong>stack multiplicatively</strong> across every source. <strong>Final = product of all rows</strong> (lower = better — a cost mult of 0.60 means you pay 60%, i.e. −40% off).';
         case 'add':
@@ -98,7 +98,7 @@ function renderBreakdownBody(key, data, source) {
     </div>`;
 
     const stacksBlurb = techOnly
-        ? 'Tech Tree only — this is the cumulative research bonus: <strong>max within each branch, then × across branches</strong>. Other sources (upgrades, infrastructure, ARIA bonds) are excluded here. See the Expeditions page for your full stacked rate.'
+        ? 'Tech Tree only — each tech counts once at its <strong>highest level</strong>; distinct techs in a branch <strong>add</strong> their bonuses, then branches <strong>× multiply</strong>. Other sources (upgrades, infrastructure, ARIA bonds) are excluded here. See the Expeditions page for your full stacked rate.'
         : mergeBlurb(meta.op);
     body += `<div style="font-size:11px;color:var(--text-muted);margin:10px 2px 8px;line-height:1.55;">
         <strong style="color:var(--text-primary);">How this stacks:</strong> ${stacksBlurb}
