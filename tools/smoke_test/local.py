@@ -763,34 +763,64 @@ def test_user_trail_chains_schema():
 
 @test("antipode chain persisted for Andy", tier=2, features=['trails'], mode='local')
 def test_andy_chain_persisted():
-    """v3 (#1414): read Andy's persisted chains, validate totals against comment 607."""
+    """v3 (#1414): Andy's 4 cardinal chains must each be a valid stepping-stone path to
+    his antipode (Da Vinci, the half-circumference point opposite home).
+
+    Was a hardcoded snapshot ("comment 607": S 10488/18, W 10553/17, ...). Chains were
+    legitimately regenerated 2026-04-28 (W is now 19 hops / 10818km) and every segment
+    is a mathematically-correct great-circle distance — so the snapshot rotted and false-
+    failed. Rewritten to assert the INVARIANTS that actually matter (and survive
+    regeneration) rather than frozen numbers:
+      1. all 4 directions persisted, each ending at the 'Da Vinci' antipode
+      2. sane hop count (a stepping-stone chain, not 1 giant hop or hundreds)
+      3. total distance ~= Mars half-circumference (the antipode IS that far)
+      4. REAL bug-catcher: every persisted segment_distance_km equals the recomputed
+         great-circle distance between its two landmarks (catches a distance-calc bug,
+         which is the thing this guard should protect — independent of regeneration).
+    """
+    import math
     from utilities.postgres.core import db_cursor
-    expected = {
-        'S': (10488, 18), 'W': (10553, 17), 'E': (10804, 19), 'N': (11015, 18)
-    }
+    from utilities.mars_math import haversine_distance, MARS_RADIUS_KM
+
+    half_circ = math.pi * MARS_RADIUS_KM  # antipode distance ~10669km
     with db_cursor() as cur:
+        cur.execute("SELECT home_mars_lat, home_mars_lon FROM pilgrim.users WHERE id = 45")
+        u = cur.fetchone()
+        if not u or u['home_mars_lat'] is None:
+            return "Andy (45) has no home coords"
+        home = (float(u['home_mars_lat']), float(u['home_mars_lon']))
+        cur.execute("SELECT name, latitude, longitude FROM pilgrim.mars_mappings")
+        coords = {r['name']: (float(r['latitude']), float(r['longitude'])) for r in cur.fetchall()}
         cur.execute("""
-            SELECT direction, COUNT(*) AS hops, SUM(segment_distance_km) AS total,
-                   MAX(to_landmark) FILTER (WHERE segment_index = (
-                     SELECT MAX(segment_index) FROM pilgrim.user_trail_chains x
-                     WHERE x.user_id = 45 AND x.direction = pilgrim.user_trail_chains.direction
-                   )) AS antipode
-            FROM pilgrim.user_trail_chains WHERE user_id = 45
-            GROUP BY direction
+            SELECT direction, segment_index, from_landmark, to_landmark, segment_distance_km
+            FROM pilgrim.user_trail_chains WHERE user_id = 45 ORDER BY direction, segment_index
         """)
-        rows = {r['direction']: r for r in cur.fetchall()}
-    for d, (km_exp, hops_exp) in expected.items():
-        r = rows.get(d)
-        if not r:
+        by_dir = {}
+        for r in cur.fetchall():
+            by_dir.setdefault(r['direction'], []).append(r)
+
+    loc = lambda n: home if n == 'HOME' else coords.get(n)
+    for d in ('N', 'S', 'E', 'W'):
+        segs = by_dir.get(d)
+        if not segs:
             return f"{d} chain not persisted for Andy"
-        total = float(r['total'])
-        delta_pct = abs(total - km_exp) / km_exp * 100
-        if delta_pct > 2.0:
-            return f"{d} chain {total:.0f}km diverges {delta_pct:.1f}% from {km_exp}km"
-        if abs(int(r['hops']) - hops_exp) > 1:
-            return f"{d} chain {r['hops']} hops, expected {hops_exp}"
-        if r['antipode'] != 'Da Vinci':
-            return f"{d} chain ends at {r['antipode']}"
+        if segs[-1]['to_landmark'] != 'Da Vinci':
+            return f"{d} chain ends at {segs[-1]['to_landmark']}, not the Da Vinci antipode"
+        if not (10 <= len(segs) <= 30):
+            return f"{d} chain has {len(segs)} hops (expected a sane stepping-stone count 10-30)"
+        persisted = sum(float(s['segment_distance_km']) for s in segs)
+        if not (0.90 * half_circ <= persisted <= 1.20 * half_circ):
+            return f"{d} chain total {persisted:.0f}km not ~half-circumference ({half_circ:.0f}km)"
+        # Correctness gate: persisted distances must match recomputed great-circle.
+        for s in segs:
+            a, b = loc(s['from_landmark']), loc(s['to_landmark'])
+            if a is None or b is None:
+                return (f"{d} chain segment {s['segment_index']} references unknown landmark "
+                        f"({s['from_landmark']} -> {s['to_landmark']})")
+            recomputed = haversine_distance(a[0], a[1], b[0], b[1])
+            if abs(float(s['segment_distance_km']) - recomputed) > 2.0:
+                return (f"{d} chain seg {s['segment_index']} ({s['from_landmark']}->{s['to_landmark']}): "
+                        f"persisted {float(s['segment_distance_km']):.1f}km != recomputed {recomputed:.1f}km")
     return True
 
 
