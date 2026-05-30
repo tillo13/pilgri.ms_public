@@ -1,0 +1,154 @@
+/* Collection Codex (Bug #1160) — lifetime discovery grid on /colony Discoveries tab.
+   Found tiles show art; undiscovered show a high-contrast "?" silhouette.
+   Colorblind-safe: found vs unfound is conveyed by silhouette + opacity + "?" glyph
+   + the rarity LABEL text, never by color alone (Andy + Luke are colorblind). */
+
+/* ── Sub-view toggle: "To Claim" vs "Collection" ── */
+.discovery-view-toggle {
+    display: inline-flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border: 1px solid rgba(var(--color-sepolia-rgb), 0.35);
+    border-radius: 8px;
+    overflow: hidden;
+}
+.dv-btn {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.dv-btn + .dv-btn { border-left: 1px solid rgba(var(--color-sepolia-rgb), 0.35); }
+.dv-btn:hover { color: var(--text-primary); }
+.dv-btn.active {
+    color: #fff;
+    background: var(--color-sepolia);
+}
+
+/* ── Codex header + overall progress ── */
+.codex-header { margin-bottom: 18px; }
+.codex-overall { display: flex; align-items: baseline; gap: 6px; }
+.codex-overall-count { font-size: 28px; font-weight: 700; color: var(--color-sepolia); }
+.codex-overall-total { font-size: 14px; color: var(--text-secondary); }
+.codex-bar {
+    margin-top: 8px;
+    height: 8px;
+    background: rgba(var(--color-sepolia-rgb), 0.12);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.codex-bar-fill {
+    height: 100%;
+    background: var(--color-sepolia);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+.codex-intro { margin-top: 12px; font-size: 13px; }
+
+/* ── Per-category section ── */
+.codex-category { margin-bottom: 22px; }
+.codex-cat-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(var(--color-sepolia-rgb), 0.18);
+}
+.codex-cat-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+.codex-cat-count {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+.codex-cat-count.codex-cat-done { color: var(--color-sepolia); }
+.codex-cat-done::after {
+    content: " — COMPLETE";
+    font-size: 10px;
+    letter-spacing: 0.5px;
+}
+.codex-cat-reward {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ── The tile grid ── */
+.codex-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+}
+.codex-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 8px 6px;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left-width: 3px;
+}
+/* Rarity accent (left border) — ALWAYS paired with the rarity text label below. */
+.codex-tile.codex-common    { border-left-color: #9ca3af; }
+.codex-tile.codex-uncommon  { border-left-color: #34d399; }
+.codex-tile.codex-rare      { border-left-color: #60a5fa; }
+.codex-tile.codex-legendary { border-left-color: #fbbf24; }
+
+.codex-img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    border-radius: 6px;
+}
+.codex-name {
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.25;
+    color: var(--text-primary);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.codex-rarity {
+    margin-top: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+/* Undiscovered: dashed silhouette + "?" — readable on dark, no color reliance. */
+.codex-tile.codex-locked {
+    border-style: dashed;
+    border-left-style: dashed;
+    border-color: rgba(255, 255, 255, 0.18);
+    opacity: 0.6;
+}
+.codex-q {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+.codex-name-locked { font-style: italic; color: var(--text-muted); }
+/* Collected but art not generated yet — distinct from the dashed unfound tile. */
+.codex-noart { font-size: 22px; color: var(--text-secondary); }

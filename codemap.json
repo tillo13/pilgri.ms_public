@@ -1909,7 +1909,11 @@
     "exports": [
       "ensure_milestone_table — Create milestone tracking table if it doesn't exist.",
       "check_and_award_milestones — Check if user has crossed any new collection milestones.",
-      "get_user_milestones — Get milestone status for display — which are earned, which are next."
+      "get_user_milestones — Get milestone status for display — which are earned, which are next.",
+      "ensure_codex_milestone_table — Codex milestone awards — keyed by milestone_key (e.g. 'category_biological',",
+      "get_earned_codex_milestones — Just the awarded codex milestone rows (1 query, NO join) — for the /colony",
+      "check_and_award_codex_milestones — Award one-time SV for per-category 100% completion + full-codex completion.",
+      "get_codex_milestones — Codex completion state + awarded milestone keys — feeds the /colony codex"
     ]
   },
   "utilities/tech_utils.py": {
@@ -2978,6 +2982,9 @@
   "static/css/changelog.css": {
     "description": "Changelog page styles"
   },
+  "static/css/colony-collection.css": {
+    "description": "Collection Codex (Bug #1160) — lifetime discovery grid on /colony Discoveries tab."
+  },
   "static/css/colony.css": {
     "description": "Colony page styles — discovery cards, equipment grid, activity feed, tabs"
   },
@@ -3145,6 +3152,18 @@
       "updateCount",
       "escapeHtml",
       "timeAgo"
+    ]
+  },
+  "static/js/colony-codex.js": {
+    "description": "Collection Codex (Bug #1160) — Discoveries-tab sub-view toggle + fire-once",
+    "exports": [
+      "switchDiscoveryView",
+      "getSeen",
+      "markSeen",
+      "revealCategory",
+      "revealTotal",
+      "maybeOpenCodexFromUrl",
+      "earned"
     ]
   },
   "static/js/colony-discoveries.js": {
@@ -3728,7 +3747,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

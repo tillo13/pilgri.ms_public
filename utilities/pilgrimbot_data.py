@@ -21,7 +21,7 @@ PLAYER_DATA_TOOL = {
                 "enum": ["balance", "shard_generation", "sv_sources", "upgrades", "infrastructure", "building_queue",
                          "expeditions", "research", "crew_missions", "discoveries",
                          "signal_claims", "puzzle_fragments", "overview", "leaderboard", "robot",
-                         "discovery_catalog", "discovery_analytics", "discovery_ledger", "map_geography"],
+                         "discovery_catalog", "discovery_analytics", "discovery_ledger", "discovery_codex", "map_geography"],
                 "description": "Which data category to fetch"
             },
             "user_id": {
@@ -52,6 +52,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   discovery_catalog — Full discovery-item catalog grouped by rarity (Common/Uncommon/Rare/Legendary): count + % of catalog per rarity, top items by trade value, distance bands. USE THIS when user asks about what items exist or rarity tiers.
   discovery_analytics — Per-user discovery audit: actual rarity finds vs expected (computed by replaying each expedition's stored captain stats + distance through the actual drop-weight formula in discovery_utils.get_progressive_weights). Shows expedition-band breakdown so users can see WHY their drop rate is what it is (e.g. legendary weight is 0 below 300 km AND for first 19 expeditions). USE THIS when user suspects rare/legendary finds are too low.
   discovery_ledger — Per-user discovery LEDGER (item-level granularity): last legendary/rare/uncommon find with item_name + destination + distance_km + unlocked_at timestamp + claim status, plus per-rarity totals and the last 15 discoveries chronologically. USE THIS when user asks "when did I last find a legendary/rare?", "what was my most recent discovery?", "show me my finds over time", or any per-item question with timestamps.
+  discovery_codex — The Specimen Codex (Collection): how many of the distinct discovery items the captain has FOUND (X/total) + per-category completion (Mineral/Biological/Data/Artifact/Equipment, live counts) + nearest codex milestone + its one-time SV reward. FOUND = ever CLAIMED, permanent (survives sharding) — DISTINCT from sv_sources "Collection Milestones" which counts items ANALYZED/sharded. USE THIS when a captain asks "how many items have I collected/found", "codex/collection completion", "what have I found", "category completion", "how close am I to completing my collection".
   map_geography     — Mars destination geography: total named landmarks on the planet (pilgrim.mars_mappings), total origin sites, captain's home coords, current fog-of-war radius + formula, landmarks inside fog right now, unique landmarks visited, total trips taken. USE THIS for ANY question about "how many destinations", "how many can I visit", "how big is the map", "what can I see", "places I've been".
 """
 
@@ -432,6 +433,7 @@ def query_player_data(category, user_id):
         elif category == 'puzzle_fragments':
             # Bug #1475 / #1448: surface Puzzle Fragments so PB stops hallucinating.
             # These are a SEPARATE system from Origin Nodes / Echo Fragments (Luke 2026-05-29).
+            # Tables covered here (via get_user_fragments): pilgrim.puzzle_fragments + pilgrim.user_puzzle_fragments.
             from utilities.signal.puzzle_fragments import get_user_fragments, FRAGMENT_DROP_RATE, FRAGMENT_CATALOG
             data = get_user_fragments(user_id)  # single fetch; unread derived below (no 2nd query)
             unread = [f for f in data['collected'] if not f.get('whisper_seen_at')]
@@ -450,6 +452,31 @@ def query_player_data(category, user_id):
                 lines.append("No unread whispers.")
             if data['collected_count'] >= total and total > 0:
                 lines.append("Full set collected — no more drops. (Completing the set is collect-only; the Signal endgame lives in the Origin Sites.)")
+            return "\n".join(lines)
+
+        elif category == 'discovery_codex':
+            # Bug #1160/#1475: the FOUND-based Specimen Codex. Persists awards in
+            # pilgrim.codex_milestones. DISTINCT from sv_sources "Collection Milestones"
+            # which counts ANALYZED (sharded) items — do NOT conflate the two axes.
+            from utilities.sv_milestones import (get_codex_milestones,
+                                                 CODEX_CATEGORY_REWARD_SV, CODEX_TOTAL_REWARD_SV)
+            cm = get_codex_milestones(user_id)
+            lines = ["=== SPECIMEN CODEX (items FOUND, not analyzed) ==="]
+            lines.append(f"Collected: {cm['total_found']}/{cm['total_items']} distinct discovery items — permanent, survives sharding.")
+            lines.append("NOTE: 'found' = ever claimed. This is DIFFERENT from sv_sources 'items analyzed' (sharded).")
+            for cat in sorted(cm['total_by_category']):
+                f = cm['found_by_category'].get(cat, 0)
+                t = cm['total_by_category'][cat]
+                done = ' ✓ COMPLETE' if (t > 0 and f >= t) else ''
+                rew = CODEX_CATEGORY_REWARD_SV.get(cat)
+                rew_s = '' if (done or not rew) else f' — complete for +{rew} SV'
+                lines.append(f"  {cat.title()}: {f}/{t}{done}{rew_s}")
+            earned = cm.get('earned_keys', [])
+            if 'total_all' in earned:
+                lines.append("FULL CODEX COMPLETE — Curator of Mars.")
+            else:
+                lines.append(f"Full-codex reward (collect all {cm['total_items']}): +{CODEX_TOTAL_REWARD_SV} SV.")
+            lines.append(f"Codex milestones earned so far: {len(earned)}.")
             return "\n".join(lines)
 
         elif category == 'robot':

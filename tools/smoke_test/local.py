@@ -1124,15 +1124,74 @@ def test_puzzle_fragments_seeded():
 
 @test("get_user_fragments returns shape", tier=2, features=['signal'], mode='local')
 def test_get_user_fragments_shape():
-    from utilities.signal.puzzle_fragments import get_user_fragments
+    from utilities.signal.puzzle_fragments import get_user_fragments, FRAGMENT_CATALOG
     result = get_user_fragments(999999)
     for k in ('collected', 'locked', 'total', 'collected_count'):
         if k not in result:
             return f"missing key: {k}"
-    if result['total'] != 14:
-        return f"expected total=14, got {result['total']}"
+    # Data-driven (#1448): total follows FRAGMENT_CATALOG, never a hardcoded 14.
+    if result['total'] != len(FRAGMENT_CATALOG):
+        return f"expected total={len(FRAGMENT_CATALOG)}, got {result['total']}"
     if result['collected_count'] != 0:
         return f"new user should have 0 collected, got {result['collected_count']}"
+    return True
+
+
+@test("Colony Discoveries codex view present (#1160)", tier=1, features=['template'], mode='local')
+def test_colony_codex_visible():
+    """Bug #1160: the Discoveries tab must carry the To-Claim/Collection sub-toggle
+    AND the codex pane, with the live finds workspace preserved in #dv-finds."""
+    import os
+    path = os.path.join(os.path.dirname(__file__), '..', '..', 'templates', 'colony.html')
+    with open(path) as f:
+        html = f.read()
+    for needle, msg in [
+        ('discovery-view-toggle', "Missing To-Claim/Collection sub-toggle (#1160)"),
+        ('id="dv-finds"', "Live finds workspace no longer wrapped in #dv-finds (#1160)"),
+        ('id="dv-codex"', "Missing #dv-codex collection pane (#1160)"),
+        ('switchDiscoveryView', "Toggle handler switchDiscoveryView missing (#1160)"),
+        ('discovery_codex.total_collected', "Codex overall count not rendered (#1160)"),
+    ]:
+        if needle not in html:
+            return msg
+    return True
+
+
+@test("get_user_discovery_codex returns shape (#1160)", tier=2, features=['colony', 'db'], mode='local')
+def test_discovery_codex_shape():
+    from utilities.postgres.expeditions import get_user_discovery_codex
+    result = get_user_discovery_codex(999999)  # nonexistent user → 0 collected, full catalog
+    for k in ('categories', 'total_collected', 'total_items'):
+        if k not in result:
+            return f"missing key: {k}"
+    if result['total_collected'] != 0:
+        return f"new user should have 0 collected, got {result['total_collected']}"
+    if result['total_items'] <= 0:
+        return f"expected a non-empty catalog, got total_items={result['total_items']}"
+    for cat, info in result['categories'].items():
+        for kk in ('items', 'collected', 'total'):
+            if kk not in info:
+                return f"category {cat} missing key {kk}"
+    return True
+
+
+@test("codex milestones table + award shape (#1160)", tier=2, features=['colony', 'db'], mode='local')
+def test_codex_milestones_shape():
+    from utilities.sv_milestones import (check_and_award_codex_milestones,
+        get_codex_milestones, get_earned_codex_milestones)
+    newly = check_and_award_codex_milestones(999999)  # nonexistent user → no completion
+    if not isinstance(newly, list):
+        return f"check_and_award_codex_milestones must return a list, got {type(newly).__name__}"
+    if newly:
+        return f"nonexistent user should earn nothing, got {newly}"
+    cm = get_codex_milestones(999999)
+    for k in ('found_by_category', 'total_by_category', 'total_found', 'total_items', 'earned_keys'):
+        if k not in cm:
+            return f"get_codex_milestones missing key: {k}"
+    if cm['total_found'] != 0:
+        return f"new user total_found should be 0, got {cm['total_found']}"
+    if not isinstance(get_earned_codex_milestones(999999), list):
+        return "get_earned_codex_milestones must return a list"
     return True
 
 

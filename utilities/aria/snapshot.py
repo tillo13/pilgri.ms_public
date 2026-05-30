@@ -180,6 +180,15 @@ def load_colony_snapshot(user_id: int) -> dict:
             'unread_whispers': 0,
             'collected_names': []
         },
+        # Bug #1160: lifetime Discovery Codex completion (FOUND-based, distinct from
+        # the analyzed 'discoveries' block above) so ARIA can answer "how complete is
+        # my collection?".
+        'discovery_codex': {
+            'total_found': 0,
+            'total_items': 0,
+            'by_category': {},
+            'milestones_earned': 0
+        },
         'chat_history': {
             'total_messages': 0,
             'first_chat': None,
@@ -679,6 +688,20 @@ def load_colony_snapshot(user_id: int) -> dict:
                 }
             except Exception as e:
                 logger.warning(f"snapshot puzzle_fragments load failed for {user_id}: {e}")
+
+            # Discovery Codex completion (Bug #1160) — FOUND-based lifetime collection.
+            try:
+                from utilities.sv_milestones import get_codex_milestones
+                cx = get_codex_milestones(user_id)
+                snapshot['discovery_codex'] = {
+                    'total_found': cx['total_found'],
+                    'total_items': cx['total_items'],
+                    'by_category': {c: {'found': cx['found_by_category'].get(c, 0), 'total': t}
+                                    for c, t in cx['total_by_category'].items()},
+                    'milestones_earned': len(cx['earned_keys'])
+                }
+            except Exception as e:
+                logger.warning(f"snapshot discovery_codex load failed for {user_id}: {e}")
 
             # Chat history summary
             cur.execute("""

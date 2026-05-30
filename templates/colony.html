@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/css/colony.css?v={{ static_v }}">
+<link rel="stylesheet" href="/static/css/colony-collection.css?v={{ static_v }}">
 {% endblock %}
 
 {% block content %}
@@ -112,6 +113,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- DISCOVERIES Tab -->
 <div id="tab-discoveries" class="colony-tab-content">
+    <!-- Bug #1160: sub-view toggle — "To Claim" (live finds workspace) vs "Collection" (lifetime codex) -->
+    <div class="discovery-view-toggle">
+        <button class="dv-btn active" data-view="finds" onclick="switchDiscoveryView('finds')">To Claim</button>
+        <button class="dv-btn" data-view="codex" onclick="switchDiscoveryView('codex')">Collection</button>
+    </div>
+
+    <div id="dv-finds" class="dv-pane">
     <!-- ARIA Bonds Section -->
     <div id="ariaBondsSection" style="display: none; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -160,6 +168,57 @@ document.addEventListener('DOMContentLoaded', function() {
             <img src="{{ icons.box_package }}" alt="" class="empty-state-icon" style="width: 48px; height: 48px; opacity: 0.5;">
             <div class="empty-state-text">Loading discoveries...</div>
         </div>
+    </div>
+    </div><!-- /#dv-finds -->
+
+    <!-- Bug #1160: Collection Codex (lifetime) — every active discovery item; found shows art,
+         undiscovered shows a silhouette. Server-rendered from discovery_codex (no extra fetch). -->
+    <div id="dv-codex" class="dv-pane" style="display: none;">
+        <div class="codex-header">
+            <div class="codex-overall">
+                <span class="codex-overall-count">{{ discovery_codex.total_collected }}</span>
+                <span class="codex-overall-total">/ {{ discovery_codex.total_items }} collected</span>
+            </div>
+            <div class="codex-bar">
+                <div class="codex-bar-fill" style="width: {{ ((discovery_codex.total_collected / discovery_codex.total_items * 100) if discovery_codex.total_items else 0)|round(1) }}%;"></div>
+            </div>
+            <p class="codex-intro aria-voice"><em>"Every specimen you've ever brought home, Captain — the found and the still-missing. A complete record is its own kind of reward."</em></p>
+        </div>
+
+        {% for cat_key, cat in discovery_codex.categories.items() %}
+        <div class="codex-category">
+            <div class="codex-cat-head">
+                <span class="codex-cat-title">{{ cat_key|title }}</span>
+                <span class="codex-cat-count{% if cat['collected'] >= cat['total'] %} codex-cat-done{% endif %}">{{ cat['collected'] }}/{{ cat['total'] }}</span>
+                {% if cat['collected'] < cat['total'] and codex_milestones.category_rewards %}
+                <span class="codex-cat-reward">Complete for +{{ codex_milestones.category_rewards.get(cat_key, 0) }} SV</span>
+                {% endif %}
+            </div>
+            <div class="codex-grid">
+                {% for item in cat['items'] %}
+                {% if item.collected %}
+                <div class="codex-tile codex-{{ item.rarity }} collected" title="{{ item.item_name }} ({{ item.rarity|upper }})">
+                    {% if item.image_url %}
+                    <img loading="lazy" src="{{ item.image_url }}" alt="{{ item.item_name }}" class="codex-img">
+                    {% else %}
+                    <div class="codex-q codex-noart" title="Collected (no art yet)">&#9632;</div>
+                    {% endif %}
+                    <div class="codex-name">{{ item.item_name }}</div>
+                    <div class="codex-rarity">{{ item.rarity|upper }}</div>
+                </div>
+                {% else %}
+                <div class="codex-tile codex-locked" title="Undiscovered {{ item.rarity|upper }}">
+                    <div class="codex-q">?</div>
+                    <div class="codex-name codex-name-locked">Undiscovered</div>
+                    <div class="codex-rarity">{{ item.rarity|upper }}</div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-state-text">No discovery catalog available yet.</div></div>
+        {% endfor %}
     </div>
 </div>
 
@@ -594,12 +653,16 @@ document.addEventListener('DOMContentLoaded', function() {
     },
     "trailIcon": "{{ icons.tab_map }}",
     "ariaBonds": {{ (aria_bonds or []) | tojson }},
-    "welcomeBack": {{ (welcome_back or {}) | tojson }}
+    "welcomeBack": {{ (welcome_back or {}) | tojson }},
+    "codexEarned": [
+        {% for m in (codex_milestones.earned or []) %}{"key": {{ m.milestone_key|tojson }}, "name": {{ m.milestone_name|tojson }}, "sv": {{ m.sv_awarded }}}{% if not loop.last %},{% endif %}{% endfor %}
+    ]
 }
 </script>
 <script src="/static/js/colony.js?v={{ static_v }}" defer></script>
 <script src="/static/js/discovery_utils.js?v={{ static_v }}" defer></script>
 <script src="/static/js/colony-discoveries.js?v={{ static_v }}" defer></script>
+<script src="/static/js/colony-codex.js?v={{ static_v }}" defer></script>
 <script src="/static/js/colony-modals.js?v={{ static_v }}" defer></script>
 {% endif %}
 {% endblock %}

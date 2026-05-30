@@ -471,9 +471,20 @@ def unlock_discoveries_by_distance(expedition_id: int, current_distance_km: floa
         logger.error(f"❌ Failed to unlock discoveries: {e}")
         return 0
 
+def _award_codex_milestones(user_id: int):
+    """Bug #1160: fire the codex (found-based) milestone check after a claim. Isolated
+    so a milestone failure can NEVER break the claim itself."""
+    try:
+        from utilities.sv_milestones import check_and_award_codex_milestones
+        check_and_award_codex_milestones(user_id)
+    except Exception as e:
+        logger.warning(f"codex milestone check failed for {user_id} (claim still succeeded): {e}")
+
+
 def claim_expedition_discovery(discovery_id: int, user_id: int) -> bool:
     """Mark discovery as claimed — only if expedition has returned (complete/recalled)"""
     from utilities.postgres.users import update_user_activity
+    claimed = False
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""
@@ -487,11 +498,16 @@ def claim_expedition_discovery(discovery_id: int, user_id: int) -> bool:
                 from utilities.postgres.activity import log_activity
                 log_activity(user_id, 'discovery', 'discovery_claimed', f"Claimed discovery #{discovery_id}",
                              source_table='expedition_discoveries', source_id=discovery_id)
-                return True
-            return False
+                claimed = True
     except Exception as e:
         logger.error(f"❌ Failed to claim discovery: {e}")
         return False
+    # Codex check runs POST-COMMIT (outside the with block) so it sees the just-claimed
+    # row — a separate pooled connection under READ COMMITTED can't see the uncommitted
+    # UPDATE, which would otherwise miss the milestone on the claim that completes it.
+    if claimed:
+        _award_codex_milestones(user_id)  # bug #1160: a claim can complete a category
+    return claimed
 
 def claim_all_pending_discoveries(user_id: int, expedition_id: int = None) -> Dict:
     """Claim ALL unclaimed discoveries for a user at once (optionally for specific expedition).
@@ -533,14 +549,61 @@ def claim_all_pending_discoveries(user_id: int, expedition_id: int = None) -> Di
 
             if claimed > 0:
                 update_user_activity(user_id)
-
-            return {
-                'claimed_count': claimed,
-                'total_value': value
-            }
     except Exception as e:
         logger.error(f"❌ Failed to claim all discoveries: {e}")
         return {'claimed_count': 0, 'total_value': 0}
+    # POST-COMMIT (see claim_expedition_discovery): the batch UPDATE is committed when
+    # the with-block exits, so the codex check now sees the just-claimed rows.
+    if claimed > 0:
+        _award_codex_milestones(user_id)  # bug #1160: batch claim can complete a category
+    return {'claimed_count': claimed, 'total_value': value}
+
+def get_user_discovery_codex(user_id: int) -> Dict:
+    """Lifetime collection codex (bug #1160): every active discovery item + whether
+    this captain has EVER claimed it. FOUND = distinct claimed discovery_item_id,
+    regardless of analyzed/sharded state (sharding sets analyzed=true but keeps the
+    row), so the codex is permanent + retroactive. ONE LEFT JOIN — keeps /colony
+    inside its db-call budget. Grouped by item_type for the category-tabbed grid.
+    """
+    CATEGORY_ORDER = ['mineral', 'data', 'artifact', 'biological', 'equipment']
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT di.id, di.item_name, di.item_type, di.rarity, di.image_url,
+                       (c.discovery_item_id IS NOT NULL) AS collected
+                FROM pilgrim.discovery_items di
+                LEFT JOIN (
+                    SELECT DISTINCT ed.discovery_item_id
+                    FROM pilgrim.expedition_discoveries ed
+                    JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
+                    WHERE e.user_id = %s AND ed.claimed_by_user = true
+                ) c ON c.discovery_item_id = di.id
+                WHERE di.active = true
+                ORDER BY di.item_type, di.rarity, di.item_name
+            """, (user_id,))
+            rows = cur.fetchall()
+        categories = {}
+        total_collected = 0
+        for r in rows:
+            cat = categories.setdefault(r['item_type'], {'items': [], 'collected': 0, 'total': 0})
+            found = bool(r['collected'])
+            cat['items'].append({
+                'id': r['id'], 'item_name': r['item_name'], 'rarity': r['rarity'],
+                'image_url': r['image_url'], 'collected': found,
+            })
+            cat['total'] += 1
+            if found:
+                cat['collected'] += 1
+                total_collected += 1
+        # Stable display order; any unknown type lands after the known ones.
+        ordered = {k: categories[k] for k in CATEGORY_ORDER if k in categories}
+        for k in categories:
+            ordered.setdefault(k, categories[k])
+        return {'categories': ordered, 'total_collected': total_collected, 'total_items': len(rows)}
+    except Exception as e:
+        logger.error(f"get_user_discovery_codex failed for {user_id}: {e}")
+        return {'categories': {}, 'total_collected': 0, 'total_items': 0}
+
 
 def get_recent_discoveries_payload(user_id: int) -> Dict:
     """Build the API response for GET /api/expeditions/recent_discoveries."""

@@ -323,6 +323,28 @@ def get_colony_page_data(user_id, auth):
     except Exception as e:
         logger.warning(f"Could not get income calc for colony: {e}")
 
+    # Bug #1160: Discoveries Collection Codex — lifetime grid + found-based milestones.
+    # Server-rendered (no extra fetch). Exactly 2 reads: the grid (1 grouped LEFT JOIN)
+    # + the earned-milestone rows (1 cheap query, no join). Rewards are constants, no
+    # query. Deliberately NOT calling get_codex_milestones here — it would re-run the
+    # per-category JOIN the grid already computed (db-speed-first / /colony db budget).
+    try:
+        from utilities.postgres.expeditions import get_user_discovery_codex
+        from utilities.sv_milestones import (get_earned_codex_milestones,
+                                             CODEX_CATEGORY_REWARD_SV, CODEX_TOTAL_REWARD_SV)
+        discovery_codex = get_user_discovery_codex(user_id)
+        _earned = get_earned_codex_milestones(user_id)
+        codex_milestones = {
+            'earned': _earned,
+            'earned_keys': [r['milestone_key'] for r in _earned],
+            'category_rewards': CODEX_CATEGORY_REWARD_SV,
+            'total_reward': CODEX_TOTAL_REWARD_SV,
+        }
+    except Exception as e:
+        logger.warning(f"Could not build discovery codex for colony: {e}")
+        discovery_codex = {'categories': {}, 'total_collected': 0, 'total_items': 0}
+        codex_milestones = {'earned': [], 'earned_keys': [], 'category_rewards': {}, 'total_reward': 0}
+
     return {
         'user': auth.get_current_user(),
         'total_balance': total_balance,
@@ -336,4 +358,6 @@ def get_colony_page_data(user_id, auth):
         'discovery_count': discovery_count,
         'range_mult': range_mult,
         'income_data': income_data,
+        'discovery_codex': discovery_codex,
+        'codex_milestones': codex_milestones,
     }
