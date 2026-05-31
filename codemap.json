@@ -2141,7 +2141,7 @@
       "get_db_counter",
       "db_cursor — Context manager for database operations - uses connection pool for speed.",
       "ensure_table_columns — Idempotently add only the GENUINELY-MISSING columns to a table.",
-      "json_serial — JSON serializer for datetime objects",
+      "json_serial — JSON serializer default for json.dumps — handles the non-JSON-native types that",
       "test_connection — Test database connection"
     ]
   },

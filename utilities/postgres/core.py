@@ -10,6 +10,7 @@ import psycopg2.extras
 import psycopg2.pool
 import os
 from datetime import datetime
+from decimal import Decimal
 from google.cloud import secretmanager
 from typing import Dict, Optional, List
 from contextlib import contextmanager
@@ -312,9 +313,14 @@ def ensure_table_columns(schema: str, table: str, coldefs: dict) -> list:
 
 
 def json_serial(obj):
-    """JSON serializer for datetime objects"""
+    """JSON serializer default for json.dumps — handles the non-JSON-native types that
+    flow out of Postgres. datetime -> ISO string; Decimal -> float (NUMERIC/DOUBLE columns
+    like distance_km come back as Decimal and would otherwise raise 'not serializable',
+    e.g. log_activity metadata for landmark discoveries)."""
     if isinstance(obj, datetime):
         return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return float(obj)
     raise TypeError(f"Type {type(obj)} not serializable")
 
 

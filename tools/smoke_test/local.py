@@ -709,6 +709,23 @@ def test_map_base_relative_lon():
     return True
 
 
+@test("json_serial handles Decimal (log_activity metadata from NUMERIC columns)", tier=1, mode='local')
+def test_json_serial_decimal():
+    """Latent bug exposed once record_landmark_discovery started succeeding: log_activity
+    json.dumps(metadata, default=json_serial) hit 'Type Decimal not serializable' because
+    distance_km comes back as Decimal. json_serial now coerces Decimal->float for all callers."""
+    import json
+    from decimal import Decimal
+    from utilities.postgres.core import json_serial
+    try:
+        out = json.dumps({'distance_km': Decimal('136.42')}, default=json_serial)
+    except TypeError as e:
+        return f"json_serial still cannot serialize Decimal: {e}"
+    if '136.42' not in out:
+        return f"Decimal not coerced correctly: {out}"
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals
