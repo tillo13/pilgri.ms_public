@@ -117,6 +117,55 @@ def get_origin_site_by_code(site_code: str) -> Optional[Dict]:
         logger.error(f"Failed to get origin site {site_code}: {e}")
         return None
 
+def get_user_signal_relics(user_id: int) -> Dict:
+    """Bug #1160 (Option B, Luke 2026-05-31): the 14 Origin Site legendary items,
+    rendered in the Discoveries codex as their OWN axis so the legendary total reads
+    honestly (3 discovery legendaries + 14 Signal Relics = 17 in the game). FOUND =
+    this captain has a site_claims row for the site (site_type='origin') OR is its
+    founder. DISPLAY-ONLY: one grouped read, NO writes, NO art generation, awards NO
+    SV — the #1490 endgame owns the 14/14 finale. Unfound relics expose only the
+    COUNT (silhouette + 'SIGNAL RELIC' label), never the name/mission, so the codex
+    doesn't telegraph #1490's still-open surprise-vs-reveal design.
+    """
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT os.id, os.site_code, os.legendary_item_name,
+                       os.legendary_item_description, os.legendary_item_image_url,
+                       os.mission_name, os.mission_year, os.mission_country,
+                       os.mission_status, os.founder_user_id,
+                       os.founder_commander_name, os.founder_wallet_prefix,
+                       (sc.user_id IS NOT NULL OR os.founder_user_id = %(uid)s) AS found
+                FROM pilgrim.origin_sites os
+                LEFT JOIN pilgrim.site_claims sc
+                       ON sc.origin_site_id = os.id
+                      AND sc.user_id = %(uid)s
+                      AND sc.site_type = 'origin'
+                WHERE os.is_active = true
+                ORDER BY os.mission_year, os.site_code
+            """, {'uid': user_id})
+            rows = cur.fetchall()
+        relics, found_count = [], 0
+        for r in rows:
+            f = bool(r['found'])
+            if f:
+                found_count += 1
+            relics.append({
+                'id': r['id'], 'site_code': r['site_code'],
+                'legendary_item_name': r['legendary_item_name'],
+                'legendary_item_description': r['legendary_item_description'],
+                'legendary_item_image_url': r['legendary_item_image_url'],
+                'mission_name': r['mission_name'], 'mission_year': r['mission_year'],
+                'mission_country': r['mission_country'], 'mission_status': r['mission_status'],
+                'founder_commander_name': r['founder_commander_name'],
+                'founder_wallet_prefix': r['founder_wallet_prefix'],
+                'found': f,
+            })
+        return {'relics': relics, 'found_count': found_count, 'total': len(relics)}
+    except Exception as e:
+        logger.error(f"get_user_signal_relics failed for {user_id}: {e}")
+        return {'relics': [], 'found_count': 0, 'total': 0}
+
 def check_origin_site_proximity(base_lat: float, base_lon: float,
                                   dest_lat: float, dest_lon: float) -> Optional[Dict]:
     """Check if an expedition path (base → destination) passes near any unclaimed Origin Site.

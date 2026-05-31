@@ -152,3 +152,10 @@
 .codex-name-locked { font-style: italic; color: var(--text-muted); }
 /* Collected but art not generated yet — distinct from the dashed unfound tile. */
 .codex-noart { font-size: 22px; color: var(--text-secondary); }
+
+/* Bug #1160 Option B — Signal Relics section (the 14 Origin Site legendaries) as a
+   DISTINCT axis below the discovery grid. Reuses every codex tile class; only a neutral
+   divider + reconciliation caption are new (no color-as-meaning, colorblind-safe). */
+.codex-relics-divider { border-top: 1px solid rgba(255, 255, 255, 0.12); margin: 26px 0 14px; }
+.codex-reconcile { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
+.codex-reconcile strong { color: var(--text-primary); }

@@ -219,6 +219,45 @@ document.addEventListener('DOMContentLoaded', function() {
         {% else %}
         <div class="empty-state"><div class="empty-state-text">No discovery catalog available yet.</div></div>
         {% endfor %}
+
+        {# Bug #1160 Option B (Luke 2026-05-31): Signal Relics — the 14 Origin Site
+           legendaries shown as a DISTINCT axis answering Luke's count question
+           ("3 Legendary?"). Display-only: no SV, fires nothing on the 14th — the
+           #1490 endgame owns the finale. Unfound tiles hide name/mission (count-only). #}
+        {% if signal_relics and signal_relics.total %}
+        <div class="codex-relics">
+            <div class="codex-relics-divider"></div>
+            <p class="codex-reconcile">Discovery legendaries: <strong>{{ discovery_legendary_count }}</strong> &middot; Signal Relics: <strong>{{ signal_relics.total }}</strong> &middot; Total legendaries in the game: <strong>{{ total_legendary_count }}</strong></p>
+            <div class="codex-category">
+                <div class="codex-cat-head">
+                    <span class="codex-cat-title">Signal Relics</span>
+                    <span class="codex-cat-count{% if signal_relics.found_count >= signal_relics.total %} codex-cat-done{% endif %}">{{ signal_relics.found_count }}/{{ signal_relics.total }}</span>
+                </div>
+                <p class="codex-intro aria-voice"><em>"The lost missions left relics scattered across Mars, Captain. Recover their Origin Sites on the Signal map to claim them — most stay sealed until you walk their ground."</em></p>
+                <div class="codex-grid">
+                    {% for r in signal_relics.relics %}
+                    {% if r.found %}
+                    <div class="codex-tile codex-legendary collected" title="{{ r.legendary_item_name }} — {{ r.mission_name }} ({{ r.mission_year }}){% if r.founder_commander_name %} · First found by {{ r.founder_commander_name }}{% endif %}">
+                        {% if r.legendary_item_image_url %}
+                        <img loading="lazy" src="{{ r.legendary_item_image_url }}" alt="{{ r.legendary_item_name }}" class="codex-img">
+                        {% else %}
+                        <div class="codex-q codex-noart" title="Recovered (no art yet)">&#9632;</div>
+                        {% endif %}
+                        <div class="codex-name">{{ r.legendary_item_name }}</div>
+                        <div class="codex-rarity">SIGNAL RELIC</div>
+                    </div>
+                    {% else %}
+                    <div class="codex-tile codex-locked" title="Undiscovered Signal Relic — recover Origin Sites on the Signal map">
+                        <div class="codex-q">?</div>
+                        <div class="codex-name codex-name-locked">Undiscovered</div>
+                        <div class="codex-rarity">SIGNAL RELIC</div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 

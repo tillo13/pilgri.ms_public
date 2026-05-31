@@ -180,7 +180,10 @@ def load_colony_snapshot(user_id: int) -> dict:
             'detected_sites': [],
             'bonds': [],
             'pending_claim_cinematic': None,
-            'active_signal_claim_expedition': None
+            'active_signal_claim_expedition': None,
+            # Bug #1160 Option B: Signal Relics axis (14 Origin Site legendaries).
+            'relics_found': 0,
+            'relics_total': 0
         },
         # Puzzle Fragments are a SEPARATE system from the Signal/Origin sites above
         # (Luke #1448 2026-05-29). Kept as a distinct top-level key so ARIA never
@@ -579,6 +582,13 @@ def load_colony_snapshot(user_id: int) -> dict:
                 }
                 for row in cur.fetchall()
             ]
+            # Bug #1160 Option B: Signal Relics axis (14 Origin Site legendaries) so ARIA
+            # can answer "how many Signal Relics have I found?" / "how many legendaries
+            # are there?" — found = own claim above; total = active Origin Sites. DISTINCT
+            # from puzzle_fragments and from the discovery codex's 3 legendaries.
+            cur.execute("SELECT COUNT(*) AS c FROM pilgrim.origin_sites WHERE is_active = true")
+            snapshot['signal']['relics_total'] = cur.fetchone()['c']
+            snapshot['signal']['relics_found'] = len(snapshot['signal']['origin_claims'])
 
             # Detected (unclaimed) Origin Sites — Phase 2.1 path-based closest approach
             try:

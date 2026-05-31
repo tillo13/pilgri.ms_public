@@ -1311,6 +1311,29 @@ def test_discovery_codex_shape():
     return True
 
 
+@test("get_user_signal_relics returns shape (#1160 Option B)", tier=2, features=['colony', 'signal', 'db'], mode='local')
+def test_signal_relics_shape():
+    from utilities.signal.sites import get_user_signal_relics
+    result = get_user_signal_relics(999999)  # nonexistent user → 0 found, full 14-relic axis
+    for k in ('relics', 'found_count', 'total'):
+        if k not in result:
+            return f"missing key: {k}"
+    if not isinstance(result['relics'], list):
+        return "relics must be a list"
+    if result['total'] != len(result['relics']):
+        return f"total ({result['total']}) must equal len(relics) ({len(result['relics'])})"
+    if result['found_count'] != 0:
+        return f"nonexistent user should find 0 relics, got {result['found_count']}"
+    if not (0 <= result['found_count'] <= result['total']):
+        return f"found_count {result['found_count']} out of range 0..{result['total']}"
+    # Display axis must stay DISTINCT from discovery_items (no SV/milestone coupling).
+    for r in result['relics']:
+        for kk in ('legendary_item_name', 'found', 'mission_name'):
+            if kk not in r:
+                return f"relic missing key {kk}"
+    return True
+
+
 @test("codex milestones table + award shape (#1160)", tier=2, features=['colony', 'db'], mode='local')
 def test_codex_milestones_shape():
     from utilities.sv_milestones import (check_and_award_codex_milestones,
@@ -1740,7 +1763,10 @@ def test_page_data_db_budgets():
         ('Expeditions',    40, lambda: get_expeditions_page_data(user_id)),
         ('Crew /crew',     25, lambda: get_command_page_data(user_id)),
         ('Depot /depot',   25, lambda: get_depot_page_data(user_id, auth)),
-        ('Colony /colony', 25, lambda: get_colony_page_data(user_id, auth)),
+        # #1160 Option B: Signal Relics adds 1 grouped origin_sites LEFT JOIN site_claims
+        # read (measured 24->25). Ceiling 25->26 keeps a 1-query cushion — the NEXT
+        # /colony feature must bulk-fetch or bump again.
+        ('Colony /colony', 26, lambda: get_colony_page_data(user_id, auth)),
         ('Signal /signal', 20, lambda: get_signal_page_render_data(user_id)),
         ('Research',       18, lambda: get_research_page_data(user_id)),
         ('Admin /admin',   15, lambda: get_admin_dashboard_data(user_id)),

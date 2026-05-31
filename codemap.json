@@ -2871,6 +2871,7 @@
     "exports": [
       "get_all_origin_sites — Get all Origin Sites with their status",
       "get_origin_site_by_code — Get a specific Origin Site by its code",
+      "get_user_signal_relics — Bug #1160 (Option B, Luke 2026-05-31): the 14 Origin Site legendary items,",
       "check_origin_site_proximity — Check if an expedition path (base → destination) passes near any unclaimed Origin Site.",
       "get_active_echo_sites — Get all active Echo Sites",
       "get_recent_echo_claims — Get recent Echo Site claims for the /signal page",
@@ -3690,7 +3691,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -3755,7 +3756,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

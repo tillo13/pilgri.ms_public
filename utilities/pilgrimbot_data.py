@@ -52,7 +52,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   discovery_catalog — Full discovery-item catalog grouped by rarity (Common/Uncommon/Rare/Legendary): count + % of catalog per rarity, top items by trade value, distance bands. USE THIS when user asks about what items exist or rarity tiers.
   discovery_analytics — Per-user discovery audit: actual rarity finds vs expected (computed by replaying each expedition's stored captain stats + distance through the actual drop-weight formula in discovery_utils.get_progressive_weights). Shows expedition-band breakdown so users can see WHY their drop rate is what it is (e.g. legendary weight is 0 below 300 km AND for first 19 expeditions). USE THIS when user suspects rare/legendary finds are too low.
   discovery_ledger — Per-user discovery LEDGER (item-level granularity): last legendary/rare/uncommon find with item_name + destination + distance_km + unlocked_at timestamp + claim status, plus per-rarity totals and the last 15 discoveries chronologically. USE THIS when user asks "when did I last find a legendary/rare?", "what was my most recent discovery?", "show me my finds over time", or any per-item question with timestamps.
-  discovery_codex — The Specimen Codex (Collection): how many of the distinct discovery items the captain has FOUND (X/total) + per-category completion (Mineral/Biological/Data/Artifact/Equipment, live counts) + nearest codex milestone + its one-time SV reward. FOUND = ever CLAIMED, permanent (survives sharding) — DISTINCT from sv_sources "Collection Milestones" which counts items ANALYZED/sharded. USE THIS when a captain asks "how many items have I collected/found", "codex/collection completion", "what have I found", "category completion", "how close am I to completing my collection".
+  discovery_codex — The Specimen Codex (Collection): how many of the distinct discovery items the captain has FOUND (X/total) + per-category completion (Mineral/Biological/Data/Artifact/Equipment, live counts) + nearest codex milestone + its one-time SV reward. FOUND = ever CLAIMED, permanent (survives sharding) — DISTINCT from sv_sources "Collection Milestones" which counts items ANALYZED/sharded. ALSO reports SIGNAL RELICS: the 14 Origin Site legendaries are a SEPARATE legendary axis (X/14, NOT in the discovery catalog, grant no codex SV) — so the game has 3 discovery legendaries + 14 Signal Relics = 17 legendaries total. USE THIS when a captain asks "how many items have I collected/found", "codex/collection completion", "what have I found", "category completion", "how close am I to completing my collection", "how many Signal Relics", "how many legendaries are there".
   map_geography     — Mars destination geography: total named landmarks on the planet (pilgrim.mars_mappings), total origin sites, captain's home coords, current fog-of-war radius + formula, landmarks inside fog right now, unique landmarks visited, total trips taken. USE THIS for ANY question about "how many destinations", "how many can I visit", "how big is the map", "what can I see", "places I've been".
 """
 
@@ -477,6 +477,18 @@ def query_player_data(category, user_id):
             else:
                 lines.append(f"Full-codex reward (collect all {cm['total_items']}): +{CODEX_TOTAL_REWARD_SV} SV.")
             lines.append(f"Codex milestones earned so far: {len(earned)}.")
+            # Bug #1160 Option B: Signal Relics — the 14 Origin Site legendaries are a
+            # SEPARATE legendary axis (NOT in discovery_items, award NO codex SV). This
+            # is how the codex answers "how many legendaries are there" honestly: the
+            # discovery catalog has 3 legendaries; the game has 3 + 14 = 17 total.
+            from utilities.signal.sites import get_user_signal_relics
+            sr = get_user_signal_relics(user_id)
+            disc_leg = cm['total_by_category'].get('legendary') if isinstance(cm.get('total_by_category'), dict) else None
+            lines.append("")
+            lines.append("=== SIGNAL RELICS (Origin Site legendaries — a SEPARATE axis) ===")
+            lines.append(f"Recovered: {sr['found_count']}/{sr['total']} Signal Relics (one per Origin Site, claimed on the Signal map).")
+            lines.append("These are DISTINCT from the discovery codex above and grant NO codex SV (the Signal/endgame path owns them).")
+            lines.append("LEGENDARY TOTAL: the discovery catalog has 3 legendary discovery items; the game also has 14 Signal Relics — so there are 17 legendaries in total (3 discovery + 14 Signal Relic). Do NOT conflate the two axes.")
             return "\n".join(lines)
 
         elif category == 'robot':

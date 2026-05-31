@@ -324,10 +324,13 @@ def get_colony_page_data(user_id, auth):
         logger.warning(f"Could not get income calc for colony: {e}")
 
     # Bug #1160: Discoveries Collection Codex — lifetime grid + found-based milestones.
-    # Server-rendered (no extra fetch). Exactly 2 reads: the grid (1 grouped LEFT JOIN)
-    # + the earned-milestone rows (1 cheap query, no join). Rewards are constants, no
-    # query. Deliberately NOT calling get_codex_milestones here — it would re-run the
-    # per-category JOIN the grid already computed (db-speed-first / /colony db budget).
+    # Server-rendered (no extra fetch). Exactly 3 reads: the discovery grid (1 grouped
+    # LEFT JOIN) + the earned-milestone rows (1 cheap query, no join) + the Signal
+    # Relics axis (1 grouped origin_sites LEFT JOIN site_claims, Option B). Rewards are
+    # constants, no query. Deliberately NOT calling get_codex_milestones here — it would
+    # re-run the per-category JOIN the grid already computed (db-speed-first / /colony db
+    # budget; measured 24->25, smoke ceiling bumped to 26 to keep a 1-query cushion —
+    # the NEXT /colony feature must bulk-fetch or bump again).
     try:
         from utilities.postgres.expeditions import get_user_discovery_codex
         from utilities.sv_milestones import (get_earned_codex_milestones,
@@ -345,6 +348,22 @@ def get_colony_page_data(user_id, auth):
         discovery_codex = {'categories': {}, 'total_collected': 0, 'total_items': 0}
         codex_milestones = {'earned': [], 'earned_keys': [], 'category_rewards': {}, 'total_reward': 0}
 
+    # Bug #1160 Option B (Luke 2026-05-31): Signal Relics — the 14 Origin Site
+    # legendaries shown as a DISTINCT axis so the legendary total reads honestly.
+    # Display-only, no SV, doesn't touch the validated 60/25/12/3=100 discovery math.
+    try:
+        from utilities.signal.sites import get_user_signal_relics
+        signal_relics = get_user_signal_relics(user_id)
+    except Exception as e:
+        logger.warning(f"Could not build signal relics for colony: {e}")
+        signal_relics = {'relics': [], 'found_count': 0, 'total': 0}
+    # Honest legendary reconciliation for Luke's count question (data-driven, no hardcode):
+    discovery_legendary_count = sum(
+        1 for cat in discovery_codex.get('categories', {}).values()
+        for it in cat.get('items', []) if it.get('rarity') == 'legendary'
+    )
+    total_legendary_count = discovery_legendary_count + signal_relics.get('total', 0)
+
     return {
         'user': auth.get_current_user(),
         'total_balance': total_balance,
@@ -360,4 +379,7 @@ def get_colony_page_data(user_id, auth):
         'income_data': income_data,
         'discovery_codex': discovery_codex,
         'codex_milestones': codex_milestones,
+        'signal_relics': signal_relics,
+        'discovery_legendary_count': discovery_legendary_count,
+        'total_legendary_count': total_legendary_count,
     }
