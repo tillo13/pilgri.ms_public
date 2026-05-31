@@ -281,6 +281,36 @@ def _update(table: str, set_clause: str, where_clause: str, params: tuple, error
         return False
 
 
+def ensure_table_columns(schema: str, table: str, coldefs: dict) -> list:
+    """Idempotently add only the GENUINELY-MISSING columns to a table.
+
+    Why this exists: the old pattern `ALTER TABLE x ADD COLUMN IF NOT EXISTS ...`
+    run on every cold-start instance still requests an ACCESS EXCLUSIVE lock on the
+    target table EVEN WHEN the column already exists — so on a hot table (e.g.
+    pilgrim.expeditions) under load it blocks and hits the statement timeout,
+    spamming the logs with errors despite there being nothing to change.
+
+    This helper SELECTs information_schema first (catalog read — never blocks on the
+    target table's locks) and only issues an ALTER for columns that are actually
+    absent. Steady state = zero ALTERs = zero lock contention. Returns the list of
+    columns it added (empty when all present).
+
+    coldefs: {column_name: "TYPE ... [NOT NULL] [DEFAULT ...]"} — values are trusted
+    DDL literals from callers (never user input).
+    """
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = %s AND table_name = %s",
+            (schema, table))
+        have = {r['column_name'] for r in cur.fetchall()}
+        added = []
+        for col, ddl in coldefs.items():
+            if col not in have:
+                cur.execute(f"ALTER TABLE {schema}.{table} ADD COLUMN {col} {ddl}")
+                added.append(col)
+        return added
+
+
 def json_serial(obj):
     """JSON serializer for datetime objects"""
     if isinstance(obj, datetime):

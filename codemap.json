@@ -2140,6 +2140,7 @@
       "set_db_context — Tag the current request so over-threshold warnings identify the page.",
       "get_db_counter",
       "db_cursor — Context manager for database operations - uses connection pool for speed.",
+      "ensure_table_columns — Idempotently add only the GENUINELY-MISSING columns to a table.",
       "json_serial — JSON serializer for datetime objects",
       "test_connection — Test database connection"
     ]
@@ -3689,7 +3690,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

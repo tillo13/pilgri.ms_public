@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 
-from utilities.postgres.core import db_cursor, _fetchone, _fetchall, _get_one, _get_many, _update, _count
+from utilities.postgres.core import db_cursor, _fetchone, _fetchall, _get_one, _get_many, _update, _count, ensure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,9 @@ def ensure_landmark_discovery_id():
     if _LANDMARK_ID_ENSURED:
         return
     try:
-        with db_cursor(commit=True) as cur:
-            cur.execute("ALTER TABLE pilgrim.landmark_discoveries ADD COLUMN IF NOT EXISTS id SERIAL")
+        # Existence-checked: no lock-grabbing ALTER once `id` exists (same cold-start
+        # timeout class as the expeditions columns above).
+        ensure_table_columns('pilgrim', 'landmark_discoveries', {'id': 'SERIAL'})
         _LANDMARK_ID_ENSURED = True
     except Exception as e:
         logger.error(f"Failed to ensure landmark_discoveries.id: {e}")
@@ -49,11 +50,15 @@ def ensure_signal_claim_columns():
     if _SIGNAL_CLAIM_COLUMNS_ENSURED:
         return
     try:
-        with db_cursor(commit=True) as cur:
-            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS expedition_type TEXT NOT NULL DEFAULT 'standard'")
-            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS signal_site_id INTEGER")
-            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS cinematic_shown_at TIMESTAMP")
-            cur.execute("ALTER TABLE pilgrim.expeditions ADD COLUMN IF NOT EXISTS cinematic_payload JSONB")
+        # Existence-checked (see ensure_table_columns): no ALTER / no ACCESS EXCLUSIVE
+        # lock on the hot expeditions table once these columns exist — which was
+        # causing 'canceling statement due to statement timeout' noise on cold starts.
+        ensure_table_columns('pilgrim', 'expeditions', {
+            'expedition_type': "TEXT NOT NULL DEFAULT 'standard'",
+            'signal_site_id': "INTEGER",
+            'cinematic_shown_at': "TIMESTAMP",
+            'cinematic_payload': "JSONB",
+        })
         _SIGNAL_CLAIM_COLUMNS_ENSURED = True
     except Exception as e:
         logger.error(f"Failed to ensure signal_claim columns: {e}")

@@ -669,6 +669,27 @@ def test_nav_stats_items_source():
     return True
 
 
+@test("ensure_*_columns are existence-checked (no lock-grabbing ALTER on hot tables)", tier=1, features=['depot'], mode='local')
+def test_ensure_columns_no_lock():
+    """Cold-start instances were spamming 'canceling statement due to statement timeout'
+    because ensure_signal_claim_columns ran ALTER TABLE ADD COLUMN IF NOT EXISTS on the hot
+    expeditions table every time — which still takes ACCESS EXCLUSIVE even when the column
+    exists. Lock: the shared helper SELECTs information_schema first and only ALTERs missing
+    columns (returns [] = no ALTER when present), and the hot-path ensure funcs use it."""
+    import inspect
+    from utilities.postgres.core import ensure_table_columns
+    import utilities.postgres.expeditions as e
+    # No-op when columns already exist → no ALTER attempted (no lock).
+    if ensure_table_columns('pilgrim', 'expeditions', {'expedition_type': 'TEXT'}) != []:
+        return "ensure_table_columns issued an ALTER for an existing column (would grab ACCESS EXCLUSIVE)"
+    src = inspect.getsource(e.ensure_signal_claim_columns) + inspect.getsource(e.ensure_landmark_discovery_id)
+    if 'ADD COLUMN IF NOT EXISTS' in src:
+        return "ensure_* still uses lock-grabbing ADD COLUMN IF NOT EXISTS on the hot path"
+    if 'ensure_table_columns' not in src:
+        return "ensure_* no longer routes through the existence-checked helper"
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals
