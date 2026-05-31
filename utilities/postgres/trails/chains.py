@@ -15,7 +15,7 @@ import heapq
 import logging
 from typing import Dict, List, Optional, Tuple
 
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 from utilities.mars_math import haversine_distance, bearing_deg
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,8 @@ def ensure_user_trail_chains_table():
                 )
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_user_chain ON pilgrim.user_trail_chains(user_id, direction)")
-            cur.execute("ALTER TABLE pilgrim.users ADD COLUMN IF NOT EXISTS active_trail_direction TEXT NOT NULL DEFAULT 'N'")
+        # Existence-checked (no ACCESS EXCLUSIVE on the hot users table when present).
+        ensure_table_columns('pilgrim', 'users', {'active_trail_direction': "TEXT NOT NULL DEFAULT 'N'"})
         _CHAINS_SCHEMA_ENSURED = True
     except Exception as e:
         logger.error(f"Failed to ensure user_trail_chains schema: {e}")

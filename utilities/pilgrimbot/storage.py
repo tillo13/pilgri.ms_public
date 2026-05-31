@@ -3,7 +3,7 @@
 import json
 import logging
 
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -103,16 +103,6 @@ def ensure_pilgrimbot_table():
             CREATE INDEX IF NOT EXISTS idx_pilgrimbot_user_chat
             ON pilgrim.pilgrimbot_conversations(user_id, chat_id)
         """)
-        # Add pilgrimbot_role to users table (dev/qa/captain)
-        cur.execute("""
-            ALTER TABLE pilgrim.users ADD COLUMN IF NOT EXISTS
-            pilgrimbot_role VARCHAR(20) DEFAULT 'captain'
-        """)
-        # Soft-delete column for hiding conversations
-        cur.execute("""
-            ALTER TABLE pilgrim.pilgrimbot_conversations ADD COLUMN IF NOT EXISTS
-            hidden BOOLEAN DEFAULT FALSE
-        """)
         # PilgrimBot call logging — tracks every API call for performance analysis
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pilgrim.pilgrimbot_calls (
@@ -133,6 +123,10 @@ def ensure_pilgrimbot_table():
             CREATE INDEX IF NOT EXISTS idx_pilgrimbot_calls_user
             ON pilgrim.pilgrimbot_calls(user_id, created_at DESC)
         """)
+    # Existence-checked migration columns (no ACCESS EXCLUSIVE lock on the hot users table
+    # when already present). pilgrimbot_role on users; hidden soft-delete flag on conversations.
+    ensure_table_columns('pilgrim', 'users', {'pilgrimbot_role': "VARCHAR(20) DEFAULT 'captain'"})
+    ensure_table_columns('pilgrim', 'pilgrimbot_conversations', {'hidden': 'BOOLEAN DEFAULT FALSE'})
 
 
 def get_user_role(user_id):

@@ -14,7 +14,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -75,48 +75,6 @@ def ensure_robot_tables():
             )
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_robot_stage_log_user ON pilgrim.robot_stage_log(user_id)")
-        cur.execute("""
-            ALTER TABLE pilgrim.robot
-            ADD COLUMN IF NOT EXISTS craftsmanship_score INTEGER NOT NULL DEFAULT 0
-        """)
-        # Holds the most recent forge failure message so the UI can render a
-        # red banner + Retry button instead of silently completing with a
-        # placeholder image. Cleared on successful retry.
-        cur.execute("""
-            ALTER TABLE pilgrim.robot
-            ADD COLUMN IF NOT EXISTS build_error TEXT
-        """)
-        # 2026-04-30: 4 base stats per Narog. Every Narog starts at 5/100 in
-        # all four; Depot/Robotics-Lab upgrades will raise these (formula TBD,
-        # tracked in P1 bug filed for Luke). The dial is the % of *this* base
-        # the captain wants applied to each task slot.
-        for col in ('stat_exploration', 'stat_logistics', 'stat_research', 'stat_expeditions'):
-            cur.execute(f"""
-                ALTER TABLE pilgrim.robot
-                ADD COLUMN IF NOT EXISTS {col} INTEGER NOT NULL DEFAULT 5
-            """)
-        # 2026-04-30: Recalibration system — 72hr test window where the captain
-        # can re-pick components, re-roll the Flux image, or re-roll the Wan
-        # video. No on-chain tx until lock-in. Lifetime counters persist
-        # forever (caps in config.NAROG_REFORGE_LIFETIME_CAPS).
-        cur.execute("""
-            ALTER TABLE pilgrim.robot
-            ADD COLUMN IF NOT EXISTS test_window_started_at TIMESTAMP,
-            ADD COLUMN IF NOT EXISTS test_window_locked BOOLEAN NOT NULL DEFAULT TRUE,
-            ADD COLUMN IF NOT EXISTS repick_count INTEGER NOT NULL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS reroll_image_count INTEGER NOT NULL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS reroll_video_count INTEGER NOT NULL DEFAULT 0,
-            ADD COLUMN IF NOT EXISTS reforge_sv_spent INTEGER NOT NULL DEFAULT 0
-        """)
-        # Stale-detection timestamps. video is "stale" when image_updated_at
-        # is newer than video_updated_at — UI hides the stale video and
-        # surfaces the "Bring to Life" CTA for a paid Wan re-render. Never
-        # null current_image_url / video_url; keep them for history.
-        cur.execute("""
-            ALTER TABLE pilgrim.robot
-            ADD COLUMN IF NOT EXISTS image_updated_at TIMESTAMP,
-            ADD COLUMN IF NOT EXISTS video_updated_at TIMESTAMP
-        """)
         # Past Looks gallery — every paid reroll snapshots the prior state
         # here before overwriting. Captains can scroll their full visual
         # evolution. We store the URLs (GCS objects stay in the bucket) +
@@ -132,6 +90,26 @@ def ensure_robot_tables():
             )
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_robot_history_user ON pilgrim.robot_history(user_id, snapshot_at DESC)")
+    # Robot migration columns — existence-checked so cold starts never ALTER (nor grab an
+    # ACCESS EXCLUSIVE lock) when present. craftsmanship_score; build_error (forge-failure
+    # banner); 4 dial base stats (#1436, each starts 5/100); recalibration test-window +
+    # lifetime reforge counters; image/video stale-detection timestamps ("Bring to Life" CTA).
+    ensure_table_columns('pilgrim', 'robot', {
+        'craftsmanship_score': 'INTEGER NOT NULL DEFAULT 0',
+        'build_error': 'TEXT',
+        'stat_exploration': 'INTEGER NOT NULL DEFAULT 5',
+        'stat_logistics': 'INTEGER NOT NULL DEFAULT 5',
+        'stat_research': 'INTEGER NOT NULL DEFAULT 5',
+        'stat_expeditions': 'INTEGER NOT NULL DEFAULT 5',
+        'test_window_started_at': 'TIMESTAMP',
+        'test_window_locked': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        'repick_count': 'INTEGER NOT NULL DEFAULT 0',
+        'reroll_image_count': 'INTEGER NOT NULL DEFAULT 0',
+        'reroll_video_count': 'INTEGER NOT NULL DEFAULT 0',
+        'reforge_sv_spent': 'INTEGER NOT NULL DEFAULT 0',
+        'image_updated_at': 'TIMESTAMP',
+        'video_updated_at': 'TIMESTAMP',
+    })
 
 
 RARITY_WEIGHTS = {'legendary': 30, 'rare': 10, 'uncommon': 3, 'common': 1}

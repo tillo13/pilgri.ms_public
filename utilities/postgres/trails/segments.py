@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 from utilities.postgres.trails.config import TRAIL_LEVEL_THRESHOLDS, TRAIL_SPEED_MULTIPLIERS
 
 logger = logging.getLogger(__name__)
@@ -95,10 +95,9 @@ def ensure_trail_segments_table():
             )
         """)
 
-    # Migration: add from_landmark column if table existed before chain routing
+    # Migration: from_landmark (chain routing) — existence-checked (no lock when present).
     try:
-        with db_cursor(commit=True) as cur:
-            cur.execute("ALTER TABLE pilgrim.trail_segments ADD COLUMN IF NOT EXISTS from_landmark TEXT DEFAULT 'HOME'")
+        ensure_table_columns('pilgrim', 'trail_segments', {'from_landmark': "TEXT DEFAULT 'HOME'"})
     except Exception:
         pass
 
@@ -120,10 +119,9 @@ def ensure_trail_segments_table():
     except Exception:
         pass
 
-    # Migration: add drone_km column for Automation Drone passive trail building
+    # Migration: drone_km (Automation Drone passive trail building) — existence-checked.
     try:
-        with db_cursor(commit=True) as cur:
-            cur.execute("ALTER TABLE pilgrim.trail_segments ADD COLUMN IF NOT EXISTS drone_km DOUBLE PRECISION DEFAULT 0")
+        ensure_table_columns('pilgrim', 'trail_segments', {'drone_km': 'DOUBLE PRECISION DEFAULT 0'})
     except Exception:
         pass
 

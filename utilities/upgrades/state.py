@@ -8,7 +8,7 @@ private _complete_pending_upgrade write used by auto-completion.
 import logging
 from typing import Dict, Optional
 from config import UPGRADE_CATALOG
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -45,18 +45,11 @@ def ensure_upgrades_table() -> bool:
                 CREATE INDEX IF NOT EXISTS idx_player_upgrades_user
                 ON pilgrim.player_upgrades(user_id)
             """)
-            # Add ready_at column for build timers (if not exists)
-            cur.execute("""
-                ALTER TABLE pilgrim.player_upgrades
-                ADD COLUMN IF NOT EXISTS ready_at TIMESTAMP
-            """)
-            # Add pending_level column (level being upgraded to)
-            cur.execute("""
-                ALTER TABLE pilgrim.player_upgrades
-                ADD COLUMN IF NOT EXISTS pending_level INTEGER
-            """)
-            _upgrades_table_ensured = True
-            return True
+        # Existence-checked migration columns — build timers (ready_at) + in-progress
+        # target (pending_level). No ACCESS EXCLUSIVE lock when already present.
+        ensure_table_columns('pilgrim', 'player_upgrades', {'ready_at': 'TIMESTAMP', 'pending_level': 'INTEGER'})
+        _upgrades_table_ensured = True
+        return True
     except Exception as e:
         logger.error(f"Failed to ensure upgrades table: {e}")
         return False

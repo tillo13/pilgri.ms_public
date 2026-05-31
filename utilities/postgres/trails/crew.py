@@ -2,7 +2,7 @@
 
 import logging
 
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 from utilities.postgres.trails.segments import (
     ensure_trail_segments_table,
     add_km_to_trail,
@@ -55,12 +55,13 @@ def ensure_crew_missions_schema():
         ("scientist_mission_from", "TEXT DEFAULT 'HOME'"),
         ("aria_mission_from", "TEXT DEFAULT 'HOME'"),
     ]
-    # All statements are idempotent (ADD COLUMN / CREATE TABLE IF NOT EXISTS), so a
-    # single transaction is safe and never errors on already-present objects.
+    # Existence-checked: ensure_table_columns SELECTs information_schema first and only
+    # ALTERs genuinely-missing columns — so warm/cold instances never request an ACCESS
+    # EXCLUSIVE lock on the hot users table when these columns already exist (the original
+    # N+1 / lock-contention concern this function was written to avoid).
     try:
+        ensure_table_columns('pilgrim', 'users', dict(columns_to_add))
         with db_cursor(commit=True) as cur:
-            for col_name, col_type in columns_to_add:
-                cur.execute(f"ALTER TABLE pilgrim.users ADD COLUMN IF NOT EXISTS {col_name} {col_type};")
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS pilgrim.crew_missions (
                     id SERIAL PRIMARY KEY,

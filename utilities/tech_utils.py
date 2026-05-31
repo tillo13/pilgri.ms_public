@@ -16,7 +16,7 @@ from config import (
     TECH_CATALOG, SCIENTIST_BRANCHES, SCIENTIST_SECONDARY_BRANCHES,
     get_scientist_branch_bonuses, TECH_MIGRATION_MAP
 )
-from utilities.postgres.core import db_cursor
+from utilities.postgres.core import db_cursor, ensure_table_columns
 
 logger = logging.getLogger(__name__)
 _schema_ensured = False
@@ -49,11 +49,11 @@ def ensure_player_techs_table():
                 CREATE INDEX IF NOT EXISTS idx_player_techs_user
                 ON pilgrim.player_techs(user_id)
             """)
-            # Add branch_level column if table existed without it
-            cur.execute("""
-                ALTER TABLE pilgrim.player_techs
-                ADD COLUMN IF NOT EXISTS branch_level INTEGER DEFAULT 1
-            """)
+        # Migrate legacy tables that predate branch_level — existence-checked so it never
+        # ALTERs (nor locks) when the column is already present. Must run BEFORE the unique
+        # index below, which references branch_level.
+        ensure_table_columns('pilgrim', 'player_techs', {'branch_level': 'INTEGER DEFAULT 1'})
+        with db_cursor(commit=True) as cur:
             # Create unique constraint for ON CONFLICT to work (handles migration from old PK)
             cur.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_player_techs_unique

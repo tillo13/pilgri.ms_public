@@ -7,7 +7,7 @@ Four tables: bugs, bug_history (audit), bug_ideas (parking lot), bug_comments (t
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional
-from utilities.postgres.core import db_cursor, _fetchone, _fetchall
+from utilities.postgres.core import db_cursor, _fetchone, _fetchall, ensure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -64,8 +64,6 @@ def ensure_bug_tables():
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bugs_status ON pilgrim.bugs(status)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bugs_priority ON pilgrim.bugs(priority)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bugs_completed ON pilgrim.bugs(completed_at) WHERE completed_at IS NOT NULL")
-            # Migration: add screenshot_3_url column if missing
-            cur.execute("ALTER TABLE pilgrim.bugs ADD COLUMN IF NOT EXISTS screenshot_3_url TEXT")
 
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS pilgrim.bug_history (
@@ -108,6 +106,8 @@ def ensure_bug_tables():
                 )
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_bug_comments_bug ON pilgrim.bug_comments(bug_id)")
+        # Migration: screenshot_3_url — existence-checked (no lock when already present).
+        ensure_table_columns('pilgrim', 'bugs', {'screenshot_3_url': 'TEXT'})
     except Exception as e:
         logger.error(f"Failed to ensure bug tables: {e}")
 
