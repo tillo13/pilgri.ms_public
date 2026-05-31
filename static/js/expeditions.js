@@ -6,6 +6,22 @@ let map, expeditionMarkers = [], baseMarker, landmarksData = [], baseCoords = { 
 const expeditionTimers = new Map(), discoveryUpdateTimers = new Map();
 let rangeCircle = null;  // Leaflet circle for vehicle range overlay
 
+// #1485: plot longitudes RELATIVE TO THE CAPTAIN'S BASE via shortest-arc, so a point just
+// past the lon 0/360 seam (e.g. a western frontier dot at lon 350 when base is lon 5) renders
+// just-west of base (lon -10) instead of way off on the far/NE edge. This is the display-layer
+// twin of the server-side _lon_delta shortest-arc fix (utilities/postgres/map.py) — the same bug
+// (flat longitude vs. shortest-arc) lived in both the data and the render. Leaflet plots
+// out-of-[-180,180] longitudes fine because the Mars tile layer wraps (worldCopyJump). Exposed
+// on window so expeditions-origin.js (signal markers) plots on the SAME normalized frame.
+function plotMapLon(lon) {
+    if (lon == null || !isFinite(lon)) return lon;
+    const d = ((lon - baseCoords.longitude + 540) % 360) - 180;  // shortest signed arc, (-180,180]
+    return baseCoords.longitude + d;
+}
+function plotMapLL(lat, lon) { return [lat, plotMapLon(lon)]; }
+window.plotMapLL = plotMapLL;
+window.plotMapLon = plotMapLon;
+
 
 // Get CSS variable values for Leaflet (which needs actual color strings)
 function getCSSColor(varName) {
@@ -36,7 +52,7 @@ function initializeMap() {
     if (!mapEl) return;
 
     // Zoom level 5 for closer view centered on user's base
-    map = L.map('mars-map', { center: [baseCoords.latitude, baseCoords.longitude], zoom: 5, minZoom: 1, maxZoom: 6 });
+    map = L.map('mars-map', { center: [baseCoords.latitude, baseCoords.longitude], zoom: 5, minZoom: 1, maxZoom: 6, worldCopyJump: true });
     L.tileLayer('https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-2/all/{z}/{x}/{y}.png', { attribution: 'Mars: NASA/JPL', minZoom: 1, maxZoom: 6 }).addTo(map);
     // Base marker: uses CSS variable colors
     const baseColor = getCSSColor('--color-marker-base');
@@ -66,9 +82,9 @@ function applyDeepLinkFocus() {
         switchMainTab('map');
     }
 
-    map.setView([lat, lon], zoom);
+    map.setView(plotMapLL(lat, lon), zoom);
 
-    const highlight = L.circleMarker([lat, lon], {
+    const highlight = L.circleMarker(plotMapLL(lat, lon), {
         radius: 18,
         fillColor: '#facc15',
         color: '#f97316',
@@ -124,7 +140,7 @@ function addExpeditionMarkers() {
 
     landmarksData.forEach((l, i) => {
         const disc = l.is_discovered;
-        const m = L.circleMarker([l.latitude, l.longitude], {
+        const m = L.circleMarker(plotMapLL(l.latitude, l.longitude), {
             radius: 8,
             fillColor: disc ? visitedColor : unexploredColor,
             color: disc ? visitedBorder : unexploredBorder,
@@ -613,7 +629,7 @@ function zoomToLandmark(name) {
     if (idx < 0 || !map) return;
 
     const l = landmarksData[idx];
-    map.setView([l.latitude, l.longitude], 6, { animate: true });
+    map.setView(plotMapLL(l.latitude, l.longitude), 6, { animate: true });
 
     // Flash the marker
     const marker = expeditionMarkers[idx];

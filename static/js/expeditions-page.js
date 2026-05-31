@@ -233,7 +233,7 @@ function returnVisit(exp) {
 
     if (typeof map !== 'undefined' && exp.lat && exp.lon) {
         setTimeout(() => {
-            map.setView([exp.lat, exp.lon], 5);
+            map.setView((window.plotMapLL || ((a, b) => [a, b]))(exp.lat, exp.lon), 5);  // #1485 base-relative
             if (typeof expeditionMarkers !== 'undefined') {
                 expeditionMarkers.forEach(m => {
                     const ll = m.getLatLng();
@@ -356,7 +356,7 @@ async function showLedgerDetail(exp) {
     });
 
     if (exp.lat && exp.lon && typeof map !== 'undefined') {
-        map.setView([exp.lat, exp.lon], 5);
+        map.setView((window.plotMapLL || ((a, b) => [a, b]))(exp.lat, exp.lon), 5);  // #1485 base-relative
     }
 }
 

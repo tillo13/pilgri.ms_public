@@ -310,7 +310,7 @@ async function recallExpedition(expeditionId, btn) {
 
 function showOnMap(l) {
     if (!map) return;
-    map.setView([l.latitude, l.longitude], 4);
+    map.setView((window.plotMapLL || ((a, b) => [a, b]))(l.latitude, l.longitude), 4);  // #1485 base-relative
     expeditionMarkers.forEach(m => {
         const ll = m.getLatLng();
         if (Math.abs(ll.lat - l.latitude) < 0.001 && Math.abs(ll.lng - l.longitude) < 0.001) {

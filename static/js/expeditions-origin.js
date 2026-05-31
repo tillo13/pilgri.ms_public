@@ -78,8 +78,13 @@ async function addOriginSiteMarkers() {
             const fillColor = originColor;
             const borderColor = originBorder;
 
+            // #1485: plot signal/origin sites on the SAME base-relative frame as the
+            // frontier dots (window.plotMapLL from expeditions.js), so the destinations the
+            // captain is steering toward sit where they actually are relative to base — not
+            // flung to the far edge across the lon 0/360 seam.
+            const pll = window.plotMapLL || ((lat, lon) => [lat, lon]);
             // Add outer pulse ring to ALL origin sites (ARIA-style glow)
-            const pulseRing = L.circleMarker([site.latitude, site.longitude], {
+            const pulseRing = L.circleMarker(pll(site.latitude, site.longitude), {
                 radius: 18,
                 fillColor: '#ffffff',
                 color: '#fbbf24',
@@ -92,7 +97,7 @@ async function addOriginSiteMarkers() {
             originSiteMarkers.push(pulseRing);
 
             // Main marker on top - this one is clickable, ALL get the glow
-            const marker = L.circleMarker([site.latitude, site.longitude], {
+            const marker = L.circleMarker(pll(site.latitude, site.longitude), {
                 radius: 12,
                 fillColor: fillColor,
                 color: borderColor,

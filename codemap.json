@@ -3553,6 +3553,9 @@
   "static/js/expeditions.js": {
     "description": "EXPEDITIONS.JS - Mars expedition system",
     "exports": [
+      "plotMapLon",
+      "d",
+      "plotMapLL",
       "getCSSColor",
       "initializeMap",
       "applyDeepLinkFocus",
@@ -3564,10 +3567,7 @@
       "theta",
       "splitRingAtAntimeridian",
       "norm",
-      "buildMarkerPopup",
-      "slotsAvailable",
-      "fetchLandmarkCost",
-      "updateAllExpeditionCosts"
+      "buildMarkerPopup"
     ],
     "keywords": "mars map, leaflet, landmarks, expedition launch, fog of war, vehicle select"
   },
@@ -3674,7 +3674,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

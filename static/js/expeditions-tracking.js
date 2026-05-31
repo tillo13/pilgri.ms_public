@@ -159,7 +159,7 @@ function addRoverMarker(expeditionId, lat, lon, outboundProgress) {
         </div>
     `;
 
-    const marker = L.marker([lat, lon], { icon: roverIcon, zIndexOffset: 1000 }).addTo(map);
+    const marker = L.marker((window.plotMapLL || ((a, b) => [a, b]))(lat, lon), { icon: roverIcon, zIndexOffset: 1000 }).addTo(map);  // #1485 base-relative
     marker.bindPopup(popupHtml);
     roverMarkers.set(expeditionId, marker);
 }
@@ -175,8 +175,9 @@ function addRouteLine(expeditionId, destLat, destLon) {
 
     // Create dashed animated line using CSS variable
     const routeColor = getCSSColor('--color-marker-route');
+    const _pll = window.plotMapLL || ((a, b) => [a, b]);  // #1485 base-relative
     const line = L.polyline(
-        [[baseCoords.latitude, baseCoords.longitude], [destLat, destLon]],
+        [_pll(baseCoords.latitude, baseCoords.longitude), _pll(destLat, destLon)],
         {
             color: routeColor,
             weight: 3,
@@ -207,7 +208,7 @@ function addDestinationMarker(expeditionId, destLat, destLon, hasArrived) {
         iconAnchor: [14, 14]
     });
 
-    const marker = L.marker([destLat, destLon], { icon: destIcon, zIndexOffset: 900 }).addTo(map);
+    const marker = L.marker((window.plotMapLL || ((a, b) => [a, b]))(destLat, destLon), { icon: destIcon, zIndexOffset: 900 }).addTo(map);  // #1485 base-relative
     marker.bindPopup(() => buildDestinationPopup(expeditionId));
     destinationMarkers.set(expeditionId, marker);
 }

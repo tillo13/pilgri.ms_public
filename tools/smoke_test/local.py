@@ -690,6 +690,25 @@ def test_ensure_columns_no_lock():
     return True
 
 
+@test("Expedition map plots base-relative longitude across the 0/360 seam (#1485)", tier=1, features=['expeditions'], mode='local')
+def test_map_base_relative_lon():
+    """#1485 reopen: frontier/signal dots just past the lon 0/360 seam rendered on the far
+    (NE) edge instead of adjacent to the captain's base. Fix = shortest-arc base-relative
+    longitude normalization (plotMapLon) on every plotted point + worldCopyJump. Lock that
+    the marker layers use it and it isn't silently reverted to raw [lat, lon]."""
+    import os
+    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    exp = open(os.path.join(base, 'static/js/expeditions.js')).read()
+    org = open(os.path.join(base, 'static/js/expeditions-origin.js')).read()
+    if 'function plotMapLon' not in exp or 'worldCopyJump: true' not in exp:
+        return "expeditions.js lost the base-relative plotMapLon helper or worldCopyJump (#1485 regression)"
+    if 'plotMapLL(l.latitude, l.longitude)' not in exp:
+        return "frontier landmark markers no longer plotted base-relative (#1485 regression)"
+    if 'pll(site.latitude, site.longitude)' not in org:
+        return "origin/signal markers no longer plotted base-relative (#1485 regression)"
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals
