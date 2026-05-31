@@ -627,6 +627,48 @@ def test_narog_dial_effects():
     return True
 
 
+@test("landmark_discoveries.id exists so record_landmark_discovery + Exploration event work", tier=1, features=['narog'], mode='local')
+def test_landmark_discovery_id():
+    """Latent bug: landmark_discoveries had no `id`, but record_landmark_discovery does
+    RETURNING id, (xmax=0) AS is_new (Bug #21 Exploration +1.0 dedup, integer source_id).
+    Every call threw 'column id does not exist' → no new landmarks recorded + event never
+    fired. Lock the surrogate id (and that the writer ensures it)."""
+    import inspect
+    from utilities.postgres.core import db_cursor
+    import utilities.postgres.expeditions as e
+    e.ensure_landmark_discovery_id()
+    with db_cursor() as cur:
+        cur.execute("SELECT data_type FROM information_schema.columns WHERE table_schema='pilgrim' AND table_name='landmark_discoveries' AND column_name='id'")
+        row = cur.fetchone()
+    if not row or row['data_type'] not in ('integer', 'bigint'):
+        return "landmark_discoveries.id missing/non-integer — RETURNING id will fail again"
+    if 'ensure_landmark_discovery_id()' not in inspect.getsource(e.record_landmark_discovery):
+        return "record_landmark_discovery no longer ensures the id column"
+    return True
+
+
+@test("Nav stats item-count uses real inventory source, not the phantom claimed_discoveries table", tier=1, features=['depot'], mode='local')
+def test_nav_stats_items_source():
+    """Latent bug: /api/nav/stats counted FROM pilgrim.claimed_discoveries — a table that
+    never existed — so the endpoint erred on every call. Lock: it now counts the real
+    inventory (unanalyzed claimed expedition_discoveries + origin claims) and the phantom
+    table name is gone. (Reads the source file directly — api_nav_stats is route-decorated,
+    so inspect.getsource returns the wrapper, not the body.)"""
+    import os
+    app_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'app.py')
+    with open(app_path) as f:
+        text = f.read()
+    start = text.find('def api_nav_stats(')
+    if start == -1:
+        return "api_nav_stats not found in app.py"
+    body = text[start:text.find('\ndef ', start + 1)]
+    if 'FROM pilgrim.claimed_discoveries' in body:
+        return "api_nav_stats still queries the non-existent pilgrim.claimed_discoveries table"
+    if 'expedition_discoveries' not in body or 'claimed_by_user' not in body:
+        return "api_nav_stats no longer counts the real claimed-inventory source"
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals

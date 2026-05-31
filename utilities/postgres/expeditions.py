@@ -15,6 +15,29 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 _SIGNAL_CLAIM_COLUMNS_ENSURED = False
+_LANDMARK_ID_ENSURED = False
+
+
+def ensure_landmark_discovery_id():
+    """Idempotently give pilgrim.landmark_discoveries a surrogate `id`.
+
+    The table's natural key is (user_id, landmark_name) — it never had an `id`
+    column. When Bug #21 added `RETURNING id, (xmax = 0) AS is_new` to
+    record_landmark_discovery (for the first-discovery Exploration +1.0 event,
+    deduped via the integer source_id in captain_stat_events), every INSERT
+    started raising 'column "id" does not exist' — so since then NO new landmark
+    was recorded AND the Exploration event never fired. Adding the SERIAL column
+    (backfills existing rows) makes RETURNING id valid and the dedup work.
+    """
+    global _LANDMARK_ID_ENSURED
+    if _LANDMARK_ID_ENSURED:
+        return
+    try:
+        with db_cursor(commit=True) as cur:
+            cur.execute("ALTER TABLE pilgrim.landmark_discoveries ADD COLUMN IF NOT EXISTS id SERIAL")
+        _LANDMARK_ID_ENSURED = True
+    except Exception as e:
+        logger.error(f"Failed to ensure landmark_discoveries.id: {e}")
 
 def ensure_signal_claim_columns():
     """Idempotently add Phase 2.3b columns to pilgrim.expeditions.
@@ -367,6 +390,7 @@ def record_landmark_discovery(user_id: int, landmark_name: str, landmark_type: s
     Bug #21 callers use is_new + landmark_id for the Exploration +1.0 event;
     revisits dedupe via the (same) landmark_id source_id in captain_stat_events.
     """
+    ensure_landmark_discovery_id()
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""

@@ -1239,8 +1239,20 @@ def api_nav_stats():
     with db_cursor() as cur:
         cur.execute("SELECT COUNT(*) as cnt FROM pilgrim.expeditions WHERE user_id = %s AND status = 'completed'", (g.user_id,))
         expeditions = cur.fetchone()['cnt']
-        cur.execute("SELECT COUNT(*) as cnt FROM pilgrim.claimed_discoveries WHERE user_id = %s", (g.user_id,))
+        # Inventory item count = distinct UNANALYZED claimed discovery stacks (mirrors
+        # /colony inventory via get_claimed_discoveries) + claimed Origin Site legendaries.
+        # pilgrim.claimed_discoveries never existed — claimed finds live in expedition_discoveries,
+        # so this endpoint had been erroring on every call until now.
+        cur.execute("""
+            SELECT COUNT(DISTINCT ed.discovery_item_id) AS cnt
+            FROM pilgrim.expedition_discoveries ed
+            JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
+            WHERE e.user_id = %s AND ed.claimed_by_user = true
+              AND (ed.analyzed = false OR ed.analyzed IS NULL)
+        """, (g.user_id,))
         items = cur.fetchone()['cnt']
+        cur.execute("SELECT COUNT(*) AS cnt FROM pilgrim.site_claims WHERE user_id = %s AND site_type = 'origin'", (g.user_id,))
+        items += cur.fetchone()['cnt']
 
     return jsonify({
         'success': True,
