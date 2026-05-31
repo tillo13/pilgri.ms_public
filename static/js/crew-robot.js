@@ -540,8 +540,8 @@
     const DIAL_DESCRIPTIONS = {
         exploration: 'Speeds up autonomous trail building while you’re away. The base Exploration stat × this dial % = your Narog’s effective trail bonus.',
         logistics:   'Speeds up Depot and Robotics-Lab build times. Higher allocation = bigger reduction on every active build.',
-        research:    'Helps the Scientist run experiments faster. Boosts SV/hr and accelerates active research.',
-        expeditions: 'Sends your Narog on solo scout runs while you’re offline — brings back shards + discoveries from beyond your current range.',
+        research:    'Speeds up tech research while assigned — the base Research stat × this dial % shortens active and future research timers.',
+        expeditions: 'Solo scout runs while you’re offline. Activates once the Narog’s range is extended (coming soon).',
     };
 
     let dialState = null;          // { key: pct } — shared across rows

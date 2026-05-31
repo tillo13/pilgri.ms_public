@@ -262,4 +262,18 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
     except Exception as e:
         logger.warning(f"bond effect aggregation failed user={user_id}: {e}")
 
+    # #1492: Narog "logistics" dial → live Depot/equipment build-speed bonus.
+    # Stacks with Logistics stat × Scientist ENG × Maintenance Drone × ARIA bond
+    # (independent lever, per Luke robot-crew §5). Identity 1.0 unless a COMPLETE
+    # Narog has logistics allocated, so it's safe to multiply unconditionally.
+    # NEW builds pick this up here; in-progress builds are rescaled on dial change
+    # by recompute_in_progress_for_dial() (robot_dial.py).
+    try:
+        from utilities.postgres.robot_dial import get_robot_dial_multipliers
+        dial_mult = get_robot_dial_multipliers(user_id).get('build_time_mult', 1.0)
+        if dial_mult != 1.0:
+            effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * dial_mult
+    except Exception:
+        pass
+
     return effects

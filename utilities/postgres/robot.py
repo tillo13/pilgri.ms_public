@@ -812,13 +812,22 @@ def set_robot_dial(user_id: int, dial: Dict[str, int]) -> Dict[str, Any]:
 
     ensure_robot_tables()
     with db_cursor(commit=True) as cur:
+        # #1492: capture the OLD dial so we can rescale in-progress work to the new
+        # allocation (Luke: "10 hours left → 8 hours left" when you move the dial).
+        cur.execute("SELECT dial FROM pilgrim.robot WHERE user_id = %s", (user_id,))
+        prev = cur.fetchone()
+        old_dial = dict(prev['dial']) if prev and prev.get('dial') else {}
         cur.execute("""
             UPDATE pilgrim.robot SET dial = %s::jsonb, updated_at = NOW()
             WHERE user_id = %s
             RETURNING dial
         """, (json.dumps(cleaned), user_id))
         row = cur.fetchone()
-        return dict(row['dial']) if row else cleaned
+    # Apply the change to in-progress builds/research live (separate transaction).
+    if row:
+        from utilities.postgres.robot_dial import recompute_in_progress_for_dial
+        recompute_in_progress_for_dial(user_id, old_dial, cleaned)
+    return dict(row['dial']) if row else cleaned
 
 
 class ReforgeError(Exception):

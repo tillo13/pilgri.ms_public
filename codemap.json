@@ -2212,6 +2212,13 @@
       "set_robot_dial — Update the robot's role dial. Each value must be a non-negative multiple of 5"
     ]
   },
+  "utilities/postgres/robot_dial.py": {
+    "description": "Narog dial → real, live game effects (#1492).",
+    "exports": [
+      "get_robot_dial_multipliers — Time multipliers (≤1.0 = faster) the dial currently grants. Identity",
+      "recompute_in_progress_for_dial — On a dial change, rescale the REMAINING time of in-progress work so the"
+    ]
+  },
   "utilities/postgres/shop.py": {
     "description": "Shop, transactions, infrastructure, upgrades, and action token database operations.",
     "exports": [
@@ -3666,7 +3673,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3682,7 +3689,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

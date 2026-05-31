@@ -591,7 +591,7 @@
                 {% if log_locked %}<span class="na-row-lock">🔒</span>{% endif %}
             </div>
             <div class="na-slot"></div>
-            <div class="na-row-desc">{% if log_locked %}Unlocks at Narog Foundry Lv3{% else %}Boosts trail planning + supply runs.{% endif %}</div>
+            <div class="na-row-desc">{% if log_locked %}Unlocks at Narog Foundry Lv3{% else %}Speeds up Depot build times.{% endif %}</div>
         </div>
         {# Slot 3: Research — unlocks at Narog Foundry L6 (#1436) #}
         <div class="na-card{% if res_locked %} is-locked{% endif %}" data-key="research" data-locked="{{ 'true' if res_locked else 'false' }}" data-unlock-foundry="6" data-base-stat="{{ sr }}">
@@ -613,7 +613,7 @@
                 {% if exp_locked %}<span class="na-row-lock">🔒</span>{% endif %}
             </div>
             <div class="na-slot"></div>
-            <div class="na-row-desc">{% if exp_locked %}Unlocks at Narog Foundry Lv9{% else %}Boosts expedition payouts.{% endif %}</div>
+            <div class="na-row-desc">{% if exp_locked %}Unlocks at Narog Foundry Lv9{% else %}Solo scout runs — activates once Narog range is extended (coming soon).{% endif %}</div>
         </div>
         </div>
         <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Fully allocated · 100%</div>

@@ -484,7 +484,11 @@ def start_research(user_id: int, branch: str, tech_key: str, session) -> Dict[st
     base_cost = tech.get('cost_sv', 4000)
     base_seconds = tech.get('research_time_seconds', 86400)
     adjusted_cost = int(base_cost * cost_mult)
-    adjusted_duration = int(base_seconds / speed_mult)
+    # #1492: Narog "research" dial speeds research (≤1.0 = faster). Same factor the
+    # tech-status preview applies, so the stored duration matches what was shown.
+    from utilities.postgres.robot_dial import get_robot_dial_multipliers
+    research_dial_mult = get_robot_dial_multipliers(user_id).get('research_time_mult', 1.0)
+    adjusted_duration = int(base_seconds / speed_mult * research_dial_mult)
 
     # Insert research record with branch_level
     ensure_player_techs_table()
@@ -694,6 +698,10 @@ def get_user_tech_status(user_id: int) -> Dict[str, Any]:
     bonuses = get_scientist_branch_bonuses(scientist_key) if scientist_key else {}
     branch_levels = _get_user_branch_levels(user_id)
     active = _get_active_research(user_id)
+    # #1492: Narog "research" dial speeds tech research. Fetched ONCE here (not per
+    # tech) so the previewed research_time_seconds matches what start_research stores.
+    from utilities.postgres.robot_dial import get_robot_dial_multipliers
+    research_dial_mult = get_robot_dial_multipliers(user_id).get('research_time_mult', 1.0)
 
     branches = {}
     for branch_key, branch_data in TECH_CATALOG.items():
@@ -725,7 +733,7 @@ def get_user_tech_status(user_id: int) -> Dict[str, Any]:
             scaled_cost = get_tech_cost_at_level(base_cost, current_level)
             base_seconds = get_research_time_at_level(current_level)
             adjusted_cost = int(scaled_cost * cost_mult)
-            adjusted_duration = int(base_seconds / speed_mult)
+            adjusted_duration = int(base_seconds / speed_mult * research_dial_mult)  # #1492 Narog research dial
 
             # Scale effects based on branch level
             base_effects = tech_data.get('effects', {})

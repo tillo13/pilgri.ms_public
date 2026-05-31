@@ -11,6 +11,17 @@ from utilities.aria.relationship import get_aria_relationship_tier, get_spatial_
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_dial_effects(user_id: int) -> Optional[dict]:
+    """#1492: the Narog dial's live time multipliers (logistics→build, research→research),
+    so ARIA can answer what the dial does. None on any failure (never breaks the snapshot)."""
+    try:
+        from utilities.postgres.robot_dial import get_robot_dial_multipliers
+        return get_robot_dial_multipliers(user_id)
+    except Exception:
+        return None
+
+
 def analyze_playstyle(user_id: int) -> dict:
     """
     Analyze captain's playstyle for personalized recommendations.
@@ -746,6 +757,8 @@ def load_colony_snapshot(user_id: int) -> dict:
                     1 for s in (robot_data.get('stages') or []) if s.get('status') == 'complete'
                 ),
                 'dial': (robot_data.get('robot') or {}).get('dial'),
+                # #1492: live dial effects so ARIA can explain what the dial DOES.
+                'dial_effects': _safe_dial_effects(user_id),
                 'cinematic_played': bool(
                     (robot_data.get('robot') or {}).get('cinematic_played')
                 ),
@@ -912,9 +925,17 @@ CONTEXT: These expeditions completed while the captain was offline. When they as
             )
         elif robot.get('is_complete'):
             name = robot.get('name') or 'their robot'
+            de = robot.get('dial_effects') or {}
+            eff = ''
+            if de:
+                b, r = de.get('build_time_mult', 1.0), de.get('research_time_mult', 1.0)
+                eff = (f" Dial effects (live): logistics → build time ×{b:.3f} "
+                       f"({(1 - b) * 100:.1f}% faster), research → research time ×{r:.3f} "
+                       f"({(1 - r) * 100:.1f}% faster), exploration → passive trail km/hr, "
+                       f"expeditions inert until range extended (#1269).")
             parts.append(
                 f"ROBOT CREW MEMBER: '{name}' is COMPLETE — all 5 stages forged. "
-                f"Lab Lv{robot.get('lab_level', 0)}. Role dial: {robot.get('dial')}."
+                f"Lab Lv{robot.get('lab_level', 0)}. Role dial: {robot.get('dial')}.{eff}"
             )
         else:
             stage = robot.get('visual_stage', 0)

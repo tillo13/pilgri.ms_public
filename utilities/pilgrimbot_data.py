@@ -505,6 +505,20 @@ def query_player_data(category, user_id):
             dial = robot.get('dial') or {}
             if dial:
                 lines.append(f"Robot Allocation: exploration {dial.get('exploration', 0)}% · logistics {dial.get('logistics', 0)}% · research {dial.get('research', 0)}% · expeditions {dial.get('expeditions', 0)}%")
+                # #1492: report what the dial actually DOES (live effects), so PB never
+                # has to guess. exploration→trails, logistics→build speed, research→research speed.
+                try:
+                    from utilities.postgres.robot_dial import get_robot_dial_multipliers
+                    dm = get_robot_dial_multipliers(user_id)
+                    b, r = dm.get('build_time_mult', 1.0), dm.get('research_time_mult', 1.0)
+                    lines.append(
+                        f"Dial effects (live): logistics → Depot/equipment build time ×{b:.3f} "
+                        f"({(1 - b) * 100:.1f}% faster) · research → tech research time ×{r:.3f} "
+                        f"({(1 - r) * 100:.1f}% faster) · exploration → passive trail km/hr · "
+                        f"expeditions → inert until Narog range extended (#1269). Moving the dial also "
+                        f"rescales in-progress builds/research immediately.")
+                except Exception:
+                    pass
             if data.get('is_complete'):
                 lines.append("CONSTRUCTION COMPLETE — robot is ready to deploy.")
                 lines.append(f"Cinematic played: {'yes' if robot.get('cinematic_played') else 'NO (build-complete celebration pending)'}")

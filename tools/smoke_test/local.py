@@ -590,6 +590,43 @@ def test_build_time_single_source():
     return True
 
 
+@test("Narog dial drives live build/research speed + in-progress rescale (#1492)", tier=1, features=['narog', 'depot'], mode='local')
+def test_narog_dial_effects():
+    """Bug #1492: the Narog 'logistics' dial speeds Depot/equipment builds and 'research'
+    speeds tech research — both live (in-progress work rescales on dial change). Locks:
+    (1) the multiplier curve (Luke §5: -10% at effective 100, identity at 0),
+    (2) get_robot_dial_multipliers is safe (identity, never throws) for a no-robot user,
+    (3) the wiring is present in effects.py, tech_utils.py, and set_robot_dial.
+    """
+    import inspect
+    from utilities.postgres.robot_dial import _build_mult, _research_mult, get_robot_dial_multipliers
+
+    # 1) Curve: base 100 + dial 100% → ×0.90 (10% faster); dial 0 → identity 1.0
+    if abs(_build_mult({'logistics': 100}, 100) - 0.90) > 1e-9:
+        return f"logistics curve drift: {_build_mult({'logistics':100},100)} (expected 0.90)"
+    if abs(_research_mult({'research': 100}, 100) - 0.90) > 1e-9:
+        return f"research curve drift: {_research_mult({'research':100},100)} (expected 0.90)"
+    if _build_mult({'logistics': 0}, 100) != 1.0 or _research_mult({}, 100) != 1.0:
+        return "dial at 0 must be identity (1.0)"
+
+    # 2) Safe identity for a user with no complete robot (id 1 = system/no robot)
+    m = get_robot_dial_multipliers(1)
+    if set(m) != {'build_time_mult', 'research_time_mult'}:
+        return f"get_robot_dial_multipliers keys wrong: {sorted(m)}"
+
+    # 3) Wiring present (would silently no-op if a refactor dropped the import/call)
+    from utilities.upgrades import effects
+    from utilities import tech_utils
+    from utilities.postgres import robot as robot_mod
+    if 'get_robot_dial_multipliers' not in inspect.getsource(effects):
+        return "effects.py no longer applies the Narog dial build_time_mult (#1492 regression)"
+    if 'research_dial_mult' not in inspect.getsource(tech_utils):
+        return "tech_utils.py no longer applies the Narog research dial (#1492 regression)"
+    if 'recompute_in_progress_for_dial' not in inspect.getsource(robot_mod.set_robot_dial):
+        return "set_robot_dial no longer triggers in-progress rescale (#1492 regression)"
+    return True
+
+
 @test("Reverse-unlocks index round-trips against level_requires (#1436)", tier=1, features=['config', 'narog'], mode='local')
 def test_level_unlocks_reverse_index():
     """Bug #1436 reverse pointers — Habitat / Greenhouse / Research Station modals
