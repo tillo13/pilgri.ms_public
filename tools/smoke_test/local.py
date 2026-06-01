@@ -2563,7 +2563,7 @@ def test_pilgrimbot_table_coverage():
         'commander_quotes':           'Static seed content; not player state',
         'mars_mission_messages':      'Static seed content (208 ARG quotes); not player state',
         # Internal idempotency / metadata
-        'captain_stats_meta':         'Bookkeeping for V2 cutover (go_live_at etc.); event data is captain_stat_events (#1474 to wire)',
+        'captain_stats_meta':         'Bookkeeping for V2 cutover (go_live_at etc.); event data is captain_stat_events (wired via query_player_data captain_stats, #1474)',
         'used_action_tokens':         'Replay-attack idempotency; pure internal',
         'generated_images':           'Admin/kumori-journal blob storage; not gameplay state',
     }
@@ -2571,7 +2571,8 @@ def test_pilgrimbot_table_coverage():
     # (d) PENDING: real player-facing tables that SHOULD be PB-aware but aren't yet —
     # each MUST have a filed bug. Adding to this list without a ticket is forbidden.
     _PB_PENDING = {
-        'captain_stat_events':        '#1474 (P2): captain_stat_events event log + per-source contributions',
+        # captain_stat_events is now COVERED — query_player_data 'captain_stats' category reads it
+        # per-source (#1474, shipped). (Was pending here.)
         # puzzle_fragments + user_puzzle_fragments are now PB-covered via the
         # query_player_data 'puzzle_fragments' category + math_registry (#1448/#1475).
         # puzzle_solvers / signal_puzzles are the SEPARATE Signal-puzzle (riddle/solver)
@@ -2678,6 +2679,33 @@ def test_pilgrimbot_map_geography():
             f.get('name') == 'Fog-of-War Visibility Radius'
             for f in relevant.get('formulas', [])
         ), f"math_registry keyword search must surface fog_of_war for: {question!r}"
+    return True
+
+
+@test("PilgrimBot: captain_stats per-source wired (#1474)", tier=1, features=['api'], mode='local')
+def test_pilgrimbot_captain_stats():
+    """#1474: PB was blind to the captain_stat_events V2 event log — 'why did my exploration go
+    up last sol?' hallucinated. Locks: (a) the captain_stats category is wired, (b) the per-source
+    breakdown + recent window + growth rates render, (c) NO internal jargon (source_kind/delta)
+    leaks to player text + a human source label DOES appear, (d) math_registry surfaces the V2
+    progression formulas for natural-language stat questions."""
+    from utilities.pilgrimbot_data import PLAYER_DATA_TOOL, query_player_data
+    enum = PLAYER_DATA_TOOL['input_schema']['properties']['category']['enum']
+    assert 'captain_stats' in enum, "captain_stats must be in query_player_data enum"
+    out = query_player_data('captain_stats', 45)
+    assert '=== CAPTAIN STATS BREAKDOWN ===' in out, "missing header"
+    assert 'WHERE EACH STAT CAME FROM' in out, "missing per-source breakdown section"
+    assert 'LAST SOL OF ACTIVITY' in out, "missing recent-window section"
+    assert 'GROWTH RATES' in out, "missing growth-rates section"
+    assert any(s in out for s in ('Exploration', 'Leadership', 'Strategy')), "no stat names rendered"
+    assert ('Crew missions' in out or 'Kilometers traveled' in out), "source_kind not mapped to a human label"
+    assert 'source_kind' not in out and 'delta' not in out, "internal jargon leaked to player-facing text"
+    from utilities.pilgrimbot_context import find_relevant_math
+    for question in ("why did my exploration go up last sol", "what is contributing to my strategy stat"):
+        relevant = find_relevant_math(question)
+        assert relevant and any('V2 Growth Formulas' in (f.get('name') or '')
+                                for f in relevant.get('formulas', [])), \
+            f"math_registry must surface captain_stats progression_v2 for: {question!r}"
     return True
 
 

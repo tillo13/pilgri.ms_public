@@ -21,7 +21,8 @@ PLAYER_DATA_TOOL = {
                 "enum": ["balance", "shard_generation", "sv_sources", "upgrades", "infrastructure", "building_queue",
                          "expeditions", "research", "crew_missions", "discoveries",
                          "signal_claims", "puzzle_fragments", "overview", "leaderboard", "robot",
-                         "discovery_catalog", "discovery_analytics", "discovery_ledger", "discovery_codex", "map_geography"],
+                         "discovery_catalog", "discovery_analytics", "discovery_ledger", "discovery_codex", "map_geography",
+                         "captain_stats"],
                 "description": "Which data category to fetch"
             },
             "user_id": {
@@ -54,6 +55,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   discovery_ledger — Per-user discovery LEDGER (item-level granularity): last legendary/rare/uncommon find with item_name + destination + distance_km + unlocked_at timestamp + claim status, plus per-rarity totals and the last 15 discoveries chronologically. USE THIS when user asks "when did I last find a legendary/rare?", "what was my most recent discovery?", "show me my finds over time", or any per-item question with timestamps.
   discovery_codex — The Specimen Codex (Collection): how many of the distinct discovery items the captain has FOUND (X/total) + per-category completion (Mineral/Biological/Data/Artifact/Equipment, live counts) + nearest codex milestone + its one-time SV reward. FOUND = ever CLAIMED, permanent (survives sharding) — DISTINCT from sv_sources "Collection Milestones" which counts items ANALYZED/sharded. ALSO reports SIGNAL RELICS: the 14 Origin Site legendaries are a SEPARATE legendary axis (X/14, NOT in the discovery catalog, grant no codex SV) — so the game has 3 discovery legendaries + 14 Signal Relics = 17 legendaries total. USE THIS when a captain asks "how many items have I collected/found", "codex/collection completion", "what have I found", "category completion", "how close am I to completing my collection", "how many Signal Relics", "how many legendaries are there".
   map_geography     — Mars destination geography: total named landmarks on the planet (pilgrim.mars_mappings), total origin sites, captain's home coords, current fog-of-war radius + formula, landmarks inside fog right now, unique landmarks visited, total trips taken. USE THIS for ANY question about "how many destinations", "how many can I visit", "how big is the map", "what can I see", "places I've been".
+  captain_stats     — Captain stat (Leadership/Strategy/Exploration/Logistics/Charisma) PER-SOURCE breakdown from the live progression history: each stat's current value AND exactly which activities built it (sol ticks, crew missions, expeditions, km traveled, landmarks, upgrades, ARIA bonds, plus starting/retro credit), the last sol (24h) of stat gains, the growth rate per activity, and the World-1 cap of 75. USE THIS when a captain asks "why did my exploration/leadership/strategy go up?", "what is contributing to my strategy stat?", "where did my captain points come from?", "show my recent stat gains", "why is my stat stuck/capped?".
 """
 
 
@@ -869,6 +871,93 @@ def query_player_data(category, user_id):
             lines.append("Source: pilgrim.expedition_discoveries JOIN pilgrim.discovery_items JOIN pilgrim.expeditions. "
                          "Payload list capped at 15 newest rows; last-per-rarity scan covers full history. "
                          "For tier-band drop-rate audits, use discovery_analytics instead.")
+            return "\n".join(lines)
+
+        elif category == 'captain_stats':
+            # #1474: surface the Captain Stats V2 event log (pilgrim.captain_stat_events) so PB
+            # answers "why did my exploration go up?" / "what's contributing to my strategy?"
+            # per-source, from REAL rows — never hallucinating. Final value = round(sum of
+            # deltas), capped at WORLD_1_CAP (imported, Luke-locked). Recent window matches the
+            # /crew green-arrow indicator (get_recent_stat_events 24h) so PB + UI never disagree.
+            from utilities.postgres.captain_stats import (V2_MULTIPLIERS, WORLD_1_CAP,
+                                                          STAT_NAMES, get_recent_stat_events)
+            from utilities.postgres.assets import get_user_commander
+            SRC_LABEL = {
+                'sol_tick': 'Daily command (sol tick)', 'crew_mission': 'Crew missions completed',
+                'expedition': 'Expeditions completed', 'legendary': 'Legendary discoveries',
+                'km': 'Kilometers traveled', 'landmark': 'New landmarks reached',
+                'trail_segment': 'Trail segments completed', 'upgrade': 'Upgrades built',
+                'aria_bond': 'ARIA bonds formed', 'baseline': 'Starting value',
+                'retro_credit': 'Retroactive credit (one-time)',
+            }
+            def _lbl(k):
+                return SRC_LABEL.get(k, (k or '').replace('_', ' ').title())
+            def _cs_ago(ts):
+                if not ts: return "?"
+                try:
+                    dt = ts if (hasattr(ts, 'tzinfo') and ts.tzinfo) else ts.replace(tzinfo=timezone.utc)
+                    secs = int((datetime.now(timezone.utc) - dt).total_seconds())
+                    if secs < 3600: return f"{secs // 60}m ago"
+                    if secs < 86400: return f"{secs // 3600}h ago"
+                    return f"{secs // 86400}d ago"
+                except Exception:
+                    return str(ts)
+            with db_cursor() as cur:
+                cur.execute("""
+                    SELECT stat_name, source_kind, SUM(delta) AS total, COUNT(*) AS n,
+                           MAX(created_at) AS last_at
+                    FROM pilgrim.captain_stat_events
+                    WHERE user_id = %s
+                    GROUP BY stat_name, source_kind
+                """, (user_id,))
+                ev_rows = cur.fetchall()
+            commander = get_user_commander(user_id) or {}
+            by_stat = {s: [] for s in STAT_NAMES}
+            raw_sum = {s: 0.0 for s in STAT_NAMES}
+            for r in ev_rows:
+                s = r['stat_name']
+                by_stat.setdefault(s, []).append(r)
+                raw_sum[s] = raw_sum.get(s, 0.0) + float(r['total'] or 0)
+            lines = ["=== CAPTAIN STATS BREAKDOWN ==="]
+            lines.append("")
+            lines.append(f"CURRENT STATS (what you see on the crew screen, World 1 cap {WORLD_1_CAP}):")
+            for s in STAT_NAMES:
+                shown = commander.get(f"commander_{s}")
+                if shown is None:
+                    shown = max(0, min(WORLD_1_CAP, round(raw_sum.get(s, 0))))
+                note = (f"  (capped at {WORLD_1_CAP} — raw total {raw_sum.get(s, 0):.1f})"
+                        if raw_sum.get(s, 0) > WORLD_1_CAP else "")
+                lines.append(f"  {s.capitalize():12} {shown}{note}")
+            lines.append("")
+            lines.append("WHERE EACH STAT CAME FROM (per activity, biggest contribution first):")
+            for s in STAT_NAMES:
+                srcs = sorted(by_stat.get(s, []), key=lambda r: float(r['total'] or 0), reverse=True)
+                if not srcs:
+                    lines.append(f"  {s.capitalize()}: no contributions yet")
+                    continue
+                parts = [f"{_lbl(r['source_kind'])} +{float(r['total'] or 0):.2f}"
+                         f" ({r['n']}x, last {_cs_ago(r['last_at'])})" for r in srcs]
+                lines.append(f"  {s.capitalize()}: " + " · ".join(parts))
+            lines.append("")
+            recent = get_recent_stat_events(user_id, hours=24) or []
+            lines.append("LAST SOL OF ACTIVITY (new stat gains, last 24h):")
+            if recent:
+                for r in recent[:15]:
+                    lines.append(f"  +{float(r.get('delta') or 0):.3f} "
+                                 f"{(r.get('stat_name') or '?').capitalize()} — "
+                                 f"{_lbl(r.get('source_kind'))} ({_cs_ago(r.get('created_at'))})")
+            else:
+                lines.append("  No new stat gains in the last 24h.")
+            lines.append("")
+            lines.append("GROWTH RATES (how each activity raises a stat):")
+            for s in STAT_NAMES:
+                rates = V2_MULTIPLIERS.get(s, {})
+                if rates:
+                    rline = ", ".join(f"+{v} per {_lbl(k).lower()}" for k, v in rates.items())
+                    lines.append(f"  {s.capitalize()}: {rline}")
+            lines.append("")
+            lines.append("Computed live from your captain progression history (pilgrim.captain_stat_events). "
+                         f"Final value = round(sum of all contributions), capped at {WORLD_1_CAP} in World 1.")
             return "\n".join(lines)
 
         else:
