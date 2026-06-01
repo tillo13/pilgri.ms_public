@@ -2452,6 +2452,7 @@
   "utilities/aria/bonds.py": {
     "description": "ARIA Bond System - Handles bonds between players when scouts visit shared locations.",
     "exports": [
+      "get_bond_revelation — Pick ARIA's revelation tier for a viewer who had `personal_count` bonds BEFORE",
       "check_for_aria_bond — Check if another player has visited this landmark.",
       "process_fragment_submission — Process when a user submits a bond tx hash on /signal.",
       "get_user_bonds — Get all bonds for a user.",
@@ -3594,6 +3595,7 @@
   "static/js/first-contact.js": {
     "description": "ARIA First Contact — Cinematic Sequence Controller",
     "exports": [
+      "LINES",
       "delay",
       "skipCinematic",
       "showScreen",
@@ -3678,7 +3680,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3762,7 +3764,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

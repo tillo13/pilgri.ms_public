@@ -26,7 +26,9 @@
         "bond_image_url": {{ bond.bond_image_url | tojson }},
         "bond_tx_hash": {{ bond.bond_tx_hash | tojson }}
     },
-    "replay": {{ (replay | default(false)) | tojson }}
+    "replay": {{ (replay | default(false)) | tojson }},
+    "revelation_lines": {{ (revelation_lines | default([])) | tojson }},
+    "personal_bond_count": {{ personal_bond_count | default(0) }}
 }
 </script>
 

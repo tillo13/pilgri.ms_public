@@ -856,6 +856,28 @@ def test_level_unlocks_reverse_index():
     return True
 
 
+@test("ARIA bond revelation is tiered by bond count, server-driven (#1392)", tier=1, features=['aria'], mode='local')
+def test_bond_revelation_tiers():
+    """#1392: the cinematic must ACKNOWLEDGE prior bonds — the "another me?" shock
+    only fits the first bond. Assert distinct revelation tiers by personal bond count,
+    that the template + JS read server-supplied revelation_lines (not a hardcode)."""
+    import os
+    from utilities.aria.bonds import get_bond_revelation
+    openers = {pc: get_bond_revelation(pc)['lines'][1]['text'] for pc in (0, 1, 2, 4)}
+    if len(set(openers.values())) < 4:
+        return f"#1392: revelation tiers not distinct across 1st/2nd/3rd/5th bond: {openers}"
+    if 'only one' not in get_bond_revelation(0)['message'] or 'only one' in get_bond_revelation(4)['message']:
+        return "#1392: tier-1 should carry the 'only one' shock; later tiers must not"
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    with open(os.path.join(root, 'templates', 'aria_first_contact.html')) as f:
+        if 'revelation_lines' not in f.read():
+            return "#1392: aria_first_contact.html fcPageData missing revelation_lines"
+    with open(os.path.join(root, 'static', 'js', 'first-contact.js')) as f:
+        if 'data.revelation_lines' not in f.read():
+            return "#1392: first-contact.js must read server revelation_lines (not only hardcode)"
+    return True
+
+
 @test("Shard Rush time-decay: 50%@24h, 25%@12h, never free (#1420)", tier=1, features=['config', 'depot'], mode='local')
 def test_shard_rush_time_decay():
     """#1420 (Luke): rush cost decays with time left — 50% at the 24h rush threshold,

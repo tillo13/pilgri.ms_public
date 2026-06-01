@@ -33,11 +33,21 @@ def check_pending_first_contact(path: str, method: str, is_authenticated: bool, 
     return False
 
 
-def _build_render_payload(bond, bond_number, sol, replay=False):
-    """Shared render-kwargs for the first-contact template."""
-    from utilities.aria.bonds import _get_commander_name
+def _build_render_payload(bond, bond_number, sol, replay=False, viewer_user_id=None):
+    """Shared render-kwargs for the first-contact template.
+
+    #1392: the revelation dialogue is TIERED by how many bonds the viewer already has
+    (the "another me?" shock only lands the first time). personal_count = the viewer's
+    bonds minus this one; admin preview (no viewer) falls back to the global ordinal.
+    """
+    from utilities.aria.bonds import _get_commander_name, get_user_bond_count, get_bond_revelation
     captain_1 = _get_commander_name(bond['user_id_1']) or f"Captain {bond['user_id_1']}"
     captain_2 = _get_commander_name(bond['user_id_2']) or f"Captain {bond['user_id_2']}"
+    if viewer_user_id is not None:
+        personal_count = max(0, get_user_bond_count(viewer_user_id) - 1)
+    else:
+        personal_count = max(0, (bond_number or 1) - 1)
+    revelation = get_bond_revelation(personal_count)
     return {
         'bond': SimpleNamespace(**bond),
         'captain_1': captain_1,
@@ -45,6 +55,8 @@ def _build_render_payload(bond, bond_number, sol, replay=False):
         'bond_number': bond_number,
         'sol': sol,
         'replay': replay,
+        'revelation_lines': revelation['lines'],
+        'personal_bond_count': personal_count,
     }
 
 
@@ -85,7 +97,7 @@ def build_first_contact_render_data(user_id, session):
     session.pop('_fc_shown', None)
     session.modified = True
 
-    return _build_render_payload(bond, _bond_number(bond['id']), get_mars_sol_number()), None
+    return _build_render_payload(bond, _bond_number(bond['id']), get_mars_sol_number(), viewer_user_id=user_id), None
 
 
 def build_admin_preview_render_data():
@@ -142,4 +154,4 @@ def build_replay_render_data(user_id):
         return None, 'home'
 
     sol = get_mars_sol_number(bond.get('bonded_at') or bond['created_at'])
-    return _build_render_payload(bond, _bond_number(bond['id']), sol, replay=True), None
+    return _build_render_payload(bond, _bond_number(bond['id']), sol, replay=True, viewer_user_id=user_id), None

@@ -16,7 +16,10 @@
         BOND_IMAGE: 1200, CONTINUE: 2000
     };
 
-    var LINES = [
+    // #1392: revelation dialogue is server-tiered by the viewer's bond count (1st bond
+    // = the "another me?" shock; later bonds acknowledge the prior ones and deepen the
+    // multiplicity arc). Fall back to the first-tier script if the server sent none.
+    var LINES = (data.revelation_lines && data.revelation_lines.length) ? data.revelation_lines : [
         { text: '*static crackle*', cls: 'static-crackle', sound: 'crackle' },
         { text: 'I just detected... myself?', sound: 'glitch' },
         { text: "That's impossible." },
