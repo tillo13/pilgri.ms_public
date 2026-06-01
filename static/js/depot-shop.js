@@ -122,6 +122,8 @@ function formatLevelStats(stats, category) {
     // === LIFE SUPPORT ===
     if (stats.life_support_cost_mult && stats.life_support_cost_mult < 1.0) {
         parts.push(green(`${stats.life_support_cost_mult.toFixed(2)}x life support cost`));
+        // #1416: Life Support also lowers Shard Rush cost (−1.25%/lv, combined pool with Water Extractor).
+        parts.push(green('-1.25% Shard Rush cost'));
     }
 
     // === GENERATOR (passive_income_mult) ===
@@ -135,7 +137,13 @@ function formatLevelStats(stats, category) {
     }
 
     // === GEAR (EVA Suit) — stat_exploration_bonus is flat captain-stat points (not %).
-    if (stats.stat_exploration_bonus) parts.push(green(`+${stats.stat_exploration_bonus} exploration`));
+    // #1416/#1421: also surface the Trail Building Speed bonus (suit_multiplier = 1 + lv×0.05,
+    // i.e. +5%/lv). Shown cumulative-at-this-level to match the "+N exploration" chip beside it
+    // (stat_exploration_bonus == suit level, so ×5 = the total trail-speed bonus at this level).
+    if (stats.stat_exploration_bonus) {
+        parts.push(green(`+${stats.stat_exploration_bonus} exploration`));
+        parts.push(green(`+${stats.stat_exploration_bonus * 5}% trail building speed`));
+    }
 
     // === AUTOMATION ===
     if (stats.passive_income_base) parts.push(gold(`+${stats.passive_income_base} shards/hr`));
@@ -154,7 +162,11 @@ function formatLevelStats(stats, category) {
     // === INFRASTRUCTURE ===
     if (stats.generation_rate) parts.push(gold(`${stats.generation_rate.toFixed(1)}/hr`));
     if (stats.science_generation_rate) parts.push(`${stats.science_generation_rate.toFixed(1)} SV/hr`);
-    if (stats.fuel_cost_reduction) parts.push(green(`${(1 - stats.fuel_cost_reduction).toFixed(2)}x fuel cost`));
+    if (stats.fuel_cost_reduction) {
+        parts.push(green(`${(1 - stats.fuel_cost_reduction).toFixed(2)}x fuel cost`));
+        // #1416: Water Extractor also lowers Shard Rush cost (−1.25%/lv, combined pool with Life Support).
+        parts.push(green('-1.25% Shard Rush cost'));
+    }
     if (stats.life_support_reduction) parts.push(green(`${(1 - stats.life_support_reduction).toFixed(2)}x life support cost`));
     if (stats.night_generation) parts.push(`${stats.night_generation.toFixed(2)}x night gen`);
     if (stats.all_generation_mult && stats.all_generation_mult > 1.0) {

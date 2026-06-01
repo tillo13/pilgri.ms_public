@@ -28,7 +28,20 @@ _generation_in_progress = set()
 
 
 def get_level_image_url(category: str, item_key: str, level: int) -> str:
-    """Get the current image_url for a specific level from config."""
+    """Get the current image_url for a specific level from config.
+
+    Tech branches (#1489): config holds only the tech's BASE icon (its single
+    TECH_CATALOG image_url), which anchors level 1. Per-level art (Lv2+) lives in
+    the DB, so return the base only at level<=1 — this lets get_best_available_image's
+    walk-back prefer a stored higher level and fall back to the base anchor. Without
+    this, every tech_* ladder failed "no base image" before reaching the pool.
+    """
+    if category.startswith('tech_'):
+        from config_tech import TECH_CATALOG
+        branch = category[len('tech_'):]
+        tech = TECH_CATALOG.get(branch, {}).get('techs', {}).get(item_key, {})
+        return tech.get('image_url', '') if level <= 1 else ''
+
     from config_upgrades import UPGRADE_CATALOG
 
     cat_data = UPGRADE_CATALOG.get(category, {})

@@ -143,7 +143,7 @@ INFRASTRUCTURE_CATALOG = {
     # =========================================================================
     'water_extractor': {
         'name': 'Water Extractor',
-        'description': 'Extracts water ice for fuel synthesis',
+        'description': 'Extracts water ice for fuel synthesis. Each level also lowers Shard Rush cost by 1.25% (stacks with Life Support, down to a 25% floor).',
         'icon': '\U0001f4a7',  # 💧
         'category': 'extraction',
         'max_level': 10,

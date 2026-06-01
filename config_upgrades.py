@@ -294,7 +294,7 @@ UPGRADE_CATALOG = {
         },
         'life_support': {
             'name': 'Life Support',
-            'description': 'Oxygen recycling to reduce expedition costs',
+            'description': 'Oxygen recycling to reduce expedition costs. Each level also lowers Shard Rush cost by 1.25% (stacks with Water Extractor, down to a 25% floor).',
             'icon': '\U0001f4a8',
             'max_level': 10,
             'default_level': 0,

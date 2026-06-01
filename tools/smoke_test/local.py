@@ -1334,6 +1334,34 @@ def test_signal_relics_shape():
     return True
 
 
+@test("Shard-Rush descriptions + constant truth (#1416/#1421)", tier=1, features=['config', 'depot'], mode='local')
+def test_shard_rush_descriptions():
+    # #1416: Water Extractor (infra) + Life Support (equipment) descriptions MUST name Shard Rush.
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    from config_upgrades import UPGRADE_CATALOG
+    we = INFRASTRUCTURE_CATALOG.get('water_extractor', {}).get('description', '')
+    ls = UPGRADE_CATALOG.get('equipment', {}).get('life_support', {}).get('description', '')
+    if 'Shard Rush' not in we:
+        return f"Water Extractor desc must mention Shard Rush, got: {we!r}"
+    if 'Shard Rush' not in ls:
+        return f"Life Support desc must mention Shard Rush, got: {ls!r}"
+    # Constant-truth: the '1.25%' baked into copy/chips must match the formula constant.
+    from utilities.upgrades.shard_rush import RUSH_PER_LEVEL, RUSH_FLOOR, RUSH_CEILING
+    if RUSH_PER_LEVEL != 0.0125:
+        return f"RUSH_PER_LEVEL drifted to {RUSH_PER_LEVEL}; description/chip text says 1.25% — update both"
+    if (RUSH_FLOOR, RUSH_CEILING) != (0.25, 0.50):
+        return f"Shard Rush floor/ceiling drifted to {RUSH_FLOOR}/{RUSH_CEILING}; copy says 25%/50%"
+    # #1421: EVA Suit captain stat NOT removed (locks Luke's premise to FALSE) + trail in top desc.
+    suit = UPGRADE_CATALOG.get('gear', {}).get('suit', {})
+    if 'trail building' not in suit.get('description', '').lower():
+        return "EVA Suit top desc must mention trail building"
+    levels = suit.get('levels', {})
+    missing = [lv for lv in range(1, 11) if not levels.get(lv, {}).get('stat_exploration_bonus')]
+    if missing:
+        return f"EVA Suit captain stat (stat_exploration_bonus) missing at levels {missing} — must persist all 1-10"
+    return True
+
+
 @test("codex milestones table + award shape (#1160)", tier=2, features=['colony', 'db'], mode='local')
 def test_codex_milestones_shape():
     from utilities.sv_milestones import (check_and_award_codex_milestones,
