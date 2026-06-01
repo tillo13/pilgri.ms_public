@@ -175,7 +175,7 @@ function renderSpeedStack(vehicle, baseBreakdown) {
             <span>Captain Logistics ×</span><span style="text-align:right; color:var(--color-success);">${sb.captain_logistics_mult}x</span>
             <span>Scientist Nav ×</span><span style="text-align:right; ${sb.scientist_nav_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.scientist_nav_mult}x</span>
             <span>Research Tech ×</span><span style="text-align:right; ${sb.tech_speed_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.tech_speed_mult != null ? sb.tech_speed_mult : 1}x</span>
-            <span>Trail${sb.trail_level && sb.trail_level !== 'none' ? ' (' + sb.trail_level + ')' : ''}${hasCompounding ? ' <span style="font-size:9px; color:var(--color-sepolia);">⚡</span>' : ''}</span>
+            <span>Trail${sb.trail_level && sb.trail_level !== 'none' ? ' (' + sb.trail_level + ')' : ''}${hasCompounding ? ' <span style="font-size:9px; color:var(--color-sepolia);">' + icon('lightning_power') + '</span>' : ''}</span>
             <span style="text-align:right; ${sb.trail_speed_mult > 1 ? 'color:var(--color-success)' : 'opacity:0.5'};">${sb.trail_speed_mult}x${sb.trail_trip_count > 0 ? ' <span style="font-size:10px;opacity:0.6;">(' + sb.trail_trip_count + ' trips)</span>' : ''}</span>
             <span>Terrain (${terrainName.split(':')[0]})</span><span style="text-align:right; ${terrainMult < 1 ? 'color:var(--color-mars)' : ''}">${terrainMult}x</span>
             <span style="font-weight:600; border-top:1px solid rgba(255,255,255,0.1); padding-top:4px;">Effective Speed</span>
@@ -186,7 +186,7 @@ function renderSpeedStack(vehicle, baseBreakdown) {
     if (hasCompounding) {
         html += `
         <div style="font-size:10px; color:var(--text-muted); margin:-10px 0 12px; padding:6px 8px; background:rgba(var(--color-sepolia-rgb),0.1); border-radius:4px;">
-            <div style="margin-bottom:4px;"><span style="color:var(--color-sepolia);">⚡ Trail Compounding Active</span></div>
+            <div style="margin-bottom:4px;"><span style="color:var(--color-sepolia);">${icon('lightning_power')} Trail Compounding Active</span></div>
             ${segments.slice(0, 3).map(seg => `
                 <div style="display:flex; justify-content:space-between; opacity:0.8;">
                     <span>${seg.distance.toFixed(0)}km → ${seg.landmark ? seg.landmark.substring(0, 15) : 'destination'}${seg.landmark && seg.landmark.length > 15 ? '...' : ''}</span>
@@ -202,7 +202,7 @@ function renderSpeedStack(vehicle, baseBreakdown) {
         html += `
         <div style="font-size:10px; text-align:center; margin-bottom:12px;">
             <a href="/crew" style="color:var(--text-muted); text-decoration:none; opacity:0.6;">
-                💡 Send crew on trail missions to boost speed
+                ${icon('info')} Send crew on trail missions to boost speed
             </a>
         </div>`;
     }

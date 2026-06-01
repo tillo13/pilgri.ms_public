@@ -58,7 +58,7 @@ function initializeMap() {
     const baseColor = getCSSColor('--color-marker-base');
     const baseBorder = getCSSColor('--color-marker-base-border');
     baseMarker = L.circleMarker([baseCoords.latitude, baseCoords.longitude], { radius: 12, fillColor: baseColor, color: baseBorder, weight: 3, opacity: 1, fillOpacity: 0.9 }).addTo(map);
-    baseMarker.bindPopup(`<div class="map-popup"><div class="map-popup-title base">🏠 Colony Base</div><div class="map-popup-coords">${baseCoords.latitude.toFixed(4)}°, ${baseCoords.longitude.toFixed(4)}°</div></div>`);
+    baseMarker.bindPopup(`<div class="map-popup"><div class="map-popup-title base">${icon('home_base')} Colony Base</div><div class="map-popup-coords">${baseCoords.latitude.toFixed(4)}°, ${baseCoords.longitude.toFixed(4)}°</div></div>`);
     addExpeditionMarkers();
     addOriginSiteMarkers();
     initializeMapResizeHandlers();
@@ -397,7 +397,7 @@ function buildMarkerPopup(landmarkIndex) {
 
     let popup = `<div class="map-popup">
         <div class="map-popup-title">${l.name}</div>
-        <div class="map-popup-status ${disc ? 'visited' : 'unexplored'}">${disc ? '✅ VISITED' : '🔍 UNEXPLORED'}</div>
+        <div class="map-popup-status ${disc ? 'visited' : 'unexplored'}">${disc ? `${icon('success_check')} VISITED` : `${icon('magnifier_discovery')} UNEXPLORED`}</div>
         <div class="map-popup-details"><b>Type:</b> ${l.type}<br><b>Distance:</b> ${l.distance_km} km${rangeStatus}${costDisplay}${returnDisplay}</div>`;
     if (disc && l.last_visit) {
         popup += `<div class="map-popup-history">
@@ -520,7 +520,7 @@ function updateCostDisplay(card, data, landmark) {
         if (ep.terrain_speed_mult && ep.terrain_speed_mult !== 1.0) {
             const speedPct = Math.abs((ep.terrain_speed_mult - 1) * 100).toFixed(0);
             if (ep.terrain_speed_mult < 1) {
-                breakdownHtml += `<div style="display: flex; justify-content: space-between; color: var(--color-mars); font-weight: 600;"><span>⚠️ Slow terrain</span><span>-${speedPct}% speed</span></div>`;
+                breakdownHtml += `<div style="display: flex; justify-content: space-between; color: var(--color-mars); font-weight: 600;"><span>${icon('warning_alert')} Slow terrain</span><span>-${speedPct}% speed</span></div>`;
             } else {
                 breakdownHtml += `<div style="display: flex; justify-content: space-between; color: var(--color-success);"><span>Fast terrain</span><span>+${speedPct}% speed</span></div>`;
             }

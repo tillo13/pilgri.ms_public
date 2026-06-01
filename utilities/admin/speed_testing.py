@@ -18,11 +18,11 @@ class _StubAuth:
         self._user = {'user_id': user_id, 'google_id': f'speedtest-{user_id}', 'email': ''}
         try:
             with db_cursor() as cur:
-                cur.execute("SELECT google_id, email FROM users WHERE user_id = %s", (user_id,))
+                cur.execute("SELECT google_id, email FROM pilgrim.users WHERE id = %s", (user_id,))
                 row = cur.fetchone()
                 if row:
-                    self._user['google_id'] = row[0] or self._user['google_id']
-                    self._user['email'] = row[1] or ''
+                    self._user['google_id'] = row.get('google_id') or self._user['google_id']
+                    self._user['email'] = row.get('email') or ''
         except Exception:
             pass
     def get_current_user(self): return self._user

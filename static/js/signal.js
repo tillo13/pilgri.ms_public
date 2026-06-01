@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
         MarsModal.show({
             title: site.mission_name || site.site_code,
             subtitle: `<span style="color:${outcomeColor}">If you arrive: ${outcomeLabel}</span>`,
-            icon: '📡',
+            icon: icon('signal_transmission'),
             width: 'md',
             body: `
                 <div class="mm-card-accent" style="text-align:center;">
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div style="font-size:22px; font-weight:700; color:${canAfford ? 'var(--color-sepolia)' : '#ef4444'};">${totalCost} shards</div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Your balance: ${balance} shards</div>
                 </div>
-                <div class="mm-aria">💫 "Standard expedition. No discoveries — but the moment of arrival is what we go for. Cinematic plays when the rover returns."</div>
+                <div class="mm-aria">${icon('rare_sparkle')} "Standard expedition. No discoveries — but the moment of arrival is what we go for. Cinematic plays when the rover returns."</div>
             `,
             footer: canAfford
                 ? `<button id="sc-launch-btn" class="btn btn-primary mm-btn-full" onclick="_doLaunchSignalClaim(${site.id}, '${(site.site_code || '').replace(/'/g, "\\'")}')">Launch Expedition</button>
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window._doLaunchSignalClaim = async function(siteId, siteCode) {
         const launchBtn = document.getElementById('sc-launch-btn');
-        if (launchBtn) { launchBtn.disabled = true; launchBtn.innerHTML = '⏳ Plotting course…'; }
+        if (launchBtn) { launchBtn.disabled = true; launchBtn.innerHTML = icon('processing_hourglass') + ' Plotting course…'; }
         try {
             const data = await apiPost('/api/expeditions/launch_signal_claim', {
                 site_id: siteId, vehicle_type: 'rover'
@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.bond_complete || data.already_bonded) {
                         // Launch EpicReveal cinematic overlay
                         const isFirst = data.bond_complete;
-                        status.textContent = isFirst ? '\u26A1 FIRST CONTACT \u26A1' : '\u26A1 ETERNAL RESONANCE \u26A1';
+                        status.innerHTML = isFirst ? `${icon('lightning_power')} FIRST CONTACT ${icon('lightning_power')}` : `${icon('lightning_power')} ETERNAL RESONANCE ${icon('lightning_power')}`;
                         status.className = 'decoder-status success';
                         // Show bond summary in decoder result (visible after reveal closes)
                         const txLink = data.etherscan_url
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         status.className = 'decoder-status success';
                         result.innerHTML = `
                             <div class="decode-success" style="background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.3);">
-                                <div class="decode-success-title" style="color: #06b6d4;">\u26A1 FRAGMENT ACKNOWLEDGED</div>
+                                <div class="decode-success-title" style="color: #06b6d4;">${icon('lightning_power')} FRAGMENT ACKNOWLEDGED</div>
                                 <p style="color: var(--text-secondary);"><em>"${data.message}"</em></p>
                                 <div style="margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 6px;">
                                     <p style="font-size: 12px; color: #06b6d4; font-style: italic; line-height: 1.6;">"${data.aria_message}"</p>

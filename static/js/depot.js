@@ -330,11 +330,11 @@ function showDepotItemDetail(card) {
     const secondsRemaining = card._remainingSeconds || parseInt(card.dataset.secondsRemaining) || 0;
 
     const stats = [];
-    let priceText = owned ? '✓ Owned' : (price ? `${price} Shards` : '');
+    let priceText = owned ? '' + icon('checkmark_done') + ' Owned' : (price ? `${price} Shards` : '');
 
     if (isBuilding) {
         // Bug #1444: shared formatDaysHours helper across every depot countdown.
-        priceText = '🔧 ' + formatDaysHours(secondsRemaining) + ' remaining';
+        priceText = icon('wrench_repair') + ' ' + formatDaysHours(secondsRemaining) + ' remaining';
     }
 
     // Infrastructure items - rich data from INFRA_ITEMS
@@ -367,13 +367,13 @@ function showDepotItemDetail(card) {
         }
         if (d.requirements.length) stats.push({ label: 'Requires', value: d.requirements.map(formatReqName).join(', ') });
         else stats.push({ label: 'Requires', value: 'None' });
-        if (owned) stats.push({ label: 'Status', value: '✓ Active' });
+        if (owned) stats.push({ label: 'Status', value: '' + icon('checkmark_done') + ' Active' });
         ItemDetailModal.show({ name, image: img?.src || null, category: tag, description: desc, price: priceText, stats });
         return;
     }
 
     // Fallback for commander cards etc - basic card scraping
-    ItemDetailModal.show({ name, image: img?.src || null, category: isBuilding ? '🔧 BUILDING' : tag, description: desc, price: priceText });
+    ItemDetailModal.show({ name, image: img?.src || null, category: isBuilding ? '' + icon('wrench_repair') + ' BUILDING' : tag, description: desc, price: priceText });
 }
 
 // Show detail modal for owned colony structures (reads from data attributes)
@@ -500,7 +500,7 @@ async function buildStructure(type, name, time, cost) {
     }
     lockAllPurchases();
     disableBtn(btn);
-    showToast(`🚀 Building ${name}...`, 'success', 'Construction Started', 4000);
+    showToast(`${icon('rocket_launch')} Building ${name}...`, 'success', 'Construction Started', 4000);
     try {
         const data = await apiPost('/api/infrastructure/build', { structure_type: type });
         if (data.success) {
@@ -508,13 +508,13 @@ async function buildStructure(type, name, time, cost) {
             if (data.new_balance !== undefined) setBalance(data.new_balance);
             // Check if this is a first-time build (reward pending = new user flow)
             if (data.reward && data.reward.pending) {
-                showToast(`✅ ${name} construction started! +${data.reward.amount.toFixed(0)} Shards incoming. Explore Mars while it processes!`, 'success', 'Colony Established', 5000);
+                showToast(`${icon('success_check')} ${name} construction started! +${data.reward.amount.toFixed(0)} Shards incoming. Explore Mars while it processes!`, 'success', 'Colony Established', 5000);
                 // Redirect to expeditions after a moment - give them something to do!
                 setTimeout(() => { window.location.href = '/expeditions'; }, 3000);
             } else {
                 // Show build time in message
                 const timeStr = data.time_display ? ` (${data.time_display})` : '';
-                showToast(`🔧 ${name} construction started!${timeStr}`, 'success', 'Construction Started', 4000);
+                showToast(`${icon('wrench_repair')} ${name} construction started!${timeStr}`, 'success', 'Construction Started', 4000);
                 setTimeout(() => location.reload(), 2000);
             }
         } else {
@@ -548,7 +548,7 @@ async function confirmShardRush(btn) {
         </div>`,
         footer: `
             <button class="btn btn-secondary" id="shardRushCancelBtn">Cancel</button>
-            <button class="btn btn-primary" id="shardRushConfirmBtn">⚡ Rush for ${rushCost.toLocaleString()}</button>
+            <button class="btn btn-primary" id="shardRushConfirmBtn">${icon('lightning_power')} Rush for ${rushCost.toLocaleString()}</button>
         `
     });
     document.getElementById('shardRushCancelBtn').onclick = () => MarsModal.hide();
@@ -560,7 +560,7 @@ async function confirmShardRush(btn) {
 
 async function executeShardRush(category, itemKey, name) {
     lockAllPurchases();
-    showToast(`⚡ Rushing ${name}...`, 'success', 'Shard Rush', 3000);
+    showToast(`${icon('lightning_power')} Rushing ${name}...`, 'success', 'Shard Rush', 3000);
     try {
         const isInfraL1 = category === 'infrastructure' && document.querySelector(`.btn-shard-rush[data-item-key="${itemKey}"][data-target-level="1"]`);
         const endpoint = isInfraL1 ? '/api/shard-rush/infrastructure' : '/api/shard-rush/upgrade';
@@ -572,7 +572,7 @@ async function executeShardRush(category, itemKey, name) {
         });
         const data = await resp.json();
         if (data.success && data.rushed) {
-            showToast(`✅ ${name} complete! ${data.rush_cost.toLocaleString()} shards spent.`, 'success', 'Rush Complete', 4000);
+            showToast(`${icon('success_check')} ${name} complete! ${data.rush_cost.toLocaleString()} shards spent.`, 'success', 'Rush Complete', 4000);
             // Bug #21 Deploy C: stat-up toast(s) from the rush level-up
             if (typeof processStatEvents === 'function') processStatEvents(data);
             setTimeout(() => window.location.reload(), 1200);

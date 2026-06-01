@@ -188,12 +188,12 @@ function formatLevelStats(stats, category) {
 // Get milestone notes for special bonuses at certain levels
 function getMilestoneNote(itemKey, level) {
     const milestones = {
-        'habitat_module': { 5: '⭐ +1 concurrent build slot!' },
-        'maintenance': { 3: '⭐ Gains dust storm immunity!' },
-        'regolith_forge': { 5: '⭐ Unlocks Resonance Chamber!' },
-        'resonance_chamber': { 5: '⭐ Unlocks Thermal Vent Tap!' },
-        'thermal_vent_tap': { 5: '⭐ Unlocks Monolith Antenna!' },
-        'refinery': { 7: '⭐ Unlocks Regolith Forge!' }
+        'habitat_module': { 5: icon('star_milestone') + ' +1 concurrent build slot!' },
+        'maintenance': { 3: icon('star_milestone') + ' Gains dust storm immunity!' },
+        'regolith_forge': { 5: icon('star_milestone') + ' Unlocks Resonance Chamber!' },
+        'resonance_chamber': { 5: icon('star_milestone') + ' Unlocks Thermal Vent Tap!' },
+        'thermal_vent_tap': { 5: icon('star_milestone') + ' Unlocks Monolith Antenna!' },
+        'refinery': { 7: icon('star_milestone') + ' Unlocks Regolith Forge!' }
     };
     return milestones[itemKey]?.[level] || '';
 }
@@ -291,7 +291,7 @@ function showUpgradeModal(category, itemKey) {
             const parts = stats.level_requires_display.map(r => {
                 const ok = r.have >= r.level;
                 const haveStr = r.have > 0 ? `have Lv${r.have}` : 'not built';
-                return `<span style="color: ${ok ? 'var(--color-success)' : 'var(--color-warning)'};">${r.name} Lv${r.level}${ok ? ' ✓' : ` (${haveStr})`}</span>`;
+                return `<span style="color: ${ok ? 'var(--color-success)' : 'var(--color-warning)'};">${r.name} Lv${r.level}${ok ? ' ' + icon('checkmark_done') : ` (${haveStr})`}</span>`;
             });
             prereqLine = `<div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;"><strong style="color: var(--text-secondary);">Requires:</strong> ${parts.join(', ')}</div>`;
         }
@@ -316,7 +316,7 @@ function showUpgradeModal(category, itemKey) {
                         border: 1px solid ${isCurrent ? 'var(--color-success)' : isNext ? 'var(--color-sepolia)' : 'var(--border-color)'};
                         ${isLocked ? 'opacity: 0.5;' : ''}">
                 <div style="width: 28px; text-align: center; font-weight: 700; font-size: 14px; color: ${isCurrent ? 'var(--color-success)' : isNext ? 'var(--color-sepolia)' : 'var(--text-muted)'};">
-                    ${isCurrent ? '✓' : isNext ? '→' : lv}
+                    ${isCurrent ? icon('checkmark_done') : isNext ? '→' : lv}
                 </div>
                 <div style="flex: 1;">
                     <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">${stats.name || 'Lv' + lv}</div>
@@ -383,7 +383,7 @@ function showUpgradeModal(category, itemKey) {
                 <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${item.description || ''}</div>
                 ${effectDesc ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; padding: 6px 10px; background: var(--bg-tertiary); border-radius: 6px;">${effectDesc}</div>` : ''}
                 <div style="font-size: 12px; margin-top: 6px; color: ${isMax ? 'var(--color-success)' : isBuilding ? 'var(--color-warning)' : 'var(--color-sepolia)'}; font-weight: 600;">
-                    ${isMax ? '★ Max Level Reached' : isBuilding ? '🔧 Upgrading to Level ' + (buildStatus?.pending_level || currentLevel + 1) : currentLevel === 0 ? 'Not Yet Unlocked' : `Level ${currentLevel} → ${currentLevel + 1}`}
+                    ${isMax ? icon('star_milestone') + ' Max Level Reached' : isBuilding ? icon('wrench_repair') + ' Upgrading to Level ' + (buildStatus?.pending_level || currentLevel + 1) : currentLevel === 0 ? 'Not Yet Unlocked' : `Level ${currentLevel} → ${currentLevel + 1}`}
                 </div>
             </div>
             ${vehicleSummaryHtml}
@@ -395,7 +395,7 @@ function showUpgradeModal(category, itemKey) {
             <div style="margin-top: 16px; padding: 12px; border-radius: 8px; background: ${isBuilding ? 'rgba(var(--color-warning-rgb), 0.08)' : canAfford ? 'rgba(var(--color-success-rgb), 0.08)' : 'rgba(var(--color-danger-rgb), 0.08)'}; border: 1px solid ${isBuilding ? 'rgba(var(--color-warning-rgb), 0.3)' : canAfford ? 'rgba(var(--color-success-rgb), 0.3)' : 'rgba(var(--color-danger-rgb), 0.3)'};">
                 ${isBuilding ? `
                     <div style="text-align: center;">
-                        <div style="font-size: 14px; font-weight: 600; color: var(--color-warning); margin-bottom: 4px;">🔧 Construction In Progress</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--color-warning); margin-bottom: 4px;">${icon('wrench_repair')} Construction In Progress</div>
                         <div style="font-size: 12px; color: var(--text-secondary);">${formatBuildTimeRemaining(buildStatus?.seconds_remaining || 0)} remaining</div>
                         <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Upgrading to Level ${buildStatus?.pending_level || currentLevel + 1}</div>
                     </div>
@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const data = await apiPost('/api/shop/modify_character', { prompt });
             if (data.success) {
-                showToast('✓ Modification complete! Visit Crew tab in ~1 min to see your updated captain.', 'success', 'Complete!', 10000);
+                showToast(icon('checkmark_done') + ' Modification complete! Visit Crew tab in ~1 min to see your updated captain.', 'success', 'Complete!', 10000);
             } else {
                 showToast(sanitizeErrorMsg(data.error), 'error');
                 setBalance(bal);
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const data = await apiPost('/api/shop/generate_video');
             if (data.success) {
-                showToast('✓ Video generation queued! Visit Crew tab in ~2 min to watch.', 'success', 'Complete!', 10000);
+                showToast(icon('checkmark_done') + ' Video generation queued! Visit Crew tab in ~2 min to watch.', 'success', 'Complete!', 10000);
             } else {
                 showToast(sanitizeErrorMsg(data.error), 'error');
                 setBalance(bal);
@@ -701,7 +701,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         setBalance(bal - cost);
-        showToast('📤 Transmuting... Your captain will emerge in ~60-90 seconds.', 'info', 'Processing', 8000);
+        showToast(icon('folder_upload') + ' Transmuting... Your captain will emerge in ~60-90 seconds.', 'info', 'Processing', 8000);
 
         const formData = new FormData();
         formData.append('image', file);
@@ -712,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await r.json();
             if (data.success) {
                 const nextCost = data.next_transmutation_cost || (cost * 2);
-                showToast(`✓ Transmutation initiated! The shards are absorbing your image. Next transmutation: ${nextCost.toLocaleString()} Shards.\n\nCheck Crew in ~60-90 seconds.`, 'success', 'Complete!', 10000);
+                showToast(`${icon('checkmark_done')} Transmutation initiated! The shards are absorbing your image. Next transmutation: ${nextCost.toLocaleString()} Shards.\n\nCheck Crew in ~60-90 seconds.`, 'success', 'Complete!', 10000);
             } else {
                 showToast(sanitizeErrorMsg(data.error) || 'Transmutation failed', 'error');
                 setBalance(bal);

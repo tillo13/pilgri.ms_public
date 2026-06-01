@@ -480,10 +480,10 @@ async function checkInfrastructureIncome() {
                 btn.disabled = !data.can_claim;
                 // Update button text based on state
                 if (data.any_at_cap && data.can_claim) {
-                    btn.textContent = '🌫️ Harvest & Clean Panels';
+                    btn.innerHTML = icon('env_dust_storm') + ' Harvest & Clean Panels';
                     btn.style.background = 'var(--gradient-mars)';
                 } else if (data.can_claim) {
-                    btn.textContent = '⚡ Harvest';
+                    btn.innerHTML = icon('lightning_power') + ' Harvest';
                     btn.style.background = 'var(--gradient-success)';
                 } else {
                     btn.textContent = 'Keep Generating (min: 0.1)';
@@ -507,8 +507,8 @@ async function loadRecentDiscoveries() {
         const disc = data.discoveries, shownCount = disc.length;
         content.style.display = 'block'; empty.style.display = 'none';
         if (countText) { countText.textContent = `${totalUnclaimed} discoveries`; countText.style.color = 'var(--color-success)'; }
-        if (claimBtn && totalUnclaimed > 0) { claimBtn.style.display = 'block'; claimBtn.textContent = `📦 Claim All (${totalUnclaimed})`; }
-        container.innerHTML = disc.slice(0, 3).map(d => `<div class="discovery-card-compact" style="transition:all 0.2s;cursor:pointer;" data-discovery-id="${d.discovery_item_id}" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';" onmouseout="this.style.transform='';this.style.boxShadow='';">${d.image_url ? `<img src="${d.image_url}" class="discovery-image-small" alt="${d.item_name}">` : '<div class="discovery-image-small" style="display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>'}<div class="discovery-info"><div class="discovery-name">${d.item_name}<span class="rarity-badge rarity-${d.rarity}">${d.rarity}</span></div><div class="discovery-details">${d.found_at_km > 0 ? `Found at ${d.found_at_km.toLocaleString()}km` : `From ${d.destination_name || 'expedition'}`}</div></div><div class="discovery-value"><div class="discovery-value-number">${d.enhanced_value}</div><div class="discovery-value-label">Sci Value</div></div></div>`).join('') + (totalUnclaimed > shownCount ? `<div style="text-align:center;padding:12px;font-size:13px;color:rgba(0,0,0,0.7);background:rgba(255,255,255,0.2);border-radius:8px;margin-top:8px;">Showing ${shownCount} of ${totalUnclaimed} unclaimed</div>` : '');
+        if (claimBtn && totalUnclaimed > 0) { claimBtn.style.display = 'block'; claimBtn.innerHTML = `${icon('box_package')} Claim All (${totalUnclaimed})`; }
+        container.innerHTML = disc.slice(0, 3).map(d => `<div class="discovery-card-compact" style="transition:all 0.2s;cursor:pointer;" data-discovery-id="${d.discovery_item_id}" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)';" onmouseout="this.style.transform='';this.style.boxShadow='';">${d.image_url ? `<img src="${d.image_url}" class="discovery-image-small" alt="${d.item_name}">` : '<div class="discovery-image-small" style="display:flex;align-items:center;justify-content:center;font-size:24px;">'+icon('box_package')+'</div>'}<div class="discovery-info"><div class="discovery-name">${d.item_name}<span class="rarity-badge rarity-${d.rarity}">${d.rarity}</span></div><div class="discovery-details">${d.found_at_km > 0 ? `Found at ${d.found_at_km.toLocaleString()}km` : `From ${d.destination_name || 'expedition'}`}</div></div><div class="discovery-value"><div class="discovery-value-number">${d.enhanced_value}</div><div class="discovery-value-label">Sci Value</div></div></div>`).join('') + (totalUnclaimed > shownCount ? `<div style="text-align:center;padding:12px;font-size:13px;color:rgba(0,0,0,0.7);background:rgba(255,255,255,0.2);border-radius:8px;margin-top:8px;">Showing ${shownCount} of ${totalUnclaimed} unclaimed</div>` : '');
         $$('#recentDiscoveriesContainer .discovery-card-compact').forEach(c => c.onclick = function() { const id = this.dataset.discoveryId; if (id) showDiscoveryDetails(parseInt(id)); });
     } catch (e) { console.error('Discoveries failed:', e); content.style.display = 'none'; empty.style.display = 'block'; }
 }
@@ -516,7 +516,7 @@ async function loadRecentDiscoveries() {
 async function claimAllDiscoveries() {
     const btn = $('claimAllButton'), content = $('discoveriesContent');
     if (btn) btn.disabled = true; if (content) content.style.opacity = '0.5';
-    showToast('Claiming discoveries...', 'success', '🎉 Secured', 4000);
+    showToast('Claiming discoveries...', 'success', icon('rare_sparkle') + ' Secured', 4000);
     setTimeout(() => { if (content) content.style.display = 'none'; $('discoveriesEmpty').style.display = 'block'; }, 1000);
     try { const data = await apiPost('/api/expeditions/claim_all_discoveries');
         if (data.success) showToast(`${data.claimed_count} discoveries secured (Value: ${data.total_value})`, 'info', '', 3000);

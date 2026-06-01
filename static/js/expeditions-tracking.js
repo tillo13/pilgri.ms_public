@@ -228,14 +228,14 @@ function buildDestinationPopup(expeditionId) {
 
     // Vehicle icon based on type
     const vehicleType = data.vehicleType || 'rover';
-    const vehicleIcon = vehicleType === 'drone' ? '🛸' : vehicleType === 'buggy' ? '🏎️' : '🚗';
+    const vehicleIcon = vehicleType === 'drone' ? icon('vehicle_drone') : vehicleType === 'buggy' ? icon('speed_fast') : icon('vehicle_rover');
     const vehicleName = vehicleType.charAt(0).toUpperCase() + vehicleType.slice(1);
 
     let timeStr = '';
     let phaseLabel = '';
     if (hasReturned) {
         timeStr = '<span style="color: var(--color-success); font-weight: 700;">RETURNED!</span>';
-        phaseLabel = `✅ ${vehicleName} RETURNED`;
+        phaseLabel = `${icon('success_check')} ${vehicleName} RETURNED`;
     } else {
         // Always show time until return (round-trip) - that's when user gets their stuff
         const rem = data.returnArrives - now;
@@ -247,7 +247,7 @@ function buildDestinationPopup(expeditionId) {
     }
 
     return `<div class="map-popup destination-popup">
-        <div class="map-popup-title" style="color: var(--color-mars);">🎯 ${data.name}</div>
+        <div class="map-popup-title" style="color: var(--color-mars);">${icon('target_strategy')} ${data.name}</div>
         <div class="map-popup-status ${hasReturned ? 'returned' : atDestination ? 'at-destination' : 'en-route'}">${phaseLabel}</div>
         <div style="text-align: center; margin: 12px 0;">${timeStr}</div>
         <div class="destination-progress-bar">
@@ -413,7 +413,7 @@ function renderDiscoveries(c, disc, complete) {
                 <div class="exp-discovery-meta rarity-text-${d.rarity}">${d.rarity} • ${d.found_at_km}km</div>
             </div>
             <div class="exp-discovery-status">
-                ${d.claimed_by_user ? '✓' : '📦'}
+                ${d.claimed_by_user ? icon('checkmark_done') : icon('box_package')}
             </div>
         </div>
     `).join('') + (disc.length > 5 ? `<div class="exp-discovery-more">+${disc.length - 5} more</div>` : '');
@@ -437,7 +437,7 @@ function showExpeditionDiscoveryDetail(d) {
     let action = null;
     if (!d.claimed_by_user && d.id) {
         action = {
-            label: '📦 Claim Now',
+            label: icon('box_package') + ' Claim Now',
             className: 'btn-primary',
             onClick: async () => {
                 if (typeof DiscoveryUtils !== 'undefined') {
@@ -457,7 +457,7 @@ function showExpeditionDiscoveryDetail(d) {
             { label: 'Found At', value: `${d.found_at_km} km` },
             { label: 'Weight', value: d.weight_kg ? `${d.weight_kg} kg` : 'Unknown' },
             { label: 'Scientific Value', value: d.scientific_value ? d.scientific_value.toFixed(1) : '-' },
-            { label: 'Status', value: d.claimed_by_user ? '✓ Claimed' : '📦 Unclaimed' }
+            { label: 'Status', value: d.claimed_by_user ? icon('checkmark_done') + ' Claimed' : icon('box_package') + ' Unclaimed' }
         ].filter(s => s.value && s.value !== '-' && s.value !== 'Unknown'),
         action: action
     });

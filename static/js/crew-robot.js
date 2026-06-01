@@ -1323,8 +1323,8 @@
         const videoCost = recalState && recalState.actions && recalState.actions.reroll_video
             ? recalState.actions.reroll_video.cost : null;
         const videoLine = robot.video_url
-            ? '<span style="color:#22c55e;">✓ rendered</span>'
-            : `<span style="color:#fbbf24;">✗ not yet rendered — the scientist will record it now for <strong style="color:#ffc88a;">${fmtCost(videoCost)}</strong> when you lock in.</span>`;
+            ? '<span style="color:#22c55e;">' + icon('checkmark_done') + ' rendered</span>'
+            : `<span style="color:#fbbf24;">${icon('error_x')} not yet rendered — the scientist will record it now for <strong style="color:#ffc88a;">${fmtCost(videoCost)}</strong> when you lock in.</span>`;
 
         return new Promise((resolve) => {
             MarsModal.show({
@@ -1406,7 +1406,7 @@
     function _doneHtml(title, body, navTo) {
         return `
             <div style="text-align:center; padding:14px 4px;">
-                <div style="font-size:36px; line-height:1; margin-bottom:10px;">✨</div>
+                <div style="font-size:36px; line-height:1; margin-bottom:10px;">${icon('rare_sparkle')}</div>
                 <div style="font-size:16px; font-weight:800; color:#ffc88a; margin-bottom:8px;">${title}</div>
                 <div style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">${body}</div>
                 <button class="recal-modal-close-btn" style="background:linear-gradient(135deg,#a855f7,#ec4899); color:white; border:none; border-radius:8px; padding:10px 22px; font-weight:800; cursor:pointer;" data-nav="${navTo || ''}">Continue</button>

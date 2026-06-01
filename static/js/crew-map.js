@@ -86,7 +86,7 @@ function initCrewTrailMap() {
         color: '#2b6cb0',
         weight: 2,
         fillOpacity: 0.9
-    }).addTo(crewTrailMap).bindPopup('🏠 Your Base');
+    }).addTo(crewTrailMap).bindPopup(icon('home_base') + ' Your Base');
 
     // Populate with nearby trails
     updateCrewTrailMapMarkers();
@@ -454,7 +454,7 @@ window.openAntipodeModal = async function(antipodeName) {
     MarsModal.show({
         title: 'Your 4 Antipode Chains',
         subtitle: `<span style="color:var(--color-sepolia)">All terminate at ${antipodeName || 'your antipode'}</span>`,
-        icon: '🎯',
+        icon: icon('target_strategy'),
         width: 'md',
         body: body,
         footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Got it</button>`
@@ -646,7 +646,7 @@ function updateTopTrails() {
         const isActive = (d === activeDir);
         const borderStyle = isActive ? `2px solid ${dirColor[d]}` : `1px solid var(--border-default)`;
         const activeBadge = isActive ? `<span style="color:${dirColor[d]}; font-size:10px; font-weight:700;">● ACTIVE</span>` : '';
-        const segLabel = next ? `seg ${next.segment_index} of ${totalSegs} → ${next.name}` : `${totalSegs}/${totalSegs} segments — ✓ Complete`;
+        const segLabel = next ? `seg ${next.segment_index} of ${totalSegs} → ${next.name}` : `${totalSegs}/${totalSegs} segments — ${icon('checkmark_done')} Complete`;
         const onclick = next
             ? `setActiveChainAndOpen('${d}', '${(next.name||'').replace(/'/g, "\\'")}')`
             : `setActiveChainOnly('${d}')`;
@@ -762,18 +762,18 @@ function updateCrewModalStatus() {
             if (deployBtn) {
                 deployBtn.disabled = true;
                 deployBtn.style.opacity = '0.5';
-                deployBtn.textContent = `⏳ Building...`;
+                deployBtn.innerHTML = `${icon('processing_hourglass')} Building...`;
             }
         } else if (status?.complete) {
             // Mission complete - should auto-claim, but show claim option if not yet claimed
             card.style.opacity = '1';
             card.style.borderColor = 'var(--color-success)';
-            if (buildRateEl) buildRateEl.innerHTML = `<span style="color: var(--color-success);">✓ Mission complete!</span>`;
+            if (buildRateEl) buildRateEl.innerHTML = `<span style="color: var(--color-success);">${icon('checkmark_done')} Mission complete!</span>`;
             if (deployBtn) {
                 deployBtn.disabled = false;
                 deployBtn.style.opacity = '1';
                 deployBtn.style.background = 'var(--gradient-success)';
-                deployBtn.textContent = '✓ Claim Rewards';
+                deployBtn.innerHTML = icon('checkmark_done') + ' Claim Rewards';
                 deployBtn.onclick = () => claimTrailMission(member);
             }
         } else {
@@ -790,7 +790,7 @@ function updateCrewModalStatus() {
             if (deployBtn) {
                 deployBtn.disabled = false;
                 deployBtn.style.opacity = '1';
-                deployBtn.textContent = '🛤️ Deploy to Trail';
+                deployBtn.innerHTML = icon('tab_map') + ' Deploy to Trail';
                 deployBtn.onclick = () => selectCrewMember(member);
             }
         }

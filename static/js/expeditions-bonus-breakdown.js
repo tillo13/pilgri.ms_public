@@ -147,7 +147,7 @@ window.openBonusBreakdown = function(ev, anchor) {
     MarsModal.show({
         title: 'Bonus Breakdown',
         subtitle: '<span style="color:var(--text-muted)">Loading…</span>',
-        icon: '🔬',
+        icon: icon('microscope_lab'),
         width: 'md',
         body: `<div style="padding:30px;text-align:center;color:var(--text-muted);">Loading per-source contributions…</div>`,
         footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Got it</button>`,
@@ -157,7 +157,7 @@ window.openBonusBreakdown = function(ev, anchor) {
         if (!data) {
             MarsModal.show({
                 title: 'Bonus Breakdown',
-                icon: '⚠️',
+                icon: icon('warning_alert'),
                 width: 'md',
                 body: `<div style="padding:20px;color:var(--text-muted);">Could not load breakdown right now. Try again in a moment.</div>`,
                 footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Got it</button>`,
@@ -169,7 +169,7 @@ window.openBonusBreakdown = function(ev, anchor) {
         MarsModal.show({
             title: meta.label || 'Bonus Breakdown',
             subtitle: `<span style="color:var(--text-muted)">Where this number comes from</span>`,
-            icon: '🔬',
+            icon: icon('microscope_lab'),
             width: 'md',
             body: renderBreakdownBody(key, data, source),
             footer: `<div style="display:flex;gap:8px;width:100%;">

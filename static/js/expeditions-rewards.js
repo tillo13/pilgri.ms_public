@@ -47,7 +47,7 @@ function showAriaFragmentDiscovery(fragment) {
     MarsModal.show({
         title: 'Unusual Fragment Recovered',
         subtitle: fragment.landmark || 'Unknown Location',
-        icon: '⚡',
+        icon: icon('lightning_power'),
         width: 'md',
         body: `
             <div class="mm-aria" style="color:#06b6d4; text-align:center;">
@@ -58,11 +58,11 @@ function showAriaFragmentDiscovery(fragment) {
             <div class="mm-card-accent" style="text-align:center;">
                 <div class="mm-section-label">Fragment Signature</div>
                 <div style="font-family:monospace; font-size:11px; color:#06b6d4; word-break:break-all; background:rgba(6,182,212,0.1); padding:10px; border-radius:4px;">
-                    ${fragment.pending ? '⏳ Processing...' : '0x...'}
+                    ${fragment.pending ? `${icon('processing_hourglass')} Processing...` : '0x...'}
                 </div>
                 <div style="font-size:10px; color:var(--text-muted); margin-top:8px;">Check expedition history for the complete code</div>
             </div>
-            <div class="mm-aria">📡 ARIA suggests: "This fragment carries an encoded pattern. I've seen similar resonances on
+            <div class="mm-aria">${icon('signal_transmission')} ARIA suggests: "This fragment carries an encoded pattern. I've seen similar resonances on
                 <a href="/signal" style="color:#06b6d4; font-weight:600;">The Signal</a>. Perhaps the decoder there could reveal its meaning..."</div>
         `,
         footer: `<a href="/signal" class="btn btn-primary mm-btn-full" style="background:linear-gradient(135deg,#06b6d4,#0891b2); text-align:center;">Go to The Signal</a>
@@ -223,7 +223,7 @@ async function showExpeditionRewardsSummary(expeditionId) {
         // Build discovery list HTML
         const discoveryListHtml = discoveries.length > 0 ? discoveries.map(d => `
             <div style="display:flex; align-items:center; gap:10px; padding:8px; background:var(--bg-tertiary); border-radius:6px; margin-bottom:6px;">
-                ${d.image_url ? `<img src="${d.image_url}" alt="" style="width:36px; height:36px; border-radius:4px; object-fit:cover;">` : `<div style="width:36px; height:36px; background:var(--bg-secondary); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:18px;">📦</div>`}
+                ${d.image_url ? `<img src="${d.image_url}" alt="" style="width:36px; height:36px; border-radius:4px; object-fit:cover;">` : `<div style="width:36px; height:36px; background:var(--bg-secondary); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:18px;">${icon('box_package')}</div>`}
                 <div style="flex:1; min-width:0;">
                     <div style="font-weight:600; font-size:12px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.item_name}</div>
                     <div style="font-size:11px; display:flex; gap:8px; color:var(--text-muted);">
@@ -233,7 +233,7 @@ async function showExpeditionRewardsSummary(expeditionId) {
                 </div>
                 <div style="text-align:right; font-size:11px;">
                     ${d.claimed_by_user
-                        ? '<span style="color:var(--color-success);">✓ Claimed</span>'
+                        ? '<span style="color:var(--color-success);">'+icon('checkmark_done')+' Claimed</span>'
                         : `<span style="color:var(--color-sepolia);">~${(rarityValues[d.rarity] || 500).toLocaleString()}</span>`}
                 </div>
             </div>
@@ -250,18 +250,18 @@ async function showExpeditionRewardsSummary(expeditionId) {
             const profitColor = isProfitable ? '#4ade80' : '#f87171';
             const profitBg = isProfitable ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)';
             const profitBorder = isProfitable ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)';
-            const profitIcon = isProfitable ? '📈' : '📉';
+            const profitIcon = icon('chart_activity');
             const profitLabel = isProfitable ? 'PROFIT' : 'LOSS';
 
             body += `<div style="margin-bottom:16px;">
                 <!-- Fuel Cost vs Discoveries Value -->
                 <div style="display:flex; gap:8px; margin-bottom:8px;">
                     <div style="flex:1; padding:10px; background:var(--bg-tertiary); border-radius:8px; text-align:center;">
-                        <div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">⛽ Fuel Cost</div>
+                        <div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">${icon('fuel_pump')} Fuel Cost</div>
                         <div style="font-size:16px; font-weight:600; color:#f87171;">-${fuelCost.toLocaleString()}</div>
                     </div>
                     <div style="flex:1; padding:10px; background:var(--bg-tertiary); border-radius:8px; text-align:center;">
-                        <div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">💎 Found Value</div>
+                        <div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">${icon('value_diamond')} Found Value</div>
                         <div style="font-size:16px; font-weight:600; color:#4ade80;">+${totalEstimatedValue.toLocaleString()}</div>
                     </div>
                 </div>
@@ -287,7 +287,7 @@ async function showExpeditionRewardsSummary(expeditionId) {
         MarsModal.show({
             title: 'Expedition Complete',
             subtitle: destName,
-            icon: '🚀',
+            icon: icon('rocket_launch'),
             width: 'md',
             body, footer
         });

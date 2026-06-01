@@ -430,6 +430,8 @@
 <script src="/static/js/aria.js?v={{ static_v }}"></script>
 
 <script>window.initialBalance = {{ total_balance if total_balance is defined else 0 }};</script>
+<!-- #38: global icon registry so external JS can render custom Mars icons (no inline emojis). DRY: one block, every page. -->
+<script type="application/json" id="globalIcons">{{ icons | tojson }}</script>
 <script src="/static/js/core.js?v={{ static_v }}"></script>
 <script src="/static/js/epic-reveal.js?v={{ static_v }}" defer></script>
 {% block extra_js %}{% endblock %}

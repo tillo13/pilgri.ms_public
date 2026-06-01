@@ -151,7 +151,7 @@ function updateCrewStatusBadges(cap, sci, aria) {
         if (cap?.busy) {
             capBadge.innerHTML = `<span style="color: var(--color-warning);">Building</span>`;
         } else if (cap?.complete) {
-            capBadge.innerHTML = `<span style="color: var(--color-success);">✓ Claim!</span>`;
+            capBadge.innerHTML = `<span style="color: var(--color-success);">${icon('checkmark_done')} Claim!</span>`;
         } else {
             capBadge.innerHTML = `<span style="color: var(--color-success);">Ready</span>`;
         }
@@ -163,7 +163,7 @@ function updateCrewStatusBadges(cap, sci, aria) {
         if (sci?.busy) {
             sciBadge.innerHTML = `<span style="color: var(--color-warning);">Building</span>`;
         } else if (sci?.complete) {
-            sciBadge.innerHTML = `<span style="color: var(--color-success);">✓ Claim!</span>`;
+            sciBadge.innerHTML = `<span style="color: var(--color-success);">${icon('checkmark_done')} Claim!</span>`;
         } else {
             sciBadge.innerHTML = `<span style="color: var(--color-success);">Ready</span>`;
         }
@@ -175,7 +175,7 @@ function updateCrewStatusBadges(cap, sci, aria) {
         if (aria?.busy) {
             ariaBadge.innerHTML = `<span style="color: var(--color-warning);">Building</span>`;
         } else if (aria?.complete) {
-            ariaBadge.innerHTML = `<span style="color: var(--color-success);">✓ Claim!</span>`;
+            ariaBadge.innerHTML = `<span style="color: var(--color-success);">${icon('checkmark_done')} Claim!</span>`;
         } else {
             ariaBadge.innerHTML = `<span style="color: var(--color-success);">Ready</span>`;
         }

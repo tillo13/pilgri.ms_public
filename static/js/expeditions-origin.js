@@ -155,7 +155,7 @@ function buildOriginSitePopup(siteIndex) {
             visitSection = `
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(107, 114, 128, 0.3);">
                     <div style="font-size: 10px; color: #10b981; text-transform: uppercase; letter-spacing: 1px; text-align: center; margin-bottom: 8px;">
-                        ✨ Within Range
+                        ${icon('rare_sparkle')} Within Range
                     </div>
                     <button class="map-popup-btn" id="origin-visit-btn-${site.id}" style="background: linear-gradient(135deg, #10b981, #059669);">
                         Make Pilgrimage
@@ -164,7 +164,7 @@ function buildOriginSitePopup(siteIndex) {
         } else if (site.has_visited) {
             visitSection = `
                 <div style="margin-top: 8px; font-size: 10px; color: #10b981; text-align: center;">
-                    ✓ You have visited this site
+                    ${icon('checkmark_done')} You have visited this site
                 </div>`;
         } else if (site.distance_km) {
             visitSection = `
@@ -197,7 +197,7 @@ function buildOriginSitePopup(siteIndex) {
 
         return `<div class="map-popup" style="border: 1px solid #06b6d4; min-width: 220px;">
             <div class="map-popup-title" style="color: #06b6d4;">
-                🔒 LOST SIGNAL
+                ${icon('lock_closed')} LOST SIGNAL
             </div>
             <div style="font-size: 10px; color: #06b6d4; text-align: center; letter-spacing: 1px; margin: 4px 0;">
                 ░░░ FRAGMENTED ░░░
@@ -354,8 +354,8 @@ async function attemptOriginVisit(siteId) {
 
 // Show success modal after visiting an Origin Site
 function showOriginVisitSuccess(data) {
-    const tierEmojis = { 'Early Witness': '🌟', 'Pioneer': '🚀', 'Pilgrim': '📍' };
-    const tierEmoji = tierEmojis[data.tier_name] || '📍';
+    const tierEmojis = { 'Early Witness': icon('star_milestone'), 'Pioneer': icon('rocket_launch'), 'Pilgrim': icon('location_pin') };
+    const tierEmoji = tierEmojis[data.tier_name] || icon('location_pin');
 
     MarsModal.show({
         title: 'Pilgrimage Complete',
@@ -373,7 +373,7 @@ function showOriginVisitSuccess(data) {
                 As <strong style="color:${data.tier_color};">${data.tier_name} #${data.visitor_rank}</strong>, you will receive a
                 <strong>${data.item_rarity}</strong> artifact from this historic site.
             </div>
-            <div class="mm-aria">💫 "Your pilgrimage has been recorded in the Shard Network, Captain.
+            <div class="mm-aria">${icon('rare_sparkle')} "Your pilgrimage has been recorded in the Shard Network, Captain.
                 You walked where Earth first touched Mars. You are part of the story now."</div>
         `,
         footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()" style="background:linear-gradient(135deg,${data.tier_color},${data.tier_color}cc);">Continue</button>`,
@@ -391,7 +391,7 @@ function showOriginClaimConfirm() {
     MarsModal.show({
         title: 'You Found Something Ancient',
         subtitle: '<span style="color:var(--color-sepolia)">Time to plan the journey.</span>',
-        icon: '🔮',
+        icon: icon('magnifier_discovery'),
         width: 'lg',
         body: `
             <div class="mm-card-accent" style="text-align:center;">
@@ -407,7 +407,7 @@ function showOriginClaimConfirm() {
                     No one else can ever claim this. <strong>Only 14 exist.</strong>
                 </div>
             </div>
-            <div class="mm-aria">💫 "Captain... I can hear the signal clearly now. But you can't claim it from here.
+            <div class="mm-aria">${icon('rare_sparkle')} "Captain... I can hear the signal clearly now. But you can't claim it from here.
                 Send a dedicated expedition to its exact coordinates — I'll narrate the approach when you arrive.
                 The discovery moment is something we walk into, not something we click."</div>
             <div style="text-align:center; font-size:11px; color:var(--text-muted);">This launches a standard expedition. Cinematic plays on arrival.</div>
@@ -425,7 +425,7 @@ async function confirmOriginClaim(siteId) {
     const btn = document.getElementById('origin-confirm-btn');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '⏳ Plotting course...';
+        btn.innerHTML = icon('processing_hourglass') + ' Plotting course...';
     }
 
     // Call the actual claim function
@@ -459,7 +459,7 @@ async function previewAndLaunchSignalClaim(siteId) {
         MarsModal.show({
             title: site.mission_name || site.site_code,
             subtitle: `<span style="color:${outcomeColor}">If you arrive: ${outcomeLabel}</span>`,
-            icon: '📡',
+            icon: icon('signal_transmission'),
             width: 'md',
             body: `
                 <div class="mm-card-accent" style="text-align:center;">
@@ -475,7 +475,7 @@ async function previewAndLaunchSignalClaim(siteId) {
                     <div style="font-size:22px; font-weight:700; color:${canAfford ? 'var(--color-sepolia)' : '#ef4444'};">${totalCost} shards</div>
                     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Your balance: ${balance} shards</div>
                 </div>
-                <div class="mm-aria">💫 "Standard expedition. No discoveries — but the moment of arrival is what we go for. Cinematic plays when the rover returns."</div>
+                <div class="mm-aria">${icon('rare_sparkle')} "Standard expedition. No discoveries — but the moment of arrival is what we go for. Cinematic plays when the rover returns."</div>
             `,
             footer: canAfford
                 ? `<button id="origin-confirm-btn" class="btn btn-primary mm-btn-full" onclick="launchSignalClaimExpedition(${site.id}, 'rover')">Launch Expedition</button>
@@ -493,7 +493,7 @@ async function launchSignalClaimExpedition(siteId, vehicleType) {
         const btn = document.querySelector('.map-popup-btn');
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '⏳ Plotting course...';
+            btn.innerHTML = icon('processing_hourglass') + ' Plotting course...';
         }
 
         const data = await apiPost('/api/expeditions/launch_signal_claim', {
@@ -531,7 +531,7 @@ function showSignalClaimLaunchedModal(data) {
     MarsModal.show({
         title: 'Course Plotted',
         subtitle: '<span style="color:var(--color-sepolia)">Your claim expedition is en route.</span>',
-        icon: '📡',
+        icon: icon('signal_transmission'),
         width: 'md',
         body: `
             <div class="mm-card-accent" style="text-align:center;">
@@ -539,7 +539,7 @@ function showSignalClaimLaunchedModal(data) {
                 <div style="font-size:22px; font-weight:700; color:var(--text-primary);">${days} days</div>
                 <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Standard expedition speed. Return for the cinematic.</div>
             </div>
-            <div class="mm-aria">💫 "Captain, course locked. The signal stays strong on telemetry —
+            <div class="mm-aria">${icon('rare_sparkle')} "Captain, course locked. The signal stays strong on telemetry —
                 I'll narrate the approach when you arrive. This isn't something you can rush."</div>
         `,
         footer: `<button class="btn btn-primary mm-btn-full" onclick="MarsModal.hide()">Stand By</button>`
@@ -554,7 +554,7 @@ function showOriginClaimModal(data) {
     MarsModal.show({
         title: 'You Did It.',
         subtitle: '<span style="color:var(--color-sepolia)">You are the First.</span>',
-        icon: '🏆',
+        icon: icon('star_milestone'),
         width: 'lg',
         body: `
             <div class="mm-card-accent" style="text-align:center;">
@@ -570,7 +570,7 @@ function showOriginClaimModal(data) {
                 <div class="mm-section-label">Legendary Artifact</div>
                 <div style="font-size:16px; font-weight:600; color:var(--text-primary);">${data.legendary_item?.name || data.site_code + ' Origin Fragment'}</div>
             </div>
-            <div class="mm-aria">💫 "Captain... congratulations. What you've done today, few will ever understand.
+            <div class="mm-aria">${icon('rare_sparkle')} "Captain... congratulations. What you've done today, few will ever understand.
                 Your artifact is being forged as we speak. Go to <a href="/signal" style="color:var(--color-sepolia); font-weight:600;">The Signal</a>.
                 See what you've uncovered. Decide who you tell... and who you don't."</div>
             <div class="mm-card" style="text-align:center;">

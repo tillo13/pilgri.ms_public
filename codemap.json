@@ -3228,6 +3228,8 @@
   "static/js/core.js": {
     "description": "CORE.JS - All JS, one file",
     "exports": [
+      "ICONS",
+      "icon",
       "apiPost",
       "apiGet",
       "switchTab",
@@ -3240,9 +3242,7 @@
       "showError",
       "apiCall",
       "disableBtn",
-      "enableBtn",
-      "showToast",
-      "removeToast"
+      "enableBtn"
     ],
     "keywords": "shared utilities, modal, toast, formatCountdown, tab switching, balance display, nav prefetch"
   },
@@ -3680,7 +3680,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3696,7 +3696,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {
@@ -3708,7 +3708,10 @@
     ]
   },
   "templates/base.html": {
-    "description": "Base template — 5-tab nav, status bar, ARIA widget, balance display, Mars theme"
+    "description": "Base template — 5-tab nav, status bar, ARIA widget, balance display, Mars theme",
+    "notes": [
+      "has PAGE_DATA bridge"
+    ]
   },
   "templates/captains_log.html": {
     "description": "Page: Captain's Log - {{ commander.name if commander else 'Unknown' }} | Pilgrims"
@@ -3764,7 +3767,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

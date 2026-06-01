@@ -69,17 +69,17 @@ window.showDiscoveryDetails = function(id) {
             const isTrailConsumable = ['biological', 'mineral'].includes(i.item_type);
             const trailBoostNote = isTrailConsumable ? `
             <div class="trail-boost-note" style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;font-size:12px;color:#ccc;">
-                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
+                <strong style="color:#10b981;">${icon('tab_map')} Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
             </div>` : '';
             effects = `<div class="rarity-text-rare" style="font-style:italic;line-height:1.6;">
                 "${hint}"
                 <div style="margin-top:8px;opacity:0.7;">${scientistName} seems troubled but willing to proceed.</div>
             </div>
             <div class="sv-tradeoff-note" style="margin-top:12px;padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
+                <strong style="color:#ffb450;">${icon('warning_alert')} Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
             </div>${trailBoostNote}`;
             action = {
-                label: qty > 1 ? `⚠️ Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `⚠️ Extract (${shardPayoutAll} Shards${svLabel})`,
+                label: qty > 1 ? `${icon('warning_alert')} Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `${icon('warning_alert')} Extract (${shardPayoutAll} Shards${svLabel})`,
                 className: 'btn-warning',
                 onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'rare', true, svBonusAll),
                 secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'rare', false, svBonusOne) } : null,
@@ -90,17 +90,17 @@ window.showDiscoveryDetails = function(id) {
             const isTrailConsumable = ['biological', 'mineral'].includes(i.item_type);
             const trailBoostNote = isTrailConsumable ? `
             <div class="trail-boost-note" style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;font-size:12px;color:#ccc;">
-                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
+                <strong style="color:#10b981;">${icon('tab_map')} Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+8-15%). Also destroys the item.
             </div>` : '';
             effects = `<div class="rarity-text-uncommon" style="font-style:italic;line-height:1.6;">
                 "A bit tougher to crack than the common discoveries. I'll need to borrow some equipment from the base, but we can extract ${qty > 1 ? shardPayoutAll : shardPayoutOne} shards."
                 <div style="margin-top:8px;opacity:0.7;">— ${scientistName}</div>
             </div>
             <div class="sv-tradeoff-note" style="margin-top:12px;padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
+                <strong style="color:#ffb450;">${icon('warning_alert')} Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
             </div>${trailBoostNote}`;
             action = {
-                label: qty > 1 ? `🔬 Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `🔬 Extract (${shardPayoutAll} Shards${svLabel})`,
+                label: qty > 1 ? `${icon('microscope_lab')} Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `${icon('microscope_lab')} Extract (${shardPayoutAll} Shards${svLabel})`,
                 className: 'btn-success',
                 onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'uncommon', true, svBonusAll),
                 secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'uncommon', false, svBonusOne) } : null,
@@ -111,17 +111,17 @@ window.showDiscoveryDetails = function(id) {
             const isTrailConsumable = ['biological', 'mineral'].includes(i.item_type);
             const trailBoostNote = isTrailConsumable ? `
             <div class="trail-boost-note" style="margin-top:8px;padding:8px 10px;background:rgba(16,185,129,0.1);border-left:3px solid #10b981;font-size:12px;color:#ccc;">
-                <strong style="color:#10b981;">🛤️ Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+6-12%). Also destroys the item.
+                <strong style="color:#10b981;">${icon('tab_map')} Alternative:</strong> Use this discovery in <a href="/crew" style="color:#10b981;">Crew → Trails</a> to boost trail building speed (+6-12%). Also destroys the item.
             </div>` : '';
             effects = `<div class="rarity-text-common" style="font-style:italic;line-height:1.6;">
                 "Standard extraction procedure—${qty > 1 ? shardPayoutAll : shardPayoutOne} shards ready for harvest."
                 <div style="margin-top:8px;opacity:0.7;">— ${scientistName}</div>
             </div>
             <div class="sv-tradeoff-note" style="margin-top:12px;padding:8px 10px;background:rgba(255,180,80,0.1);border-left:3px solid #ffb450;font-size:12px;color:#ccc;">
-                <strong style="color:#ffb450;">⚠️ Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
+                <strong style="color:#ffb450;">${icon('warning_alert')} Trade-off:</strong> Extracting destroys the discovery. You'll gain shards + bonus SV but lose the item permanently.
             </div>${trailBoostNote}`;
             action = {
-                label: qty > 1 ? `🔬 Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `🔬 Extract (${shardPayoutAll} Shards${svLabel})`,
+                label: qty > 1 ? `${icon('microscope_lab')} Extract All ${qty}× (${shardPayoutAll} Shards${svLabel})` : `${icon('microscope_lab')} Extract (${shardPayoutAll} Shards${svLabel})`,
                 className: 'btn-success',
                 onClick: () => confirmExtraction(id, qty, shardPayoutAll, i.item_name, 'common', true, svBonusAll),
                 secondaryAction: qty > 1 ? { label: `Extract 1× (${shardPayoutOne})`, onClick: () => confirmExtraction(id, 1, shardPayoutOne, i.item_name, 'common', false, svBonusOne) } : null,
@@ -246,7 +246,7 @@ window.confirmExtraction = confirmExtraction;
 //   quantityToExtract: N → exactly N (Bug #1125 "Extract Some")
 async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = true, quantityToExtract = null) {
     const btn = document.getElementById('mmActionBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '🔬 Analyzing...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = `${icon('microscope_lab')} Analyzing...`; }
     const secondaryBtn = document.getElementById('mmActionBtn2');
     if (secondaryBtn) secondaryBtn.disabled = true;
 
@@ -271,7 +271,7 @@ async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = 
                 }
             }
             if (data.sv_awarded > 0) msg += ` + ${data.sv_awarded} SV`;
-            showToast(msg, 'success', '🔬 Analysis Complete');
+            showToast(msg, 'success', `${icon('microscope_lab')} Analysis Complete`);
             // Update balance display - use new_balance if provided, otherwise adjust by received
             if (data.new_balance !== undefined) {
                 setBalance(data.new_balance);
@@ -283,11 +283,11 @@ async function analyzeDiscovery(discoveryItemId, _quantity, value, extractAll = 
             setTimeout(() => location.reload(), 2000);
         } else {
             showToast(data.error || 'Analysis failed', 'error');
-            if (btn) { btn.disabled = false; btn.textContent = `🔬 Extract`; }
+            if (btn) { btn.disabled = false; btn.innerHTML = `${icon('microscope_lab')} Extract`; }
         }
     } catch (e) {
         showToast('Network error', 'error');
-        if (btn) { btn.disabled = false; btn.textContent = `🔬 Extract`; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${icon('microscope_lab')} Extract`; }
     }
 }
 window.analyzeDiscovery = analyzeDiscovery;

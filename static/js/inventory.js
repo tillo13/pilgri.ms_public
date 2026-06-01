@@ -53,11 +53,11 @@ async function loadEquipment() {
                 ${item.image_url ?
                     `<img src="${item.image_url}" class="equip-card-icon w-full object-cover" style="height: 120px;${isBuilding ? ' opacity: 0.6;' : ''}" loading="lazy">` :
                     `<div class="equip-card-icon"><img src="${UI_ICONS.tab_tools}" alt="${item.name}" style="width: 40px; height: 40px;"></div>`}
-                ${isBuilding ? `<div class="equip-building-badge">🔧 Building</div>` : ''}
+                ${isBuilding ? `<div class="equip-building-badge">${icon('wrench_repair')} Building</div>` : ''}
                 <div class="equip-card-content">
                     <div class="equip-card-name">${item.name}</div>
                     <div class="equip-card-cat">${item.category}</div>
-                    ${isBuilding ? `<div class="equip-build-time">⏱️ ${timeStr}</div>` : ''}
+                    ${isBuilding ? `<div class="equip-build-time">${icon('stopwatch_duration')} ${timeStr}</div>` : ''}
                     <div class="equip-card-desc">${item.description}</div>
                     ${!isBuilding && item.effects ? `
                         <div class="equip-card-effects">

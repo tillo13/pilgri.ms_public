@@ -465,16 +465,21 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
                 pass
 
             # ===== LAB EXPERIMENTS =====
+            # Xeno research data lives on pilgrim.users (research_points,
+            # total_experiments_run) — there is no xenobiology_lab table. The old
+            # query failed silently, froze these stats at 0, AND left the pooled
+            # connection in an aborted transaction (no autocommit). See
+            # utilities/postgres/users.py::get_user_research_data.
             lab_stats = {'experiments_run': 0, 'research_points': 0}
             try:
                 cur.execute("""
-                    SELECT experiments_run, research_points
-                    FROM pilgrim.xenobiology_lab
-                    WHERE user_id = %s
+                    SELECT total_experiments_run, research_points
+                    FROM pilgrim.users
+                    WHERE id = %s
                 """, (user_id,))
                 lab_row = cur.fetchone()
                 if lab_row:
-                    lab_stats['experiments_run'] = lab_row.get('experiments_run') or 0
+                    lab_stats['experiments_run'] = lab_row.get('total_experiments_run') or 0
                     lab_stats['research_points'] = lab_row.get('research_points') or 0
             except Exception:
                 pass

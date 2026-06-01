@@ -7,6 +7,16 @@ const $$ = sel => document.querySelectorAll(sel);
 const show = id => { const el = $(id); if (el) el.classList.remove('hidden'); };
 const hide = id => { const el = $(id); if (el) el.classList.add('hidden'); };
 
+// #38: custom-icon registry + helper — replaces inline Unicode emojis in JS-rendered HTML.
+// Reads the global #globalIcons block (base.html). icon('key') -> <img> string for innerHTML/template
+// literals; icon('key','inline-icon-sm') to size. Returns '' for an unknown key (safe in concatenation).
+const ICONS = (() => { try { return JSON.parse(document.getElementById('globalIcons').textContent); } catch (e) { return {}; } })();
+function icon(key, cls = 'inline-icon') {
+  const url = ICONS[key];
+  return url ? `<img src="${url}" alt="" class="${cls}">` : '';
+}
+window.icon = icon;
+
 // API helpers — replace the repeated fetch+JSON+parse boilerplate.
 // Usage: const data = await apiPost('/api/foo', {name: 'bar'});
 //        const data = await apiGet('/api/foo');
@@ -130,7 +140,7 @@ function showStatToast(evt) {
     const delta = Number(evt.delta || 0);
     const sign = delta >= 0 ? '+' : '';
     const deltaStr = Math.abs(delta) < 1 ? delta.toFixed(2) : delta.toFixed(1);
-    const capMark = evt.capped ? ' ★' : '';
+    const capMark = evt.capped ? ' ' + icon('star_milestone') : '';
     const msg = `${sign}${deltaStr} → ${evt.new}/75${capMark}`;
     showToast(msg, 'success', `${label} up`, 4000);
 }
@@ -295,14 +305,14 @@ function openVideoModal(url) {
 
 async function harvestSepolia() {
     const btn = $('claimButton'); disableBtn(btn);
-    showToast('⚡ Harvesting Shards...', 'info', '', 5000);
+    showToast(icon('lightning_power') + ' Harvesting Shards...', 'info', '', 5000);
     try {
         const data = await apiPost('/api/infrastructure/claim');
         if (data.success) {
             // Update balance immediately from response
             if (data.new_balance !== undefined) setBalance(data.new_balance);
             else adjustBalance(data.amount_claimed);
-            let harvestMsg = `✓ Harvested ${data.amount_claimed.toFixed(1)} Shards!`;
+            let harvestMsg = `${icon('checkmark_done')} Harvested ${data.amount_claimed.toFixed(1)} Shards!`;
             showToast(harvestMsg, 'success', '', 8000);
             setTimeout(() => location.reload(), 3000);
         } else { showToast(`Error: ${data.error}`, 'error'); enableBtn(btn); }
@@ -562,7 +572,7 @@ function showAriaWhisper({ fragmentId, name, whisperText, description, ackOnConf
     MarsModal.show({
         title: name || 'A Fragment Found',
         subtitle: '<span style="color:#a855f7">ARIA whispers...</span>',
-        icon: '🧩',
+        icon: icon('star_milestone'),
         width: 'md',
         body: `
             ${description ? `<div class="mm-card-accent" style="text-align:center; font-style:italic; color:var(--text-secondary);">${description}</div>` : ''}

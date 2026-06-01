@@ -41,7 +41,7 @@ async function switchToLeader(id) {
 }
 
 function updateCommanderNavigation() {
-    $$('.nav-item, .breadcrumb-item').forEach(item => { const icon = item.querySelector('.nav-icon, .breadcrumb-icon'); if (icon?.textContent.trim().includes('👤')) { item.classList.add('completed'); const badge = item.querySelector('.nav-badge, .breadcrumb-badge'); if (badge) badge.textContent = '✓'; } });
+    $$('.nav-item, .breadcrumb-item').forEach(item => { const icon = item.querySelector('.nav-icon, .breadcrumb-icon'); if (icon?.textContent.trim().includes('👤')) { item.classList.add('completed'); const badge = item.querySelector('.nav-badge, .breadcrumb-badge'); if (badge) badge.innerHTML = window.icon('checkmark_done'); } });
 }
 
 // Stats
@@ -74,8 +74,8 @@ function generateMarsLocation() {
         if (data.success) {
             const c = data.coordinates, l = data.landmarks;
             setTimeout(() => { $('mars-lat').textContent = c.latitude.toFixed(4); $('mars-lon').textContent = c.longitude.toFixed(4); }, 300);
-            if (l?.length) { setTimeout(() => { $('landmark-info').innerHTML = l.slice(0, 3).map((m, i) => `<div style="margin-bottom:${i < 2 ? '10px' : '0'};padding-bottom:${i < 2 ? '10px' : '0'};border-bottom:${i < 2 ? '1px solid rgba(255,255,255,0.15)' : 'none'};"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:16px;">${['🎯', '📍', '🗺️'][i]}</span>${m.link ? `<a href="${m.link}" target="_blank" rel="noopener" style="color:var(--text-inverse);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.5);"><strong>${m.name}</strong></a>` : `<strong>${m.name}</strong>`}<span style="opacity:0.7;font-size:11px;">(${m.type})</span></div><div style="opacity:0.85;font-size:12px;padding-left:24px;">${m.distance_km.toFixed(1)} km • ${m.travel_days.toFixed(1)} days${m.diameter_km ? ` • ${m.diameter_km} km` : ''}</div></div>`).join(''); }, 600); }
-            else setTimeout(() => { $('landmark-info').innerHTML = '⚠️ No major landmarks within 5000 km.<br><span style="opacity:0.8;">Uncharted territory!</span>'; }, 600);
+            if (l?.length) { setTimeout(() => { $('landmark-info').innerHTML = l.slice(0, 3).map((m, i) => `<div style="margin-bottom:${i < 2 ? '10px' : '0'};padding-bottom:${i < 2 ? '10px' : '0'};border-bottom:${i < 2 ? '1px solid rgba(255,255,255,0.15)' : 'none'};"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:16px;">${[icon('target_strategy'), icon('location_pin'), icon('tab_map')][i]}</span>${m.link ? `<a href="${m.link}" target="_blank" rel="noopener" style="color:var(--text-inverse);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.5);"><strong>${m.name}</strong></a>` : `<strong>${m.name}</strong>`}<span style="opacity:0.7;font-size:11px;">(${m.type})</span></div><div style="opacity:0.85;font-size:12px;padding-left:24px;">${m.distance_km.toFixed(1)} km • ${m.travel_days.toFixed(1)} days${m.diameter_km ? ` • ${m.diameter_km} km` : ''}</div></div>`).join(''); }, 600); }
+            else setTimeout(() => { $('landmark-info').innerHTML = '' + icon('warning_alert') + ' No major landmarks within 5000 km.<br><span style="opacity:0.8;">Uncharted territory!</span>'; }, 600);
         } else generateMockMarsLocation();
     }).catch(() => generateMockMarsLocation());
 }
@@ -83,7 +83,7 @@ function generateMarsLocation() {
 function generateMockMarsLocation() {
     $('mars-lat').textContent = (Math.random() * 180 - 90).toFixed(4); $('mars-lon').textContent = (Math.random() * 360).toFixed(4);
     const m = [{ name: 'Olympus Mons', type: 'Volcano', d: Math.random() * 3000 + 500, link: 'https://planetarynames.wr.usgs.gov/Feature/4390' }, { name: 'Valles Marineris', type: 'Canyon', d: Math.random() * 3000 + 800, link: 'https://planetarynames.wr.usgs.gov/Feature/6288' }, { name: 'Hellas Planitia', type: 'Basin', d: Math.random() * 3000 + 1200, link: 'https://planetarynames.wr.usgs.gov/Feature/2439' }];
-    $('landmark-info').innerHTML = m.map((l, i) => `<div style="margin-bottom:${i < 2 ? '10px' : '0'};padding-bottom:${i < 2 ? '10px' : '0'};border-bottom:${i < 2 ? '1px solid rgba(255,255,255,0.15)' : 'none'};"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:16px;">${['🎯', '📍', '🗺️'][i]}</span>${l.link ? `<a href="${l.link}" target="_blank" rel="noopener" style="color:var(--text-inverse);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.5);"><strong>${l.name}</strong></a>` : `<strong>${l.name}</strong>`}<span style="opacity:0.7;font-size:11px;">(${l.type})</span></div><div style="opacity:0.85;font-size:12px;padding-left:24px;">${l.d.toFixed(0)} km • ${(l.d / 16).toFixed(1)} days</div></div>`).join('');
+    $('landmark-info').innerHTML = m.map((l, i) => `<div style="margin-bottom:${i < 2 ? '10px' : '0'};padding-bottom:${i < 2 ? '10px' : '0'};border-bottom:${i < 2 ? '1px solid rgba(255,255,255,0.15)' : 'none'};"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:16px;">${[icon('target_strategy'), icon('location_pin'), icon('tab_map')][i]}</span>${l.link ? `<a href="${l.link}" target="_blank" rel="noopener" style="color:var(--text-inverse);text-decoration:none;border-bottom:1px dashed rgba(255,255,255,0.5);"><strong>${l.name}</strong></a>` : `<strong>${l.name}</strong>`}<span style="opacity:0.7;font-size:11px;">(${l.type})</span></div><div style="opacity:0.85;font-size:12px;padding-left:24px;">${l.d.toFixed(0)} km • ${(l.d / 16).toFixed(1)} days</div></div>`).join('');
 }
 
 function startFreshJourney() {

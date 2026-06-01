@@ -389,8 +389,8 @@ function showVehicleDetail(el) {
     const onMission = !!d.expeditionId;
     const stats = [];
 
-    const vehicleTypeLabels = { 'rover': '🚗 Ground Rover', 'buggy': '🪨 Ground Buggy', 'drone': '🛸 Aerial Drone' };
-    stats.push({ label: 'Type', value: vehicleTypeLabels[d.vehicleType] || '🚗 Vehicle' });
+    const vehicleTypeLabels = { 'rover': `${icon('vehicle_rover')} Ground Rover`, 'buggy': `${icon('mountain_terrain')} Ground Buggy`, 'drone': `${icon('vehicle_drone')} Aerial Drone` };
+    stats.push({ label: 'Type', value: vehicleTypeLabels[d.vehicleType] || `${icon('vehicle_rover')} Vehicle` });
     stats.push({ label: 'Level', value: d.vehicleLevel });
     stats.push({ label: 'Cargo Capacity', value: `${d.vehicleCargo} physical items`, note: 'Weightless data (readings, signals) has no cargo limit' });
 
@@ -490,7 +490,7 @@ function showVehicleDetail(el) {
         <div id="vehicleModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;" onclick="if(event.target===this)this.remove()">
             <div style="background: var(--bg-card); border-radius: 16px; max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.5); border: 1px solid var(--border-default);">
                 <div style="padding: 24px; text-align: center; background: ${headerBg}; border-radius: 15px 15px 0 0;">
-                    ${d.vehicleImage ? `<img src="${d.vehicleImage}" alt="${d.vehicleName}" style="width: 80px; height: 80px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">` : `<div style="width: 80px; height: 80px; margin: 0 auto 12px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 40px;">${isRover ? '🚗' : '🛸'}</div>`}
+                    ${d.vehicleImage ? `<img src="${d.vehicleImage}" alt="${d.vehicleName}" style="width: 80px; height: 80px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">` : `<div style="width: 80px; height: 80px; margin: 0 auto 12px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 40px;">${isRover ? icon('vehicle_rover') : icon('vehicle_drone')}</div>`}
                     <h3 style="margin: 0; color: white; font-size: 20px; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">${d.vehicleName}</h3>
                     <div style="color: rgba(255,255,255,0.9); font-size: 13px; margin-top: 4px;">Level ${d.vehicleLevel} ${isRover ? 'Rover' : 'Drone'}</div>
                     ${statusBadge}
