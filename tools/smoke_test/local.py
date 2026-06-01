@@ -266,6 +266,71 @@ def test_depot_cost_floors():
     return True
 
 
+@test("Build-complete diff never leaks media/dict/robot text (#1463/#1472)", tier=1, features=['config', 'depot'], mode='local')
+def test_build_diff_no_leak():
+    """#1463: buggy longhaul_image_url leaked a raw URL into the build-complete
+    modal. #1472: robot_build_speed_mult bare-titled to 'Robot Build Speed Mult'
+    and level_requires leaked a raw dict. _format_effect_diff must drop every
+    media/url/icon field, every metadata gate, and label robot_* without 'robot'.
+    Scans synthetic data + EVERY upgrade AND infrastructure level transition."""
+    from utilities.build_completions import _format_effect_diff
+    from config import UPGRADE_CATALOG, INFRASTRUCTURE_CATALOG
+
+    bad = []
+    # Synthetic: media + metadata-gate keys must all be excluded
+    old = {'cargo': 7, 'image_url': 'a.png', 'longhaul_image_url': 'b.png',
+           'icon': 'i.png', 'preview_video': 'v.mp4', 'level_requires': {},
+           'robot_unlocked': False}
+    new = {'cargo': 8, 'image_url': 'a2.png', 'longhaul_image_url': 'b2.png',
+           'icon': 'i2.png', 'preview_video': 'v2.mp4',
+           'level_requires': {'habitat_module': 3}, 'robot_unlocked': True}
+    for line in _format_effect_diff(old, new):
+        if any(m in line.lower() for m in ('http', 'url', '.png', '.mp4', 'image', '{', 'robot')):
+            bad.append(f"synthetic: {line}")
+
+    # Real catalogs: no media URL, no raw dict, no 'robot' word in any diff line
+    def _scan(label, item_key, levels):
+        ints = sorted(l for l in (levels or {}) if isinstance(l, int))
+        for a, b in zip(ints, ints[1:]):
+            for line in _format_effect_diff(levels[a], levels[b]):
+                if any(m in line.lower() for m in ('http', '.png', '.jpg', '.mp4', '{', 'robot')):
+                    bad.append(f"{label}/{item_key} L{a}->{b}: {line}")
+
+    for cat, cat_dict in UPGRADE_CATALOG.items():
+        if isinstance(cat_dict, dict):
+            for item_key, cfg in cat_dict.items():
+                if isinstance(cfg, dict) and 'levels' in cfg:
+                    _scan(cat, item_key, cfg['levels'])
+    for item_key, cfg in INFRASTRUCTURE_CATALOG.items():
+        if isinstance(cfg, dict) and 'levels' in cfg:
+            _scan('infra', item_key, cfg['levels'])
+    if bad:
+        return f"{len(bad)} leak(s) in build diff: " + '; '.join(bad[:4])
+    return True
+
+
+@test("Active-build name resolves infra flavor names, never 'robot' (#1472)", tier=1, features=['config', 'depot', 'narog'], mode='local')
+def test_active_build_name_resolution():
+    """#1472: the Narog Foundry (robotics_lab) active-build slot title-cased to
+    'Robotics Lab' because get_active_builds only checked UPGRADE_CATALOG. The
+    shared resolve_item_display_name must reach INFRASTRUCTURE_CATALOG and never
+    surface 'robot' for any infrastructure item, at any level or base."""
+    from utilities.upgrades.state import resolve_item_display_name as R
+    from config import INFRASTRUCTURE_CATALOG
+    if R('infrastructure', 'robotics_lab', None) != 'Narog Foundry':
+        return f"robotics_lab base name = {R('infrastructure','robotics_lab',None)!r}, expected 'Narog Foundry'"
+    leaks = []
+    for key, cfg in INFRASTRUCTURE_CATALOG.items():
+        if not isinstance(cfg, dict):
+            continue
+        names = [R('infrastructure', key, None)] + [
+            R('infrastructure', key, l) for l in (cfg.get('levels') or {}) if isinstance(l, int)]
+        leaks += [f"{key}:{n}" for n in names if 'robot' in n.lower()]
+    if leaks:
+        return f"{len(leaks)} infra name(s) leak 'robot': " + '; '.join(leaks[:4])
+    return True
+
+
 @test("Narog stat math matches #1436 spec", tier=1, features=['config', 'narog'], mode='local')
 def test_narog_stat_math():
     """Bug #1436: Foundry L0 = 5/100, L10 = 100/100, linear in between."""
@@ -788,6 +853,35 @@ def test_level_unlocks_reverse_index():
     sample = next(iter(index['habitat_module'][3]))
     if sample.get('name') != 'Narog Foundry':
         return f"Reverse-index display name drift: {sample}"
+    return True
+
+
+@test("Scientist NAV extends vehicle range at all 3 sites, /150 parity (#1440)", tier=1, features=['config', 'expeditions'], mode='local')
+def test_scientist_nav_extends_range():
+    """Bug #1440 (Luke: 'Navigation should include Expedition Range Boost'). NAV must
+    multiply max range at ALL three range sites — a one-site miss silently no-ops it
+    (the #1313 lesson). And the range divisor must equal the speed divisor (/150) so
+    they never drift. Source-string guard (no DB needed)."""
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sites = {
+        'utilities/expeditions/preview.py': '* scientist_nav_mult',
+        'utilities/expeditions/lifecycle.py': '* sci_nav_mult',
+        'utilities/expeditions/page_data.py': '* nav_range_mult',
+    }
+    missing = []
+    for rel, needle in sites.items():
+        with open(os.path.join(root, rel)) as f:
+            src = f.read()
+        # the range line is the one computing max_range/effective_range_km with the nav term
+        if needle not in src or '/ 150' not in src and '/150' not in src:
+            missing.append(rel)
+        # confirm the nav term sits on a range computation, not only speed
+        if not any((('max_range' in ln or 'effective_range_km' in ln) and needle in ln)
+                   for ln in src.splitlines()):
+            missing.append(f"{rel} (nav term not on the range line)")
+    if missing:
+        return "NAV→range missing/misplaced at: " + "; ".join(missing)
     return True
 
 
@@ -1904,11 +1998,13 @@ def test_page_data_db_budgets():
         # N+1 (5 lookups -> 1 batched). Warm steady-state is now ~35; 44 = cold ceiling 42 + 2.
         ('Home /',         44, lambda: get_dashboard_page_data(user_id, auth)),
         ('Expeditions',    40, lambda: get_expeditions_page_data(user_id)),
-        # Data-driven drift 25->26 (user 45's crew state grew one query since the prior deploy;
-        # NOT a code regression — verified the budget trips with #1493 stashed). Bumped to unblock
-        # the deploy queue; the real +1 (a crew-helper query that scales with state) is tracked in
-        # a P2 to trace/kill it and re-tighten. Do NOT raise further without finding the N+1.
-        ('Crew /crew',     26, lambda: get_command_page_data(user_id)),
+        # #1494: warm steady-state is 25 — the 25->26 "drift" was NOT an N+1 or state growth.
+        # The first /crew render in a process fires ensure_captain_stat_events_table() (4 DDL
+        # cursors, process-gated, from Bug #21 Deploy C's get_recent_stat_events at
+        # arrival.py:139). Earlier cases don't touch captain_stats, so they don't pre-warm it,
+        # and the old measure-cold loop counted that once-per-process DDL as load cost (=27).
+        # The loop now warms each fn before measuring, so this measures the true warm 25.
+        ('Crew /crew',     25, lambda: get_command_page_data(user_id)),
         ('Depot /depot',   25, lambda: get_depot_page_data(user_id, auth)),
         # #1160 Option B: Signal Relics adds 1 grouped origin_sites LEFT JOIN site_claims
         # read (measured 24->25). Ceiling 25->26 keeps a 1-query cushion — the NEXT
@@ -1922,6 +2018,15 @@ def test_page_data_db_budgets():
     breaches = []
     try:
         for label, budget, fn in cases:
+            # #1494: WARM each fn once before measuring. The first call in a process
+            # pays once-per-process schema DDL (ensure_*_table — process-gated), which
+            # is NOT an N+1 but inflated the count (crew first-call=27 vs warm=25 because
+            # the captain_stat_events ensure isn't pre-warmed by earlier cases). Measure
+            # the WARM steady-state = exactly what a live user pays every load.
+            try:
+                fn()
+            except Exception:
+                pass
             reset_db_counter()
             try:
                 fn()
@@ -2481,8 +2586,13 @@ def test_expeditions_sort_and_filter():
     assert 'undiscovered[:6]' not in tpl, \
         "#1469 regression: templates/expeditions.html re-introduced undiscovered[:6] cap. " \
         "Sort-by-distance can't surface anything outside the cap. Remove the slice."
-    assert '{% for landmark in undiscovered %}' in tpl, \
-        "Template must iterate full undiscovered list, not a slice"
+    # #1481 (Luke 2026-05-22): the grid now iterates the FULL landmarks set (visited +
+    # unvisited) so the sort covers ALL available dots — still un-sliced (no [:N] cap),
+    # which is what #1469 actually protects against.
+    assert '{% for landmark in landmarks %}' in tpl, \
+        "#1481 regression: grid must iterate the full landmarks set (visited + unvisited), un-sliced"
+    assert ('landmarks[:' not in tpl and 'undiscovered[:' not in tpl), \
+        "Grid must not slice the landmark list — #1469 (sort needs the full set)"
     # (c) vehicle filter bar rendered
     assert 'vehicleFilterBar' in tpl, "#1471: vehicle filter bar div missing from template"
     assert 'filterExpeditionsByVehicle' in tpl, "#1471: filter button onclick wiring missing"

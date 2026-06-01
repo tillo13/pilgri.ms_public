@@ -145,6 +145,12 @@ def get_expeditions_page_data(user_id: int) -> dict:
     scanner_range_mult = upgrade_effects.get('vehicle_range_mult', 1.0)
     from utilities.tech_utils import get_tech_effects as _get_tech_eff
     tech_range_mult = _get_tech_eff(user_id).get('vehicle_range_mult', 1.0)
+    # Scientist NAV extends max range (#1440), mirroring its speed lever (1.0+nav/150).
+    # Fetched once here so the per-vehicle effective_range (and the #1471 reachability
+    # filter that reads it) reflect NAV.
+    from utilities.postgres.users import get_user_scientist
+    _sci = get_user_scientist(user_id)
+    nav_range_mult = 1.0 + ((_sci.get('stats', {}).get('navigation', 0) if _sci else 0) / 150.0)
 
     # Determine which vehicle types are currently on active expeditions
     active_vehicle_types = {e.get('vehicle_type', 'rover') for e in active_expeditions
@@ -163,7 +169,7 @@ def get_expeditions_page_data(user_id: int) -> dict:
         lv1_stats = get_upgrade_stats('vehicles', vtype, 1) or {}
         v['base_range_km'] = lv1_stats.get('max_range_km', base_range)
         v['base_speed'] = lv1_stats.get('expedition_speed_mult', v.get('speed_mult', 1.0))
-        v['effective_range_km'] = int(base_range * range_mult * scanner_range_mult * tech_range_mult)
+        v['effective_range_km'] = int(base_range * range_mult * scanner_range_mult * tech_range_mult * nav_range_mult)
         v['available'] = vtype not in active_vehicle_types
 
     # Bug #1471: per-landmark reachability for vehicle-type filter on /expeditions.

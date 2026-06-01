@@ -299,9 +299,12 @@
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                 {% for item in building_items[:4] %}
-                {% set days = (item.seconds_remaining / 86400)|round(1) %}
+                {%- set s = item.seconds_remaining|default(0) -%}
                 <span style="font-size: 11px; background: rgba(200,100,50,0.2); padding: 3px 8px; border-radius: 4px; color: var(--text-primary);">
-                    {{ item.name|truncate(15) }} <span style="color: var(--color-mars);">{{ days }}d</span>
+                    {{ item.name|truncate(15) }} <span style="color: var(--color-mars);">
+                    {%- if s <= 0 -%}Ready{%- elif s >= 86400 -%}{{ (s // 86400) }}d {{ ((s % 86400) // 3600) }}h
+                    {%- elif s >= 3600 -%}{{ (s // 3600) }}h {{ ((s % 3600) // 60) }}m
+                    {%- else -%}{{ (s // 60) }}m{%- endif -%}</span>
                 </span>
                 {% endfor %}
                 {% if building_items|length > 4 %}

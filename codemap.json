@@ -2670,6 +2670,7 @@
       "get_upgrade_build_status — Get the build status for an upgrade.",
       "count_concurrent_upgrades — Count how many builds are in progress (equipment upgrades + infrastructure construction).",
       "get_user_upgrade_cap — Get user's max concurrent upgrade cap.",
+      "resolve_item_display_name — Display name for an upgrade/infrastructure item at a given level.",
       "get_active_builds — Get list of active builds with name, category, target level, and seconds remaining.",
       "get_all_build_statuses — Bulk-fetch build status for every player_upgrades row. Returns {(category, item_key): status_dict}.",
       "get_all_user_upgrades — Get all upgrades for a user as nested dict: {category: {item_key: level}}",
@@ -3675,7 +3676,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3691,7 +3692,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {

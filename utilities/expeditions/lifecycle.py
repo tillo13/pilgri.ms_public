@@ -105,7 +105,12 @@ def launch_expedition(
     from utilities.tech_utils import get_tech_effects as _get_tech_eff
     scanner_range_mult = _get_eff(user_id).get('vehicle_range_mult', 1.0)
     tech_range_mult = _get_tech_eff(user_id).get('vehicle_range_mult', 1.0)
-    max_range = int(vehicle_data.get('max_range_km', 9999) * range_mult * scanner_range_mult * tech_range_mult)
+    # Scientist NAV extends max range too (#1440), mirroring its speed lever (1.0+nav/150).
+    # Fetched here (above the gate) so the reachability check itself reflects NAV.
+    scientist = get_user_scientist(user_id)
+    sci_stats = scientist.get('stats', {}) if scientist else {}
+    sci_nav_mult = 1.0 + (sci_stats.get('navigation', 0) / 150.0)
+    max_range = int(vehicle_data.get('max_range_km', 9999) * range_mult * scanner_range_mult * tech_range_mult * sci_nav_mult)
     if distance_km > max_range:
         return {'success': False, 'error': f'{vehicle_type.capitalize()} max range is {max_range} km. Destination is {distance_km:.0f} km away.'}
 
@@ -115,9 +120,7 @@ def launch_expedition(
     if not cmd_stats:
         cmd_stats = {'exploration': 50, 'leadership': 50, 'strategy': 50, 'logistics': 50, 'charisma': 50}
     logistics_bonus = 1.0 + (cmd_stats.get('logistics', 50) / 100.0)
-    scientist = get_user_scientist(user_id)
-    sci_stats = scientist.get('stats', {}) if scientist else {}
-    sci_nav_mult = 1.0 + (sci_stats.get('navigation', 0) / 150.0)
+    # sci_nav_mult already computed above (for the range gate)
     # Drones fly — terrain doesn't slow them
     terrain_mult = 1.0
     if vehicle_type != 'drone':

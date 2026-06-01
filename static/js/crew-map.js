@@ -636,9 +636,13 @@ function updateTopTrails() {
         const completedSegs = meta.chain_completed_segments || 0;
         const totalSegs = meta.chain_total_segments || 0;
         const tier = meta.chain_prestige_tier || 'none';
-        const pct = totalKm > 0 ? Math.min(100, (builtKm / totalKm) * 100) : 0;
         // Find the next-unbuilt segment row (is_complete=false)
         const next = segs.find(s => !s.is_complete);
+        // #1446: progress reflects the NEXT segment, not the whole chain — "makes the
+        // user feel like accomplishing something vs waiting 2 years". X/total segs kept.
+        const segKm = next ? (next.segment_distance_km || 0) : totalKm;
+        const segBuilt = next ? (next.km_built || 0) : builtKm;
+        const pct = segKm > 0 ? Math.min(100, (segBuilt / segKm) * 100) : (next ? 0 : 100);
         const isActive = (d === activeDir);
         const borderStyle = isActive ? `2px solid ${dirColor[d]}` : `1px solid var(--border-default)`;
         const activeBadge = isActive ? `<span style="color:${dirColor[d]}; font-size:10px; font-weight:700;">● ACTIVE</span>` : '';
@@ -657,7 +661,7 @@ function updateTopTrails() {
                     <div style="height: 100%; width: ${pct}%; background: ${dirColor[d]}; transition: width 0.3s;"></div>
                 </div>
                 <div class="flex justify-between text-xs opacity-60 mt-4">
-                    <span>${builtKm.toFixed(0)} / ${totalKm.toFixed(0)} km · ${completedSegs}/${totalSegs} segs</span>
+                    <span>${segBuilt.toFixed(0)} / ${segKm.toFixed(0)} km · ${completedSegs}/${totalSegs} segs</span>
                 </div>
             </div>
         `;

@@ -7,7 +7,7 @@ private _complete_pending_upgrade write used by auto-completion.
 
 import logging
 from typing import Dict, Optional
-from config import UPGRADE_CATALOG
+from config import UPGRADE_CATALOG, INFRASTRUCTURE_CATALOG
 from utilities.postgres.core import db_cursor, ensure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -285,6 +285,24 @@ def get_user_upgrade_cap(user_id: int, _prefetch_infra_levels=None) -> int:
     return cap
 
 
+def resolve_item_display_name(category: str, item_key: str, level=None) -> str:
+    """Display name for an upgrade/infrastructure item at a given level.
+
+    Prefers the per-level flavor name (e.g. robotics_lab L3 = 'Calibration Pit'),
+    then the base catalog name ('Narog Foundry'), then a title-cased key. Resolves
+    across BOTH catalogs so infrastructure items — keyed by item_key in
+    INFRASTRUCTURE_CATALOG, not nested under a category in UPGRADE_CATALOG — don't
+    fall through to the raw key ("Robotics Lab"). Single source of truth shared by
+    get_active_builds and build_completions. #1472.
+    """
+    item_config = (UPGRADE_CATALOG.get(category, {}).get(item_key)
+                   or INFRASTRUCTURE_CATALOG.get(item_key, {}))
+    level_config = item_config.get('levels', {}).get(level, {}) if level is not None else {}
+    return (level_config.get('name')
+            or item_config.get('name')
+            or item_key.replace('_', ' ').title())
+
+
 def get_active_builds(user_id: int) -> list:
     """
     Get list of active builds with name, category, target level, and seconds remaining.
@@ -302,10 +320,10 @@ def get_active_builds(user_id: int) -> list:
         """, (user_id,))
         now = datetime.now(timezone.utc)
         for row in cur.fetchall():
-            # Get item name from catalog
-            item_config = UPGRADE_CATALOG.get(row['category'], {}).get(row['item_key'], {})
-            level_config = item_config.get('levels', {}).get(row['pending_level'], {})
-            item_name = level_config.get('name', item_config.get('name', row['item_key'].replace('_', ' ').title()))
+            # Name from catalog — flavor name at the target level, resolved across
+            # both catalogs so infra (robotics_lab → "Narog Foundry") doesn't
+            # title-case to "Robotics Lab". #1472.
+            item_name = resolve_item_display_name(row['category'], row['item_key'], row['pending_level'])
 
             ready_at = row['ready_at']
             if ready_at.tzinfo is None:

@@ -78,23 +78,27 @@ let currentVehicleFilter = 'all';
 
 function sortExpeditions(value) {
     const [field, dir] = value.split('-');
-    const grids = [document.getElementById('newExpeditionsGrid'), document.getElementById('visitedExpeditionsGrid')];
-    grids.forEach(grid => {
-        if (!grid) return;
-        const cards = Array.from(grid.querySelectorAll('.exp-card'));
-        cards.sort((a, b) => {
-            let aVal, bVal;
-            if (field === 'distance') {
-                aVal = parseFloat(a.dataset.distance);
-                bVal = parseFloat(b.dataset.distance);
-            } else if (field === 'cost') {
-                aVal = parseFloat(a.querySelector('.expedition-total-cost').textContent) || 9999;
-                bVal = parseFloat(b.querySelector('.expedition-total-cost').textContent) || 9999;
-            }
-            return dir === 'asc' ? aVal - bVal : bVal - aVal;
-        });
-        cards.forEach(card => grid.appendChild(card));
+    const grid = document.getElementById('newExpeditionsGrid');
+    if (!grid) return;
+    const cards = Array.from(grid.querySelectorAll('.exp-card'));
+    cards.sort((a, b) => {
+        let aVal, bVal;
+        if (field === 'distance') {
+            aVal = parseFloat(a.dataset.distance);
+            bVal = parseFloat(b.dataset.distance);
+        } else if (field === 'cost') {
+            aVal = parseFloat(a.querySelector('.expedition-total-cost').textContent) || 9999;
+            bVal = parseFloat(b.querySelector('.expedition-total-cost').textContent) || 9999;
+        } else if (field === 'reward') {
+            // Bug #1481: expected-shard midpoint, async-populated by updateAllExpeditionCosts().
+            // 0 sorts last on "Most" (reward-desc) and first on "Least" — acceptable until costs load,
+            // then updateAllExpeditionCosts re-applies this sort with real values.
+            aVal = parseFloat(a.dataset.reward) || 0;
+            bVal = parseFloat(b.dataset.reward) || 0;
+        }
+        return dir === 'asc' ? aVal - bVal : bVal - aVal;
     });
+    cards.forEach(card => grid.appendChild(card));
     // Re-apply current vehicle filter after sort so filtered cards stay hidden in new order
     applyVehicleFilter();
 }
@@ -111,7 +115,7 @@ function filterExpeditionsByVehicle(vtype, btn) {
 
 function applyVehicleFilter() {
     const v = currentVehicleFilter;
-    document.querySelectorAll('#newExpeditionsGrid .exp-card, #visitedExpeditionsGrid .exp-card').forEach(card => {
+    document.querySelectorAll('#newExpeditionsGrid .exp-card').forEach(card => {
         if (v === 'all') {
             card.style.display = '';
             return;

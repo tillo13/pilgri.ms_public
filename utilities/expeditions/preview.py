@@ -275,8 +275,9 @@ def get_expedition_preview(user_id: int, distance_km: float, destination_type: s
         # Total speed mult (for backwards compatibility)
         total_speed = effective_speed / BASE_SPEED_KM_PER_HOUR
 
-        # Range check: fog radius × scanner vehicle_range_mult × tech vehicle_range_mult.
-        max_range = int(v.get('max_range_km', 9999) * range_mult * scanner_range_mult * tech_range_mult)
+        # Range check: fog radius × scanner vehicle_range_mult × tech vehicle_range_mult
+        # × scientist NAV (#1440: NAV extends reach, mirroring its speed lever 1.0+nav/150).
+        max_range = int(v.get('max_range_km', 9999) * range_mult * scanner_range_mult * tech_range_mult * scientist_nav_mult)
         out_of_range = distance_km > max_range
         available = v['available'] and not out_of_range
         unavailable_reason = f'Out of range ({max_range} km max)' if out_of_range else ('In use' if not v['available'] else '')

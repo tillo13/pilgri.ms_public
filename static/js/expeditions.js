@@ -462,6 +462,13 @@ async function updateAllExpeditionCosts() {
                 if (el) el.textContent = 'Error';
             }
         });
+        // Bug #1481: reward + cost are async — re-apply an active reward/cost sort now
+        // that real per-card values exist (a sort chosen before load saw only 0/--).
+        const sel = document.getElementById('expeditionSort');
+        if (sel && typeof sortExpeditions === 'function' &&
+            (sel.value.startsWith('reward') || sel.value.startsWith('cost'))) {
+            sortExpeditions(sel.value);
+        }
     } catch {
         entries.forEach(e => { const el = e.card.querySelector('.expedition-total-cost'); if (el) el.textContent = '--'; });
     }
@@ -473,6 +480,13 @@ function updateCostDisplay(card, data, landmark) {
     // Store cost on landmark for map popup
     landmark._calculatedCost = tp.total_cost_display;
     landmark._canAfford = tp.can_afford;
+
+    // Bug #1481: expose expected-shard midpoint so "Shards: Most/Least Expected" can sort on it.
+    if (data.estimated_return) {
+        const mid = ((data.estimated_return.low || 0) + (data.estimated_return.high || 0)) / 2;
+        card.dataset.reward = String(mid);
+        landmark._estimatedReturn = data.estimated_return;
+    }
 
     // Update cost
     const costEl = card.querySelector('.expedition-total-cost');

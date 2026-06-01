@@ -87,9 +87,22 @@ def _get_completions_seen_at(user_id: int):
 
 
 _EFFECT_KEYS_SKIP = {
-    'name', 'cost', 'image_url', 'build_time_days', 'effect_description',
-    'description', 'icon',
+    'name', 'cost', 'build_time_days', 'effect_description', 'description',
+    # metadata/gates — never player-facing stat diffs (leaked "Level Requires:
+    # {'habitat_module': 3}" into the build-complete modal, found via #1472)
+    'level_requires', 'level_unlocks', 'robot_unlocked',
 }
+
+# Bug #1463: any image/media/url field must never render as a stat diff. A
+# denylist of specific keys (image_url) let the buggy-only longhaul_image_url
+# leak its raw URL into the build-complete modal. Skip the whole class so the
+# next *_image_url / *_url / icon / thumbnail / video field can't regress it.
+_MEDIA_KEY_MARKERS = ('image', 'url', 'icon', 'thumb', 'video')
+
+
+def _is_media_key(k: str) -> bool:
+    kl = k.lower()
+    return any(m in kl for m in _MEDIA_KEY_MARKERS)
 
 _EFFECT_LABELS = {
     'cargo': 'Cargo',
@@ -103,6 +116,7 @@ _EFFECT_LABELS = {
     'bio_discovery_value_mult': 'Bio Discovery Value',
     'build_time_mult': 'Build Speed',
     'research_speed_mult': 'Research Speed',
+    'robot_build_speed_mult': 'Narog Assembly Speed',  # #1472: was bare-titling to "Robot Build Speed Mult"
     'sv_storage_cap': 'SV Storage',
     'storage_cap': 'Storage Cap',
 }
@@ -125,6 +139,8 @@ def _format_effect_diff(old_data: dict, new_data: dict) -> list:
     diffs = []
     keys = (set(old_data.keys()) | set(new_data.keys())) - _EFFECT_KEYS_SKIP
     for k in sorted(keys):
+        if _is_media_key(k):
+            continue
         ov = old_data.get(k)
         nv = new_data.get(k)
         if ov == nv:
@@ -214,11 +230,8 @@ def get_recent_build_completions(user_id: int, since_dt=None, limit: int = 10,
         old_data = levels.get(old_level) or {}
         new_data = levels.get(new_level) or {}
 
-        item_name = (
-            new_data.get('name')
-            or entry.get('name')
-            or item_key.replace('_', ' ').title()
-        )
+        from utilities.upgrades.state import resolve_item_display_name
+        item_name = resolve_item_display_name(category, item_key, new_level)
         from utilities.upgrade_image_utils import get_best_available_image
         image_url = (
             get_best_available_image(category, item_key, new_level)

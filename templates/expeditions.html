@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Tab Navigation -->
 <div class="expedition-tabs">
     <button class="expedition-tab active" data-tab="new" onclick="switchExpeditionTab('new')">
-        New Destinations<span class="tab-count">{{ undiscovered|length }}</span>
+        Destinations<span class="tab-count">{{ landmarks|length }}</span>
     </button>
     <button class="expedition-tab" data-tab="ledger" onclick="switchExpeditionTab('ledger'); loadExpeditionHistory();">
         History<span class="tab-count" id="ledger-count">{{ expedition_count|default('--') }}</span>
@@ -281,6 +281,8 @@ document.addEventListener('DOMContentLoaded', function() {
         <option value="distance-desc">Distance: Farthest</option>
         <option value="cost-asc">Cost: Lowest</option>
         <option value="cost-desc">Cost: Highest</option>
+        <option value="reward-desc">Shards: Most Expected</option>
+        <option value="reward-asc">Shards: Least Expected</option>
     </select>
 </div>
 
@@ -294,26 +296,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- NEW DESTINATIONS Tab -->
 <div id="tab-new" class="expedition-tab-content">
-    {% if undiscovered|length == 0 %}
+    {% if landmarks|length == 0 %}
     <div class="dashboard-card" style="text-align: center; padding: 40px;">
         <img src="{{ icons.rocket_launch }}" alt="" style="width: 48px; height: 48px; margin-bottom: 16px;">
         <h3>Keep Exploring!</h3>
-        <p style="color: var(--text-secondary);">Visit locations in the Visited tab to unlock new destinations nearby. Each expedition expands your reach across Mars!</p>
+        <p style="color: var(--text-secondary);">No destinations within reach yet. Complete an expedition to expand your range across Mars!</p>
     </div>
     {% else %}
     <div class="expedition-grid" id="newExpeditionsGrid">
-        {# Bug #1469 (Luke 2026-05-13): was [:6] which made sort-by-distance never see actual farthest landmarks (top-6-by-cost was preselected, then re-sorted in-place). Removed cap so all undiscovered render; get_available_landmarks_by_discovery already caps the upstream pool at limit=30 in page_data.py. #}
-        {% for landmark in undiscovered %}
-        <div class="exp-card"
+        {# Bug #1469 (Luke 2026-05-13): removed the old [:6] cap so all dots render; pool is capped at limit=30 upstream in page_data.py.
+           Bug #1481 (Luke 2026-05-22): grid now loops the FULL landmarks set (visited + unvisited) so the sort covers ALL available dots, not just unvisited. loop.index0 == the full-landmarks index the JS reads. #}
+        {% for landmark in landmarks %}
+        <div class="exp-card{% if landmark.is_discovered %} exp-card-visited{% endif %}"
              data-expedition-index="{{ loop.index0 }}"
              data-distance="{{ landmark.distance_km }}"
-             data-landmark-index="{{ landmarks.index(landmark) }}"
+             data-landmark-index="{{ loop.index0 }}"
+             data-visited="{% if landmark.is_discovered %}true{% else %}false{% endif %}"
              data-reachable-by='{{ landmark.reachable_by|tojson }}'
              data-slots-full="{% if active_expeditions and (active_expeditions|selectattr('status', 'in', ['traveling','recalled'])|list|length) >= (max_concurrent_expeditions|default(1)) %}true{% else %}false{% endif %}">
             <div class="exp-card-header">
                 <div>
                     <div class="exp-card-name">{{ landmark.name }}</div>
-                    <div class="exp-card-type">{{ landmark.type }}</div>
+                    <div class="exp-card-type">{{ landmark.type }}{% if landmark.is_discovered %} · <span style="color: var(--color-success); font-weight: 600;">✓ Visited</span>{% endif %}</div>
                 </div>
                 <div class="exp-card-cost">
                     <div class="exp-card-cost-value expedition-total-cost">--</div>
