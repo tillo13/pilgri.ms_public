@@ -53,9 +53,11 @@ class ClaudeClient:
         if not api_key:
             raise ValueError("No API key provided")
 
-        # Default to Sonnet 3.5 if no model specified (fast and reliable)
+        # #1493: default to current Sonnet if no model specified. Was a "sonnet-3.5"
+        # key (not in catalog) -> the retired Sonnet 3.5 alias — a hard-error time bomb
+        # once Anthropic decommissions it.
         if not model:
-            model = CLAUDE_MODELS.get("sonnet-3.5", "claude-3-5-sonnet-latest")
+            model = CLAUDE_MODELS.get("sonnet-4.6", "claude-sonnet-4-6")
 
         # Warn about slow models
         if "claude-opus-4-20250514" in model:

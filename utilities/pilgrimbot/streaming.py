@@ -238,9 +238,9 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
             return
 
         # Phase 2 deep call: persona + knowledge + surgical context
-        # Use Sonnet for math questions, Haiku for everything else
+        # Use Opus for math questions (#1493: top-tier reasoner), Haiku for everything else
         is_math = 'math' in plan
-        deep_model = CLAUDE_MODELS.get("sonnet-4.5", "claude-sonnet-4-5-20250929") if is_math else MODEL
+        deep_model = CLAUDE_MODELS.get("opus-4.8", "claude-opus-4-8") if is_math else MODEL
 
         deep_system = system_base + surgical_context
 

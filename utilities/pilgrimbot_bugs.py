@@ -8,7 +8,7 @@ import logging
 import threading
 import time as _time
 
-from utilities.claude_utils import create_client, log_api_usage
+from utilities.claude_utils import create_client, log_api_usage, CLAUDE_MODELS
 from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
 from utilities.postgres.core import db_cursor
 
@@ -148,8 +148,8 @@ def execute_create_bug_tool(input_data, user_id, chat_id=None):
     logger.info(f"Bug created via tool: #{bug['id']} - {title}")
     return f"Bug created successfully: #{bug['id']} — {title}\nLink: /admin/bugs?open={bug['id']}"
 
-# Use same model as main pilgrimbot
-MODEL = "claude-haiku-4-5-20251001"
+# Use same model as main pilgrimbot. #1493: via catalog (DRY) so a catalog bump propagates.
+MODEL = CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001")
 
 
 def _strip_markdown_json(text):

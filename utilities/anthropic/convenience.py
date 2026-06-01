@@ -24,7 +24,8 @@ def create_client(api_key: str = None, model: str = None) -> ClaudeClient:
     api_key = _get_anthropic_api_key(api_key)
 
     if not model:
-        model = CLAUDE_MODELS.get("sonnet-3.5", "claude-3-5-sonnet-latest")
+        # #1493: was a "sonnet-3.5" key -> the retired Sonnet 3.5 alias. Now current Sonnet.
+        model = CLAUDE_MODELS.get("sonnet-4.6", "claude-sonnet-4-6")
 
     return ClaudeClient(
         api_key=api_key,

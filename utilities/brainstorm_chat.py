@@ -52,9 +52,13 @@ When brainstorming surfaces a concrete bug, feature request, or action item:
     messages = [{"role": msg['role'], "content": msg['content']} for msg in history[-10:]]
     messages.append({"role": "user", "content": message})
 
+    # #1493: was a bare Sonnet 4 literal (a generation behind). Pull from the catalog so
+    # brainstorm chat follows the same current Sonnet as the rest of the app.
+    from utilities.anthropic.pricing import CLAUDE_MODELS
+    _brainstorm_model = CLAUDE_MODELS.get("sonnet-4.6", "claude-sonnet-4-6")
     _start = time.time()
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model=_brainstorm_model,
         max_tokens=1000,
         system=enriched_context,
         messages=messages
@@ -62,7 +66,7 @@ When brainstorming surfaces a concrete bug, feature request, or action item:
     _elapsed = time.time() - _start
 
     log_api_usage(
-        model="claude-sonnet-4-20250514",
+        model=_brainstorm_model,
         usage=response.usage,
         feature='brainstorm_chat',
         duration_ms=int(_elapsed * 1000),

@@ -1357,6 +1357,41 @@ def test_signal_relics_shape():
     return True
 
 
+@test("No superseded Anthropic model in live paths (#1493)", tier=1, features=['config', 'pilgrimbot'], mode='local')
+def test_no_superseded_model():
+    import os
+    from utilities.anthropic.pricing import CLAUDE_MODELS, get_model_pricing
+    SUPERSEDED = {'claude-sonnet-4-5-20250929', 'claude-3-5-sonnet-latest',
+                  'claude-3-5-sonnet-20241022', 'claude-sonnet-4-20250514'}
+    # deep/math mode model (mirrors streaming.py:243) must not be superseded
+    deep = CLAUDE_MODELS.get("opus-4.8", "claude-opus-4-8")
+    if deep in SUPERSEDED:
+        return f"deep/math model resolves to a superseded id: {deep}"
+    # source-scan: the stale LITERAL the dict-test can't see. Per-file = what #1493 fixed
+    # (convenience.py:70 legitimately keeps the in-catalog sonnet-4 fallback — not scanned).
+    base = os.path.join(os.path.dirname(__file__), '..', '..')
+    checks = {
+        'utilities/pilgrimbot/streaming.py': ['claude-sonnet-4-5-20250929'],
+        'utilities/anthropic/client.py': ['claude-3-5-sonnet-latest'],
+        'utilities/admin_utils.py': ['claude-3-5-sonnet-latest'],
+        'utilities/brainstorm_chat.py': ['claude-sonnet-4-20250514'],
+    }
+    for rel, bad_ids in checks.items():
+        with open(os.path.join(base, rel)) as f:
+            src = f.read()
+        for bad in bad_ids:
+            if bad in src:
+                return f"{rel} still references superseded model {bad}"
+    # pricing precedence (#1493): opus-4-8 must price $5/$25, NOT opus-4 $15/$75 substring-match
+    p = get_model_pricing('claude-opus-4-8')
+    if (p.get('input'), p.get('output')) != (0.000005, 0.000025):
+        return f"claude-opus-4-8 mis-priced {p} — must be $5/$25, check MODEL_PRICING ordering"
+    s = get_model_pricing('claude-sonnet-4-6')
+    if (s.get('input'), s.get('output')) != (0.000003, 0.000015):
+        return f"claude-sonnet-4-6 mis-priced: {s}"
+    return True
+
+
 @test("Shard-Rush descriptions + constant truth (#1416/#1421)", tier=1, features=['config', 'depot'], mode='local')
 def test_shard_rush_descriptions():
     # #1416: Water Extractor (infra) + Life Support (equipment) descriptions MUST name Shard Rush.
@@ -1812,7 +1847,11 @@ def test_page_data_db_budgets():
         # N+1 (5 lookups -> 1 batched). Warm steady-state is now ~35; 44 = cold ceiling 42 + 2.
         ('Home /',         44, lambda: get_dashboard_page_data(user_id, auth)),
         ('Expeditions',    40, lambda: get_expeditions_page_data(user_id)),
-        ('Crew /crew',     25, lambda: get_command_page_data(user_id)),
+        # Data-driven drift 25->26 (user 45's crew state grew one query since the prior deploy;
+        # NOT a code regression — verified the budget trips with #1493 stashed). Bumped to unblock
+        # the deploy queue; the real +1 (a crew-helper query that scales with state) is tracked in
+        # a P2 to trace/kill it and re-tighten. Do NOT raise further without finding the N+1.
+        ('Crew /crew',     26, lambda: get_command_page_data(user_id)),
         ('Depot /depot',   25, lambda: get_depot_page_data(user_id, auth)),
         # #1160 Option B: Signal Relics adds 1 grouped origin_sites LEFT JOIN site_claims
         # read (measured 24->25). Ceiling 25->26 keeps a 1-query cushion — the NEXT

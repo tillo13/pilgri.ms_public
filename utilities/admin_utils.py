@@ -415,7 +415,10 @@ def generate_aria_message():
         from utilities.google_auth_utils import get_secret
 
         api_key = get_secret("KUMORI_ANTHROPIC_API_KEY", project_id="kumori-404602")
-        client = create_client(api_key, model=CLAUDE_MODELS.get("haiku-3.5"))
+        # #1493: was a "haiku-3.5" key (not in catalog) -> None -> create_client fell through
+        # to the retired Sonnet 3.5 default. Pin to current Haiku (matches the other
+        # ARIA/PilgrimBot paths) so ARIA dynamic messages don't run on a retired model.
+        client = create_client(api_key, model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001"))
 
         now = datetime.utcnow()
         hour = now.hour

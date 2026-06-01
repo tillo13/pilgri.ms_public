@@ -18,9 +18,12 @@ if not logger.handlers:
 # Latest Claude models with performance characteristics
 CLAUDE_MODELS = {
     # Latest (2026)
-    "opus-4.6": "claude-opus-4-6",               # 🆕 Latest flagship, best reasoning/coding
-    "sonnet-4.5": "claude-sonnet-4-5-20250929",  # ✅ Best speed/intelligence balance
+    "opus-4.8": "claude-opus-4-8",               # 🆕 Current flagship (PilgrimBot deep/math, #1493)
+    "sonnet-4.6": "claude-sonnet-4-6",           # ✅ Current Sonnet — speed/intelligence balance
     "haiku-4.5": "claude-haiku-4-5-20251001",    # ⚡ Fastest, near-frontier intelligence
+    # Superseded — kept for historical pricing refs; do NOT point live paths here.
+    "opus-4.6": "claude-opus-4-6",               # superseded flagship
+    "sonnet-4.5": "claude-sonnet-4-5-20250929",  # superseded (#1493)
     # Legacy (still available)
     "opus-4.5": "claude-opus-4-5-20251101",      # Previous flagship
     "opus-4.1": "claude-opus-4-1-20250805",      # ✅ ~3.5s response time
@@ -32,6 +35,12 @@ CLAUDE_MODELS = {
 
 # ACCURATE MODEL PRICING (per token, not per million tokens)
 MODEL_PRICING = {
+    # Claude 4.8 / 4.6 (current) — MUST precede the shorter 'claude-opus-4'/'claude-sonnet-4'
+    # keys: the exact-match loop uses substring `in`, and 'claude-opus-4' is a substring of
+    # 'claude-opus-4-8' (#1493). Rates LiteLLM-verified, match utilities/anthropic_logger.py.
+    'claude-opus-4-8': {'input': 0.000005, 'output': 0.000025},    # $5/$25 per million
+    'claude-sonnet-4-6': {'input': 0.000003, 'output': 0.000015},  # $3/$15 per million
+
     # Claude 4.5/4.6 models
     'claude-opus-4-6': {'input': 0.000015, 'output': 0.000075},    # $15/$75 per million
     'claude-sonnet-4-5': {'input': 0.000003, 'output': 0.000015},  # $3/$15 per million
@@ -105,7 +114,11 @@ def get_model_pricing(model_name: str) -> Dict[str, float]:
             return prices
 
     # Fallback to partial matches (newest first)
-    if 'haiku-4-5' in model_lower or 'haiku-4.5' in model_lower:
+    if 'opus-4-8' in model_lower or 'opus-4.8' in model_lower:
+        return MODEL_PRICING['claude-opus-4-8']
+    elif 'sonnet-4-6' in model_lower or 'sonnet-4.6' in model_lower:
+        return MODEL_PRICING['claude-sonnet-4-6']
+    elif 'haiku-4-5' in model_lower or 'haiku-4.5' in model_lower:
         return MODEL_PRICING['claude-haiku-4-5']
     elif 'haiku' in model_lower:
         return MODEL_PRICING['claude-3-haiku']
