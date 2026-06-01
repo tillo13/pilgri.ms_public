@@ -30,6 +30,31 @@ def user_has_maintenance_drone(user_id: int) -> bool:
     return get_all_user_upgrades(user_id).get('maintenance', {}).get('maintenance', 0) >= 3
 
 
+_sv_payout_col_ensured = False
+
+
+def _ensure_sv_payout_column():
+    """#1417: SV gets its OWN payout timer (last_sv_payout_at) so recording SV no longer
+    resets the SHARD timer (last_payout_at) on the 3 dual-purpose buildings (regolith_forge,
+    resonance_chamber, thermal_vent_tap) — which silently dropped their accumulated shards.
+    Idempotent + once-per-process; backfills existing rows from last_payout_at so no SV
+    accumulation jumps on first deploy."""
+    global _sv_payout_col_ensured
+    if _sv_payout_col_ensured:
+        return
+    try:
+        from utilities.postgres.core import ensure_table_columns
+        added = ensure_table_columns('pilgrim', 'colony_infrastructure', {'last_sv_payout_at': 'TIMESTAMPTZ'})
+        if 'last_sv_payout_at' in added:
+            with db_cursor(commit=True) as cur:
+                cur.execute("""UPDATE pilgrim.colony_infrastructure
+                               SET last_sv_payout_at = COALESCE(last_payout_at, build_completed_at, created_at)
+                               WHERE last_sv_payout_at IS NULL""")
+        _sv_payout_col_ensured = True
+    except Exception as e:
+        logger.warning(f"#1417 ensure last_sv_payout_at failed: {e}")
+
+
 def calculate_accumulated_income(user_id):
     """
     Calculate total accumulated Sepolia from all active generators.
@@ -41,6 +66,7 @@ def calculate_accumulated_income(user_id):
     """
     from utilities.postgres.shop import ensure_dust_covered_column, set_infrastructure_dust_covered
     ensure_dust_covered_column()
+    _ensure_sv_payout_column()  # #1417
 
     structures = get_user_infrastructure(user_id)
     coords = get_or_set_user_mars_home(user_id)
@@ -268,8 +294,12 @@ def calculate_accumulated_income(user_id):
             'level': building_level,
             'rate': sv_rate,
         })
-        last_payout = structure.get('last_payout_at') or structure['build_completed_at'] or structure['created_at']
-        hours_elapsed = (datetime.utcnow() - last_payout).total_seconds() / 3600
+        # #1417: SV accumulates on its OWN timer (last_sv_payout_at), independent of the
+        # shard harvest timer (last_payout_at) — falls back to last_payout_at for rows not
+        # yet backfilled. Recording SV resets only this timer, so dual-purpose buildings'
+        # accumulated shards are no longer dropped.
+        last_sv_payout = structure.get('last_sv_payout_at') or structure.get('last_payout_at') or structure['build_completed_at'] or structure['created_at']
+        hours_elapsed = (datetime.utcnow() - last_sv_payout).total_seconds() / 3600
         capped_hours = min(hours_elapsed, ACCUMULATION_CAP_HOURS)
         sv_accumulated += sv_rate * capped_hours
         sv_capped_hours_sum += capped_hours
@@ -536,7 +566,7 @@ def record_science_value(user_id):
         with db_cursor(commit=True) as cur:
             cur.execute("""
                 UPDATE pilgrim.colony_infrastructure
-                SET last_payout_at = NOW(), updated_at = NOW()
+                SET last_sv_payout_at = NOW(), updated_at = NOW()
                 WHERE user_id = %s AND structure_type = ANY(%s) AND status = 'active'
             """, (user_id, sv_building_types))
 

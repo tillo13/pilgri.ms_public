@@ -164,7 +164,7 @@ def reassign_scientist_flow(user_id: int, new_key: str, flask_session) -> dict:
         from utilities.infrastructure_utils import claim_accumulated_income
         claim_result = claim_accumulated_income(user_id, flask_session)
         if claim_result.get('success'):
-            shards_claimed = claim_result.get('accumulated', 0)
+            shards_claimed = claim_result.get('amount_claimed', 0)  # #1417: claim returns 'amount_claimed', not 'accumulated'
     except Exception:
         pass
     try:

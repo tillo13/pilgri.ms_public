@@ -158,6 +158,17 @@ function showInfrastructureModal(el) {
         if (allStats && allStats > 0) stats.push({ label: 'All Captain Stats', value: `+${allStats} to each (Exploration, Leadership, Strategy, Logistics, Charisma)` });
         if (allGen && allGen > 1) stats.push({ label: 'All Generation', value: `+${Math.round((allGen - 1) * 100)}%` });
     }
+    // #1439 (captain-stats sec_5): surface the shipped scientist multiplier that affects
+    // THIS building's system. Server already decided applicability (only set when the
+    // building generates that resource AND mult > 1.0). NAV/GEO never set these.
+    const sciShard = parseFloat(d.sciShardMult);
+    const sciSv = parseFloat(d.sciSvMult);
+    const sciName = d.sciName || 'your scientist';
+    if ((sciShard && sciShard > 1) || (sciSv && sciSv > 1)) {
+        stats.push({ label: '\u2500\u2500\u2500 SCIENTIST BONUS \u2500\u2500\u2500', value: '' });
+        if (sciShard && sciShard > 1) stats.push({ label: 'Shard Output', value: `+${Math.round((sciShard - 1) * 100)}% from ${sciName} (Analysis)`, detail: 'Applies to all shard-generating buildings' });
+        if (sciSv && sciSv > 1) stats.push({ label: 'Science Value Output', value: `+${Math.round((sciSv - 1) * 100)}% from ${sciName} (Analysis)`, detail: 'Applies to all SV-generating buildings' });
+    }
     if (d.requirements) {
         stats.push({ label: '\u2500\u2500\u2500 REQUIREMENTS \u2500\u2500\u2500', value: '' });
         stats.push({ label: 'Prerequisites', value: d.requirements || 'None' });

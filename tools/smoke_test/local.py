@@ -899,6 +899,28 @@ def test_shard_rush_time_decay():
     return True
 
 
+@test("#1417: SV uses its own timer, never resets the shard timer", tier=1, features=['api'], mode='local')
+def test_1417_sv_shard_timer_separation():
+    """#1417: recording SV must reset last_sv_payout_at (its OWN timer), NOT last_payout_at —
+    otherwise the 3 dual-purpose buildings (regolith_forge/resonance_chamber/thermal_vent_tap)
+    silently lose their accumulated shards. SV accumulation must read last_sv_payout_at; shard
+    harvest must still reset last_payout_at."""
+    import inspect
+    from utilities.infrastructure import income
+    rsv = inspect.getsource(income.record_science_value)
+    if 'last_sv_payout_at = NOW()' not in rsv:
+        return "record_science_value must SET last_sv_payout_at = NOW() (its own SV timer)"
+    if 'SET last_payout_at = NOW()' in rsv:
+        return "record_science_value still resets the shard timer last_payout_at — #1417 regression (drops dual-purpose shards)"
+    calc = inspect.getsource(income.calculate_accumulated_income)
+    if 'last_sv_payout_at' not in calc:
+        return "SV accumulation must read last_sv_payout_at (independent of shard timer)"
+    claim = inspect.getsource(income.claim_accumulated_income)
+    if 'last_payout_at = NOW()' not in claim:
+        return "shard harvest must still reset last_payout_at"
+    return True
+
+
 @test("Bond 'Fragment Ready' call-out is always-on, not briefing-gated (#1393)", tier=1, features=['api', 'aria'], mode='local')
 def test_bond_callout_always_on():
     """#1393: a ready ARIA-bond fragment must surface on the home page even for
@@ -2931,6 +2953,22 @@ def test_pilgrimbot_captain_stats():
         assert relevant and any('V2 Growth Formulas' in (f.get('name') or '')
                                 for f in relevant.get('formulas', [])), \
             f"math_registry must surface captain_stats progression_v2 for: {question!r}"
+    return True
+
+
+@test("Scientist building-bonus display sources real mults (#1439)", tier=1, features=['config', 'colony'], mode='local')
+def test_scientist_building_bonus_display():
+    import json
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    reg = json.load(open('math_registry.json'))['formulas']
+    assert 'scientist_stats.shard_generation' in reg, "shard_gen formula missing from registry"
+    assert 'scientist_stats.sv_generation' in reg, "sv_gen formula missing from registry"
+    idx = reg['scientist_stats.index']['by_stat']
+    assert not any('building' in s.lower() or 'infrastructure' in s.lower() for s in idx['navigation']), "NAV must not claim a building effect"
+    assert not any('building' in s.lower() or 'infrastructure' in s.lower() for s in idx['geology']), "GEO must not claim a building effect"
+    shard_b = [k for k, c in INFRASTRUCTURE_CATALOG.items() if any(c.get('levels', {}).get(l, {}).get('generation_rate') for l in c.get('levels', {}))]
+    sv_b = [k for k, c in INFRASTRUCTURE_CATALOG.items() if any(c.get('levels', {}).get(l, {}).get('science_generation_rate') for l in c.get('levels', {}))]
+    assert shard_b and sv_b, "display target buildings gone"
     return True
 
 

@@ -320,6 +320,8 @@ def get_colony_page_data(user_id, auth):
             'all_generation_mult': income_calc.get('bonuses_applied', {}).get('all_generation_mult', 1.0),
             'passive_income_base': income_calc.get('bonuses_applied', {}).get('passive_income_base', 0),
             'scientist_shard_mult': income_calc.get('bonuses_applied', {}).get('scientist_shard_mult', 1.0),
+            'sv_scientist_mult': income_calc.get('sv_scientist_bonus', 1.0),
+            'scientist_name': income_calc.get('sv_scientist_name') or '',
             'theoretical_max_rate': income_calc.get('rate_breakdown', {}).get('theoretical_max_rate', 0),
             'signal_bonus': income_calc.get('signal_bonus', {
                 'shards_per_hour': 0, 'sv_per_hour': 0, 'sites_count': 0, 'per_tier': {}
@@ -332,6 +334,21 @@ def get_colony_page_data(user_id, auth):
         }
     except Exception as e:
         logger.warning(f"Could not get income calc for colony: {e}")
+
+    # #1439: Attach per-building scientist mult flags so modals can surface Analysis bonuses.
+    # Zero new DB queries — mults already computed above in income_data.
+    _shard_mult = income_data.get('scientist_shard_mult', 1.0)
+    _sv_mult = income_data.get('sv_scientist_mult', 1.0)
+    _sci_name = income_data.get('scientist_name', '')
+    for b in active_infrastructure + building_infrastructure:
+        cdef = INFRASTRUCTURE_CATALOG.get(b['structure_type'], {})
+        gens_shards = any(cdef.get('levels', {}).get(l, {}).get('generation_rate')
+                         for l in cdef.get('levels', {}))
+        gens_sv = any(cdef.get('levels', {}).get(l, {}).get('science_generation_rate')
+                      for l in cdef.get('levels', {}))
+        b['sci_shard_mult'] = round(_shard_mult, 2) if (gens_shards and _shard_mult > 1.0) else None
+        b['sci_sv_mult'] = round(_sv_mult, 2) if (gens_sv and _sv_mult > 1.0) else None
+        b['sci_name'] = _sci_name
 
     # Bug #1160: Discoveries Collection Codex — lifetime grid + found-based milestones.
     # Server-rendered (no extra fetch). Exactly 3 reads: the discovery grid (1 grouped
