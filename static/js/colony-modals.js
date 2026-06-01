@@ -149,6 +149,15 @@ function showInfrastructureModal(el) {
         else if (d.effect === 'fuel_cost_mult') stats.push({ label: 'Special', value: 'Reduces expedition costs' });
         // Bug #1132: dropped 'research_enabled' case — dead flag, never gated anything.
     }
+    // #1409: End-Game buildings grant flat all-stat + all-generation bonuses per level —
+    // surface them so the modal shows what makes them rewarding, not just shards/hr.
+    const allStats = parseInt(d.allStatsBonus);
+    const allGen = parseFloat(d.allGenerationMult);
+    if ((allStats && allStats > 0) || (allGen && allGen > 1)) {
+        stats.push({ label: '─── END-GAME BONUSES ───', value: '' });
+        if (allStats && allStats > 0) stats.push({ label: 'All Captain Stats', value: `+${allStats} to each (Exploration, Leadership, Strategy, Logistics, Charisma)` });
+        if (allGen && allGen > 1) stats.push({ label: 'All Generation', value: `+${Math.round((allGen - 1) * 100)}%` });
+    }
     if (d.requirements) {
         stats.push({ label: '\u2500\u2500\u2500 REQUIREMENTS \u2500\u2500\u2500', value: '' });
         stats.push({ label: 'Prerequisites', value: d.requirements || 'None' });

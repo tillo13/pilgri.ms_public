@@ -268,7 +268,10 @@ const EFFECT_LABELS = {
     'fuel_cost_reduction': 'Cost Savings', 'expedition_capacity': 'Max Expeditions',
     'discovery_bonus': 'Discovery Chance', 'all_generation_mult': 'All Generation',
     'legendary_discovery_chance': 'Legendary Chance',
-    'expedition_range': 'Expedition Range', 'passive_income_base': 'Base Income'
+    'expedition_range': 'Expedition Range', 'passive_income_base': 'Base Income',
+    'stat_exploration_bonus': 'Exploration', 'stat_leadership_bonus': 'Leadership',
+    'stat_strategy_bonus': 'Strategy', 'stat_logistics_bonus': 'Logistics',
+    'stat_charisma_bonus': 'Charisma'
 };
 
 function formatEffectValue(key, val) {
@@ -276,6 +279,9 @@ function formatEffectValue(key, val) {
     const n = parseFloat(val);
     if (isNaN(n)) return String(val);
     if (key.includes('_mult')) return `${n.toFixed(2)}x`;
+    // #1409: flat captain-stat bonuses (end-game buildings, +N points) must render as
+    // "+N", NOT fall through to the percent branch below (which showed "+600%").
+    if (key.startsWith('stat_') && key.endsWith('_bonus')) return `+${Math.round(n)}`;
     if (key.includes('_bonus') || key.includes('_chance') || key.includes('_reduction')) return `+${Math.round(n * 100)}%`;
     if (key === 'cargo_slots' || key === 'expedition_capacity') return `+${n}`;
     return String(val);

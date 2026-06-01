@@ -130,6 +130,11 @@ function showExpeditionCostHelp() {
         description: `
             <div style="line-height: 1.6; font-size: 13px;">
                 <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+                    <div style="font-weight: 700; color: var(--color-mars); margin-bottom: 6px;">Why It Costs Sepolia</div>
+                    <div style="color: var(--text-secondary);">Every vehicle on Mars runs on Sepolia resonance. Crossing distance, holding a comms link, and keeping the cabin sealed against the cold all drain that resonance &mdash; so an expedition spends shards the way an engine spends fuel. The figures below are how that drain is calculated.</div>
+                </div>
+
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
                     <div style="font-weight: 700; color: var(--color-mars); margin-bottom: 6px;">Base Cost</div>
                     <div style="color: var(--text-secondary);">Fuel cost based on distance tier. Nearby (0-50km) costs less than Far (500+ km). Think of it as how many Sepolia shards the vehicle consumes.</div>
                 </div>

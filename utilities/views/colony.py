@@ -51,6 +51,16 @@ def get_colony_page_data(user_id, auth):
         enriched['description'] = catalog_def.get('description', '')
         enriched['effect'] = catalog_def.get('effect')
         enriched['effect_value'] = catalog_def.get('effect_value')
+        # #1409: surface level-scoped end-game bonuses (all-stat buffs + all_generation)
+        # so the building modal shows what makes End-Game buildings rewarding — not just
+        # shards/hr. Config sets the 5 captain-stat bonuses equal per level, so collapse
+        # them to one "+N All Stats" value; fall back to per-stat if they ever diverge.
+        _STAT_BONUS_KEYS = ('stat_exploration_bonus', 'stat_leadership_bonus',
+                            'stat_strategy_bonus', 'stat_logistics_bonus', 'stat_charisma_bonus')
+        _stat_vals = [level_data.get(k) for k in _STAT_BONUS_KEYS if level_data.get(k)]
+        enriched['all_stats_bonus'] = (int(_stat_vals[0])
+                                       if len(_stat_vals) == 5 and len(set(_stat_vals)) == 1 else None)
+        enriched['all_generation_mult'] = level_data.get('all_generation_mult')
         enriched['generates_resource'] = catalog_def.get('generates_resource')
         enriched['tier'] = catalog_def.get('tier', 1)
         enriched['category'] = catalog_def.get('category', 'general')

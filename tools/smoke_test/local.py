@@ -856,6 +856,55 @@ def test_level_unlocks_reverse_index():
     return True
 
 
+@test("Flat captain-stat bonus renders +N, not +N% (#1409)", tier=1, features=['config', 'depot'], mode='local')
+def test_endgame_stat_bonus_render():
+    """#1409: End-Game buildings grant flat +N to all captain stats (config, #1270).
+    depot.js formatEffectValue treated stat_*_bonus as a percent (+600%). The flat-stat
+    branch must come BEFORE the generic _bonus percent branch. Also confirm config still
+    carries the bonuses (the feature must exist for the render fix to matter)."""
+    import os, re
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    with open(os.path.join(root, 'static', 'js', 'depot.js')) as f:
+        js = f.read()
+    flat = js.find("key.startsWith('stat_') && key.endsWith('_bonus')")
+    pct = js.find("key.includes('_bonus')")
+    if flat == -1:
+        return "#1409: depot.js missing flat stat_*_bonus branch in formatEffectValue"
+    if pct != -1 and flat > pct:
+        return "#1409: flat stat branch must precede the generic _bonus percent branch (else +600%)"
+    # feature still present in config
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    rf = INFRASTRUCTURE_CATALOG.get('regolith_forge', {}).get('levels', {}).get(10, {})
+    if rf.get('stat_exploration_bonus') != 6:
+        return f"#1409: regolith_forge L10 stat_exploration_bonus should be 6, got {rf.get('stat_exploration_bonus')}"
+    return True
+
+
+@test("PilgrimBot: bonus_breakdown category wired + no jargon leak (#1476)", tier=1, features=['pilgrimbot'], mode='local')
+def test_pb_bonus_breakdown():
+    """#1476: PB must answer "why is my passive income multiplier X?" from the real
+    per-source breakdown. Assert the category is in the tool enum + PLAYER_DATA_MAP,
+    renders a populated section for user 45, quotes a real bonus label, and never
+    leaks internal field names (source_kind / op tags / raw effect keys)."""
+    import utilities.pilgrimbot_data as pbd
+    enum = pbd.PLAYER_DATA_TOOL["input_schema"]["properties"]["category"]["enum"]
+    if "bonus_breakdown" not in enum:
+        return "bonus_breakdown missing from PLAYER_DATA_TOOL enum"
+    if "bonus_breakdown" not in pbd.PLAYER_DATA_MAP:
+        return "bonus_breakdown missing from PLAYER_DATA_MAP (PB tool-selector won't pick it)"
+    out = pbd.query_player_data("bonus_breakdown", 45)
+    if not out or "ACTIVE BONUS BREAKDOWN" not in out:
+        return f"bonus_breakdown render missing header: {str(out)[:120]}"
+    # a known populated multiplier label should appear
+    if "Vehicle Range" not in out and "Passive Income" not in out and "Cargo" not in out:
+        return "bonus_breakdown shows no recognizable bonus label for user 45"
+    # no internal jargon (substring 'layer' excluded — 'Player' legitimately contains it)
+    for jargon in ("source_kind", "max_then_mult", "'op'", "effect_key"):
+        if jargon in out:
+            return f"bonus_breakdown leaks internal jargon: {jargon}"
+    return True
+
+
 @test("Scientist NAV extends vehicle range at all 3 sites, /150 parity (#1440)", tier=1, features=['config', 'expeditions'], mode='local')
 def test_scientist_nav_extends_range():
     """Bug #1440 (Luke: 'Navigation should include Expedition Range Boost'). NAV must

@@ -130,7 +130,7 @@ HOW TO SPEND:
 - Depot equipment (stat boosts, 100-5000 shards)
 - Infrastructure building (Solar Array free, others 100-5000 shards)
 - Captain services (reroll stats, modify appearance, generate videos)
-- Expedition fuel costs (varies by distance)
+- Expedition fuel costs (varies by distance) — vehicles run on Sepolia resonance, so crossing distance, holding the comms link, and keeping the cabin sealed against the cold all drain shards like fuel. It's the cost of moving across Mars, not a tax.
 
 === EXPEDITIONS (How To Play) ===
 This is the core gameplay loop - explore Mars, find things.

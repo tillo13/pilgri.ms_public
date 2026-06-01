@@ -22,7 +22,7 @@ PLAYER_DATA_TOOL = {
                          "expeditions", "research", "crew_missions", "discoveries",
                          "signal_claims", "puzzle_fragments", "overview", "leaderboard", "robot",
                          "discovery_catalog", "discovery_analytics", "discovery_ledger", "discovery_codex", "map_geography",
-                         "captain_stats"],
+                         "captain_stats", "bonus_breakdown"],
                 "description": "Which data category to fetch"
             },
             "user_id": {
@@ -55,6 +55,7 @@ PLAYER_DATA_MAP = """PLAYER DATA MAP (use query_player_data tool to fetch any ca
   discovery_ledger — Per-user discovery LEDGER (item-level granularity): last legendary/rare/uncommon find with item_name + destination + distance_km + unlocked_at timestamp + claim status, plus per-rarity totals and the last 15 discoveries chronologically. USE THIS when user asks "when did I last find a legendary/rare?", "what was my most recent discovery?", "show me my finds over time", or any per-item question with timestamps.
   discovery_codex — The Specimen Codex (Collection): how many of the distinct discovery items the captain has FOUND (X/total) + per-category completion (Mineral/Biological/Data/Artifact/Equipment, live counts) + nearest codex milestone + its one-time SV reward. FOUND = ever CLAIMED, permanent (survives sharding) — DISTINCT from sv_sources "Collection Milestones" which counts items ANALYZED/sharded. ALSO reports SIGNAL RELICS: the 14 Origin Site legendaries are a SEPARATE legendary axis (X/14, NOT in the discovery catalog, grant no codex SV) — so the game has 3 discovery legendaries + 14 Signal Relics = 17 legendaries total. USE THIS when a captain asks "how many items have I collected/found", "codex/collection completion", "what have I found", "category completion", "how close am I to completing my collection", "how many Signal Relics", "how many legendaries are there".
   map_geography     — Mars destination geography: total named landmarks on the planet (pilgrim.mars_mappings), total origin sites, captain's home coords, current fog-of-war radius + formula, landmarks inside fog right now, unique landmarks visited, total trips taken. USE THIS for ANY question about "how many destinations", "how many can I visit", "how big is the map", "what can I see", "places I've been".
+  bonus_breakdown   — Per-source contribution waterfall for every active bonus multiplier/flag (Passive Income, Cargo Capacity, Discovery Value, Vehicle Range, Night/All Generation, Extraction, Rare/Legendary Value, Signal Detection, Dust Immune, etc.): the authoritative current total for each, plus exactly which Player Upgrades / Infrastructure / Tech Tree / ARIA Bond sources contribute and by how much. USE THIS when a captain asks "why is my passive income multiplier 1.8x?", "what contributes to my cargo / discovery value / range?", "where does my <bonus> come from?", "break down my active bonuses". (Speed is per-vehicle — for that, use expeditions.)
   captain_stats     — Captain stat (Leadership/Strategy/Exploration/Logistics/Charisma) PER-SOURCE breakdown from the live progression history: each stat's current value AND exactly which activities built it (sol ticks, crew missions, expeditions, km traveled, landmarks, upgrades, ARIA bonds, plus starting/retro credit), the last sol (24h) of stat gains, the growth rate per activity, and the World-1 cap of 75. USE THIS when a captain asks "why did my exploration/leadership/strategy go up?", "what is contributing to my strategy stat?", "where did my captain points come from?", "show my recent stat gains", "why is my stat stuck/capped?".
 """
 
@@ -958,6 +959,63 @@ def query_player_data(category, user_id):
             lines.append("")
             lines.append("Computed live from your captain progression history (pilgrim.captain_stat_events). "
                          f"Final value = round(sum of all contributions), capped at {WORLD_1_CAP} in World 1.")
+            return "\n".join(lines)
+
+        elif category == 'bonus_breakdown':
+            # #1476: surface the per-source bonus contribution waterfall so PB answers
+            # "why is my passive income multiplier 1.83x?" / "what contributes to my cargo?"
+            # from REAL rows. The authoritative final comes from get_user_upgrade_effects
+            # (the contribution rows don't naively sum — #1491 tech merge + caps diverge),
+            # so we QUOTE the final and list each contribution underneath, never recompute.
+            from utilities.upgrades.breakdown import get_user_effect_breakdown, SURFACED_KEYS
+            from utilities.upgrades_utils import get_user_upgrade_effects
+            bdn = get_user_effect_breakdown(user_id)
+            finals = get_user_upgrade_effects(user_id) or {}
+            LAYER_LABEL = {'upgrade': 'Player Upgrades', 'infra': 'Infrastructure',
+                           'tech': 'Tech Tree', 'bond': 'ARIA Bond'}
+            LAYER_ORDER = ['upgrade', 'infra', 'tech', 'bond']
+            def _is_flag(key, op):
+                return op == 'or' or key.endswith('_enabled') or 'immune' in key
+            def _fmt_val(key, op, val):
+                if val is None:
+                    return '—'
+                if _is_flag(key, op):
+                    return 'ON' if val else 'off'
+                try:
+                    if op in ('add',) or key.endswith('_bonus') or key.endswith('_slots'):
+                        return f"+{float(val):g}"
+                    return f"×{float(val):.2f}"
+                except Exception:
+                    return str(val)
+            lines = ["=== ACTIVE BONUS BREAKDOWN ==="]
+            lines.append("")
+            lines.append("Each active bonus, its current total, and exactly what's contributing to it.")
+            lines.append("Totals are the authoritative game values — sources don't always add up naively "
+                         "because Player Upgrades take the best per source, the Tech Tree stacks differently, "
+                         "and a few bonuses are capped.")
+            lines.append("")
+            any_shown = False
+            for key, (label, op) in SURFACED_KEYS.items():
+                rows = bdn.get(key) or []
+                if not rows:
+                    continue
+                any_shown = True
+                if key == 'expedition_speed_mult':
+                    # #1454 (Luke 2026-05-10): speed is applied per-vehicle, never one aggregate
+                    lines.append(f"{label}: applied per-vehicle (each vehicle's own speed × tech) — "
+                                 f"not one combined number")
+                else:
+                    lines.append(f"{label}: {_fmt_val(key, op, finals.get(key))}")
+                for layer in LAYER_ORDER:
+                    lrows = [r for r in rows if r.get('layer') == layer]
+                    if not lrows:
+                        continue
+                    parts = [f"{r.get('source')} ({_fmt_val(key, op, r.get('value'))})" for r in lrows]
+                    lines.append(f"    {LAYER_LABEL.get(layer, layer)}: " + " · ".join(parts))
+            if not any_shown:
+                lines.append("No active bonuses yet — build upgrades, infrastructure, or research to grow them.")
+            lines.append("")
+            lines.append("Final values are read live from get_user_upgrade_effects — the same numbers the game applies.")
             return "\n".join(lines)
 
         else:
