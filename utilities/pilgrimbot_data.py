@@ -496,6 +496,14 @@ def query_player_data(category, user_id):
             data = get_robot_page_data(user_id) or {}
             lines = ["=== ROBOT CREW MEMBER (Step 4d) ==="]
             lines.append(f"Narog Foundry: Lv{data.get('lab_level', 0)} ({'unlocked' if data.get('lab_unlocked') else 'LOCKED — needs Research Station Lv3 + Regolith Forge Lv3'})")
+            # #1467: stat-slot unlock ladder (sourced from robot.py constants, never hardcoded)
+            # so PB can answer "what Foundry level unlocks Research/Logistics/Expeditions?".
+            from utilities.postgres.robot import STAT_UNLOCK_FOUNDRY_LEVEL, STAT_SLOT_DISPLAY
+            _ladder = ", ".join(
+                f"{STAT_SLOT_DISPLAY[s]['label']} at Foundry Lv{lvl}"
+                for s, lvl in sorted(STAT_UNLOCK_FOUNDRY_LEVEL.items(), key=lambda kv: kv[1]) if lvl > 0
+            )
+            lines.append(f"Narog stat-slot unlocks: Exploration always on; then {_ladder}. (Expeditions slot is inert until Narog range ships, #1269.)")
             if not data.get('has_robot'):
                 lines.append("Build status: NOT STARTED")
                 if data.get('lab_unlocked'):

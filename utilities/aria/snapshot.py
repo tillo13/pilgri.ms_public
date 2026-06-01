@@ -22,6 +22,20 @@ def _safe_dial_effects(user_id: int) -> Optional[dict]:
         return None
 
 
+def _stat_slot_unlock_ladder() -> Optional[list]:
+    """#1467: which Foundry level unlocks each Narog stat slot, sourced from robot.py
+    constants (never hardcoded) so ARIA's answer matches the gate + the depot modal."""
+    try:
+        from utilities.postgres.robot import STAT_UNLOCK_FOUNDRY_LEVEL, STAT_SLOT_DISPLAY
+        return [
+            {'slot': s, 'label': STAT_SLOT_DISPLAY[s]['label'], 'foundry_level': lvl,
+             'desc': STAT_SLOT_DISPLAY[s]['desc']}
+            for s, lvl in sorted(STAT_UNLOCK_FOUNDRY_LEVEL.items(), key=lambda kv: kv[1])
+        ]
+    except Exception:
+        return None
+
+
 def analyze_playstyle(user_id: int) -> dict:
     """
     Analyze captain's playstyle for personalized recommendations.
@@ -769,6 +783,8 @@ def load_colony_snapshot(user_id: int) -> dict:
                 'dial': (robot_data.get('robot') or {}).get('dial'),
                 # #1492: live dial effects so ARIA can explain what the dial DOES.
                 'dial_effects': _safe_dial_effects(user_id),
+                # #1467: stat-slot unlock ladder so ARIA can answer "when does Research unlock?"
+                'stat_slot_unlocks': _stat_slot_unlock_ladder(),
                 'cinematic_played': bool(
                     (robot_data.get('robot') or {}).get('cinematic_played')
                 ),

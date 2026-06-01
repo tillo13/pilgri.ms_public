@@ -299,6 +299,29 @@ def test_narog_stat_math():
     return True
 
 
+@test("Narog Foundry unlock ladder display data (#1467)", tier=1, features=['config', 'narog'], mode='local')
+def test_narog_foundry_unlock_display():
+    # #1467 surfaces the stat-slot unlocks on the Foundry modal — the display copy +
+    # reverse map MUST derive from robot.py constants so the modal can't drift from the gate.
+    from utilities.postgres.robot import (STAT_UNLOCK_FOUNDRY_LEVEL, STAT_SLOT_DISPLAY,
+                                          compute_robot_stat_value)
+    for slot in STAT_UNLOCK_FOUNDRY_LEVEL:
+        d = STAT_SLOT_DISPLAY.get(slot)
+        if not d or not d.get('label') or not d.get('desc'):
+            return f"STAT_SLOT_DISPLAY missing/incomplete copy for slot {slot}"
+    # the reverse map the catalog injects onto robotics_lab L3/L6/L9
+    rev = {lvl: slot for slot, lvl in STAT_UNLOCK_FOUNDRY_LEVEL.items() if lvl > 0}
+    if rev != {3: 'logistics', 6: 'research', 9: 'expeditions'}:
+        return f"Foundry unlock reverse-map drifted: {rev}"
+    # per-level all-stats value surfaced on every Foundry row peaks at 100 by Lv10
+    if compute_robot_stat_value(10) != 100:
+        return f"compute_robot_stat_value(10)={compute_robot_stat_value(10)}, expected 100"
+    # Expeditions copy must keep the 'coming soon' qualifier (no over-promise, #1269 gated)
+    if 'coming soon' not in STAT_SLOT_DISPLAY['expeditions']['desc'].lower():
+        return "Expeditions slot copy must carry the 'coming soon' qualifier (inert until #1269)"
+    return True
+
+
 @test("Foundry per-level prereqs match #1436 spec", tier=1, features=['config', 'narog'], mode='local')
 def test_foundry_level_prereqs():
     """Bug #1436: Foundry L3 ← Habitat Lv3, L6 ← RS+GH Lv6, L9 ← Habitat+GH+RS Lv9."""

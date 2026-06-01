@@ -169,6 +169,9 @@ function formatLevelStats(stats, category) {
     }
     if (stats.life_support_reduction) parts.push(green(`${(1 - stats.life_support_reduction).toFixed(2)}x life support cost`));
     if (stats.night_generation) parts.push(`${stats.night_generation.toFixed(2)}x night gen`);
+    // === NAROG FOUNDRY (#1467) — every level raises all Narog stats + assembly speed. ===
+    if (stats.narog_stat_value) parts.push(green(`all Narog stats ${stats.narog_stat_value}/100`));
+    if (stats.robot_build_speed_mult && stats.robot_build_speed_mult > 1.0) parts.push(gold(`${stats.robot_build_speed_mult.toFixed(2)}x assembly speed`));
     if (stats.all_generation_mult && stats.all_generation_mult > 1.0) {
         parts.push(gold(`${stats.all_generation_mult.toFixed(2)}x all gen`));
     }
@@ -298,6 +301,15 @@ function showUpgradeModal(category, itemKey) {
             unlocksLine = `<div style="font-size: 10px; color: var(--color-sepolia); margin-top: 2px;"><strong>Unlocks:</strong> ${parts}</div>`;
         }
 
+        // #1467: Narog Foundry stat-slot unlocks on L3/L6/L9 (Logistics/Research/Expeditions).
+        // High-contrast gold + explicit "Narog Unlock:" label (never color-alone; colorblind-safe).
+        let statUnlocksLine = '';
+        if (stats.level_stat_unlocks && stats.level_stat_unlocks.length) {
+            const parts = stats.level_stat_unlocks
+                .map(u => `${u.label}${u.desc ? ` — ${u.desc}` : ''}`).join('; ');
+            statUnlocksLine = `<div style="font-size: 10px; color: var(--color-sepolia); margin-top: 2px;"><strong>Narog Unlock:</strong> ${parts}</div>`;
+        }
+
         levelsHtml += `
             <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px;
                         background: ${isCurrent ? 'rgba(var(--color-success-rgb), 0.1)' : isNext ? 'rgba(var(--color-sepolia-rgb), 0.1)' : 'var(--bg-tertiary)'};
@@ -311,6 +323,7 @@ function showUpgradeModal(category, itemKey) {
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${statsLine}</div>
                     ${prereqLine}
                     ${unlocksLine}
+                    ${statUnlocksLine}
                     ${milestone ? `<div style="font-size: 10px; color: var(--color-sepolia); margin-top: 2px; font-weight: 600;">${milestone}</div>` : ''}
                 </div>
                 <div style="text-align: right; font-size: 11px;">

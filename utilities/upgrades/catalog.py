@@ -304,6 +304,21 @@ def get_upgrade_catalog_for_user(user_id: int, _prefetch_structures=None, _prefe
         # Foundry Lv3" on Habitat / Greenhouse / Research Station modals.
         unlocks_index = get_infrastructure_level_unlocks_index()
 
+        # #1467: Narog Foundry (robotics_lab) per-level stat-slot unlocks for its modal.
+        # DERIVED from robot.py constants — never hardcode {3,6,9} or the copy, so the
+        # displayed thresholds/text can't drift from the gate the game enforces.
+        from utilities.postgres.robot import (STAT_UNLOCK_FOUNDRY_LEVEL,
+                                               STAT_SLOT_DISPLAY, compute_robot_stat_value)
+        foundry_stat_unlocks = {}  # foundry_level -> {slot, label, desc}
+        for _slot, _lvl in STAT_UNLOCK_FOUNDRY_LEVEL.items():
+            if _lvl > 0:  # exploration (0) is always-on, not a per-level unlock callout
+                _d = STAT_SLOT_DISPLAY.get(_slot, {})
+                foundry_stat_unlocks[int(_lvl)] = {
+                    'slot': _slot,
+                    'label': _d.get('label', _slot.title()),
+                    'desc': _d.get('desc', ''),
+                }
+
         for item_key, item_config in INFRASTRUCTURE_CATALOG.items():
             if item_key not in owned_types:
                 continue
@@ -346,6 +361,12 @@ def get_upgrade_catalog_for_user(user_id: int, _prefetch_structures=None, _prefe
                 unlocks = this_buildings_unlocks.get(int(lv))
                 if unlocks:
                     level_entry['level_unlocks'] = unlocks
+                # #1467: attach the Narog stat-slot unlock on the Foundry's L3/L6/L9 rows,
+                # plus the always-on per-level stat value so no Foundry row renders blank.
+                if item_key == 'robotics_lab':
+                    if int(lv) in foundry_stat_unlocks:
+                        level_entry['level_stat_unlocks'] = [foundry_stat_unlocks[int(lv)]]
+                    level_entry['narog_stat_value'] = compute_robot_stat_value(int(lv))
                 all_levels[int(lv)] = level_entry
 
             if is_building:

@@ -132,6 +132,18 @@ STAT_UNLOCK_FOUNDRY_LEVEL = {
     'expeditions': 9,
 }
 
+# #1467: canonical display copy for each Narog stat slot. Single Python source so the
+# depot Foundry-ladder modal + PilgrimBot + ARIA all read identical wording (kept in
+# sync with the /crew dial copy in static/js/crew-robot.js DIAL_DESCRIPTIONS). The
+# depot modal pulls these via utilities/upgrades/catalog.py — never hardcode the strings
+# or the thresholds there; derive both from here + STAT_UNLOCK_FOUNDRY_LEVEL.
+STAT_SLOT_DISPLAY = {
+    'exploration': {'label': 'Exploration', 'desc': 'Passive trail building (always on)'},
+    'logistics':   {'label': 'Logistics',   'desc': 'Speeds up Depot & equipment build times'},
+    'research':    {'label': 'Research',     'desc': 'Speeds up tech research while assigned'},
+    'expeditions': {'label': 'Expeditions',  'desc': 'Solo scout runs while offline (coming soon)'},
+}
+
 
 def compute_robot_stat_value(foundry_level: int) -> int:
     """Linear stat = 5 + foundry_level × 9.5, integer-rounded, clamped [5,100].
