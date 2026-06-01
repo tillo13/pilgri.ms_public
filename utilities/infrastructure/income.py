@@ -1,7 +1,7 @@
 """Accumulated income: calculation, claim, science value recording."""
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 
 from config_infrastructure import INFRASTRUCTURE_CATALOG
 from utilities.postgres.shop import (
@@ -299,6 +299,12 @@ def calculate_accumulated_income(user_id):
         # yet backfilled. Recording SV resets only this timer, so dual-purpose buildings'
         # accumulated shards are no longer dropped.
         last_sv_payout = structure.get('last_sv_payout_at') or structure.get('last_payout_at') or structure['build_completed_at'] or structure['created_at']
+        # #1417 hotfix: last_sv_payout_at is TIMESTAMPTZ (tz-aware) — its 3 sibling fallback
+        # columns are naive TIMESTAMP. Subtracting a tz-aware value from naive datetime.utcnow()
+        # raises "can't subtract offset-naive and offset-aware datetimes" (cascaded 500s to /crew,
+        # /colony/command, /api/infrastructure/accumulated). Normalize to naive-UTC first.
+        if last_sv_payout.tzinfo is not None:
+            last_sv_payout = last_sv_payout.astimezone(timezone.utc).replace(tzinfo=None)
         hours_elapsed = (datetime.utcnow() - last_sv_payout).total_seconds() / 3600
         capped_hours = min(hours_elapsed, ACCUMULATION_CAP_HOURS)
         sv_accumulated += sv_rate * capped_hours

@@ -918,6 +918,15 @@ def test_1417_sv_shard_timer_separation():
     claim = inspect.getsource(income.claim_accumulated_income)
     if 'last_payout_at = NOW()' not in claim:
         return "shard harvest must still reset last_payout_at"
+    # EXECUTION guard: source-grep alone shipped a tz crash (last_sv_payout_at is TIMESTAMPTZ,
+    # subtracting it from naive utcnow() raised TypeError → 500s on /crew + accumulated income).
+    # Actually CALL it against a real backfilled row so a runtime regression blocks the deploy.
+    try:
+        result = income.calculate_accumulated_income(45)
+    except Exception as e:
+        return f"calculate_accumulated_income(45) raised {type(e).__name__}: {e} (tz-aware/runtime regression — #1417)"
+    if not isinstance(result, dict):
+        return f"calculate_accumulated_income must return a dict, got {type(result).__name__}"
     return True
 
 
