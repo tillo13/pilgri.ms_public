@@ -6,6 +6,7 @@ from typing import Dict, Any
 
 from utilities.views.while_you_were_away import get_while_you_were_away_summary
 from utilities.views.misc import build_recent_activity
+from utilities.aria.bonds import get_actionable_bond_cards
 
 logger = logging.getLogger(__name__)
 
@@ -469,6 +470,10 @@ def get_dashboard_page_data(user_id, auth):
         },
         'mars_env': mars_env,
         'away_summary': away_summary,
+        # #1393: surface actionable ARIA-bond call-outs at the TOP LEVEL so the home
+        # page shows "Fragment Ready" even for frequent players who get no WYWA
+        # briefing (memoized helper — shares away_summary's query, no extra DB call).
+        **get_actionable_bond_cards(user_id),
         'building_items': building_items,
         'avg_build_progress': avg_build_progress,
         'crew_missions': crew_missions,

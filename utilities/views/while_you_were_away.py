@@ -406,22 +406,15 @@ def get_while_you_were_away_summary(user_id: int) -> dict:
                 tone = 'concerned'
 
             # ===== CHECK FOR PENDING ARIA BOND FRAGMENTS =====
+            # #1393: shared with the home page via get_actionable_bond_cards (memoized)
+            # so the briefing and the always-on home call-out never diverge.
             pending_fragments = []
             processing_bonds = []  # bonds where tx hasn't fired yet
             try:
-                from utilities.aria.bonds import get_pending_fragments
-                all_pending = get_pending_fragments(user_id, include_processing=True)
-                for p in all_pending:
-                    tx_hash = p.get('my_fragment')
-                    if tx_hash and not p.get('my_submitted'):
-                        pending_fragments.append({
-                            'landmark': p.get('landmark_name'),
-                            'tx_hash': tx_hash
-                        })
-                    elif not tx_hash and p.get('processing'):
-                        processing_bonds.append({
-                            'landmark': p.get('landmark_name'),
-                        })
+                from utilities.aria.bonds import get_actionable_bond_cards
+                _cards = get_actionable_bond_cards(user_id)
+                pending_fragments = _cards['pending_fragments']
+                processing_bonds = _cards['processing_bonds']
             except Exception as e:
                 logger.warning(f"Could not check ARIA fragments: {e}")
 

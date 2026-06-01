@@ -715,6 +715,29 @@ def get_pending_fragments(user_id: int, include_processing: bool = False) -> lis
         } for r in results]
 
 
+def get_actionable_bond_cards(user_id: int) -> dict:
+    """Split pending bonds into the two ACTIONABLE home-page call-outs (#1393):
+      pending_fragments — a fragment is ready and I have NOT submitted mine yet
+      processing_bonds  — bond formed but the shared tx hasn't fired yet
+    Shared by the home page (always, so frequent players see it even when there's
+    no While-You-Were-Away briefing) AND the briefing itself, so the two never
+    diverge. request_memo'd so both callers cost a single query per request.
+    """
+    from utilities.postgres.core import request_memo
+
+    def _compute():
+        pending_fragments, processing_bonds = [], []
+        for p in get_pending_fragments(user_id, include_processing=True):
+            tx = p.get('my_fragment')
+            if tx and not p.get('my_submitted'):
+                pending_fragments.append({'landmark': p.get('landmark_name'), 'tx_hash': tx})
+            elif not tx and p.get('processing'):
+                processing_bonds.append({'landmark': p.get('landmark_name')})
+        return {'pending_fragments': pending_fragments, 'processing_bonds': processing_bonds}
+
+    return request_memo(('get_actionable_bond_cards', user_id), _compute)
+
+
 def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
                                   landmark_name: str, captain_1: str, captain_2: str,
                                   bond_image_url: str = None):

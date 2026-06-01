@@ -225,11 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     data-target-level="{{ build.target_level|default(1) }}"
                     data-name="{{ build.name }}"
                     data-rush-cost="{{ build.rush_cost }}"
+                    data-rush-base-cost="{{ build.rush_base_cost|default(build.rush_cost) }}"
                     data-rush-pct="{{ (build.rush_pct * 100)|round|int }}"
                     onclick="confirmShardRush(this)"
                     style="font-size: 11px; padding: 3px 8px; background: var(--color-accent); color: white; border: 0; border-radius: 4px; cursor: pointer; font-weight: 600;"
-                    title="Rush remaining time for {{ build.rush_cost }} shards">
-                ⚡ Rush {{ "{:,}".format(build.rush_cost) }}
+                    title="Rush cost drops as the timer winds down (#1420)">
+                ⚡ Rush <span class="rush-cost-label">{{ "{:,}".format(build.rush_cost) }}</span>
             </button>
             {% endif %}
         </div>

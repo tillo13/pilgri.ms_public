@@ -208,6 +208,19 @@ function initBuildCountdowns() {
             const remainingEl = card.querySelector('.build-time-remaining');
             if (remainingEl) remainingEl.textContent = timeStr;
 
+            // #1420: Shard Rush cost decays with time left (50% at the 24h threshold,
+            // → ~0 near 0h). Recompute live each tick so the player SEES it drop;
+            // floor at 1 shard, mirror the server (rush_base_cost × hours/48).
+            const rushBtn = card.querySelector('.btn-shard-rush');
+            if (rushBtn && rushBtn.dataset.rushBaseCost) {
+                const base = parseFloat(rushBtn.dataset.rushBaseCost) || 0;
+                const decay = card._remainingSeconds / 3600 / 48;
+                const cost = Math.max(1, Math.round(base * decay));
+                rushBtn.dataset.rushCost = String(cost);
+                const lbl = rushBtn.querySelector('.rush-cost-label');
+                if (lbl) lbl.textContent = cost.toLocaleString();
+            }
+
             if (card._remainingSeconds <= 0) {
                 showToast('Construction complete! Refresh to see your new equipment.', 'success', 'Build Complete', 5000);
             }
@@ -531,7 +544,7 @@ async function confirmShardRush(btn) {
         title: '⚡ Shard Rush',
         body: `<div style="font-size: 14px; line-height: 1.6;">
             <p>Pay <strong>${rushCost.toLocaleString()} shards</strong> to instantly complete <strong>${escapeHtml(name)} Lv${targetLevel}</strong>.</p>
-            <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">Rush cost: ${rushPct}% of base upgrade price (discount grows with Life Support + Water Extractor levels).</p>
+            <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">Rush cost = base price &times; ${rushPct}% (Life Support + Water Extractor discount) &times; time left (#1420: 50% at 24h remaining, dropping toward 0 as the build finishes &mdash; so the longer you wait, the cheaper it gets).</p>
         </div>`,
         footer: `
             <button class="btn btn-secondary" id="shardRushCancelBtn">Cancel</button>

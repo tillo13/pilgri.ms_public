@@ -2460,6 +2460,7 @@
       "get_bonds_for_display — Get bonds formatted for template display. Single source of truth for all pages",
       "get_pending_first_contact — Check if user has a pending bond where they haven't seen the First Contact cinematic.",
       "get_pending_fragments — Get pending bonds for this user - returns the SHARED tx hash.",
+      "get_actionable_bond_cards — Split pending bonds into the two ACTIONABLE home-page call-outs (#1393):",
       "send_bond_notification_email — Delegate to utilities.email.bonds.send_bond_notification (round 8 refactor).",
       "retry_stuck_bonds — Safety net: find pending bonds with no tx_hash and retry them."
     ]
@@ -2655,6 +2656,7 @@
     "description": "Shard Rush — pay shards to instantly complete an in-progress build.",
     "exports": [
       "calculate_rush_cost_pct — The pct of base cost that Shard Rush charges, based on Life Support + Water Extractor levels.",
+      "time_decay_factor — #1420 (Luke, from #1411): Shard Rush cost decays with time left — the less",
       "check_equipment_rush_eligibility — Return {eligible, reason, rush_cost, remaining_hours, target_level} for an in-progress equipment upgrade.",
       "check_infrastructure_rush_eligibility — Return rush eligibility for an in-progress INITIAL build (Lv1) in colony_infrastructure.",
       "rush_equipment_upgrade — Charge shards and promote pending_level → level on an in-progress equipment upgrade.",
@@ -3692,7 +3694,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3760,7 +3762,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

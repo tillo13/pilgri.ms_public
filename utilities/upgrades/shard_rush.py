@@ -55,6 +55,23 @@ def calculate_rush_cost_pct(user_id: int) -> float:
     return max(RUSH_FLOOR, raw)
 
 
+def time_decay_factor(remaining_hours: float) -> float:
+    """#1420 (Luke, from #1411): Shard Rush cost decays with time left — the less
+    time remaining, the cheaper to rush (you're rushing less). Linear in hours:
+    50% at the 24h rush threshold, 25% at 12h, → ~0 near 0h (Luke's datapoints:
+    "24h left = 50%, 12h = 25%"). Rush is only available under RUSH_THRESHOLD_HOURS
+    (24), so this factor is always < 0.5. Applied ON TOP of the Life Support / Water
+    Extractor pct ("outside the current bonus" — both effects stack)."""
+    return max(0.0, remaining_hours) / (RUSH_THRESHOLD_HOURS * 2.0)  # /48 → 0.5 at 24h
+
+
+def _rush_cost_with_decay(base_cost: int, pct: float, remaining_hours: float) -> int:
+    """base × LS/Water pct × time-decay, floored at 1 shard so a rush is never free
+    (the #1459 'rushes were FREE' invariant the smoke test guards)."""
+    decay = time_decay_factor(remaining_hours)
+    return max(1, int(round(base_cost * pct * decay)))
+
+
 def _upgrade_base_cost(category: str, item_key: str, target_level: int) -> int:
     """Lookup the shards cost of an upgrade's target level.
 
@@ -120,12 +137,14 @@ def check_equipment_rush_eligibility(user_id: int, category: str, item_key: str)
 
     base_cost = _upgrade_base_cost(category, item_key, row['pending_level'])
     pct = calculate_rush_cost_pct(user_id)
-    rush_cost = int(round(base_cost * pct))
+    rush_cost = _rush_cost_with_decay(base_cost, pct, remaining_hours)
     return {
         'eligible': True,
         'reason': 'OK',
         'rush_cost': rush_cost,
         'rush_pct': round(pct, 4),
+        'rush_decay': round(time_decay_factor(remaining_hours), 4),  # #1420
+        'rush_base_cost': int(round(base_cost * pct)),  # pre-decay, for live JS recompute
         'remaining_hours': round(remaining_hours, 2),
         'target_level': row['pending_level'],
     }
@@ -165,12 +184,14 @@ def check_infrastructure_rush_eligibility(user_id: int, structure_type: str) -> 
 
     base_cost = _infrastructure_base_cost(structure_type, 1)
     pct = calculate_rush_cost_pct(user_id)
-    rush_cost = int(round(base_cost * pct))
+    rush_cost = _rush_cost_with_decay(base_cost, pct, remaining_hours)
     return {
         'eligible': True,
         'reason': 'OK',
         'rush_cost': rush_cost,
         'rush_pct': round(pct, 4),
+        'rush_decay': round(time_decay_factor(remaining_hours), 4),  # #1420
+        'rush_base_cost': int(round(base_cost * pct)),  # pre-decay, for live JS recompute
         'remaining_hours': round(remaining_hours, 2),
         'target_level': 1,
         'infrastructure_id': row['id'],

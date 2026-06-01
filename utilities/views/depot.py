@@ -90,7 +90,7 @@ def get_depot_page_data(user_id, auth):
     try:
         from utilities.upgrades.shard_rush import (
             calculate_rush_cost_pct, _upgrade_base_cost, _infrastructure_base_cost,
-            RUSH_THRESHOLD_HOURS,
+            RUSH_THRESHOLD_HOURS, time_decay_factor, _rush_cost_with_decay,
         )
         rush_pct = calculate_rush_cost_pct(user_id)
         for b in active_builds:
@@ -110,8 +110,13 @@ def get_depot_page_data(user_id, auth):
             else:
                 base_cost = _upgrade_base_cost(b['category'], b['item_key'], b.get('target_level', 1))
             b['rush_eligible'] = base_cost > 0
-            b['rush_cost'] = int(round(base_cost * rush_pct))
+            # #1420: time-decay — rush gets cheaper as the timer winds down (50% at the
+            # 24h threshold → ~0 near 0h). Expose the pre-decay cost so depot.js can
+            # recompute the displayed figure live each countdown tick.
+            b['rush_base_cost'] = int(round(base_cost * rush_pct))
+            b['rush_cost'] = _rush_cost_with_decay(base_cost, rush_pct, remaining_hours) if base_cost > 0 else 0
             b['rush_pct'] = rush_pct
+            b['rush_decay'] = round(time_decay_factor(remaining_hours), 4)
     except Exception as e:
         logger.warning(f"Shard rush enrichment failed: {e}")
 

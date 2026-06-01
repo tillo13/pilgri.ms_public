@@ -387,7 +387,9 @@ function renderAriaBonds() {
     grid.innerHTML = bonds.map((bond, i) => {
         const isPending = bond.status === 'pending';
         const statusColor = isPending ? '#f59e0b' : '#06b6d4';
-        const statusText = isPending ? (bond.my_submitted ? 'Waiting for Partner' : 'Fragment Ready') : 'Bonded';
+        // #1393: actionable "Fragment Ready" gets a ◆ shape marker so it's distinguishable
+        // beyond the amber colour alone (colourblind rule); the other states stay plain.
+        const statusText = isPending ? (bond.my_submitted ? 'Waiting for Partner' : '◆ Fragment Ready') : 'Bonded';
         const borderColor = isPending ? 'rgba(245,158,11,0.3)' : 'rgba(6,182,212,0.3)';
         const img = bond.bond_image_url
             ? `<img src="${bond.bond_image_url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`

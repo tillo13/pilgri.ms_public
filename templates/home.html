@@ -109,6 +109,10 @@ window.autoShowHaul = {{ 'false' if auto_show_haul is defined and not auto_show_
 {% include "home/_auth_hero.html" %}
 {% include "home/_auth_fleet.html" %}
 {% include "home/_auth_buggy.html" %}
+{# #1393: ARIA-bond fragment call-out — ALWAYS rendered (not gated by show_briefing)
+   so frequent players who get no While-You-Were-Away briefing still see "Fragment
+   Ready". pending_fragments/processing_bonds are top-level from dashboard.py. #}
+{% include "home/_auth_bond_callout.html" %}
 {% if away_summary and away_summary.show_briefing %}
 {% include "home/_auth_briefing.html" %}
 {% endif %}

@@ -856,6 +856,50 @@ def test_level_unlocks_reverse_index():
     return True
 
 
+@test("Shard Rush time-decay: 50%@24h, 25%@12h, never free (#1420)", tier=1, features=['config', 'depot'], mode='local')
+def test_shard_rush_time_decay():
+    """#1420 (Luke): rush cost decays with time left — 50% at the 24h rush threshold,
+    25% at 12h (linear, remaining/48), applied ON TOP of the LS/Water pct, floored at
+    1 shard so a rush is never free (#1459 invariant). Anchored to RUSH_THRESHOLD_HOURS."""
+    from utilities.upgrades.shard_rush import time_decay_factor, _rush_cost_with_decay, RUSH_THRESHOLD_HOURS
+    if RUSH_THRESHOLD_HOURS != 24:
+        return f"#1420 decay is anchored to a 24h rush window; RUSH_THRESHOLD_HOURS={RUSH_THRESHOLD_HOURS}"
+    if abs(time_decay_factor(24) - 0.50) > 1e-9:
+        return f"decay@24h should be 0.50, got {time_decay_factor(24)}"
+    if abs(time_decay_factor(12) - 0.25) > 1e-9:
+        return f"decay@12h should be 0.25, got {time_decay_factor(12)}"
+    # never free: tiny remaining still costs >= 1
+    if _rush_cost_with_decay(1000, 1.0, 0.001) < 1:
+        return "#1459 invariant broken: rush can be free near 0h"
+    # exact reconciliation with Luke's example (base 1000, pct 1.0)
+    if _rush_cost_with_decay(1000, 1.0, 24) != 500 or _rush_cost_with_decay(1000, 1.0, 12) != 250:
+        return "rush cost doesn't match Luke's 1000→500@24h / 250@12h example"
+    return True
+
+
+@test("Bond 'Fragment Ready' call-out is always-on, not briefing-gated (#1393)", tier=1, features=['api', 'aria'], mode='local')
+def test_bond_callout_always_on():
+    """#1393: a ready ARIA-bond fragment must surface on the home page even for
+    frequent players who get no While-You-Were-Away briefing. Assert (a) the shared
+    helper returns both card lists, and (b) home.html renders the bond call-out
+    OUTSIDE the `show_briefing` gate (else frequent players never see it)."""
+    import os
+    from utilities.aria.bonds import get_actionable_bond_cards
+    cards = get_actionable_bond_cards(45)
+    if not isinstance(cards, dict) or 'pending_fragments' not in cards or 'processing_bonds' not in cards:
+        return f"get_actionable_bond_cards must return pending_fragments+processing_bonds, got {cards}"
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    with open(os.path.join(root, 'templates', 'home.html')) as f:
+        home = f.read()
+    callout = home.find('_auth_bond_callout.html')
+    gate = home.find('away_summary.show_briefing %}')  # the actual {% if %} directive
+    if callout == -1:
+        return "#1393: home.html does not include _auth_bond_callout.html"
+    if gate != -1 and callout > gate:
+        return "#1393: bond call-out must render BEFORE the show_briefing gate (always-on)"
+    return True
+
+
 @test("Flat captain-stat bonus renders +N, not +N% (#1409)", tier=1, features=['config', 'depot'], mode='local')
 def test_endgame_stat_bonus_render():
     """#1409: End-Game buildings grant flat +N to all captain stats (config, #1270).
