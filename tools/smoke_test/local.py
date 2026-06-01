@@ -1357,6 +1357,63 @@ def test_signal_relics_shape():
     return True
 
 
+@test("Trail NSEW palette has ONE source — line==box (#1434)", tier=1, features=['crew', 'config'], mode='local')
+def test_trail_palette_single_source():
+    import os, re
+    import config
+    pal = getattr(config, 'TRAIL_DIR_PALETTE', None)
+    if not pal:
+        return "config.TRAIL_DIR_PALETTE missing — the single source of truth for #1434"
+    for d in ('N', 'E', 'S', 'W'):
+        if d not in pal:
+            return f"TRAIL_DIR_PALETTE missing direction {d}"
+        for k in ('color', 'halo', 'dash', 'label'):
+            if k not in pal[d]:
+                return f"TRAIL_DIR_PALETTE[{d}] missing key {k}"
+    # distinctness — 4 colours + 4 dash patterns must all differ (no two directions collapse)
+    if len({pal[d]['color'] for d in 'NESW'}) != 4:
+        return "TRAIL_DIR_PALETTE colours are not all distinct"
+    if len({str(pal[d]['dash']) for d in 'NESW'}) != 4:
+        return "TRAIL_DIR_PALETTE dash patterns are not all distinct (color-alone risk)"
+    # the render JS must NOT carry the old blue/red literals anymore (they caused the line!=box drift)
+    base = os.path.join(os.path.dirname(__file__), '..', '..')
+    for rel in ('static/js/crew-map.js', 'static/js/crew-missions.js'):
+        with open(os.path.join(base, rel)) as f:
+            src = f.read()
+        for bad in ('#3b82f6', '#ef4444'):
+            if bad in src:
+                return f"{rel} still hardcodes the old trail colour {bad} — must read TRAIL_DIR"
+    # the PAGE_DATA bridge must exist so JS can read the palette
+    with open(os.path.join(base, 'templates/crew.html')) as f:
+        if 'trailPaletteData' not in f.read():
+            return "crew.html missing the #trailPaletteData PAGE_DATA bridge"
+    return True
+
+
+@test("Signal node links have a visible affordance (#1432)", tier=1, features=['signal', 'template'], mode='local')
+def test_signal_node_link_affordance():
+    import os, re
+    base = os.path.join(os.path.dirname(__file__), '..', '..')
+    # CSS: a.signal-node-link must NOT be the old invisible 'text-decoration: none'
+    # (it caused the colorblind re-file). Require a real underline affordance.
+    with open(os.path.join(base, 'static/css/signal.css')) as f:
+        css = f.read()
+    m = re.search(r'a\.signal-node-link\s*\{([^}]*)\}', css)
+    if not m:
+        return "a.signal-node-link rule missing from signal.css"
+    block = m.group(1)
+    if 'text-decoration: underline' not in block:
+        return "a.signal-node-link must use 'text-decoration: underline' (color-independent affordance), not the invisible dashed border"
+    if 'text-decoration: none' in block:
+        return "a.signal-node-link still has 'text-decoration: none' — the invisible #1432 affordance regressed"
+    # Template: the node anchors must still deep-link to the expedition map
+    with open(os.path.join(base, 'templates/signal.html')) as f:
+        html = f.read()
+    if 'signal-node-link' not in html or '/expeditions?tab=map' not in html:
+        return "signal.html lost the signal-node-link anchors or the /expeditions?tab=map deep-link"
+    return True
+
+
 @test("No superseded Anthropic model in live paths (#1493)", tier=1, features=['config', 'pilgrimbot'], mode='local')
 def test_no_superseded_model():
     import os

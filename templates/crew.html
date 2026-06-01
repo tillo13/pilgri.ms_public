@@ -83,6 +83,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>window.baseCoords = { latitude: {{ base_coords.latitude }}, longitude: {{ base_coords.longitude }} };</script>
 {% endif %}
 <script src="/static/js/arrival.js?v={{ static_v }}"></script>
+<!-- #1434: single source of truth for the N/E/S/W trail palette (config.TRAIL_DIR_PALETTE).
+     crew-map.js + crew-missions.js read this so map lines + boxes can never diverge. -->
+<script type="application/json" id="trailPaletteData">{{ trail_palette|tojson }}</script>
 <script src="/static/js/crew-missions.js?v={{ static_v }}" defer></script>
 <script src="/static/js/crew-notifications.js?v={{ static_v }}" defer></script>
 <script src="/static/js/crew-map.js?v={{ static_v }}" defer></script>

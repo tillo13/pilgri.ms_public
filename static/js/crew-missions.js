@@ -4,6 +4,15 @@
 
 /* ─── Crew Missions ─── */
 // Crew Missions JavaScript
+// #1434: shared N/E/S/W trail palette (config.TRAIL_DIR_PALETTE via #trailPaletteData).
+// window-scoped + idempotent so it shares ONE parse with crew-map.js (no redeclaration).
+window.TRAIL_DIR = window.TRAIL_DIR || (function () {
+    try {
+        const el = document.getElementById('trailPaletteData');
+        if (el && el.textContent) return JSON.parse(el.textContent);
+    } catch (e) { /* fall through */ }
+    return { N: { color: '#FFFFFF' }, E: { color: '#00FFFF' }, S: { color: '#FF1493' }, W: { color: '#000000' } };
+})();
 let crewMissionStatus = null;
 let nearbyTrails = [];
 let pendingMissionMember = null;
@@ -211,8 +220,8 @@ function renderTrailList() {
         container.innerHTML = '<div class="text-xs opacity-60">No active chain segments — your chains may all be complete.</div>';
         return;
     }
-    // v3 NSEW palette (Andy 2026-04-28): blue / red / black / white
-    const dirColor = { N: '#3b82f6', E: '#ef4444', S: '#000000', W: '#ffffff' };
+    // #1434: shared TRAIL_DIR palette so the mission list matches the map + boxes.
+    const dirColor = { N: window.TRAIL_DIR.N.color, E: window.TRAIL_DIR.E.color, S: window.TRAIL_DIR.S.color, W: window.TRAIL_DIR.W.color };
     container.innerHTML = buildable.map(t => {
         const kmBuilt = t.km_built || 0;
         const segKm = t.segment_distance_km || 1;

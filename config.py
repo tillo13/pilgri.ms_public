@@ -437,6 +437,19 @@ UI_ICONS = {
     'aria_avatar': 'https://storage.googleapis.com/galactica-pilgrim-assets/aria/concept_aria_rock_v3_1767666240.png',
 }
 
+# #1434: ONE canonical N/E/S/W trail palette. The crew map LINES, the Top Trails BOXES,
+# the antipode modal, the mission list, and the legend ALL read this — so line and box
+# colours can never drift apart again (they did when the map lines were migrated to
+# blue/red but the boxes weren't). Colorblind-tested (deuteranopia/protanopia/tritanopia);
+# direction is ALSO encoded by a per-direction dash pattern + a text label, NEVER colour
+# alone. Andy 2026-06-01 chose this set over the old blue/red (a colourblind confusion pair).
+TRAIL_DIR_PALETTE = {
+    'N': {'color': '#FFFFFF', 'halo': '#000000', 'dash': None,        'label': 'N CHAIN'},
+    'E': {'color': '#00FFFF', 'halo': '#000000', 'dash': '16,8',      'label': 'E CHAIN'},
+    'S': {'color': '#FF1493', 'halo': '#000000', 'dash': '4,6',       'label': 'S CHAIN'},
+    'W': {'color': '#000000', 'halo': '#FFFFFF', 'dash': '12,4,4,4',  'label': 'W CHAIN'},
+}
+
 
 # ============================================================================
 # NAROG RECALIBRATION — re-pick / re-roll image / re-roll video / lock-in

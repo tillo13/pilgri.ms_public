@@ -725,15 +725,20 @@ details[open] .signal-summary::after {
     min-width: 70px;
 }
 
+/* #1432: node codes ARE map deep-links but read as plain labels — the old
+   0.4-alpha orange dashed border was invisible (esp. to colorblind users, who
+   re-filed this). Use a solid, color-INDEPENDENT underline so clickability is
+   conveyed by SHAPE, not hue. */
 a.signal-node-link {
-    text-decoration: none;
+    text-decoration: underline;
+    text-decoration-style: solid;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
     cursor: pointer;
-    border-bottom: 1px dashed rgba(236, 116, 39, 0.4);
-    transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+    transition: color 0.15s, text-shadow 0.15s;
 }
 a.signal-node-link:hover {
     color: var(--color-mars-light);
-    border-bottom-color: var(--color-mars-light);
     text-shadow: 0 0 6px rgba(236, 116, 39, 0.5);
 }
 

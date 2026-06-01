@@ -2,6 +2,27 @@
 // CREW-MAP.JS - Trail Map, Chart Trail Modal, Crew Selection
 // ============================================================================
 
+// #1434: single source of truth for the N/E/S/W trail palette (config.TRAIL_DIR_PALETTE,
+// via the #trailPaletteData PAGE_DATA bridge). Map lines, boxes, antipode modal + mission
+// list all read TRAIL_DIR so colours/dashes/labels can never drift. The fallback mirrors
+// config so a parse miss can't crash the map (scripts are deferred, so the bridge is
+// normally present). Direction is encoded by colour + dash + label — never colour alone.
+// window-scoped + idempotent so crew-map.js and crew-missions.js (both loaded on /crew)
+// share ONE parse without a `const` redeclaration collision.
+window.TRAIL_DIR = window.TRAIL_DIR || (function () {
+    try {
+        const el = document.getElementById('trailPaletteData');
+        if (el && el.textContent) return JSON.parse(el.textContent);
+    } catch (e) { /* fall through to default */ }
+    return {
+        N: { color: '#FFFFFF', halo: '#000000', dash: null,       label: 'N CHAIN' },
+        E: { color: '#00FFFF', halo: '#000000', dash: '16,8',     label: 'E CHAIN' },
+        S: { color: '#FF1493', halo: '#000000', dash: '4,6',      label: 'S CHAIN' },
+        W: { color: '#000000', halo: '#FFFFFF', dash: '12,4,4,4', label: 'W CHAIN' },
+    };
+})();
+const TRAIL_DIR = window.TRAIL_DIR;
+
 // v3 (#1414): hydrate active_direction + chain segments + chain progress for the modal.
 async function loadActiveTrailDirection() {
     try {
@@ -95,10 +116,10 @@ function updateCrewTrailMapMarkers() {
 
     // v3 (#1414) — show ONLY what the captain has actually built (the "plus sign" of
     // traveled distance), plus a throbbing antipode beacon. NO ghost/unbuilt lines.
-    // Andy's preferred NSEW palette: blue / red / black / white.
-    const dirColor = { N: '#3b82f6', E: '#ef4444', S: '#000000', W: '#ffffff' };
-    // Halo opposite-luminance so each color stands out on Mars terrain
-    const dirHalo  = { N: '#000000', E: '#000000', S: '#ffffff', W: '#000000' };
+    // #1434: colours/halos/dashes come from the shared TRAIL_DIR palette so the lines
+    // ALWAYS match the Top Trails boxes + legend.
+    const dirColor = { N: TRAIL_DIR.N.color, E: TRAIL_DIR.E.color, S: TRAIL_DIR.S.color, W: TRAIL_DIR.W.color };
+    const dirHalo  = { N: TRAIL_DIR.N.halo,  E: TRAIL_DIR.E.halo,  S: TRAIL_DIR.S.halo,  W: TRAIL_DIR.W.halo };
 
     // Per direction: draw the line through every built segment + a marker DOT at each
     // traveled-through landmark. The first marker in each direction is the first NSEW
@@ -145,9 +166,24 @@ function updateCrewTrailMapMarkers() {
             }
             if (pts.length < 2) continue;
             const kmLeft = Math.max(0, totalChainKm - accumulatedKm);
+            // #1434: per-direction dash so the 4 lines differ by SHAPE, not colour alone
+            // (both users are colourblind). Solid halo underneath keeps the dashed colour line legible.
+            const dDash = TRAIL_DIR[d].dash || undefined;
             // Line: halo underneath + bright color on top
             trailMapMarkers.push(L.polyline(pts, { color: halo, weight: 7, opacity: 0.55 }).addTo(crewTrailMap));
-            trailMapMarkers.push(L.polyline(pts, { color: color, weight: 4, opacity: 1.0 }).addTo(crewTrailMap));
+            trailMapMarkers.push(L.polyline(pts, { color: color, weight: 4, opacity: 1.0, dashArray: dDash }).addTo(crewTrailMap));
+            // #1434: a permanent N/E/S/W label at the built tip so direction is also conveyed by TEXT.
+            const tip = pts[pts.length - 1];
+            trailMapMarkers.push(
+                L.marker(tip, {
+                    icon: L.divIcon({
+                        className: 'trail-dir-label',
+                        html: `<span style="background:${halo};color:${color};border:1px solid ${color};border-radius:3px;padding:0 3px;font-size:10px;font-weight:700;">${d}</span>`,
+                        iconSize: null,
+                    }),
+                    interactive: false,
+                }).addTo(crewTrailMap)
+            );
             // Dot at every traveled-through landmark
             markerStops.forEach((stop, i) => {
                 const isCurrent = !!stop.partial;
@@ -296,12 +332,13 @@ window.flyToBase = function() {
 // Pulls live data from /api/trails/chains and opens a MarsModal with all 4 chain progress.
 window.openAntipodeModal = async function(antipodeName) {
     if (typeof MarsModal === 'undefined') return;
-    // Andy's preferred 4-color palette: blue/red/black/white (per 2026-04-28 feedback)
+    // #1434: colours + labels from the shared TRAIL_DIR palette so the antipode modal
+    // matches the map lines, boxes + legend.
     const dirStyle = {
-        N: { color: '#3b82f6', label: '⬆ N CHAIN', desc: 'via the North Pole' },
-        E: { color: '#ef4444', label: '➡ E CHAIN', desc: 'east through the equator' },
-        S: { color: '#000000', label: '⬇ S CHAIN', desc: 'via the South Pole' },
-        W: { color: '#ffffff', label: '⬅ W CHAIN', desc: 'west through the equator' }
+        N: { color: TRAIL_DIR.N.color, label: TRAIL_DIR.N.label, desc: 'via the North Pole' },
+        E: { color: TRAIL_DIR.E.color, label: TRAIL_DIR.E.label, desc: 'east through the equator' },
+        S: { color: TRAIL_DIR.S.color, label: TRAIL_DIR.S.label, desc: 'via the South Pole' },
+        W: { color: TRAIL_DIR.W.color, label: TRAIL_DIR.W.label, desc: 'west through the equator' }
     };
     let chains = (window.lastChainState && window.lastChainState.chains) || null;
     let activeDir = window.activeTrailDirection || 'N';
@@ -433,21 +470,13 @@ function drawGhostChainRoutes() {
     ghostRouteLines.forEach(l => crewTrailMap.removeLayer(l));
     ghostRouteLines = [];
 
-    // High-contrast palette tuned for severe colorblind viewers on the orange-red Mars terrain.
-    // Each color sits at the OPPOSITE end of the color wheel from Mars red — and pairs with
-    // a unique dash pattern so direction is encoded by SHAPE too, not color alone.
-    // Tested against deuteranopia, protanopia, tritanopia simulators.
-    const dirColor = {
-        N: '#FFFFFF',  // pure white — max luminance contrast on red, reads at any size
-        E: '#00FFFF',  // bright cyan — Mars-red's complementary color, can't be confused with terrain
-        S: '#FF1493',  // hot pink/magenta — high saturation against orange, distinct from red
-        W: '#000000'   // pure black — minimum luminance contrast on red
-    };
-    // Per-direction dash pattern (so colorblind viewers can tell chains apart by shape too)
-    const dirDash  = { N: null,      E: '16,8',     S: '4,6',     W: '12,4,4,4' };
-    // Every chain line gets drawn TWICE — first a dark halo underneath (for high contrast on any bg),
-    // then the bright color on top. Halo color picks the opposite luminance of the chain color.
-    const dirHalo  = { N: '#000000', E: '#000000',  S: '#000000', W: '#FFFFFF' };
+    // #1434: read the shared TRAIL_DIR palette (was a duplicate hardcoded copy). NOTE: this
+    // function (drawGhostChainRoutes) is currently DEAD — defined, called nowhere — but kept
+    // (CLAUDE.md: ask before removing). Reading the shared palette means it can't reintroduce
+    // colour drift if it's ever rewired.
+    const dirColor = { N: TRAIL_DIR.N.color, E: TRAIL_DIR.E.color, S: TRAIL_DIR.S.color, W: TRAIL_DIR.W.color };
+    const dirDash  = { N: TRAIL_DIR.N.dash,  E: TRAIL_DIR.E.dash,  S: TRAIL_DIR.S.dash,  W: TRAIL_DIR.W.dash };
+    const dirHalo  = { N: TRAIL_DIR.N.halo,  E: TRAIL_DIR.E.halo,  S: TRAIL_DIR.S.halo,  W: TRAIL_DIR.W.halo };
     const baseCoords = window.baseCoords || { latitude: -4.5, longitude: 137.4 };
 
     // Build a from_landmark → coords lookup using nearbyTrails (which has lat/lon for built segments)
@@ -578,21 +607,12 @@ function updateTopTrails() {
     // Group nearbyTrails by chain_direction. The backend returns one row per direction
     // for the next unbuilt segment + completed segment rows.
     const dirOrder = ['N', 'E', 'S', 'W'];
-    // High-contrast palette tuned for severe colorblind viewers on the orange-red Mars terrain.
-    // Each color sits at the OPPOSITE end of the color wheel from Mars red — and pairs with
-    // a unique dash pattern so direction is encoded by SHAPE too, not color alone.
-    // Tested against deuteranopia, protanopia, tritanopia simulators.
-    const dirColor = {
-        N: '#FFFFFF',  // pure white — max luminance contrast on red, reads at any size
-        E: '#00FFFF',  // bright cyan — Mars-red's complementary color, can't be confused with terrain
-        S: '#FF1493',  // hot pink/magenta — high saturation against orange, distinct from red
-        W: '#000000'   // pure black — minimum luminance contrast on red
-    };
-    // Per-direction dash pattern (so colorblind viewers can tell chains apart by shape too)
-    const dirDash  = { N: null,      E: '16,8',     S: '4,6',     W: '12,4,4,4' };
-    // Every chain line gets drawn TWICE — first a dark halo underneath (for high contrast on any bg),
-    // then the bright color on top. Halo color picks the opposite luminance of the chain color.
-    const dirHalo  = { N: '#000000', E: '#000000',  S: '#000000', W: '#FFFFFF' };
+    // #1434: colours/dashes/halos from the shared TRAIL_DIR palette so the Top Trails boxes
+    // ALWAYS match the map lines + legend. (Direction also shown by the dash + the 'D CHAIN'
+    // label + the arrow icon below — never colour alone.)
+    const dirColor = { N: TRAIL_DIR.N.color, E: TRAIL_DIR.E.color, S: TRAIL_DIR.S.color, W: TRAIL_DIR.W.color };
+    const dirDash  = { N: TRAIL_DIR.N.dash,  E: TRAIL_DIR.E.dash,  S: TRAIL_DIR.S.dash,  W: TRAIL_DIR.W.dash };
+    const dirHalo  = { N: TRAIL_DIR.N.halo,  E: TRAIL_DIR.E.halo,  S: TRAIL_DIR.S.halo,  W: TRAIL_DIR.W.halo };
     const dirIcon  = { N: '⬆', E: '➡', S: '⬇', W: '⬅' };
     const byDir = { N: [], E: [], S: [], W: [] };
     for (const t of nearbyTrails) {

@@ -12,7 +12,7 @@ import time
 import os
 import threading
 
-from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes
+from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes, TRAIL_DIR_PALETTE
 
 # Cache-bust static files on each deploy (timestamp at startup)
 STATIC_V = str(int(time.time()))
@@ -340,11 +340,11 @@ def crew():
     if auth.is_authenticated():
         from utilities.views.arrival import get_crew_page_data_authenticated
         data = get_crew_page_data_authenticated(session.get('user_id'))
-        return render_template('crew.html', active_tab='crew', user=auth.get_current_user(), **data)
+        return render_template('crew.html', active_tab='crew', user=auth.get_current_user(), trail_palette=TRAIL_DIR_PALETTE, **data)
     data = get_arrival_commander_data(session, None)
     if 'redirect' in data:
         return redirect(url_for(data['redirect']))
-    return render_template('crew.html', active_tab='crew', user=None, **data)
+    return render_template('crew.html', active_tab='crew', user=None, trail_palette=TRAIL_DIR_PALETTE, **data)
 
 
 # Deep-link shortcuts to specific crew tabs. Each redirects to /crew with the
