@@ -930,6 +930,21 @@ def test_1417_sv_shard_timer_separation():
     return True
 
 
+@test("Echo-site spawn doesn't use fetchone()[0] on the default dict cursor", tier=1, features=['signal'], mode='local')
+def test_echo_site_no_tuple_index_on_dict_cursor():
+    """db_cursor() defaults to RealDictCursor, so `cur.fetchone()[0]` raises KeyError: 0.
+    utilities/signal/sites.py opens db_cursor() (dict) and INSERT...RETURNING / COUNT(*) /
+    EXTRACT must be read by column key. This bug silently failed EVERY echo-site spawn for
+    ~7 weeks (logged only as 'Failed to spawn echo site: 0'). Static guard on this file."""
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    with open(os.path.join(root, 'utilities', 'signal', 'sites.py')) as f:
+        src = f.read()
+    if 'fetchone()[0]' in src:
+        return "sites.py uses fetchone()[0] on a dict cursor (KeyError:0) — read by column key instead"
+    return True
+
+
 @test("Bond 'Fragment Ready' call-out is always-on, not briefing-gated (#1393)", tier=1, features=['api', 'aria'], mode='local')
 def test_bond_callout_always_on():
     """#1393: a ready ARIA-bond fragment must surface on the home page even for

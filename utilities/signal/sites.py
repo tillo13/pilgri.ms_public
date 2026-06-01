@@ -376,8 +376,8 @@ def maybe_spawn_echo_site(
     try:
         with db_cursor(commit=True) as cur:
             # Generate unique site code
-            cur.execute("SELECT COUNT(*) FROM pilgrim.echo_sites")
-            count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) AS cnt FROM pilgrim.echo_sites")
+            count = cur.fetchone()['cnt']
             site_code = f"ECHO-{count + 1:03d}"
 
             # Offset location slightly (5-30km in random direction)
@@ -422,7 +422,7 @@ def maybe_spawn_echo_site(
                 user_id, expedition_id, message_id, memory_text, expires_at
             ))
 
-            site_id = cur.fetchone()[0]
+            site_id = cur.fetchone()['id']
 
             logger.info(f"✨ Echo Site {site_code} spawned at {new_lat:.4f}, {new_lon:.4f}")
             from utilities.postgres.activity import log_activity
@@ -486,8 +486,8 @@ def claim_echo_site(
                 tier = 'common'  # After max ranked
 
             # Get current sol
-            cur.execute("SELECT EXTRACT(EPOCH FROM NOW())::INTEGER / 86400")
-            sol = cur.fetchone()[0]
+            cur.execute("SELECT EXTRACT(EPOCH FROM NOW())::INTEGER / 86400 AS sol")
+            sol = cur.fetchone()['sol']
 
             # Record the claim
             cur.execute("""
