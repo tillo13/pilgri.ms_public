@@ -5,6 +5,7 @@ from typing import Optional
 
 from utilities.postgres.core import db_cursor, ensure_table_columns
 from utilities.postgres.trails.config import TRAIL_LEVEL_THRESHOLDS, TRAIL_SPEED_MULTIPLIERS
+from config_shop import TRAIL_SV_PER_KM
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +244,7 @@ def add_km_to_trail(user_id: int, destination_name: str, km_amount: float,
         if km_amount > 0:
             try:
                 from utilities.postgres.users import add_passive_sv
-                trail_sv = int(km_amount * 2)
+                trail_sv = int(km_amount * TRAIL_SV_PER_KM)
                 if trail_sv > 0:
                     add_passive_sv(user_id, trail_sv)
                     logger.info(f"🛤️ Trail SV: user {user_id} earned {trail_sv} SV from {km_amount:.1f} km built on {destination_name}")
@@ -581,10 +582,10 @@ def cron_drone_trail_build():
             if drone_km > 0:
                 state = add_km_to_active_chain(user_id, drone_km, 'drone')
                 if state:
-                    # Award SV (2 SV/km, same as v2 cron)
+                    # Award SV (TRAIL_SV_PER_KM/km — Luke-locked rate, same for active + passive)
                     try:
                         from utilities.postgres.users import add_passive_sv
-                        sv = int(drone_km * 2)
+                        sv = int(drone_km * TRAIL_SV_PER_KM)
                         if sv > 0:
                             add_passive_sv(user_id, sv)
                     except Exception:
@@ -598,7 +599,7 @@ def cron_drone_trail_build():
                 if state:
                     try:
                         from utilities.postgres.users import add_passive_sv
-                        sv = int(robot_km * 2)
+                        sv = int(robot_km * TRAIL_SV_PER_KM)
                         if sv > 0:
                             add_passive_sv(user_id, sv)
                     except Exception:

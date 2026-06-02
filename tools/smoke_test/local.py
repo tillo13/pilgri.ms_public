@@ -1175,6 +1175,28 @@ def test_user_trail_chains_schema():
     return True
 
 
+@test("Trail SV/km + session durations match Luke's locks (#1052 / trail-network)", tier=1, features=['config', 'trails'], mode='local')
+def test_trail_sv_and_durations_locked():
+    """Luke locked 5 SV/km (sv-economy sec12, his 8km→40SV example; #1052 qa_approved) and
+    session tiers 30/60/120/240 (trail-network sec3). v73 silently drifted these to 2 SV/km +
+    15-30 min as magic numbers — this guard pins them so they can't drift unreviewed again."""
+    import inspect
+    from config_shop import TRAIL_SV_PER_KM, get_trail_duration_from_multiplier
+    if TRAIL_SV_PER_KM != 5:
+        return f"TRAIL_SV_PER_KM must be 5 (Luke-locked), got {TRAIL_SV_PER_KM}"
+    got = [get_trail_duration_from_multiplier(m) for m in (1.0, 1.15, 1.30, 1.50)]
+    if got != [30, 60, 120, 240]:
+        return f"session durations must be Luke's 30/60/120/240, got {got}"
+    # the 3 grant sites must reference the constant, not a magic literal (the v73 drift vector)
+    from utilities.postgres.trails import segments
+    src = inspect.getsource(segments)
+    if 'km_amount * 2' in src or 'drone_km * 2' in src or 'robot_km * 2' in src:
+        return "segments.py still has a magic '* 2' trail-SV grant — use TRAIL_SV_PER_KM"
+    if src.count('* TRAIL_SV_PER_KM') < 3:
+        return "expected all 3 trail-SV grant sites (manual/drone/robot) to use TRAIL_SV_PER_KM"
+    return True
+
+
 @test("antipode chain persisted for Andy", tier=2, features=['trails'], mode='local')
 def test_andy_chain_persisted():
     """v3 (#1414): Andy's 4 cardinal chains must each be a valid stepping-stone path to
