@@ -204,6 +204,14 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
             # Logistics 0 = no bonus, 50 = 10% faster, 100 = 20% faster
             logistics_build_mult = max(0.5, 1.0 - logistics / 500.0)
             effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * logistics_build_mult
+            # #1497: Charisma interim placeholder effect (Luke, captain-stats brainstorm §2,
+            # 2026-04-19: "have it do something minor for the time being, like +1% Depot Build
+            # Time"). +1% faster per Charisma point, capped at -20% (floor 0.80, matching the
+            # existing Charisma expedition-cost cap) to stay "minor". Stacks multiplicatively with
+            # Logistics/Engineering/Narog-dial. Easy to rip out when Charisma gets a real effect.
+            charisma = stats.get('charisma', 0) or 0
+            charisma_build_mult = max(0.80, 1.0 - charisma * 0.01)
+            effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * charisma_build_mult
     except Exception:
         pass
 

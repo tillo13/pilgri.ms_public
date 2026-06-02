@@ -268,7 +268,7 @@ Your captain has 5 core stats (each 1-100):
 - **Strategy**: Refunds rough-terrain cost (up to 25%) and boosts RARE-find chance (up to +50%)
 - **Exploration**: Increases the value of discoveries, and raises rare AND legendary find chance
 - **Logistics**: Faster expeditions and lower supply costs (up to ~30% cheaper)
-- **Charisma**: Lowers expedition costs (up to 20%)
+- **Charisma**: Lowers expedition costs (up to 20%) and slightly speeds Depot builds (up to 20% faster — interim placeholder)
 
 HOW TO IMPROVE STATS:
 1. Stat Reroll (Depot): Pay shards to randomize all stats (risky!)

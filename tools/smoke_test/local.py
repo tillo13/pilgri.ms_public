@@ -205,6 +205,26 @@ def test_get_effects():
     return True
 
 
+@test("#1497 Charisma → Depot build-speed lever (Luke-locked +1%/pt, -20% cap)", tier=1, features=['effects', 'depot'], mode='local')
+def test_1497_charisma_build_speed():
+    """Luke locked Charisma's interim placeholder effect: +1% Depot Build Time per point, capped
+    at -20% (captain-stats brainstorm sec2, 2026-04-19). Guard the exact formula so it can't drift,
+    and confirm it actually feeds build_time_mult."""
+    import inspect
+    from utilities.upgrades import effects as eff
+    src = inspect.getsource(eff)
+    if 'charisma_build_mult = max(0.80, 1.0 - charisma * 0.01)' not in src:
+        return "#1497: charisma_build_mult must be max(0.80, 1.0 - charisma * 0.01) (Luke-locked +1%/pt, -20% cap)"
+    if "* charisma_build_mult" not in src:
+        return "#1497: charisma_build_mult must multiply into build_time_mult"
+    # executes without raising + returns a sane build mult
+    e = eff.get_user_upgrade_effects(45)
+    btm = e.get('build_time_mult', 1.0)
+    if not (0.0 < btm <= 1.0):
+        return f"build_time_mult out of range: {btm}"
+    return True
+
+
 @test("get_upgrade_build_status returns dict/None", tier=1, features=['depot'], mode='local')
 @requires_web3
 def test_build_status():
