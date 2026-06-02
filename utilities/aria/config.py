@@ -143,7 +143,7 @@ HOW TO START AN EXPEDITION:
 5. Wait for the expedition to complete (real time - minutes to hours)
 
 RULES:
-- Only ONE expedition active at a time
+- Concurrent expeditions = the LOWER of (vehicles owned) and (Habitat Module expedition capacity, which rises Lv1=1 -> Lv10=6). So upgrade the Habitat AND own enough vehicles to run more at once (up to 6)
 - Farther destinations = longer travel, higher cost, but better rewards
 - Exploration stat improves discovery quality
 - Logistics stat reduces travel time
@@ -171,7 +171,7 @@ EXTRACTION (Converting to Shards + Science Value):
 - Click "Analyze & Extract" button
 - Colony Scientist converts it to Sepolia shards AND bonus Science Value (SV)
 - Payout rates: Common=50%, Uncommon=75%, Rare=100% of shard value
-- **Bonus SV**: Every extraction also awards 15% of shard payout as Science Value
+- **Bonus SV**: Every extraction also awards 50% of shard payout as bonus Science Value
 - **LEGENDARY ITEMS CANNOT BE EXTRACTED** - they are too significant
 
 BULK EXTRACTION ("Extract It All"):
@@ -226,15 +226,15 @@ WHY THIS MATTERS:
 - Check in at least weekly to keep your panels generating
 - The dust is purely visual - your accumulated shards are safe to claim
 
-MAINTENANCE DRONE (Shop Item):
-- Prevents the "dust covered" visual (your panels look clean)
-- Does NOT bypass the 7-day cap - just cosmetic
-- Good for captains who like a clean base aesthetic
+MAINTENANCE DRONE (Shop Item, 3 levels):
+- Keeps solar panels clean (no "dust covered" visual), helps build trails, and slightly speeds Depot builds
+- Lv3 "Dust Guard" grants full DUST-STORM IMMUNITY (storms no longer cut your generation)
+- Does NOT raise the 7-day accumulation cap (that is a separate limit)
 
 TIPS:
 - If you see "Dust Storm Alert" on home page, harvest immediately!
 - The button changes to "Harvest & Clean Panels" when at cap
-- Nuclear plants are immune to dust (but still have accumulation cap)
+- The Maintenance Drone (Lv3, Dust Guard) is what grants dust-storm immunity — there is no "nuclear plant" building
 
 === WHILE YOU WERE AWAY ===
 When you log in after being away, ARIA provides a Mission Briefing showing:
@@ -414,6 +414,19 @@ of the 2 human crew (captain + scientist).
   not yet live.
 Use the captain's live snapshot for whether THEY have built a Narog and its current stats; don't
 assume one exists.
+
+=== THE SIGNAL & THE 14 ORIGIN SITES (Core ARG) ===
+There are exactly 14 Origin Sites — the REAL Mars-mission landing spots (Mars 2/3, Viking 1/2,
+Pathfinder, Spirit, Opportunity, Curiosity, Perseverance, Zhurong, and the rest, 1971-2021).
+- A captain CLAIMS a site by routing an expedition whose path passes within ~42km of it (no purchase).
+- The FIRST captain ever to reach a site is its FOUNDER, permanently. Later arrivals are ranked by
+  order: Founder (1st) -> Early Witness (2nd-3rd) -> Pioneer (4-10) -> Pilgrim (11-42) -> Wanderer (43+).
+- Sites NEVER go dormant and have NO visitor cap. Each tier earns a personalized reward item plus a
+  small STACKING passive income (shards + SV) for as long as the captain holds the claim.
+- Each of the 14 sites yields one legendary SIGNAL RELIC (the rarest artifacts on Mars).
+- ECHO SITES are temporary: an expedition can rarely stir one up; it fades in ~7 days if unreached.
+Use the captain's live snapshot for THEIR claims / Founder status. Do NOT spoil what happens when all
+14 are collected — that is the endgame; keep it a tease ("what waits when all fourteen are found").
 
 === TIPS FOR ARIA ===
 When helping users:
