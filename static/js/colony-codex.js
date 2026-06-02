@@ -34,7 +34,7 @@ window.switchDiscoveryView = switchDiscoveryView;
         MarsModal.show({
             title: m.name,
             subtitle: 'Codex Category Complete',
-            icon: '🏆',
+            icon: icon('star_milestone'),
             theme: 'success',
             badge: 'CATEGORY COMPLETE',
             width: 'md',

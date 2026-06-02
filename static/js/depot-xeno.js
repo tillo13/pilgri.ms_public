@@ -20,7 +20,7 @@ async function openXenobiologyModal() {
     MarsModal.show({
         title: 'Xenobiology Lab',
         subtitle: 'Ancient Martian samples reveal secrets of captain enhancement',
-        icon: '🧬',
+        icon: icon('microscope_lab'),
         width: 'lg',
         body: '<div style="text-align:center; padding:30px; color:var(--text-muted);"><div class="xeno-spinner"></div>Initializing lab systems...</div>'
     });
