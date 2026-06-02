@@ -228,6 +228,7 @@ INFRASTRUCTURE_CATALOG = {
                 'name': 'High-Throughput Refinery', 'cost': 6272, 'build_time_days': 5,
                 'generation_rate': 36.0,
                 'image_url': '',
+                'level_requires': {'water_extractor': 5},  # #1422 Luke: WE Lv5 gates Ore Refinery Lv3
             },
             4: {
                 'name': 'Crystal-Enhanced Refinery', 'cost': 7025, 'build_time_days': 6,
@@ -238,6 +239,7 @@ INFRASTRUCTURE_CATALOG = {
                 'name': 'Advanced Refinery', 'cost': 7868, 'build_time_days': 7,
                 'generation_rate': 52.0,
                 'image_url': '',
+                'level_requires': {'water_extractor': 7},  # #1422 Luke: WE Lv7 gates Ore Refinery Lv5
             },
             6: {
                 'name': 'Deep Processing Plant', 'cost': 8812, 'build_time_days': 9,
@@ -248,6 +250,7 @@ INFRASTRUCTURE_CATALOG = {
                 'name': 'Crystal-Enhanced Refinery', 'cost': 9869, 'build_time_days': 10,
                 'generation_rate': 75.0,
                 'image_url': '',
+                'level_requires': {'water_extractor': 9},  # #1422 Luke: WE Lv9 gates Ore Refinery Lv7
             },
             8: {
                 'name': 'Sepolia Extraction Core', 'cost': 382480, 'build_time_days': 11,

@@ -225,6 +225,19 @@ def test_1497_charisma_build_speed():
     return True
 
 
+@test("#1422 Ore Refinery escalating Water-Extractor prereqs (Luke spec)", tier=1, features=['config', 'depot'], mode='local')
+def test_1422_refinery_we_prereqs():
+    """Luke #1422: WE Lv5 gates Ore Refinery Lv3, WE7->Ore5, WE9->Ore7 — escalating per-level
+    prereqs via the #1436 level_requires pattern (enforced in upgrades/flow.py:124)."""
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    lv = INFRASTRUCTURE_CATALOG['refinery']['levels']
+    for ore_lv, we_lv in {3: 5, 5: 7, 7: 9}.items():
+        got = (lv.get(ore_lv, {}).get('level_requires') or {}).get('water_extractor')
+        if got != we_lv:
+            return f"Ore Refinery Lv{ore_lv} must require water_extractor Lv{we_lv} (#1422), got {got}"
+    return True
+
+
 @test("get_upgrade_build_status returns dict/None", tier=1, features=['depot'], mode='local')
 @requires_web3
 def test_build_status():
