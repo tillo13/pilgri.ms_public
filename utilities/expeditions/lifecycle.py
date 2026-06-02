@@ -195,7 +195,10 @@ def launch_expedition(
     from utilities.tech_utils import get_tech_effects
     tech_effects = get_tech_effects(user_id)
     tech_speed_mult = tech_effects.get('expedition_speed_mult', 1.0)
-    upgrade_effects['expedition_speed_mult'] = vehicle_data['speed_mult'] * tech_speed_mult
+    # #20 Pathfinder synergy (Scanner+Rover) rides on synergy_speed_mult — a dedicated
+    # key that survives this per-vehicle overwrite (unlike the aggregate above).
+    synergy_speed_mult = upgrade_effects.get('synergy_speed_mult', 1.0)
+    upgrade_effects['expedition_speed_mult'] = vehicle_data['speed_mult'] * tech_speed_mult * synergy_speed_mult
 
     expedition_pricing = calculate_expedition_cost(
         distance_km=distance_km,
@@ -476,7 +479,11 @@ def recall_expedition(user_id: int, expedition_id: int) -> dict:
                 terrain_speed_mult = info.get('speed_mult', 1.0)
                 break
 
-    total_speed_mult = vehicle_speed_mult * logistics_speed_bonus * scientist_nav_mult * trail_speed_mult * terrain_speed_mult
+    # #20 Pathfinder synergy (Scanner+Rover) also speeds the return leg, which the
+    # aggregate expedition_speed_mult never touches — read the dedicated key directly.
+    from utilities.upgrades_utils import get_user_upgrade_effects
+    synergy_speed_mult = get_user_upgrade_effects(user_id).get('synergy_speed_mult', 1.0)
+    total_speed_mult = vehicle_speed_mult * logistics_speed_bonus * scientist_nav_mult * trail_speed_mult * terrain_speed_mult * synergy_speed_mult
     effective_speed = BASE_SPEED_KM_PER_HOUR * total_speed_mult
     return_hours = distance_covered_km / effective_speed if effective_speed > 0 else distance_covered_km / BASE_SPEED_KM_PER_HOUR
     return_seconds = return_hours * 3600

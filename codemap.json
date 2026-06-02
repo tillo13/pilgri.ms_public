@@ -113,6 +113,8 @@
   },
   "config_upgrades.py": {
     "exports": [
+      "evaluate_synergies — Per-pair synergy evaluation. PURE compute on the {category:{item:level}}",
+      "compute_synergy_effects — Return {effect_key: multiplier} for satisfied synergy tiers only.",
       "get_upgrade_item_config — Get config for an upgradeable item",
       "get_upgrade_level_stats — Get stats for an item at a specific level"
     ],
@@ -3680,7 +3682,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

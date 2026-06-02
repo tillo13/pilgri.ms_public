@@ -225,6 +225,41 @@ def test_1497_charisma_build_speed():
     return True
 
 
+@test("#20 cross-category synergy bonuses (Pathfinder speed + Yield generation)", tier=1, features=['effects', 'config'], mode='local')
+def test_20_cross_category_synergy():
+    """Luke's Progression brainstorm §2: complete two legs together → a bonus. v1 = +5%/tier,
+    breakpoints [1,3,5], cap +15%. Guard the math + that Pathfinder rides synergy_speed_mult
+    (NOT the per-vehicle-overwritten expedition_speed_mult) so the speed bonus actually lands,
+    and that lifecycle multiplies it into BOTH the outbound and return speed stacks."""
+    from config_upgrades import compute_synergy_effects, evaluate_synergies, SYNERGY_PAIRS
+    # both legs Lv0 → no synergy at all
+    if compute_synergy_effects({}) != {}:
+        return "#20: empty colony must yield no synergy bonuses"
+    # both legs Lv1 → +5%; Lv3 → +10%; Lv5 → +15% (cap)
+    cases = {1: 1.05, 3: 1.10, 5: 1.15, 9: 1.15}
+    for lv, expect in cases.items():
+        ups = {'equipment': {'scanner': lv}, 'vehicles': {'rover': lv},
+               'mining': {'mining': lv}, 'power': {'generator': lv}}
+        eff = compute_synergy_effects(ups)
+        if round(eff.get('synergy_speed_mult', 1.0), 4) != expect:
+            return f"#20: Pathfinder at Lv{lv} expected {expect}, got {eff.get('synergy_speed_mult')}"
+        if round(eff.get('passive_income_mult', 1.0), 4) != expect:
+            return f"#20: Yield at Lv{lv} expected {expect}, got {eff.get('passive_income_mult')}"
+    # asymmetric: one leg Lv5, partner Lv0 → nothing (uses the lower leg)
+    if compute_synergy_effects({'equipment': {'scanner': 5}}) != {}:
+        return "#20: a single leg at Lv5 with its partner at Lv0 must give no bonus"
+    # Pathfinder MUST target synergy_speed_mult, not expedition_speed_mult (lifecycle overwrites that)
+    if SYNERGY_PAIRS['pathfinder']['effect_key'] != 'synergy_speed_mult':
+        return "#20: Pathfinder must apply via synergy_speed_mult (expedition_speed_mult is overwritten per-vehicle)"
+    # lifecycle must multiply synergy_speed_mult into both outbound + return speed
+    import inspect
+    from utilities.expeditions import lifecycle
+    src = inspect.getsource(lifecycle)
+    if src.count('synergy_speed_mult') < 3:
+        return "#20: lifecycle must apply synergy_speed_mult to outbound AND return speed"
+    return True
+
+
 @test("#1422 Ore Refinery escalating Water-Extractor prereqs (Luke spec)", tier=1, features=['config', 'depot'], mode='local')
 def test_1422_refinery_we_prereqs():
     """Luke #1422: WE Lv5 gates Ore Refinery Lv3, WE7->Ore5, WE9->Ore7 — escalating per-level

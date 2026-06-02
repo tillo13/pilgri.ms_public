@@ -204,4 +204,16 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
     except Exception as e:
         logger.warning(f"breakdown bond walk failed user={user_id}: {e}")
 
+    # #20: cross-category synergy bonuses, filed under the chip they affect
+    # (Pathfinder → Speed, Yield → Passive Income).
+    try:
+        from config_upgrades import evaluate_synergies
+        from utilities.upgrades.state import get_all_user_upgrades
+        for s in evaluate_synergies(get_all_user_upgrades(user_id)):
+            dk = s['display_key']
+            if s['tiers'] > 0 and dk in SURFACED_KEYS:
+                out[dk].append(_row('synergy', f"{s['name']} (tier {s['tiers']})", dk, s['mult']))
+    except Exception as e:
+        logger.warning(f"breakdown synergy walk failed user={user_id}: {e}")
+
     return out

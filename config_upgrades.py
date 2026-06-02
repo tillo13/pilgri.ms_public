@@ -759,6 +759,73 @@ UPGRADE_CATALOG = {
 }
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# CROSS-CATEGORY SYNERGY BONUSES (#20) — Luke's Progression brainstorm §2:
+#   "if you complete Exploration 1 and Vehicle 1, it gives 5% Speed Bonus.
+#    or Extraction 1 and Shard Gen 1 gives 5% Generation Bonus."
+# When BOTH legs of a pair reach a tier breakpoint, the effect multiplier grows
+# +5% per tier (cap +15% once both legs hit Lv5). Tiered on min(legA, legB).
+# Data-driven — add pairs here, no code change.
+# v1 ASSUMPTIONS (stated for Luke's QA — easy to retune): 2 pairs, +5%/tier,
+# breakpoints 1/3/5, cap +15%. Mirrors the ARIA-bond ±5% house scale.
+# Leg keys map Luke's concept names → real UPGRADE_CATALOG keys:
+#   Exploration→equipment/scanner, Vehicle→vehicles/rover,
+#   Extraction→mining/mining, Shard Gen→power/generator.
+# NOTE: pathfinder applies via the DEDICATED 'synergy_speed_mult' key (NOT
+# 'expedition_speed_mult', which lifecycle overwrites per-vehicle). 'display_key'
+# is what the breakdown popup files it under for the captain.
+# ─────────────────────────────────────────────────────────────────────────────
+SYNERGY_PAIRS = {
+    'pathfinder': {
+        'name': 'Pathfinder Synergy',
+        'legs': [('equipment', 'scanner'), ('vehicles', 'rover')],
+        'effect_key': 'synergy_speed_mult',
+        'display_key': 'expedition_speed_mult',
+        'per_tier': 0.05,
+        'tier_breakpoints': [1, 3, 5],
+        'blurb': 'Scanner + Rover leveled together → expeditions travel faster',
+    },
+    'yield': {
+        'name': 'Yield Synergy',
+        'legs': [('mining', 'mining'), ('power', 'generator')],
+        'effect_key': 'passive_income_mult',
+        'display_key': 'passive_income_mult',
+        'per_tier': 0.05,
+        'tier_breakpoints': [1, 3, 5],
+        'blurb': 'Mining + Generator leveled together → more passive generation',
+    },
+}
+
+
+def evaluate_synergies(user_upgrades: dict) -> list:
+    """Per-pair synergy evaluation. PURE compute on the {category:{item:level}}
+    dict from get_all_user_upgrades — no DB access. Used by effects.py,
+    breakdown.py, and the smoke guard so the math lives in exactly one place."""
+    rows = []
+    for key, cfg in SYNERGY_PAIRS.items():
+        levels = [user_upgrades.get(c, {}).get(i, 0) for c, i in cfg['legs']]
+        floor = min(levels) if levels else 0
+        tiers = sum(1 for bp in cfg['tier_breakpoints'] if floor >= bp)
+        rows.append({
+            'key': key, 'name': cfg['name'],
+            'effect_key': cfg['effect_key'], 'display_key': cfg['display_key'],
+            'legs': cfg['legs'], 'leg_levels': levels, 'floor': floor,
+            'tiers': tiers, 'mult': round(1.0 + cfg['per_tier'] * tiers, 4),
+            'blurb': cfg['blurb'],
+        })
+    return rows
+
+
+def compute_synergy_effects(user_upgrades: dict) -> dict:
+    """Return {effect_key: multiplier} for satisfied synergy tiers only.
+    Pairs sharing an effect_key stack multiplicatively."""
+    out = {}
+    for s in evaluate_synergies(user_upgrades):
+        if s['tiers'] > 0:
+            out[s['effect_key']] = out.get(s['effect_key'], 1.0) * s['mult']
+    return out
+
+
 def get_upgrade_item_config(category: str, item_key: str) -> dict:
     """Get config for an upgradeable item"""
     return UPGRADE_CATALOG.get(category, {}).get(item_key)

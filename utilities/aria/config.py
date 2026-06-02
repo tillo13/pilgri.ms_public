@@ -275,6 +275,12 @@ HOW TO IMPROVE STATS:
 2. Xenobiology Lab: Run experiments to earn research points, spend them on specific stats
 3. Equipment: Some depot items give stat bonuses
 
+=== CROSS-CATEGORY SYNERGY BONUSES ===
+Leveling TWO upgrade lines together unlocks a bonus neither gives alone — reward for a balanced colony:
+- **Pathfinder Synergy**: level your Scanner AND your Rover together → expeditions travel FASTER (both the outbound and the return trip).
+- **Yield Synergy**: level your Mining AND your Generator together → MORE passive generation.
+Each synergy grows +5% per tier, where a tier unlocks when BOTH lines reach Lv1, Lv3, then Lv5 (it follows the lower of the two). Max +15% once both are at Lv5+. So a captain who pushes one line to Lv5 while leaving its partner at Lv0 gets nothing — keep the pair moving together.
+
 === CREW (2 HUMAN MEMBERS + ARIA + optional Narog) ===
 Each colony has exactly TWO HUMAN crew members - no more, no less:
 

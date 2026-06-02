@@ -39,6 +39,7 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
     effects = {
         # Vehicle/expedition effects
         'expedition_speed_mult': 1.0,
+        'synergy_speed_mult': 1.0,  # #20 Pathfinder synergy — applied in lifecycle speed stack
         'cargo_slots': 0,
         'fuel_cost_mult': 1.0,
         'max_range_km': 0,
@@ -283,5 +284,19 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
             effects['build_time_mult'] = effects.get('build_time_mult', 1.0) * dial_mult
     except Exception:
         pass
+
+    # #20: Cross-category synergy bonuses. Leveling two upgrade legs in tandem
+    # (Scanner+Rover → speed, Mining+Generator → generation) grants a tiered
+    # multiplier. Reads the user_upgrades dict already fetched above — NO extra
+    # query. Pathfinder uses the dedicated 'synergy_speed_mult' key (lifecycle
+    # multiplies it into the outbound + return speed stacks, since the aggregate
+    # 'expedition_speed_mult' is overwritten per-vehicle there); Yield folds
+    # straight into 'passive_income_mult' (read by income.py).
+    try:
+        from config_upgrades import compute_synergy_effects
+        for key, mult in compute_synergy_effects(user_upgrades).items():
+            effects[key] = effects.get(key, 1.0) * mult
+    except Exception as e:
+        logger.warning(f"synergy effect aggregation failed user={user_id}: {e}")
 
     return effects
