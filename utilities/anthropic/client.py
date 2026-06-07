@@ -125,6 +125,21 @@ class ClaudeClient:
         }
         return media_types.get(extension, 'application/octet-stream')
 
+    def _samp(self, temperature=None, top_p=None, top_k=None):
+        """Sampling kwargs, model-aware. Opus 4.7/4.8 reject temperature/top_p/
+        top_k (HTTP 400) — drop them for those models and steer via prompting
+        instead (per Anthropic guidance). Returns kwargs to splat into create()."""
+        if any(p in (self.model or '') for p in ('opus-4-7', 'opus-4-8')):
+            return {}
+        kw = {}
+        if temperature is not None:
+            kw['temperature'] = temperature
+        if top_p is not None:
+            kw['top_p'] = top_p
+        if top_k is not None:
+            kw['top_k'] = top_k
+        return kw
+
     def generate_text(self,
                      prompt: str,
                      max_tokens: int = 1024,
@@ -140,7 +155,7 @@ class ClaudeClient:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                temperature=temperature,
+                **self._samp(temperature),
                 messages=[{"role": "user", "content": prompt}]
             )
 
@@ -210,7 +225,7 @@ class ClaudeClient:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                temperature=temperature,
+                **self._samp(temperature),
                 messages=[{"role": "user", "content": content}]
             )
 
@@ -257,7 +272,7 @@ class ClaudeClient:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
-                temperature=temperature,
+                **self._samp(temperature),
                 messages=[{"role": "user", "content": content}]
             )
 
@@ -292,7 +307,7 @@ class ClaudeClient:
             params = {
                 "model": self.model,
                 "max_tokens": max_tokens,
-                "temperature": temperature,
+                **self._samp(temperature),
                 "messages": messages
             }
 
@@ -329,7 +344,7 @@ class ClaudeClient:
             params = {
                 "model": self.model,
                 "max_tokens": max_tokens,
-                "temperature": temperature,
+                **self._samp(temperature),
                 "messages": messages
             }
 
