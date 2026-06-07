@@ -749,7 +749,12 @@ def get_claimed_discoveries(user_id: int) -> List[Dict]:
                     os.mission_name as destination_name,
                     0.0::numeric as found_at_km,
                     os.site_code as site_code,
-                    os.founder_commander_name as founder_name,
+                    -- #1462: founder TEXT tracks a rename (live current name, snapshot fallback);
+                    -- the engraved artifact IMAGE stays permanent.
+                    COALESCE((SELECT ra.commander_name FROM pilgrim.replicate_assets ra
+                              WHERE ra.user_id = os.founder_user_id
+                                AND ra.is_primary_character = true AND ra.is_deleted = false
+                              LIMIT 1), os.founder_commander_name) as founder_name,
                     os.founder_wallet_prefix as founder_wallet
                 FROM pilgrim.site_claims sc
                 JOIN pilgrim.origin_sites os ON sc.origin_site_id = os.id

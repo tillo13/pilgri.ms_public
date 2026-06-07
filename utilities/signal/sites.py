@@ -19,6 +19,21 @@ from utilities.signal.config import (
 logger = logging.getLogger(__name__)
 
 
+def _live_founder_name_sql(alias: str = '') -> str:
+    """#1462: SELECT the founder's CURRENT captain name (live), falling back to the
+    name snapshot taken at claim time. Luke (2026-06-02): keep the engraved artifact
+    IMAGE permanent, but the FOUNDER text everywhere else should track a rename.
+    Correlated subquery — one cheap indexed lookup per row, NOT an N+1 (it runs
+    inside the parent SELECT). `alias` is the origin_sites alias ('' or 'os')."""
+    a = f"{alias}." if alias else ""
+    return (
+        "COALESCE((SELECT ra.commander_name FROM pilgrim.replicate_assets ra "
+        f"WHERE ra.user_id = {a}founder_user_id "
+        "AND ra.is_primary_character = true AND ra.is_deleted = false LIMIT 1), "
+        f"{a}founder_commander_name)"
+    )
+
+
 # ============================================================================
 # ORIGIN SITES
 # ============================================================================
@@ -27,10 +42,11 @@ def get_all_origin_sites() -> List[Dict]:
     """Get all Origin Sites with their status"""
     try:
         with db_cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT id, site_code, mission_name, latitude, longitude,
                        mission_year, mission_country, mission_status, memory_text,
-                       founder_user_id, founder_commander_name, founder_sol,
+                       founder_user_id, {_live_founder_name_sql()} AS founder_commander_name,
+                       founder_sol,
                        founder_tx_hash, founder_claimed_at, is_active,
                        is_lost_signal, unlock_code, unlock_radius_km, founder_wallet_prefix,
                        legendary_item_name, legendary_item_description, legendary_item_image_url
@@ -129,12 +145,13 @@ def get_user_signal_relics(user_id: int) -> Dict:
     """
     try:
         with db_cursor() as cur:
-            cur.execute("""
+            cur.execute(f"""
                 SELECT os.id, os.site_code, os.legendary_item_name,
                        os.legendary_item_description, os.legendary_item_image_url,
                        os.mission_name, os.mission_year, os.mission_country,
                        os.mission_status, os.founder_user_id,
-                       os.founder_commander_name, os.founder_wallet_prefix,
+                       {_live_founder_name_sql('os')} AS founder_commander_name,
+                       os.founder_wallet_prefix,
                        (sc.user_id IS NOT NULL OR os.founder_user_id = %(uid)s) AS found
                 FROM pilgrim.origin_sites os
                 LEFT JOIN pilgrim.site_claims sc

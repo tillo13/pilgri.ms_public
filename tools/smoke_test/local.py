@@ -1182,6 +1182,39 @@ def test_nav_range_shown_in_popup():
     return True
 
 
+@test("Bug #1462: founder TEXT shows the captain's CURRENT name (live), image stays engraved", tier=1, features=['signal'], mode='local')
+def test_founder_name_is_live():
+    """Bug #1462 (Luke 2026-06-02: 'Keep the original name engraved on the artifact image, and
+    update to current captain name in the txt elsewhere'). The founder NAME shown on the Signal
+    page, Activated Nodes, codex, and origin item text must resolve the founder's CURRENT captain
+    name (replicate_assets primary), falling back to the claim-time snapshot — so a rename is
+    reflected everywhere the name is plain text. The engraved artifact IMAGE is untouched.
+    Functional check: a claimed origin site whose founder later renamed must render the new name."""
+    from utilities.signal.sites import get_all_origin_sites, _live_founder_name_sql
+    from utilities.postgres.core import db_cursor
+    # the shared helper must reference the live replicate_assets lookup
+    sql = _live_founder_name_sql('os')
+    if 'replicate_assets' not in sql or 'founder_user_id' not in sql or 'COALESCE' not in sql:
+        return "live-founder-name SQL no longer resolves the current name from replicate_assets"
+    sites = get_all_origin_sites()
+    claimed = [s for s in sites if s.get('is_claimed') and s.get('founder_user_id')]
+    if not claimed:
+        return True  # no claimed sites to assert against — don't block deploy
+    # For every claimed site, the rendered founder name must equal the founder's live
+    # primary-character name (proving the COALESCE picked live over the snapshot).
+    with db_cursor() as cur:
+        for s in claimed:
+            cur.execute("""SELECT commander_name FROM pilgrim.replicate_assets
+                           WHERE user_id=%s AND is_primary_character=true AND is_deleted=false LIMIT 1""",
+                        (s['founder_user_id'],))
+            row = cur.fetchone()
+            live = row['commander_name'] if row else None
+            if live and s['founder_commander_name'] != live:
+                return (f"site {s['site_code']}: rendered founder '{s['founder_commander_name']}' "
+                        f"!= live name '{live}' — #1462 live resolution broke")
+    return True
+
+
 @test("Chassis Reinforcement gives range, not speed (#1447)", tier=1, features=['config', 'tech'], mode='local')
 def test_chassis_reinforcement_range_swap():
     """Bug #1447 (Luke 2026-05-06): Chassis swapped speed for range so Drone/Rover stay relevant.
