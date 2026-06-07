@@ -180,8 +180,12 @@ def roll_for_item_spawn(items: List[dict], exploration_stat: int, checkpoint_pro
     if not items:
         return None
 
-    random.seed(expedition_seed + int(checkpoint_progress * 1000))
-
+    # NOTE: do NOT reseed the global RNG here. Reseeding per checkpoint with a
+    # low-entropy near-sequential integer (expedition_id + small offset) made the
+    # single draw below correlated across checkpoints, so a whole expedition's
+    # yield became a brittle deterministic function of its id + checkpoint spacing
+    # (#1515: identical-opportunity trips returned 1 vs 22 finds). The stream is
+    # now seeded ONCE per expedition in generate_expedition_discoveries().
     weight_multipliers = get_progressive_weights(expedition_number, distance_km, exploration_stat,
                                                   equipment_effects=equipment_effects,
                                                   strategy=strategy_stat)
@@ -268,6 +272,12 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
 
     discoveries = []
 
+    # Seed the RNG ONCE per expedition (deterministic: same expedition -> same
+    # haul, so re-runs/replays match) and then draw sequentially for every
+    # checkpoint. Replaces the old per-checkpoint reseed that destroyed
+    # randomness on long routes (#1515).
+    random.seed(expedition_id)
+
     if travel_time_seconds is None:
         travel_time_seconds = int((expedition_data['distance_km'] / 2.0) * 3600)
 
@@ -340,6 +350,17 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
 
     legendary_found = False
     rare_items_found = set()  # Track rare item IDs to prevent duplicates
+    # #1515: ACCUMULATE the eligible pool across zones (Luke's directive:
+    # "keep all the eligible items from Zone A and Zone B"). Once an item becomes
+    # eligible — it has reached its min distance AND its preferred terrain was
+    # encountered at some checkpoint — it stays collectable for the REST of the
+    # trip. Crossing into new terrain ADDS items, never drops them. This fixes
+    # two yield-killers on long routes: (a) the distance dead-zone (every item's
+    # max_distance_km was <= ~1000km, so 7000km routes spawned nothing past 1km —
+    # the upper gate is gone, items found near base stay collectable), and
+    # (b) terrain-unfavorable checkpoints that emptied the per-checkpoint pool
+    # and returned zero finds.
+    eligible_pool = {}  # item_id -> item, grows monotonically along the route
     for checkpoint in checkpoints[1:]:
         progress = checkpoint['distance_km'] / distance_km if distance_km > 0 else 0
         lat, lon = interpolate_route_coordinates(
@@ -349,15 +370,33 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
         nearest_feature = min(nearby_features,
                             key=lambda f: math.sqrt((float(f['latitude'])-lat)**2 + (float(f['longitude'])-lon)**2))
 
-        # Filter items: use CHECKPOINT distance (not total expedition distance) for min/max range
-        # This ensures long expeditions can still find items near base camp
         checkpoint_km = checkpoint['distance_km']
-        matching_items = [item for item in geographically_valid_items
-                         if matches_terrain_feature(nearest_feature['type'], item['preferred_mars_features'])
-                         and item['min_distance_km'] <= checkpoint_km
-                         and (item['max_distance_km'] is None or checkpoint_km <= item['max_distance_km'])
-                         and not (legendary_found and item['rarity'] == 'legendary')
-                         and not (item['rarity'] == 'rare' and item['id'] in rare_items_found)]
+        # Unlock items newly reachable at this zone: past their min distance AND
+        # this checkpoint's terrain matches their preference. No upper-distance
+        # gate — accumulation means once collectable, always collectable.
+        for it in geographically_valid_items:
+            if it['id'] in eligible_pool:
+                continue
+            if (it['min_distance_km'] <= checkpoint_km
+                    and matches_terrain_feature(nearest_feature['type'], it['preferred_mars_features'])):
+                eligible_pool[it['id']] = it
+
+        # Roll from the full accumulated pool, minus per-trip dedup (one legendary,
+        # no duplicate rares).
+        def _dedup(pool):
+            return [it for it in pool
+                    if not (legendary_found and it['rarity'] == 'legendary')
+                    and not (it['rarity'] == 'rare' and it['id'] in rare_items_found)]
+
+        matching_items = _dedup(eligible_pool.values())
+        # Terrain must never zero out a checkpoint (Luke: "should not drop items
+        # just because it is going into a new terrain"). If no terrain has matched
+        # yet on this route, fall back to every in-range item so the checkpoint can
+        # still spawn — terrain stays a preference (it weights the roll via the
+        # scientist geology bonus), not a hard gate that starves the haul.
+        if not matching_items:
+            matching_items = _dedup(it for it in geographically_valid_items
+                                    if it['min_distance_km'] <= checkpoint_km)
 
         item = roll_for_item_spawn(
             matching_items,

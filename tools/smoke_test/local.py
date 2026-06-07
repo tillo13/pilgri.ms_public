@@ -803,6 +803,49 @@ def test_landmark_discovery_id():
     return True
 
 
+@test("Bug #1515: long-range expeditions don't collapse to ~1 find (accumulating pool + single RNG seed)", tier=1, features=['expeditions'], mode='local')
+def test_long_range_discovery_yield():
+    """#1515: a real 7,002km expedition returned 1 discovery (should be ~cargo-capped 15+).
+    Two compounding bugs: (1) every catalog item caps at max_distance_km<=~1000km, so the old
+    per-checkpoint filter killed every spawn past ~1000km on long routes; (2) roll_for_item_spawn
+    reseeded the GLOBAL RNG each checkpoint with a low-entropy near-sequential int, making yield
+    a brittle deterministic function of expedition_id (identical-opportunity trips → 1 vs 22 finds).
+    Fix: accumulate the eligible pool across zones (terrain never zeroes a checkpoint — falls back
+    to all in-range items) and seed the RNG ONCE per expedition. Locks both: a worst-case route
+    whose terrain matches NOTHING must still fill cargo, the haul must be deterministic, and the
+    per-checkpoint reseed must stay gone."""
+    import inspect
+    from utilities.discovery_utils import generate_expedition_discoveries, roll_for_item_spawn
+    from utilities.postgres.expeditions import get_discovery_items_catalog
+
+    # Regression guard: the per-checkpoint global reseed must not come back.
+    if 'random.seed' in inspect.getsource(roll_for_item_spawn):
+        return "roll_for_item_spawn reseeds the global RNG per checkpoint again (#1515 regression)"
+
+    catalog = get_discovery_items_catalog()
+    if not catalog:
+        return True  # empty catalog — nothing to assert, don't block deploy
+
+    # Worst case: landmarks whose 'type' matches NO item's preferred terrain → forces the
+    # terrain-fallback path that fixes the Australe-Mensa-style total collapse.
+    feats = [{'latitude': 5.0, 'longitude': 5.0, 'type': '__nomatch__', 'name': 'X'},
+             {'latitude': 40.0, 'longitude': 40.0, 'type': '__nomatch__', 'name': 'Y'}]
+    ed = {'distance_km': 7002.0,
+          'commander_stats': {'exploration': 50, 'leadership': 50, 'strategy': 50},
+          'scientist_stats': {}, 'base_lat': 0.0, 'base_lon': 0.0,
+          'destination_lat': 45.0, 'destination_lon': 45.0, 'equipment_effects': {}}
+    kw = dict(expedition_id=999001, expedition_data=ed, available_items=catalog,
+              nearby_features=feats, travel_time_seconds=120000,
+              user_expedition_count=30, cargo_capacity=15)
+    d1 = generate_expedition_discoveries(**kw)
+    if len(d1) < 10:
+        return f"long-range yield collapsed: {len(d1)} finds on a 7002km/cargo-15 trip (expected cargo-capped ~15+)"
+    d2 = generate_expedition_discoveries(**kw)
+    if len(d1) != len(d2):
+        return f"non-deterministic yield: {len(d1)} vs {len(d2)} for the same expedition"
+    return True
+
+
 @test("Nav stats item-count uses real inventory source, not the phantom claimed_discoveries table", tier=1, features=['depot'], mode='local')
 def test_nav_stats_items_source():
     """Latent bug: /api/nav/stats counted FROM pilgrim.claimed_discoveries — a table that
