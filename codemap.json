@@ -1578,6 +1578,12 @@
       "utilities.email.actions"
     ]
   },
+  "utilities/ensure_once.py": {
+    "description": "Process-level once-guard for schema-ensure functions.",
+    "exports": [
+      "ensure_once"
+    ]
+  },
   "utilities/fomo_email_utils.py": {
     "description": "Back-compat shim — real code lives in utilities/email/fomo.py and sibling utilities.",
     "exports": [
@@ -1909,7 +1915,7 @@
   "utilities/sv_milestones.py": {
     "description": "SV Economy: Collection Milestones (Dr. Bo's Research Program)",
     "exports": [
-      "ensure_milestone_table — Create milestone tracking table if it doesn't exist.",
+      "ensure_milestone_table — Create milestone tracking table if it doesn't exist. Runs once per process.",
       "check_and_award_milestones — Check if user has crossed any new collection milestones.",
       "get_user_milestones — Get milestone status for display — which are earned, which are next.",
       "ensure_codex_milestone_table — Codex milestone awards — keyed by milestone_key (e.g. 'category_biological',",
@@ -2544,7 +2550,7 @@
   "utilities/aria/signal_hints.py": {
     "description": "ARIA signal progression hints — ordered, one-shot narrative beats delivered",
     "exports": [
-      "ensure_hint_log_table — Create pilgrim.aria_hint_log if it doesn't exist. Idempotent.",
+      "ensure_hint_log_table — Create pilgrim.aria_hint_log if it doesn't exist. Idempotent, runs once per process.",
       "get_shown_hint_ids — Return the set of hint_ids already shown to this user.",
       "mark_hint_shown — Record a hint as shown. Idempotent via unique constraint.",
       "get_next_unshown_hint — Return the first unshown hint whose threshold the user has crossed."
@@ -3682,7 +3688,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

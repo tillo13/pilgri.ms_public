@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List
 
 from utilities.postgres.core import db_cursor, _fetchone, _fetchall, _get_one, _update, json_serial
+from utilities.ensure_once import ensure_once
 
 logger = logging.getLogger(__name__)
 
@@ -411,8 +412,9 @@ def get_building_upgrades(user_id: int) -> List[Dict]:
 # EMAIL ACTION TOKENS
 # ============================================================================
 
+@ensure_once
 def ensure_action_tokens_table() -> bool:
-    """Create the action tokens table if it doesn't exist"""
+    """Create the action tokens table if it doesn't exist. Runs once per process."""
     try:
         with db_cursor(commit=True) as cur:
             cur.execute("""

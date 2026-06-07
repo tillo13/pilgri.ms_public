@@ -10,6 +10,7 @@ import logging
 from typing import Dict, List, Optional
 
 from utilities.postgres.core import db_cursor
+from utilities.ensure_once import ensure_once
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,9 @@ SIGNAL_HINTS: List[Dict] = [
 ]
 
 
+@ensure_once
 def ensure_hint_log_table():
-    """Create pilgrim.aria_hint_log if it doesn't exist. Idempotent."""
+    """Create pilgrim.aria_hint_log if it doesn't exist. Idempotent, runs once per process."""
     with db_cursor(commit=True) as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pilgrim.aria_hint_log (

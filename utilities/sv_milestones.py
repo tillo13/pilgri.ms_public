@@ -8,6 +8,7 @@ Milestones are permanent achievements, awarded once per threshold.
 
 import logging
 from utilities.postgres.core import db_cursor
+from utilities.ensure_once import ensure_once
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,9 @@ COLLECTION_MILESTONES = [
 ]
 
 
+@ensure_once
 def ensure_milestone_table():
-    """Create milestone tracking table if it doesn't exist."""
+    """Create milestone tracking table if it doesn't exist. Runs once per process."""
     with db_cursor(commit=True) as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pilgrim.sv_milestones (

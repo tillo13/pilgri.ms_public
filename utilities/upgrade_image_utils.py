@@ -21,6 +21,8 @@ import logging
 import threading
 from typing import Dict, Any, Optional
 
+from utilities.ensure_once import ensure_once
+
 logger = logging.getLogger(__name__)
 
 # Track in-progress generations to avoid duplicates
@@ -180,25 +182,32 @@ def generate_upgrade_image_background(
         _generation_in_progress.discard(generation_key)
 
 
+@ensure_once
+def _ensure_upgrade_images_table():
+    """Create the upgrade_images table if it doesn't exist. Runs once per process."""
+    from utilities.postgres.core import db_cursor
+
+    with db_cursor(commit=True) as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pilgrim.upgrade_images (
+                category VARCHAR(50) NOT NULL,
+                item_key VARCHAR(50) NOT NULL,
+                level INTEGER NOT NULL,
+                image_url TEXT NOT NULL,
+                generated_at TIMESTAMP DEFAULT NOW(),
+                first_reveal_user_id INTEGER,
+                PRIMARY KEY (category, item_key, level)
+            )
+        """)
+
+
 def _store_generated_image_url(category: str, item_key: str, level: int, gcs_url: str):
     """Store the generated image URL in the database."""
     from utilities.postgres.core import db_cursor
 
     try:
+        _ensure_upgrade_images_table()
         with db_cursor(commit=True) as cur:
-            # Create table if not exists
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS pilgrim.upgrade_images (
-                    category VARCHAR(50) NOT NULL,
-                    item_key VARCHAR(50) NOT NULL,
-                    level INTEGER NOT NULL,
-                    image_url TEXT NOT NULL,
-                    generated_at TIMESTAMP DEFAULT NOW(),
-                    first_reveal_user_id INTEGER,
-                    PRIMARY KEY (category, item_key, level)
-                )
-            """)
-
             # Insert or update
             cur.execute("""
                 INSERT INTO pilgrim.upgrade_images (category, item_key, level, image_url)
