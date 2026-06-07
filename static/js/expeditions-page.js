@@ -410,13 +410,22 @@ function showVehicleDetail(el) {
     const baseRange = parseInt(d.vehicleBaseRange) || 0;
     const effectiveRange = parseInt(d.vehicleEffectiveRange) || 0;
     const rangeMult = parseFloat(d.rangeMult) || 1.0;
+    const navRangeMult = parseFloat(d.navRangeMult) || 1.0;       // #1440: scientist NAV
+    const scannerRangeMult = parseFloat(d.scannerRangeMult) || 1.0;
+    const techRangeMult = parseFloat(d.techRangeMult) || 1.0;
     const discoveryCount = parseInt(d.discoveryCount) || 0;
     const rangeFromUpgrades = maxRange - baseRange;
     let rangeBreakdown = `${baseRange.toLocaleString()} km base`;
     if (rangeFromUpgrades > 0) rangeBreakdown += ` + ${rangeFromUpgrades.toLocaleString()} km upgrades`;
     if (rangeMult !== 1.0) rangeBreakdown += ` × ${rangeMult}× exploration (${discoveryCount} discoveries)`;
+    if (scannerRangeMult !== 1.0) rangeBreakdown += ` × ${scannerRangeMult}× scanners`;
+    if (techRangeMult !== 1.0) rangeBreakdown += ` × ${techRangeMult}× tech`;
+    if (navRangeMult !== 1.0) rangeBreakdown += ` × ${navRangeMult}× scientist NAV`;
     rangeBreakdown += ` = <strong>${effectiveRange.toLocaleString()} km</strong>`;
-    stats.push({ label: 'Max Range', value: `${effectiveRange.toLocaleString()} km`, breakdown: rangeBreakdown });
+    const navNote = navRangeMult !== 1.0
+        ? `Scientist Navigation adds +${Math.round((navRangeMult - 1) * 100)}% max range (#1440)`
+        : undefined;
+    stats.push({ label: 'Max Range', value: `${effectiveRange.toLocaleString()} km`, breakdown: rangeBreakdown, note: navNote });
 
     const discovery = parseFloat(d.vehicleDiscovery) || 0;
     const rare = parseFloat(d.vehicleRare) || 0;

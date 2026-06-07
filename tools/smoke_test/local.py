@@ -1157,6 +1157,31 @@ def test_scientist_nav_extends_range():
     return True
 
 
+@test("Scientist NAV range bonus is SHOWN in the Max Range popup (#1440 display)", tier=1, features=['expeditions'], mode='local')
+def test_nav_range_shown_in_popup():
+    """Bug #1440 part 2 (Luke kickback 2026-06-03: 'Can't tell if this fix is applied, there is
+    no UI... add it to the Nav Bonus popup window'). The NAV multiplier already lands in the
+    range math, but it must also reach the Max Range breakdown popup so a captain can SEE it.
+    Lock the full display path: page_data emits nav_range_mult → template data attr → JS row.
+    Source-string guards (no DB)."""
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    checks = {
+        'utilities/expeditions/page_data.py': "'nav_range_mult'",     # emitted in return dict
+        'templates/expeditions.html': 'data-nav-range-mult',          # passed to the card
+        'static/js/expeditions-page.js': 'navRangeMult',              # read into the breakdown
+    }
+    missing = [rel for rel, needle in checks.items()
+               if needle not in open(os.path.join(root, rel)).read()]
+    if missing:
+        return "NAV→range popup display path broken at: " + "; ".join(missing)
+    # the JS must actually append the NAV factor to the visible breakdown string
+    js = open(os.path.join(root, 'static/js/expeditions-page.js')).read()
+    if 'scientist NAV' not in js or 'rangeBreakdown' not in js:
+        return "expeditions-page.js no longer adds the scientist-NAV row to rangeBreakdown"
+    return True
+
+
 @test("Chassis Reinforcement gives range, not speed (#1447)", tier=1, features=['config', 'tech'], mode='local')
 def test_chassis_reinforcement_range_swap():
     """Bug #1447 (Luke 2026-05-06): Chassis swapped speed for range so Drone/Rover stay relevant.

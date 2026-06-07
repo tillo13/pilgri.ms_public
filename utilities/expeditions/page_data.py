@@ -244,6 +244,11 @@ def get_expeditions_page_data(user_id: int) -> dict:
         'expedition_count': expeditions_completed,  # Total completed expeditions for History tab
         'discovery_count': discovery_count,  # For range breakdown display
         'range_mult': round(range_mult, 2),  # Discovery-based range multiplier
+        # #1440: surface the other range multipliers so the Max Range popup
+        # reconciles (effective = base × exploration × scanner × tech × NAV).
+        'nav_range_mult': round(nav_range_mult, 3),  # Scientist NAV (1.0 + nav/150)
+        'scanner_range_mult': round(scanner_range_mult, 3),  # Scanner upgrades
+        'tech_range_mult': round(tech_range_mult, 3),  # Chassis Reinforcement tech
         'signal_bonds': signal_bonds,  # ARIA bonds for Signal tab
         'bond_bonus_state': bond_bonus_state,  # Bug #1402 — fragment-bond bonus picker state
     }
