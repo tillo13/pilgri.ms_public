@@ -43,6 +43,32 @@ def get_player_max_levels():
         return [dict(row) for row in cur.fetchall()]
 
 
+def _item_max_level(cfg):
+    lv = cfg.get('levels')
+    if isinstance(lv, dict):
+        return max(int(k) for k in lv.keys())
+    if isinstance(lv, list):
+        return len(lv)
+    return cfg.get('max_level', 10)
+
+
+def get_catalog_max_levels():
+    """#1489 --all: the FULL catalog ladder (every non-base level the catalog defines),
+    not just levels a player has reached. Used to pre-mint the future ladder so the
+    restyle reaches 403/403 instead of only the demand frontier."""
+    out = []
+    for cat, items in UPGRADE_CATALOG.items():
+        if not isinstance(items, dict):
+            continue
+        for ik, cfg in items.items():
+            if isinstance(cfg, dict):
+                out.append({'category': cat, 'item_key': ik, 'max_level': _item_max_level(cfg)})
+    for ik, cfg in INFRASTRUCTURE_CATALOG.items():
+        if isinstance(cfg, dict):
+            out.append({'category': 'infrastructure', 'item_key': ik, 'max_level': _item_max_level(cfg)})
+    return sorted(out, key=lambda r: (r['category'], r['item_key']))
+
+
 def has_image(category, item_key, level):
     """Check if an image exists for this level (DB or config)."""
     stored = get_stored_image_url(category, item_key, level)
@@ -55,9 +81,10 @@ def has_image(category, item_key, level):
     return bool(config_url and config_url.strip())
 
 
-def find_missing_images(category_filter=None, item_filter=None):
-    """Find all levels that need images generated."""
-    player_levels = get_player_max_levels()
+def find_missing_images(category_filter=None, item_filter=None, full_catalog=False):
+    """Find all levels that need images generated. full_catalog=True walks the
+    entire catalog ladder (#1489 restyle); otherwise only player-reached levels."""
+    player_levels = get_catalog_max_levels() if full_catalog else get_player_max_levels()
     missing = []
 
     for row in player_levels:
@@ -85,9 +112,9 @@ def find_missing_images(category_filter=None, item_filter=None):
     return missing
 
 
-def backfill(category_filter=None, item_filter=None, limit=None, dry_run=False):
+def backfill(category_filter=None, item_filter=None, limit=None, dry_run=False, full_catalog=False):
     """Generate missing images via Kontext chain."""
-    missing = find_missing_images(category_filter, item_filter)
+    missing = find_missing_images(category_filter, item_filter, full_catalog=full_catalog)
 
     if not missing:
         print("No missing images found. Everything is up to date.")
@@ -147,12 +174,58 @@ def backfill(category_filter=None, item_filter=None, limit=None, dry_run=False):
     print(f"\nDone! Generated {len(generable)} images.")
 
 
+def backfill_tech(branch_filter=None, dry_run=False):
+    """#1489: backfill missing TECH branch icons (the tech_<branch> categories).
+    Each icon is a single-hop edit of the tech's level-1 base (no cumulative chain,
+    so no adjacent-level drift), generated via the free kumori stack and persisted
+    by generate_tech_branch_icons (which idempotently skips already-stored icons).
+    Priority order: extraction (0% today) first, then the other branches' missing tops."""
+    from config_tech import TECH_CATALOG
+    from utilities.upgrade_image_utils import generate_tech_branch_icons
+
+    priority = ['extraction', 'power', 'exploration', 'vehicles']
+    branches = [b for b in priority if b in TECH_CATALOG]
+    branches += [b for b in TECH_CATALOG if b not in branches]
+    if branch_filter:
+        branches = [b for b in branches if b == branch_filter]
+
+    todo = []  # (branch, level, n_missing_techs)
+    for branch in branches:
+        techs = TECH_CATALOG[branch].get('techs', {})
+        cat = f"tech_{branch}"
+        for level in range(2, 11):
+            missing = [tk for tk in techs if not get_stored_image_url(cat, tk, level)]
+            if missing:
+                todo.append((branch, level, len(missing)))
+
+    if not todo:
+        print("No missing tech icons. Tech ladder complete.")
+        return
+    total = sum(n for _, _, n in todo)
+    print(f"\nFound {len(todo)} branch-levels missing tech icons ({total} icons):")
+    for branch, level, n in todo:
+        print(f"  tech_{branch} Lv{level}: {n} missing")
+    if dry_run:
+        print(f"\n--dry-run: would generate ~{total} tech icons. Exiting.")
+        return
+
+    print(f"\nGenerating tech icons (free kumori stack; quota hard-stops at cap, $0)...")
+    for i, (branch, level, n) in enumerate(todo):
+        print(f"  [{i+1}/{len(todo)}] tech_{branch} Lv{level} ({n} missing icons)...")
+        generate_tech_branch_icons(branch, level)  # skips stored, persists each
+    print("\nDone tech pass. Re-run to mop up any that hit the daily quota / a transient 503.")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Backfill missing upgrade images')
     parser.add_argument('--category', help='Filter by category (e.g. infrastructure, vehicles)')
     parser.add_argument('--item', help='Filter by item key (e.g. solar_array, rover)')
     parser.add_argument('--limit', type=int, help='Max images to generate')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be generated')
+    parser.add_argument('--all', action='store_true', dest='full_catalog',
+                        help='#1489: walk the FULL catalog ladder (pre-mint future levels), not just player-reached')
+    parser.add_argument('--tech', action='store_true', help='#1489: backfill missing TECH branch icons instead of upgrade/infra')
+    parser.add_argument('--branch', help='With --tech: limit to one branch (exploration/vehicles/power/extraction)')
     args = parser.parse_args()
 
     print(f"\n{'='*60}")
@@ -170,12 +243,16 @@ def main():
             api_key_name='PILGRIMS_KUMORI_API_KEY',
         )
 
-    backfill(
-        category_filter=args.category,
-        item_filter=args.item,
-        limit=args.limit,
-        dry_run=args.dry_run,
-    )
+    if args.tech:
+        backfill_tech(branch_filter=args.branch, dry_run=args.dry_run)
+    else:
+        backfill(
+            category_filter=args.category,
+            item_filter=args.item,
+            limit=args.limit,
+            dry_run=args.dry_run,
+            full_catalog=args.full_catalog,
+        )
 
 
 if __name__ == '__main__':

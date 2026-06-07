@@ -215,9 +215,11 @@
     "description": "Backfill upgrade images for levels players have already reached.",
     "exports": [
       "get_player_max_levels — Get the max level reached for each (category, item_key) across all players.",
+      "get_catalog_max_levels — #1489 --all: the FULL catalog ladder (every non-base level the catalog defines),",
       "has_image — Check if an image exists for this level (DB or config).",
-      "find_missing_images — Find all levels that need images generated.",
+      "find_missing_images — Find all levels that need images generated. full_catalog=True walks the",
       "backfill — Generate missing images via Kontext chain.",
+      "backfill_tech — #1489: backfill missing TECH branch icons (the tech_<branch> categories).",
       "main"
     ]
   },
@@ -3688,7 +3690,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3704,7 +3706,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
