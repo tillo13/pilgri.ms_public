@@ -300,3 +300,85 @@ def _get_user_upgrade_effects_uncached(user_id: int) -> Dict[str, Any]:
         logger.warning(f"synergy effect aggregation failed user={user_id}: {e}")
 
     return effects
+
+
+def build_time_levers(user_id: int):
+    """#1507: every multiplicative build_time_mult lever as one labeled row, for
+    the Depot "Build Time" breakout popup. Returns [(layer, source, mult)]
+    (lower mult = faster).
+
+    The PRODUCT of these mults equals the build_time_mult that
+    _get_user_upgrade_effects_uncached() serves — that aggregator applies these
+    exact same six levers inline (Logistics/Charisma ~207/215, Scientist ENG ~233,
+    Maintenance Drone ~249, ARIA bond ~268, Narog dial ~284). This re-derivation
+    feeds utilities/upgrades/breakdown.py so the popup rows reconcile to the
+    headline; the smoke test "#1507 ... reconciles" locks product==served so the
+    two paths can't drift. 1.0 (no-op) levers are skipped to keep the popup clean.
+    layer in {captain, crew, upgrade, bond, narog}.
+    """
+    levers = []
+
+    # Captain Logistics + Charisma (share get_commander_stats — request-memoized)
+    try:
+        from utilities.postgres.assets import get_commander_stats
+        stats = get_commander_stats(user_id) or {}
+        logistics = stats.get('logistics', 0) or 0
+        logistics_build_mult = max(0.5, 1.0 - logistics / 500.0)
+        if logistics_build_mult != 1.0:
+            levers.append(('captain', f'Captain Logistics ({logistics})', logistics_build_mult))
+        charisma = stats.get('charisma', 0) or 0
+        charisma_build_mult = max(0.80, 1.0 - charisma * 0.01)
+        if charisma_build_mult != 1.0:
+            levers.append(('captain', f'Captain Charisma ({charisma})', charisma_build_mult))
+    except Exception:
+        pass
+
+    # Scientist Engineering
+    try:
+        from config import COLONY_SCIENTISTS
+        from utilities.postgres.core import db_cursor
+        with db_cursor() as cur:
+            cur.execute("SELECT scientist_key FROM pilgrim.users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+        key = row.get('scientist_key') if row else None
+        if key and key in COLONY_SCIENTISTS:
+            engineering = COLONY_SCIENTISTS[key].get('stats', {}).get('engineering', 0) or 0
+            eng_build_mult = max(0.5, 1.0 - engineering / 500.0)
+            if eng_build_mult != 1.0:
+                nm = COLONY_SCIENTISTS[key].get('name', 'Scientist')
+                levers.append(('crew', f'{nm} Engineering ({engineering})', eng_build_mult))
+    except Exception:
+        pass
+
+    # Maintenance Drone upgrade
+    try:
+        from utilities.upgrades_utils import get_user_upgrade_level
+        from config_upgrades import UPGRADE_CATALOG
+        maint_lv = get_user_upgrade_level(user_id, 'maintenance', 'maintenance')
+        if maint_lv >= 1:
+            cfg = UPGRADE_CATALOG.get('maintenance', {}).get('maintenance', {}).get('levels', {}).get(maint_lv, {})
+            m = cfg.get('build_time_mult', 1.0) or 1.0
+            if m != 1.0:
+                levers.append(('upgrade', f'Maintenance Drone (Lv {maint_lv})', m))
+    except Exception:
+        pass
+
+    # ARIA Fragment Bond build-speed pick
+    try:
+        from utilities.aria.bond_bonuses import get_user_bond_effects
+        b = (get_user_bond_effects(user_id) or {}).get('build_time_mult', 1.0)
+        if b != 1.0:
+            levers.append(('bond', 'ARIA Bond: Depot Build Speed', b))
+    except Exception:
+        pass
+
+    # Narog logistics dial
+    try:
+        from utilities.postgres.robot_dial import get_robot_dial_multipliers
+        d = get_robot_dial_multipliers(user_id).get('build_time_mult', 1.0)
+        if d != 1.0:
+            levers.append(('narog', 'Narog Logistics Dial', d))
+    except Exception:
+        pass
+
+    return levers

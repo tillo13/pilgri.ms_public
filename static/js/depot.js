@@ -307,13 +307,12 @@ function formatBuildTime(seconds) {
     // already applies the same multiplier — display was the only liar.
     const mult = (window.DEPOT_DATA && DEPOT_DATA.buildTimeMult) || 1.0;
     const adjusted = Math.max(60, seconds * mult);
-    const savedPct = mult < 1.0 ? Math.round((1 - mult) * 100) : 0;
     // Bug #1444: route through the shared formatDaysHours helper so "Build Time"
     // labels match the in-progress countdowns ("5d 12h" not "5.5 days").
-    let label;
-    if (adjusted >= 86400 * 365) label = `${(adjusted / (86400 * 365)).toFixed(1)} years`;
-    else label = formatDaysHours(adjusted);
-    return savedPct > 0 ? `${label} (−${savedPct}%)` : label;
+    // #1507 (Luke): the discounted TIME stays; the redundant "(−X%)" suffix is
+    // dropped — the one Build Time breakout chip on Depot now owns that %.
+    if (adjusted >= 86400 * 365) return `${(adjusted / (86400 * 365)).toFixed(1)} years`;
+    return formatDaysHours(adjusted);
 }
 
 function formatReqName(id) { return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }

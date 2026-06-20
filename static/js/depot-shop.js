@@ -279,7 +279,6 @@ function showUpgradeModal(category, itemKey) {
         const rawBuildDays = stats.build_time_days || 0;
         const buildDays = rawBuildDays > 0 ? Math.max(0.01, rawBuildDays * buildMult) : 0;
         const buildDaysLabel = buildDays >= 1 ? `${Math.round(buildDays)}d build` : `${Math.round(buildDays * 24)}h build`;
-        const buildSavedPct = (rawBuildDays > 0 && buildMult < 1.0) ? Math.round((1 - buildMult) * 100) : 0;
         const statsLine = formatLevelStats(stats, category);
         const milestone = getMilestoneNote(itemKey, lv);
 
@@ -329,7 +328,7 @@ function showUpgradeModal(category, itemKey) {
                 <div style="text-align: right; font-size: 11px;">
                     ${stats.cost === 0 ? '<span style="color: var(--color-success);">Free</span>' :
                       `<div style="color: var(--text-primary); font-weight: 600;">${cost}</div>`}
-                    ${buildDays ? `<div style="color: var(--text-muted);">${buildDaysLabel}${buildSavedPct ? ` <span style="color: var(--color-success);">−${buildSavedPct}%</span>` : ''}</div>` : ''}
+                    ${buildDays ? `<div style="color: var(--text-muted);">${buildDaysLabel}</div>` : ''}
                 </div>
             </div>`;
     }

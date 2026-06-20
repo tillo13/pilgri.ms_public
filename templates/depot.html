@@ -210,6 +210,15 @@ document.addEventListener('DOMContentLoaded', function() {
             <span style="color: var(--text-muted); font-size: 11px;">(+1 from Habitat)</span>
             {% endif %}
         </div>
+        {% if build_time_pct and build_time_pct > 0 %}
+        {# #1507: one Build Time reduction breakout for the whole Depot — replaces the
+           redundant per-card "% faster". Click opens the openBonusBreakdown popup. #}
+        <a href="#" class="depot-build-speed-chip" data-bonus-key="build_time_mult"
+           onclick="return openBonusBreakdown(event, this);"
+           title="Build-time reduction — click to see where it comes from">
+            <img src="{{ icons.stopwatch_duration }}" alt="" class="inline-icon-sm"> Build Time <strong>{{ build_time_pct }}% faster</strong>
+        </a>
+        {% endif %}
     </div>
     {% if builds %}
     <div style="display: flex; flex-wrap: wrap; gap: 8px;">
@@ -264,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <p class="depot-card-desc">{{ structure.definition.description }}</p>
             <div class="depot-card-stats">
-                <span>{% set seconds = (structure.definition.build_time_seconds * (build_time_mult|default(1.0)))|int %}{{ seconds|days_hours }} build{% if build_time_mult|default(1.0) < 1.0 %} <span style="color: var(--color-success); font-size: 10px;">{{ ((1 - build_time_mult) * 100)|round|int }}% faster</span>{% endif %}</span>
+                <span>{% set seconds = (structure.definition.build_time_seconds * (build_time_mult|default(1.0)))|int %}{{ seconds|days_hours }} build</span>
                 {% if structure.generation_rate > 0 %}<span class="stat-highlight">{{ "%.0f"|format(structure.generation_rate) }}/hr</span>{% endif %}
             </div>
             {% if not structure.can_build and structure.missing_requirements %}
@@ -523,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             {% if item.next_level_stats and item.next_level_stats.build_time_days and not is_max and not is_building %}
             {% set btd = item.next_level_stats.build_time_days * (build_time_mult|default(1.0)) %}
-            <div class="depot-card-build-time"><img src="{{ icons.stopwatch_duration }}" alt="" class="inline-icon-sm"> {% if btd < 1 %}{{ (btd * 24)|round|int }} hour{% if (btd * 24)|round|int != 1 %}s{% endif %}{% else %}{{ btd|round|int }} day{% if btd|round|int != 1 %}s{% endif %}{% endif %} to build{% if build_time_mult|default(1.0) < 1.0 %} <span style="color: var(--color-success); font-size: 10px;">{{ ((1 - build_time_mult) * 100)|round|int }}% faster</span>{% endif %}</div>
+            <div class="depot-card-build-time"><img src="{{ icons.stopwatch_duration }}" alt="" class="inline-icon-sm"> {% if btd < 1 %}{{ (btd * 24)|round|int }} hour{% if (btd * 24)|round|int != 1 %}s{% endif %}{% else %}{{ btd|round|int }} day{% if btd|round|int != 1 %}s{% endif %}{% endif %} to build</div>
             {% endif %}
 
             {% if is_building and build_status and build_status.seconds_remaining %}
@@ -612,6 +621,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/static/js/depot.js?v={{ static_v }}" defer></script>
 <script src="/static/js/depot-xeno.js?v={{ static_v }}" defer></script>
 <script src="/static/js/depot-shop.js?v={{ static_v }}" defer></script>
+<!-- #1507: shared bonus-breakdown popup (openBonusBreakdown) for the Build Time chip -->
+<script src="/static/js/expeditions-bonus-breakdown.js?v={{ static_v }}" defer></script>
 
 
 {% endblock %}

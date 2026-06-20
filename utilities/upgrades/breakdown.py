@@ -50,6 +50,11 @@ SURFACED_KEYS = {
     'extraction_bonus':        ('Extraction Yield',        'add'),
     'rare_value_mult':         ('Rare Discovery Value',    'max_then_mult'),
     'legendary_value_mult':    ('Legendary Discovery Value','max_then_mult'),
+    # Bug #1507 (Luke): the Depot "Build Time" breakout chip opens this popup.
+    # 'mult' op — every lever stacks ×, lower = faster (same rule as cost mults).
+    # Rows come from effects.build_time_levers (walk 5 below), not a catalog
+    # re-walk, so they multiply to the served build_time_mult exactly.
+    'build_time_mult':         ('Build Time',              'mult'),
 }
 
 
@@ -88,6 +93,8 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
                 name = stats.get('name') or f"{category}/{item_key}"
                 source = f"{name} (Lv {level})"
                 for k in SURFACED_KEYS:
+                    if k == 'build_time_mult':
+                        continue  # #1507: owned solely by walk 5 (build_time_levers)
                     if k in stats:
                         out[k].append(_row('upgrade', source, k, stats[k]))
                 # 'cargo' is the legacy alias for cargo_slots
@@ -138,7 +145,7 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
                     out['legendary_chance_bonus'].append(_row('infra', source, 'legendary_chance_bonus', value))
                 elif raw_key == 'dust_storm_immune':
                     out['dust_storm_immune'].append(_row('infra', source, 'dust_storm_immune', value))
-                elif raw_key in SURFACED_KEYS:
+                elif raw_key in SURFACED_KEYS and raw_key != 'build_time_mult':
                     # passthrough (vehicle_range_mult, expedition_speed_mult, expedition_range_mult,
                     # signal_detection_enabled, rare_chance_bonus, cargo_slots if any)
                     out[raw_key].append(_row('infra', source, raw_key, value))
@@ -177,8 +184,8 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
             for r in trows:
                 scaled = scale_effects(tech.get('effects', {}), r['branch_level'])
                 for k, v in scaled.items():
-                    if k not in SURFACED_KEYS:
-                        continue
+                    if k not in SURFACED_KEYS or k == 'build_time_mult':
+                        continue  # #1507: build_time_mult owned solely by walk 5
                     if k.endswith('_mult') and 'cost' not in k:
                         # one row per tech at its best level (max value across its levels)
                         if r is not top:
@@ -198,7 +205,7 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
             spec = BOND_BONUSES.get(code) or {}
             ek = spec.get('effect_key')
             ev = spec.get('effect_value')
-            if ek in SURFACED_KEYS and ev is not None:
+            if ek in SURFACED_KEYS and ek != 'build_time_mult' and ev is not None:
                 source = f"ARIA Bond {code}: {spec.get('name', code)}"
                 out[ek].append(_row('bond', source, ek, ev))
     except Exception as e:
@@ -215,5 +222,15 @@ def get_user_effect_breakdown(user_id: int) -> Dict[str, List[Dict[str, Any]]]:
                 out[dk].append(_row('synergy', f"{s['name']} (tier {s['tiers']})", dk, s['mult']))
     except Exception as e:
         logger.warning(f"breakdown synergy walk failed user={user_id}: {e}")
+
+    # 5) #1507 Build Time levers — reuse the aggregator's single source of truth
+    # (effects.build_time_levers) so the Depot breakout rows multiply to the
+    # served build_time_mult exactly. Layers: captain / crew / upgrade / bond / narog.
+    try:
+        from utilities.upgrades.effects import build_time_levers
+        for layer, source, mult in build_time_levers(user_id):
+            out['build_time_mult'].append(_row(layer, source, 'build_time_mult', mult))
+    except Exception as e:
+        logger.warning(f"breakdown build_time walk failed user={user_id}: {e}")
 
     return out

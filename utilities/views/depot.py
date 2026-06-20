@@ -162,6 +162,10 @@ def get_depot_page_data(user_id, auth):
         'discovery_count': depot_discovery_count,
         'range_mult': depot_range_mult,
         'build_time_mult': round(build_time_mult, 3),
+        # #1507: percent for the Build Time breakout chip, from the UNROUNDED mult
+        # so the chip matches the breakdown-popup headline (finals[build_time_mult],
+        # also unrounded) to 1 decimal — no #1440-style chip-vs-popup divergence.
+        'build_time_pct': round((1 - build_time_mult) * 100, 1),
         'recent_completions': recent_completions,
     }
 

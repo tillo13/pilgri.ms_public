@@ -612,6 +612,34 @@ def test_effects_upgrades_infra_compound():
     return True
 
 
+@test("#1507 Build Time breakout reconciles to served build_time_mult", tier=1, features=['effects', 'depot'], mode='local')
+def test_1507_build_time_breakout_reconciles():
+    """Bug #1507 (Luke): the Depot "Build Time" breakout popup must list per-source
+    rows that multiply to the SAME build_time_mult the game actually applies — the
+    #1440-class "rows must reconcile to the headline" rule. effects.build_time_levers
+    is the single source the breakdown lists AND must equal the aggregator's served
+    value. Lock all three: surfaced with op 'mult', levers-product == served,
+    breakdown-rows-product == served (so the chip % and the popup can't diverge)."""
+    from utilities.upgrades.breakdown import get_user_effect_breakdown, SURFACED_KEYS
+    from utilities.upgrades.effects import get_user_upgrade_effects, build_time_levers
+    if SURFACED_KEYS.get('build_time_mult', (None, None))[1] != 'mult':
+        return "#1507: build_time_mult must be in SURFACED_KEYS with op 'mult' so the Depot chip opens the breakdown modal"
+    uid = 45  # Andy — canary user with broad upgrade/crew/dial coverage
+    served = get_user_upgrade_effects(uid).get('build_time_mult', 1.0)
+    prod = 1.0
+    for _layer, _source, m in build_time_levers(uid):
+        prod *= m
+    if abs(prod - served) > 1e-6:
+        return f"#1507: build_time_levers product {prod:.6f} != served build_time_mult {served:.6f} (re-derivation drifted from effects.py)"
+    rows = get_user_effect_breakdown(uid).get('build_time_mult', [])
+    row_prod = 1.0
+    for r in rows:
+        row_prod *= r['value']
+    if abs(row_prod - served) > 1e-6:
+        return f"#1507: breakdown rows product {row_prod:.6f} != served {served:.6f} — popup would not reconcile to the chip"
+    return True
+
+
 @test("Lab summary _mult chips match game effects (#1443 Part 1)", tier=1, features=['tech'], mode='local')
 def test_tech_summary_matches_game_for_mult():
     """Bug #1443 Part 1 (Luke 2026-05-12 'Ship part 1'): Lab summary display

@@ -2653,7 +2653,8 @@
   "utilities/upgrades/effects.py": {
     "description": "Cumulative upgrade effects aggregator.",
     "exports": [
-      "get_user_upgrade_effects"
+      "get_user_upgrade_effects",
+      "build_time_levers — #1507: every multiplicative build_time_mult lever as one labeled row, for"
     ]
   },
   "utilities/upgrades/flow.py": {
@@ -2899,6 +2900,23 @@
       "get_closest_pilgrim_to_origin — Find the commander who got closest to any unclaimed Origin Site."
     ],
     "keywords": "origin sites CRUD, echo sites, network reconstruction percent (origin_progress + echo_progress), closest pilgrim"
+  },
+  "utilities/kumori_api_client/README.md": {
+    "description": "kumori_api_client — consumer-facing free-tier client",
+    "exports": [
+      "1. Vendor it into your project",
+      "2. Provision a per-consumer API key",
+      "3. Initialize at app boot",
+      "4. The four entry points",
+      "5. Full HTTP trace (debug console pattern)",
+      "6. Daily-cap awareness",
+      "7. Attribution model (NEW 2026-05-11)",
+      "8. Error handling — what every failed call returns",
+      "9. The /admin/cloudflare diagnostic page",
+      "10. Cost reminder",
+      "11. Migrating from a vendored in-process copy",
+      "12. Reference consumer"
+    ]
   },
   "utilities/kumori_api_client/__init__.py": {
     "description": "Public API for kumori_api_client — thin HTTP wrappers for kumori.ai/api/v1/*."
@@ -3377,14 +3395,14 @@
       "getUpgradeEffectDescription",
       "showUpgradeModal",
       "buildMult",
-      "buildSavedPct",
       "showVehicleUpgradeModal",
       "checkUpgradeParam",
       "getBalance",
       "setBalance",
       "updateAtmosphericConditions",
       "showPreview",
-      "displayPreviewStats"
+      "displayPreviewStats",
+      "handlePhotoUpload"
     ]
   },
   "static/js/depot-xeno.js": {
@@ -3706,7 +3724,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

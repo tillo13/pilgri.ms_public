@@ -11,13 +11,18 @@
 const _bonusBreakdownCache = {};
 
 const LAYER_LABEL = {
+    captain: 'Captain Stats',
+    crew:    'Scientist',
     upgrade: 'Player Upgrades',
     infra:   'Infrastructure',
     tech:    'Tech Tree',
     bond:    'ARIA Fragment Bonds',
+    narog:   'Narog Dial',
 };
 
-const LAYER_ORDER = ['upgrade', 'infra', 'tech', 'bond'];
+// #1507: captain/crew/narog added for the Build Time breakout's levers.
+// The render loop iterates LAYER_ORDER and DROPS any layer not listed.
+const LAYER_ORDER = ['captain', 'crew', 'upgrade', 'infra', 'tech', 'bond', 'narog'];
 
 const fmt = (n) => {
     const v = Number(n);
