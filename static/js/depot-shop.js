@@ -318,7 +318,7 @@ function showUpgradeModal(category, itemKey) {
                     ${isCurrent ? icon('checkmark_done') : isNext ? '→' : lv}
                 </div>
                 <div style="flex: 1;">
-                    <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">${stats.name || 'Lv' + lv}</div>
+                    <div style="font-weight: 600; font-size: 13px; color: var(--text-primary);">${item.name || itemKey} Lv${lv}</div>
                     <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${statsLine}</div>
                     ${prereqLine}
                     ${unlocksLine}
@@ -400,7 +400,7 @@ function showUpgradeModal(category, itemKey) {
                     </div>
                 ` : canAfford ? `
                     <button onclick="performUpgrade('${category}', '${itemKey}')" class="btn btn-purple" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700;">
-                        ${currentLevel === 0 ? 'Unlock' : 'Upgrade to'} ${item.next_level_name || 'Next Level'} (${nextCost.toLocaleString()} shards)
+                        ${currentLevel === 0 ? 'Unlock' : 'Upgrade to'} ${item.name || itemKey} Lv${currentLevel + 1} (${nextCost.toLocaleString()} shards)
                     </button>
                 ` : `
                     <div style="text-align: center;">

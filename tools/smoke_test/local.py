@@ -399,6 +399,29 @@ def test_active_build_name_resolution():
     return True
 
 
+@test("#1517 build names use BASE building name, not per-level flavor", tier=1, features=['config', 'depot'], mode='local')
+def test_1517_base_name_not_flavor():
+    """Bug #1517 (Luke): the build queue + completion notifications must show the
+    BASE building name ('Research Lab'), never the per-level flavor title
+    ('Xenolab Complex') — captains couldn't tell which building was upgrading/
+    finished. resolve_item_display_name must return the base name at EVERY level
+    (callers append the level themselves). Locks the convention against regression
+    to flavor-preferring."""
+    from utilities.upgrades.state import resolve_item_display_name as R
+    from config_upgrades import UPGRADE_CATALOG
+    flavor8 = UPGRADE_CATALOG.get('research', {}).get('research', {}).get('levels', {}).get(8, {}).get('name')
+    base = R('research', 'research', None)
+    if base != 'Research Lab':
+        return f"#1517: research base name should be 'Research Lab', got {base!r}"
+    at8 = R('research', 'research', 8)
+    if at8 != base:
+        return f"#1517: resolver at Lv8 returned {at8!r} (catalog flavor={flavor8!r}); must be base {base!r}, not the per-level flavor"
+    # #1472 must still hold: base resolves cross-catalog, no 'robot' leak
+    if R('infrastructure', 'robotics_lab', None) != 'Narog Foundry':
+        return "#1517 regressed #1472: robotics_lab base should resolve to 'Narog Foundry'"
+    return True
+
+
 @test("Narog stat math matches #1436 spec", tier=1, features=['config', 'narog'], mode='local')
 def test_narog_stat_math():
     """Bug #1436: Foundry L0 = 5/100, L10 = 100/100, linear in between."""

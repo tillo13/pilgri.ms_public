@@ -286,20 +286,23 @@ def get_user_upgrade_cap(user_id: int, _prefetch_infra_levels=None) -> int:
 
 
 def resolve_item_display_name(category: str, item_key: str, level=None) -> str:
-    """Display name for an upgrade/infrastructure item at a given level.
+    """Display name for an upgrade/infrastructure item — the BASE building name.
 
-    Prefers the per-level flavor name (e.g. robotics_lab L3 = 'Calibration Pit'),
-    then the base catalog name ('Narog Foundry'), then a title-cased key. Resolves
-    across BOTH catalogs so infrastructure items — keyed by item_key in
-    INFRASTRUCTURE_CATALOG, not nested under a category in UPGRADE_CATALOG — don't
-    fall through to the raw key ("Robotics Lab"). Single source of truth shared by
-    get_active_builds and build_completions. #1472.
+    #1517 (Luke): returns the base catalog name ('Research Lab', 'Narog Foundry'),
+    NOT the per-level flavor title ('Xenolab Complex'). Captains couldn't tell which
+    building was upgrading/finished from flavor-only titles in the build queue +
+    completion notifications. Callers append the level themselves (the queue template
+    adds 'Lv{target}', the completion card shows old->new), so this is base-only.
+    Resolves across BOTH catalogs so infra items — keyed in INFRASTRUCTURE_CATALOG,
+    not nested under a category in UPGRADE_CATALOG — don't fall through to the raw
+    key ("Robotics Lab"). Single source of truth shared by get_active_builds and
+    build_completions. #1472 (cross-catalog resolution) + #1517 (base, not flavor).
+    The per-level flavor names stay in the catalog (image gen / future use); `level`
+    is retained for the shared signature and #1472's per-level callers.
     """
     item_config = (UPGRADE_CATALOG.get(category, {}).get(item_key)
                    or INFRASTRUCTURE_CATALOG.get(item_key, {}))
-    level_config = item_config.get('levels', {}).get(level, {}) if level is not None else {}
-    return (level_config.get('name')
-            or item_config.get('name')
+    return (item_config.get('name')
             or item_key.replace('_', ' ').title())
 
 
