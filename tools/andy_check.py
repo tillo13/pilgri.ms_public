@@ -756,7 +756,10 @@ def check_authed_page_renders():
         )
 
 
-def main():
+def main(run_probes=True):
+    # run_probes=False is for the daily in-app cron (/api/cron/andy_check): it runs
+    # ONLY the colony auto-management pass and skips the deploy-only page/API probes,
+    # which spin up a Flask test_client and must not run inside the live App Engine process.
     log.info("\n🤖 Andy Check — Colony Auto-Management")
     log.info(f"   User: Andy Tillo (#{ANDY_USER_ID})")
     log.info("")
@@ -778,11 +781,14 @@ def main():
         ("Depot Upgrades", check_depot_upgrades),
         ("Lab Research", check_lab_research),
         ("New Infrastructure", check_new_infrastructure),
-        # --- VERIFY AUTHED PAGE RENDERS (catches Jinja/view 500s) ---
-        ("Authed Page Renders", check_authed_page_renders),
-        # --- VERIFY CLICK-DRIVEN API ENDPOINTS (catches bugs GETs miss — #1410) ---
-        ("Authed API Probes", check_authed_api_probes),
     ]
+    if run_probes:
+        checks += [
+            # --- VERIFY AUTHED PAGE RENDERS (catches Jinja/view 500s) ---
+            ("Authed Page Renders", check_authed_page_renders),
+            # --- VERIFY CLICK-DRIVEN API ENDPOINTS (catches bugs GETs miss — #1410) ---
+            ("Authed API Probes", check_authed_api_probes),
+        ]
 
     failures = []
     for name, fn in checks:

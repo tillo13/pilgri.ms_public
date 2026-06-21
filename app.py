@@ -2274,6 +2274,28 @@ def cron_qa_bot():
     return jsonify({'success': True, 'status': 'started'}), 202
 
 
+@app.route('/api/cron/andy_check', methods=['GET'])
+@cron_only
+def cron_andy_check():
+    """Andy Check auto-management — runs the colony auto-management pass as Andy (#45)
+    once each morning so his character keeps progressing on days with no deploy
+    (the deploy hook normally runs it). Background thread so the cron request returns
+    immediately. Skips the deploy-only page/API probes (run_probes=False)."""
+    import threading
+
+    def _run():
+        from tools.andy_check import main
+        try:
+            main(run_probes=False)
+            logger.info("Andy check cron completed")
+        except Exception as e:
+            import traceback
+            logger.error(f"Andy check cron crashed: {e}\n{traceback.format_exc()}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({'success': True, 'status': 'started'}), 202
+
+
 @app.route('/api/cron/retry_bonds', methods=['GET'])
 @cron_only
 def cron_retry_bonds():
