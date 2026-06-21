@@ -1915,6 +1915,32 @@ def api_depot_completions_mark_seen():
     return jsonify({'success': bool(ok)})
 
 
+@app.route('/api/collection/mark-seen', methods=['POST'])
+@login_required
+@handle_api_error
+def api_collection_mark_seen():
+    """#1508 Part 2: acknowledge ONE collected discovery item (captain clicked its
+    NEW card on the Collection page) so its highlight clears and stays cleared."""
+    from utilities.postgres.discovery_seen import mark_seen
+    data = request.get_json(silent=True) or {}
+    try:
+        item_id = int(data.get('item_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'item_id required'}), 400
+    return jsonify({'success': bool(mark_seen(g.user_id, item_id))})
+
+
+@app.route('/api/collection/mark-all-seen', methods=['POST'])
+@login_required
+@handle_api_error
+def api_collection_mark_all_seen():
+    """#1508 Part 1: dismiss the one-time backfill modal — bulk-acknowledge every
+    currently-collected item so the modal never re-fires and no legacy item
+    carries a NEW badge."""
+    from utilities.postgres.discovery_seen import mark_all_collected_seen
+    return jsonify({'success': True, 'marked': mark_all_collected_seen(g.user_id)})
+
+
 @app.route('/api/upgrade-effects/breakdown', methods=['GET'])
 @login_required
 @handle_api_error

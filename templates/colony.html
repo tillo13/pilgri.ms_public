@@ -197,7 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="codex-grid">
                 {% for item in cat['items'] %}
                 {% if item.collected %}
-                <div class="codex-tile codex-{{ item.rarity }} collected" title="{{ item.item_name }} ({{ item.rarity|upper }})">
+                <div class="codex-tile codex-{{ item.rarity }} collected{% if item.is_new %} codex-new{% endif %}" data-item-id="{{ item.id }}" title="{{ item.item_name }} ({{ item.rarity|upper }}){% if item.is_new %} — NEW, click to acknowledge{% endif %}">
+                    {% if item.is_new %}<div class="codex-new-badge"><img src="{{ icons.star_milestone }}" alt="" class="inline-icon-sm">NEW</div>{% endif %}
                     {% if item.image_url %}
                     <img loading="lazy" src="{{ item.image_url }}" alt="{{ item.item_name }}" class="codex-img">
                     {% else %}
@@ -705,7 +706,10 @@ document.addEventListener('DOMContentLoaded', function() {
     "welcomeBack": {{ (welcome_back or {}) | tojson }},
     "codexEarned": [
         {% for m in (codex_milestones.earned or []) %}{"key": {{ m.milestone_key|tojson }}, "name": {{ m.milestone_name|tojson }}, "sv": {{ m.sv_awarded }}}{% if not loop.last %},{% endif %}{% endfor %}
-    ]
+    ],
+    "collectionBackfillPending": {{ 'true' if collection_backfill_pending else 'false' }},
+    "collectionTotalNew": {{ discovery_codex.total_new|default(0) }},
+    "collectionTotalCollected": {{ discovery_codex.total_collected|default(0) }}
 }
 </script>
 <script src="/static/js/colony.js?v={{ static_v }}" defer></script>

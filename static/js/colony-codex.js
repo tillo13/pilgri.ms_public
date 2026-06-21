@@ -80,6 +80,9 @@ window.switchDiscoveryView = switchDiscoveryView;
         var data;
         try { data = JSON.parse(document.getElementById('colonyPageData').textContent); }
         catch (e) { return; }
+        // #1508: the one-time collection backfill modal takes precedence this load
+        // (it re-fires next visit if skipped; milestone SV is already granted).
+        if (data && data.collectionBackfillPending) return;
         var earned = (data && data.codexEarned) || [];
         if (!earned.length) return;
 
@@ -100,5 +103,87 @@ window.switchDiscoveryView = switchDiscoveryView;
             fresh.forEach(function (m) { seen.add(m.key); });
             markSeen(seen);
         }, 900);
+    });
+})();
+
+
+/* #1508: new-discovery signal. Server-side seen-state (NOT localStorage — #1397
+   ReOpen v3 ripped localStorage out of seen-tracking). Part 1: one-time backfill
+   modal (sticky). Part 2: per-card NEW badge cleared by clicking the card. */
+(function () {
+    function clearTileNew(tile) {
+        tile.classList.remove('codex-new');
+        var badge = tile.querySelector('.codex-new-badge');
+        if (badge) badge.remove();
+    }
+
+    function postJSON(url, body) {
+        return fetch(url, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {})
+        });
+    }
+
+    // Part 2: click a NEW card → acknowledge that one item (highlight stays cleared).
+    document.addEventListener('click', function (e) {
+        var tile = e.target.closest && e.target.closest('.codex-tile.codex-new');
+        if (!tile) return;
+        var id = tile.getAttribute('data-item-id');
+        if (!id) return;
+        clearTileNew(tile);  // optimistic — server is the source of truth
+        postJSON('/api/collection/mark-seen', { item_id: parseInt(id, 10) });
+    });
+
+    // Part 1: one-time backfill modal — "here's everything you've found", built
+    // from the already-server-rendered collected tiles (no duplicated payload).
+    function showBackfillModal(data) {
+        if (typeof MarsModal === 'undefined') return;
+        var n = data.collectionTotalCollected || 0;
+        var tiles = Array.prototype.slice.call(
+            document.querySelectorAll('#dv-codex .codex-tile.collected'));
+        var grid = tiles.slice(0, 60).map(function (t) {
+            var img = t.querySelector('.codex-img');
+            var nameEl = t.querySelector('.codex-name');
+            var name = nameEl ? nameEl.textContent : '';
+            var src = img ? img.getAttribute('src') : '';
+            return '<div class="codex-backfill-cell" title="' + name + '">'
+                + (src ? '<img loading="lazy" src="' + src + '" alt="">'
+                       : '<span class="codex-q">■</span>')
+                + '<span>' + name + '</span></div>';
+        }).join('');
+        MarsModal.show({
+            title: 'Your Collection',
+            subtitle: n + ' specimen' + (n === 1 ? '' : 's') + ' catalogued',
+            icon: icon('star_milestone'),
+            theme: 'success',
+            width: 'lg',
+            dismissOnBackdrop: false,
+            dismissOnEscape: false,
+            body: '<div class="mm-aria" style="text-align:center;font-size:14px;margin-bottom:10px;">'
+                + 'Every specimen you\'ve ever brought home, Captain. From here on, anything new you '
+                + 'find is flagged until you\'ve seen it.</div>'
+                + '<div class="codex-backfill-grid">' + grid + '</div>'
+                + (tiles.length > 60 ? '<div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:8px;">+ '
+                    + (tiles.length - 60) + ' more in your codex</div>' : ''),
+            footer: '<button class="btn btn-primary mm-btn-full" onclick="window.__dismissCollectionBackfill()">Got it</button>'
+        });
+    }
+
+    // Dismiss = deliberate acknowledgement (#1448): bulk-mark the whole back-
+    // catalogue seen so the modal never re-fires and no legacy item keeps a badge.
+    window.__dismissCollectionBackfill = function () {
+        if (typeof MarsModal !== 'undefined') MarsModal.hide();
+        document.querySelectorAll('#dv-codex .codex-tile.codex-new').forEach(clearTileNew);
+        postJSON('/api/collection/mark-all-seen', {});
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var data;
+        try { data = JSON.parse(document.getElementById('colonyPageData').textContent); }
+        catch (e) { return; }
+        if (data && data.collectionBackfillPending) {
+            setTimeout(function () { showBackfillModal(data); }, 600);
+        }
     });
 })();

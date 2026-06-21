@@ -159,3 +159,51 @@
 .codex-relics-divider { border-top: 1px solid rgba(255, 255, 255, 0.12); margin: 26px 0 14px; }
 .codex-reconcile { font-size: 13px; color: var(--text-secondary); margin: 0 0 16px; }
 .codex-reconcile strong { color: var(--text-primary); }
+
+/* #1508: NEW (unacknowledged) collected item. Colorblind-safe — a bright ring
+   PLUS a badge carrying the star icon + literal "NEW" text (never colour alone).
+   Clicking the tile acknowledges it (clears the highlight) — colony-codex.js. */
+.codex-tile.codex-new {
+    position: relative;
+    border-color: var(--color-sepolia, #ff7849);
+    box-shadow: 0 0 0 2px rgba(255, 120, 73, 0.6), 0 0 12px rgba(255, 120, 73, 0.35);
+    cursor: pointer;
+}
+.codex-new-badge {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: #ffd23f;
+    color: #1a1208;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 1.5px solid #1a1208;
+    z-index: 2;
+}
+.codex-new-badge .inline-icon-sm { width: 11px; height: 11px; }
+
+/* #1508: one-time backfill modal grid */
+.codex-backfill-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding: 4px;
+}
+.codex-backfill-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.codex-backfill-cell img { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; }

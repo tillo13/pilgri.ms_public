@@ -59,6 +59,24 @@ def build_expedition_haul(user_id: int, expedition_id: int) -> dict:
 
     discoveries = get_expedition_discoveries(expedition_id, unlocked_only=True)
 
+    # #1508 Part 3: flag items the captain has NOT collected before — lifetime
+    # first-ever finds. Independent of the seen-table and of THIS haul's claim
+    # state: the haul auto-shows before claim, so "first-ever" = no claimed row
+    # for that discovery_item_id on an EARLIER expedition. One query, no N+1.
+    prior_claimed_ids = set()
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT ed.discovery_item_id
+                FROM pilgrim.expedition_discoveries ed
+                JOIN pilgrim.expeditions e ON ed.expedition_id = e.id
+                WHERE e.user_id = %s AND ed.claimed_by_user = true
+                  AND ed.expedition_id != %s
+            """, (user_id, expedition_id))
+            prior_claimed_ids = {r['discovery_item_id'] for r in cur.fetchall()}
+    except Exception as e:
+        logger.warning(f"haul first-ever lookback failed for {expedition_id}: {e}")
+
     # Travel time — clamp to 0 so corrupted timestamps (arrives_at < departed_at
     # from a TZ-skewed launch path) never render as "-318 minutes". Prefer the
     # actual completed_at delta when available; otherwise use the planned
@@ -73,7 +91,8 @@ def build_expedition_haul(user_id: int, expedition_id: int) -> dict:
         'id': d.get('id'), 'item_name': d.get('item_name'), 'rarity': d.get('rarity', 'common'),
         'image_url': d.get('image_url'), 'description': d.get('description'),
         'enhanced_value': float(d.get('enhanced_value') or d.get('scientific_value') or 0),
-        'claimed': d.get('claimed_by_user', False), 'item_type': d.get('item_type')
+        'claimed': d.get('claimed_by_user', False), 'item_type': d.get('item_type'),
+        'is_first_ever': d.get('discovery_item_id') not in prior_claimed_ids,  # #1508 Part 3
     } for d in discoveries]
 
     shards_display = eth_to_display(float(expedition.get('sepolia_earned') or 0))
@@ -99,5 +118,6 @@ def build_expedition_haul(user_id: int, expedition_id: int) -> dict:
             'travel_hours': round(travel_hours, 1), 'status': expedition['status']
         },
         'discoveries': formatted,
-        'unclaimed_count': sum(1 for d in formatted if not d['claimed'])
+        'unclaimed_count': sum(1 for d in formatted if not d['claimed']),
+        'new_count': sum(1 for d in formatted if d['is_first_ever']),  # #1508 Part 3
     }

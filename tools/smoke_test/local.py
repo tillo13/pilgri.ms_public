@@ -422,6 +422,55 @@ def test_1517_base_name_not_flavor():
     return True
 
 
+@test("#1508 new-discovery signal: schema + is_new/is_first_ever fields", tier=1, features=['db', 'colony', 'depot'], mode='local')
+def test_1508_new_discovery_signal():
+    """Bug #1508 (Luke): NEW-item signal across the Collection page + haul popup.
+    Locks: (1) player_seen_discoveries schema, (2) seen mark/read roundtrip,
+    (3) codex exposes total_new + per-item is_new with is_new => collected and the
+    count reconciling, (4) the haul payload carries is_first_ever + new_count."""
+    import inspect
+    from utilities.postgres.discovery_seen import ensure_seen_table, mark_seen, get_seen_ids
+    from utilities.postgres.core import db_cursor
+    ensure_seen_table()
+    with db_cursor() as cur:
+        cur.execute("""SELECT column_name FROM information_schema.columns
+                       WHERE table_schema='pilgrim' AND table_name='player_seen_discoveries'""")
+        cols = {r['column_name'] for r in cur.fetchall()}
+    need = {'user_id', 'discovery_item_id', 'seen_at'}
+    if not need.issubset(cols):
+        return f"#1508: player_seen_discoveries missing cols {need - cols}"
+    # seen roundtrip on a throwaway user (no side effects on real captains)
+    TEST = 999998
+    try:
+        mark_seen(TEST, 12345)
+        if 12345 not in get_seen_ids(TEST):
+            return "#1508: mark_seen/get_seen_ids roundtrip failed"
+    finally:
+        with db_cursor(commit=True) as cur:
+            cur.execute("DELETE FROM pilgrim.player_seen_discoveries WHERE user_id=%s", (TEST,))
+    # codex invariants on a real captain (read-only, no mutation): is_new => collected,
+    # and the per-item is_new flags reconcile to total_new (the #1160 count rule).
+    from utilities.postgres.expeditions import get_user_discovery_codex
+    codex = get_user_discovery_codex(45)
+    if 'total_new' not in codex:
+        return "#1508: codex missing total_new"
+    counted_new = 0
+    for cat in codex.get('categories', {}).values():
+        for it in cat.get('items', []):
+            if it.get('is_new'):
+                counted_new += 1
+                if not it.get('collected'):
+                    return "#1508: is_new must imply collected"
+    if counted_new != codex.get('total_new'):
+        return f"#1508: total_new {codex.get('total_new')} != counted is_new tiles {counted_new} (won't reconcile with the modal)"
+    # haul payload exposes the first-ever fields (structural — avoids needing a live expedition)
+    from utilities.expeditions import haul_data
+    src = inspect.getsource(haul_data.build_expedition_haul)
+    if 'is_first_ever' not in src or 'new_count' not in src:
+        return "#1508: build_expedition_haul must emit is_first_ever + new_count for the haul NEW tag"
+    return True
+
+
 @test("Narog stat math matches #1436 spec", tier=1, features=['config', 'narog'], mode='local')
 def test_narog_stat_math():
     """Bug #1436: Foundry L0 = 5/100, L10 = 100/100, linear in between."""
@@ -3079,6 +3128,7 @@ def test_pilgrimbot_table_coverage():
         'captain_stats_meta':         'Bookkeeping for V2 cutover (go_live_at etc.); event data is captain_stat_events (wired via query_player_data captain_stats, #1474)',
         'used_action_tokens':         'Replay-attack idempotency; pure internal',
         'generated_images':           'Admin/kumori-journal blob storage; not gameplay state',
+        'player_seen_discoveries':    '#1508 UI seen-state (which collection cards the captain has acknowledged); the collection itself is exposed via the discovery_codex category',
     }
 
     # (d) PENDING: real player-facing tables that SHOULD be PB-aware but aren't yet —

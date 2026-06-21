@@ -122,12 +122,19 @@ function renderHaulModal(data, showClaimButton) {
     if (exp.sv_earned) body += `<div class="mm-kv"><span class="mm-kv-label">SV Earned</span><span class="mm-kv-value" style="color:var(--color-success);">+${exp.sv_earned.toLocaleString()} SV</span></div>`;
     if (bonusLabel) body += `<div class="mm-kv"><span class="mm-kv-label">Distance Bonus</span><span class="mm-kv-value" style="color:var(--color-warning);">${bonusMult}&times; ${bonusLabel}</span></div>`;
     // Discoveries grid
-    body += `<hr class="mm-divider"><div class="mm-section-label">Discoveries (${discoveries.length})</div>`;
+    // #1508 Part 3: flag first-ever finds (not collected before) with a NEW tag.
+    // Count derived from the same is_first_ever flag so it reconciles with the badges.
+    const newCount = (data.new_count != null) ? data.new_count : discoveries.filter(d => d.is_first_ever).length;
+    const newPill = newCount ? ` <span style="background:#ffd23f;color:#1a1208;border:1.5px solid #1a1208;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:800;">${newCount} NEW</span>` : '';
+    body += `<hr class="mm-divider"><div class="mm-section-label">Discoveries (${discoveries.length})${newPill}</div>`;
     if (discoveries.length > 0) {
         body += '<div class="mm-stats" style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr));">';
         body += discoveries.map(d => {
             const img = d.image_url ? `<img src="${d.image_url}" alt="" style="width:56px;height:56px;border-radius:6px;object-fit:cover;display:block;margin:0 auto 6px;">` : '';
-            return `<div class="mm-stat" style="text-align:center;cursor:pointer;" title="${d.description || d.item_name}">${img}<div style="font-size:10px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.item_name}</div><div style="font-size:9px;font-weight:600;color:var(--text-muted);margin-top:2px;">${(d.rarity || 'common').toUpperCase()}</div></div>`;
+            const isNew = !!d.is_first_ever;  // #1508: colorblind-safe — ring + "NEW" text badge, not colour alone
+            const ring = isNew ? 'position:relative;box-shadow:0 0 0 2px var(--color-sepolia,#ff7849);border-radius:8px;' : '';
+            const badge = isNew ? `<span style="position:absolute;top:-6px;right:-6px;background:#ffd23f;color:#1a1208;border:1.5px solid #1a1208;border-radius:9px;font-size:8px;font-weight:800;padding:1px 5px;z-index:2;">NEW</span>` : '';
+            return `<div class="mm-stat" style="text-align:center;cursor:pointer;${ring}" title="${isNew ? 'NEW — first time you have found this! ' : ''}${d.description || d.item_name}">${badge}${img}<div style="font-size:10px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.item_name}</div><div style="font-size:9px;font-weight:600;color:var(--text-muted);margin-top:2px;">${(d.rarity || 'common').toUpperCase()}</div></div>`;
         }).join('');
         body += '</div>';
     } else {

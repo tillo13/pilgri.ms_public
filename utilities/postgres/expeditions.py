@@ -595,6 +595,9 @@ def get_user_discovery_codex(user_id: int) -> Dict:
     inside its db-call budget. Grouped by item_type for the category-tabbed grid.
     """
     CATEGORY_ORDER = ['mineral', 'data', 'artifact', 'biological', 'equipment']
+    # #1508: a collected item the captain hasn't acknowledged yet is NEW.
+    from utilities.postgres.discovery_seen import get_seen_ids
+    seen_ids = get_seen_ids(user_id)
     try:
         with db_cursor() as cur:
             cur.execute("""
@@ -613,25 +616,31 @@ def get_user_discovery_codex(user_id: int) -> Dict:
             rows = cur.fetchall()
         categories = {}
         total_collected = 0
+        total_new = 0
         for r in rows:
-            cat = categories.setdefault(r['item_type'], {'items': [], 'collected': 0, 'total': 0})
+            cat = categories.setdefault(r['item_type'], {'items': [], 'collected': 0, 'total': 0, 'new': 0})
             found = bool(r['collected'])
+            is_new = found and r['id'] not in seen_ids  # #1508
             cat['items'].append({
                 'id': r['id'], 'item_name': r['item_name'], 'rarity': r['rarity'],
-                'image_url': r['image_url'], 'collected': found,
+                'image_url': r['image_url'], 'collected': found, 'is_new': is_new,
             })
             cat['total'] += 1
             if found:
                 cat['collected'] += 1
                 total_collected += 1
+            if is_new:
+                cat['new'] += 1
+                total_new += 1
         # Stable display order; any unknown type lands after the known ones.
         ordered = {k: categories[k] for k in CATEGORY_ORDER if k in categories}
         for k in categories:
             ordered.setdefault(k, categories[k])
-        return {'categories': ordered, 'total_collected': total_collected, 'total_items': len(rows)}
+        return {'categories': ordered, 'total_collected': total_collected,
+                'total_items': len(rows), 'total_new': total_new}
     except Exception as e:
         logger.error(f"get_user_discovery_codex failed for {user_id}: {e}")
-        return {'categories': {}, 'total_collected': 0, 'total_items': 0}
+        return {'categories': {}, 'total_collected': 0, 'total_items': 0, 'total_new': 0}
 
 
 def get_recent_discoveries_payload(user_id: int) -> Dict:

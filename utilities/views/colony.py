@@ -372,8 +372,16 @@ def get_colony_page_data(user_id, auth):
         }
     except Exception as e:
         logger.warning(f"Could not build discovery codex for colony: {e}")
-        discovery_codex = {'categories': {}, 'total_collected': 0, 'total_items': 0}
+        discovery_codex = {'categories': {}, 'total_collected': 0, 'total_items': 0, 'total_new': 0}
         codex_milestones = {'earned': [], 'earned_keys': [], 'category_rewards': {}, 'total_reward': 0}
+
+    # #1508 Part 1: the one-time backfill modal fires only when NOTHING has been
+    # acknowledged yet (every collected item is still "new") AND there's a
+    # collection to show. Derived from the codex — no extra db call (db budget).
+    # After the captain dismisses it (POST /api/collection/mark-all-seen), every
+    # collected id is marked seen so total_new drops and it never re-fires.
+    _tc = discovery_codex.get('total_collected', 0)
+    collection_backfill_pending = _tc > 0 and discovery_codex.get('total_new', 0) == _tc
 
     # Bug #1160 Option B (Luke 2026-05-31): Signal Relics — the 14 Origin Site
     # legendaries shown as a DISTINCT axis so the legendary total reads honestly.
@@ -405,6 +413,7 @@ def get_colony_page_data(user_id, auth):
         'range_mult': range_mult,
         'income_data': income_data,
         'discovery_codex': discovery_codex,
+        'collection_backfill_pending': collection_backfill_pending,
         'codex_milestones': codex_milestones,
         'signal_relics': signal_relics,
         'discovery_legendary_count': discovery_legendary_count,

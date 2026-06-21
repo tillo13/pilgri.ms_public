@@ -2155,6 +2155,16 @@
       "test_connection — Test database connection"
     ]
   },
+  "utilities/postgres/discovery_seen.py": {
+    "description": "#1508: per-item \"seen\" state for the Collection page new-discovery signal.",
+    "exports": [
+      "ensure_seen_table — Idempotent: pilgrim.player_seen_discoveries. Guarded @ensure_once so the",
+      "get_seen_ids — Set of discovery_item_ids this captain has already acknowledged.",
+      "has_any_seen — True once the captain has ANY seen row — i.e. the one-time backfill modal",
+      "mark_seen — Acknowledge ONE discovery item (Part 2: captain clicked the card).",
+      "mark_all_collected_seen — Bulk-acknowledge every currently-collected item (Part 1: backfill modal"
+    ]
+  },
   "utilities/postgres/expeditions.py": {
     "description": "Expedition and discovery item database operations.",
     "exports": [
@@ -3204,7 +3214,10 @@
       "revealCategory",
       "revealTotal",
       "maybeOpenCodexFromUrl",
-      "earned"
+      "earned",
+      "clearTileNew",
+      "postJSON",
+      "showBackfillModal"
     ]
   },
   "static/js/colony-discoveries.js": {
@@ -3374,14 +3387,14 @@
       "showExpeditionHaulModal",
       "renderHaulModal",
       "vehicle",
+      "newCount",
       "showFleetHaulModalFallback",
       "claimFleetDiscoveries",
       "startPolling",
       "stopPolling",
       "runAnonDemoAnimations",
       "triggerMining",
-      "claimAdditionalCache",
-      "loadInfrastructureCount"
+      "claimAdditionalCache"
     ],
     "keywords": "income display, effective rate UI, mining drone bonus display, base total display, harvest"
   },
@@ -3724,7 +3737,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
