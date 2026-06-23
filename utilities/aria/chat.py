@@ -36,20 +36,6 @@ def get_aria_response(
         ARIA's response string
     """
     try:
-        # Get API key
-        if not api_key:
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            try:
-                from utilities.google_auth_utils import get_secret
-                api_key = get_secret("KUMORI_ANTHROPIC_API_KEY", project_id="kumori-404602")
-            except Exception:
-                pass
-
-        if not api_key:
-            logger.error("No Anthropic API key available for ARIA")
-            return "Connection issues. Please try again, Captain."
-
         # Build system prompt with user context and memory (v1.3: includes snapshot)
         system_prompt = get_aria_system_prompt(user_context, user_id=user_id, snapshot=snapshot)
 
@@ -71,21 +57,20 @@ def get_aria_response(
             'content': user_message
         })
 
-        # Use Haiku 4.5 for fast responses that follow instructions well
-        client = create_client(
-            api_key=api_key,
-            model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001")
-        )
-
-        response = client.chat(
-            messages=messages,
+        # Route over the FREE kumori LLM catalog (no Anthropic key needed).
+        # Multi-turn variant keeps conversation history. pilgrimbot + the rarely
+        # used streaming path stay on Claude; this sync path is the cost driver.
+        from utilities.kumori_utils import kumori_llm_chat_messages
+        response, backend, _attempts, _dbg = kumori_llm_chat_messages(
             system=system_prompt,
-            max_tokens=500,  # Enough room for complete responses
-            temperature=0.8,  # Some personality variation
-            user_id=str(user_id) if user_id else "system:galactica_aria",
-            feature="aria_response",
+            messages=messages,
+            max_tokens=500,    # Enough room for complete responses
+            temperature=0.8,   # Some personality variation
         )
-
+        if not response:
+            logger.error("ARIA free-LLM call returned empty across all backends")
+            return "Dust storm interference. Please try again, Captain."
+        logger.debug(f"ARIA replied via free backend: {backend}")
         return response
 
     except Exception as e:

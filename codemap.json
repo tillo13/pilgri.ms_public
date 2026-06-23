@@ -1697,7 +1697,8 @@
       "kumori_klein_edit — Render an image via kumori's edit router.",
       "kumori_klein_generate — Text→image via kumori. No reference images. kumori cascades server-side",
       "kumori_describe — Vision LLM → text. Returns (description_text, backend_used).",
-      "kumori_llm_chat — LLM with server-side backend fallback. Returns"
+      "kumori_llm_chat — LLM with server-side backend fallback. Returns",
+      "kumori_llm_chat_messages — Multi-turn variant of kumori_llm_chat. Pass a full role/content message"
     ]
   },
   "utilities/legacy_migration.py": {
@@ -3721,7 +3722,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {

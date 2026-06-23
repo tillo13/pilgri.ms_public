@@ -5,10 +5,6 @@ Extracted from utilities/claude_utils.py (Round 5 refactor).
 
 import logging
 
-from utilities.anthropic.pricing import CLAUDE_MODELS
-from utilities.anthropic.client import _get_anthropic_api_key
-from utilities.anthropic.convenience import create_client
-
 logger = logging.getLogger("claude_utils")
 
 _GOLEM_FALLBACK_NAMES = ['Cairn', 'Regolith', 'Basalt', 'Cinder', 'Shard']
@@ -70,12 +66,11 @@ If the captain mentioned a specific name in chat, include it as the first sugges
 Output ONLY the 5 names, one per line, nothing else. No numbering, no explanations."""
 
     try:
-        api_key = _get_anthropic_api_key(api_key)
-        client = create_client(api_key, model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001"))
-        result = client.generate_text(
-            prompt, max_tokens=100, temperature=1.0,
-            user_id=str(user_id) if user_id else "system:galactica_golem_names",
-            feature="golem_names",
+        # FREE kumori catalog — single-shot, no history. min_chars=1: a 5-name
+        # list is well under the default 80-char gate.
+        from utilities.kumori_utils import kumori_llm_chat
+        result, _backend, _a, _d = kumori_llm_chat(
+            system="", user_prompt=prompt, max_tokens=100, temperature=1.0, min_chars=1,
         )
         names = [n.strip().strip('"').strip("'") for n in result.strip().split('\n') if n.strip()]
         return names[:5] if len(names) >= 5 else names + _GOLEM_FALLBACK_NAMES[len(names):5]

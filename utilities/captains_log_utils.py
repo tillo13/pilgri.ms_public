@@ -346,19 +346,6 @@ def chat_with_captain(user_id: int, message: str,
         }
 
     try:
-        # Get API key
-        if not api_key:
-            api_key = get_anthropic_api_key()
-
-        if not api_key:
-            logger.error("No Anthropic API key available")
-            return {
-                'success': False,
-                'error': 'Communications relay offline',
-                'response': None,
-                'captain_name': 'Captain'
-            }
-
         # Get captain context
         context = get_captain_context(user_id)
         captain_name = context.get('captain_name', 'Captain')
@@ -380,22 +367,23 @@ def chat_with_captain(user_id: int, message: str,
         # Add current message
         messages.append({'role': 'user', 'content': message})
 
-        # Call Haiku
-        from utilities.claude_utils import ClaudeClient, CLAUDE_MODELS
-
-        client = ClaudeClient(
-            api_key=api_key,
-            model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001")
-        )
-
-        response = client.chat(
-            messages=messages,
+        # Route over the FREE kumori LLM catalog (no Anthropic key needed),
+        # multi-turn variant to keep conversation context.
+        from utilities.kumori_utils import kumori_llm_chat_messages
+        response, backend, _attempts, _dbg = kumori_llm_chat_messages(
             system=system_prompt,
+            messages=messages,
             max_tokens=300,
             temperature=0.8,
-            user_id=str(user_id) if user_id else "system:galactica_captain",
-            feature="captain_chat",
         )
+        if not response:
+            logger.error("Captain free-LLM call returned empty across all backends")
+            return {
+                'success': False,
+                'error': 'Communications relay offline',
+                'response': None,
+                'captain_name': captain_name
+            }
 
         return {
             'success': True,

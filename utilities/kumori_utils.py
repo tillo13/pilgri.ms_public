@@ -249,3 +249,23 @@ def kumori_llm_chat(system: str, user_prompt: str, *,
         debug=debug,
     )
     return text or '', backend or '?', attempts or [], debug_info
+
+
+def kumori_llm_chat_messages(system: str, messages: List[Dict[str, str]], *,
+                             backends: Optional[List[str]] = None,
+                             max_tokens: int = 700, temperature: float = 0.4,
+                             min_chars: int = 1, debug: bool = False) -> Tuple[str, str, List[dict], Optional[Dict[str, Any]]]:
+    """Multi-turn variant of kumori_llm_chat. Pass a full role/content message
+    list (conversation history + current turn) so chat features keep context,
+    instead of collapsing to a single prompt. Returns
+    (text, winning_backend, attempt_log, debug_info_or_None).
+
+    min_chars defaults to 1 (not 80) because a short valid chat reply
+    ("Acknowledged, Captain.") must not count as a backend failure."""
+    chain = backends or DEFAULT_LLM_BACKENDS
+    text, backend, attempts, debug_info = _kc_llm_chat_resilient(
+        backends=chain, messages=messages, max_tokens=max_tokens,
+        temperature=temperature, system=system, min_chars=min_chars,
+        debug=debug, app_name='galactica',
+    )
+    return text or '', backend or '?', attempts or [], debug_info

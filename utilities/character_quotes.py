@@ -5,10 +5,6 @@ Extracted from utilities/claude_utils.py (Round 5 refactor).
 
 import logging
 
-from utilities.anthropic.pricing import CLAUDE_MODELS
-from utilities.anthropic.client import _get_anthropic_api_key
-from utilities.anthropic.convenience import create_client
-
 logger = logging.getLogger("claude_utils")
 
 
@@ -19,12 +15,11 @@ def _generate_character_quote(prompt: str, fallback_key: str, fallbacks: dict,
     Generate a character quote using Haiku. Shared by scientist and commander quote generators.
     """
     try:
-        api_key = _get_anthropic_api_key(api_key)
-        client = create_client(api_key, model=CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001"))
-        quote = client.generate_text(
-            prompt, max_tokens=max_tokens, temperature=0.9,
-            user_id="system:galactica_character_quote",
-            feature="character_quote",
+        # FREE kumori catalog — single-shot, no history. min_chars=1: a one-line
+        # quote can fall under the default 80-char gate.
+        from utilities.kumori_utils import kumori_llm_chat
+        quote, _backend, _a, _d = kumori_llm_chat(
+            system="", user_prompt=prompt, max_tokens=max_tokens, temperature=0.9, min_chars=1,
         )
         quote = quote.strip().strip('"').strip("'")
         if len(quote) > truncate_at:
