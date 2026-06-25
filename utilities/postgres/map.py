@@ -232,7 +232,8 @@ def get_frontier_landmarks_beyond_point(
     furthest_lon: float,
     home_lat: float,
     home_lon: float,
-    limit: int = 3
+    limit: int = 3,
+    exclude_names: set = None
 ) -> List[Dict]:
     """Get landmarks beyond a point in a specific direction.
 
@@ -242,9 +243,21 @@ def get_frontier_landmarks_beyond_point(
     No hard distance cap — searches as far as needed so players always have a
     "next step" in any direction (CLAUDE.md requirement, bugs #74 #207 #433 #1267).
 
+    DISCOVERED-AWARE (#1519): `exclude_names` (the player's already-discovered
+    landmark names) is filtered out BEFORE the candidate cap and band-pick. This
+    is the structural fix for the recurring "no new dots in direction X" saga
+    (#74 #88 #172 #207 #433 #1267 #1485): previously the nearest-150 candidate
+    pool included discovered landmarks, so a heavily-explored octant could fill
+    all 150 + every distance band with already-visited dots and surface ZERO new
+    ones — which the display layer then dropped, starving the direction. Excluding
+    discovered up front guarantees the band-pick only ever yields UNDISCOVERED
+    dots, so it's impossible to starve a direction while undiscovered landmarks
+    remain in it — no constant-tuning required.
+
     STEPPING STONES: Uses adaptive band sizing — 500km bands near home, scaling
     down to 200km bands at extreme distances — to prevent clustering.
     """
+    exclude_names = exclude_names or set()
     # Build SQL conditions based on direction
     conditions = []
     if 'N' in direction:
@@ -263,6 +276,9 @@ def get_frontier_landmarks_beyond_point(
         # Python-filter from the cached mars_mappings pool (memoized per-request).
         def _matches(r):
             lat, lon = r['latitude'], r['longitude']
+            # #1519: drop already-discovered landmarks up front so the [:150] cap
+            # and per-band pick below only ever consider UNDISCOVERED candidates.
+            if r['name'] in exclude_names: return False
             if 'N' in direction and not lat > furthest_lat: return False
             if 'S' in direction and not lat < furthest_lat: return False
             # Wrap-aware E/W (#1485): "further east/west" follows the shortest arc
@@ -321,16 +337,22 @@ def get_frontier_landmarks_beyond_point(
         return []
 
 
-def get_all_frontier_landmarks(user_id: int, home_lat: float, home_lon: float, dots_per_direction: int = 5) -> List[Dict]:
+def get_all_frontier_landmarks(user_id: int, home_lat: float, home_lon: float,
+                               dots_per_direction: int = 5, exclude_names: set = None) -> List[Dict]:
     """Get frontier landmarks in all 8 directions.
 
     For each direction, finds the user's furthest expedition and returns
     stepping-stone landmarks beyond that point. This ensures players always have
     a 'next step' in any direction they want to explore, with no big gaps.
 
+    `exclude_names` (#1519): the player's discovered landmark names, threaded into
+    every directional pick so frontier dots are guaranteed UNDISCOVERED. See
+    get_frontier_landmarks_beyond_point for the full rationale.
+
     STEPPING STONES: Instead of just closest 3, we get one landmark per 500km band.
     This prevents situations where all visible dots cluster at similar distances.
     """
+    exclude_names = exclude_names or set()
     # Get furthest point in each direction
     furthest_by_direction = get_user_furthest_expeditions_by_direction(user_id, home_lat, home_lon)
 
@@ -348,7 +370,8 @@ def get_all_frontier_landmarks(user_id: int, home_lat: float, home_lon: float, d
                 furthest['lon'],
                 home_lat,
                 home_lon,
-                limit=dots_per_direction
+                limit=dots_per_direction,
+                exclude_names=exclude_names
             )
             # #1485: sparse/edge directions (poleward, or after exploring to a meridian)
             # can still come up short. Top up with frontier dots measured from HOME so
@@ -356,7 +379,8 @@ def get_all_frontier_landmarks(user_id: int, home_lat: float, home_lon: float, d
             if len(frontier_dots) < dots_per_direction:
                 have = {d['name'] for d in frontier_dots}
                 for lm in get_frontier_landmarks_beyond_point(
-                        direction, home_lat, home_lon, home_lat, home_lon, limit=dots_per_direction):
+                        direction, home_lat, home_lon, home_lat, home_lon,
+                        limit=dots_per_direction, exclude_names=exclude_names):
                     if lm['name'] in have:
                         continue
                     frontier_dots.append(lm)
@@ -371,7 +395,8 @@ def get_all_frontier_landmarks(user_id: int, home_lat: float, home_lon: float, d
                 home_lon,
                 home_lat,
                 home_lon,
-                limit=dots_per_direction
+                limit=dots_per_direction,
+                exclude_names=exclude_names
             )
 
         # Add unique landmarks
@@ -457,7 +482,8 @@ def get_available_landmarks_by_discovery(user_id: int, base_coords: dict, limit:
     # Players should ALWAYS see 1-3 dots in each of 8 directions beyond their furthest point
     # This creates exploration chains and ensures there's always a "next step" in any direction
     try:
-        frontier_landmarks = get_all_frontier_landmarks(user_id, base_lat, base_lon, dots_per_direction=5)
+        frontier_landmarks = get_all_frontier_landmarks(user_id, base_lat, base_lon, dots_per_direction=5,
+                                                        exclude_names=discovered_names)
         for lm in frontier_landmarks:
             if lm['name'] not in all_candidates:
                 lm['is_discovered'] = lm['name'] in discovered_names

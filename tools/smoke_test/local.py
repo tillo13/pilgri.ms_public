@@ -822,6 +822,31 @@ def test_frontier_longitude_wraps():
     return True
 
 
+@test("Frontier dots are discovered-aware — exclude_names yields fresh dots (#1519)", tier=1, features=['map'], mode='local')
+def test_frontier_excludes_discovered():
+    """Bug #1519 (the 9th 'no new dots in direction X' recurrence): the candidate
+    pool was capped at the nearest 150 INCLUDING already-discovered landmarks, then
+    one-per-band, then discovered dropped at display. In a heavily-explored octant
+    the 150 + every band filled with visited dots, surfacing ZERO new ones. Lock the
+    structural fix: excluding a direction's dots must return DIFFERENT undiscovered
+    dots (band-pick skips excluded up front), not the same set re-offered then dropped.
+    """
+    from utilities.postgres.map import get_frontier_landmarks_beyond_point
+
+    base = get_frontier_landmarks_beyond_point('NW', 46.0, 0.1, -30.7, 90.0, limit=3)
+    if not base:
+        return "NW frontier returned 0 dots before exclusion — cannot test"
+    excluded = {d['name'] for d in base}
+    fresh = get_frontier_landmarks_beyond_point(
+        'NW', 46.0, 0.1, -30.7, 90.0, limit=3, exclude_names=excluded)
+    fresh_names = {d['name'] for d in fresh}
+    if not fresh:
+        return "excluding the first NW dots returned 0 — direction starved despite undiscovered remaining"
+    if fresh_names & excluded:
+        return f"excluded dots leaked back into result: {fresh_names & excluded}"
+    return True
+
+
 @test("Build time: one adjusted duration drives card/toast/timer/completion (#1486)", tier=1, features=['config'], mode='local')
 def test_build_time_single_source():
     """Bug #1486: depot card said 3d, toast 6d, final timer 4d3h. Root cause — the
