@@ -80,9 +80,10 @@ def run_xenobiology_experiment(user_id: int, session) -> dict:
     """Run an experiment to gain research points"""
     from utilities.postgres.users import get_user_research_data, add_research_points
     from utilities.postgres.shop import get_user_infrastructure
-    from utilities.depot_utils import get_fast_balance_and_wallet_info, invalidate_balance_cache
-    from utilities.sepolia_utils import MarsAsteroidMiner
-    from utilities.depot_utils import display_to_eth
+    from utilities.depot_utils import (
+        get_fast_balance_and_wallet_info, invalidate_balance_cache,
+        execute_purchase_transaction, display_to_eth,
+    )
 
     infrastructure = get_user_infrastructure(user_id, 'xenobiology_lab')
     has_lab = any(i['status'] == 'active' for i in infrastructure) if infrastructure else False
@@ -102,14 +103,12 @@ def run_xenobiology_experiment(user_id: int, session) -> dict:
 
     points_gained = random.randint(1, max_roll)
 
-    miner = MarsAsteroidMiner()
-    tx_result = miner.log_transaction(
-        private_key=primary_wallet['wallet_private_key'],
-        amount_eth=display_to_eth(experiment_cost),
-        message=f"XENO_EXP:{points_gained}pts"
+    execute_purchase_transaction(
+        dict(primary_wallet), display_to_eth(experiment_cost),
+        reason=f"XENO_EXP:{points_gained}pts",
+        user_id=user_id, purchase_type='xenobiology_experiment',
+        item_details={'points_gained': points_gained, 'max_roll': max_roll},
     )
-    if not tx_result.get('success'):
-        return {'success': False, 'error': 'Transaction failed'}
 
     add_research_points(user_id, points_gained)
     invalidate_balance_cache(session)
@@ -120,7 +119,7 @@ def run_xenobiology_experiment(user_id: int, session) -> dict:
         'max_roll': max_roll,
         'new_total_points': research_data.get('research_points', 0) + points_gained,
         'experiments_run': total_experiments + 1,
-        'tx_hash': tx_result.get('tx_hash')
+        'pending': True
     }
 
 

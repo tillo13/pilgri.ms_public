@@ -14,45 +14,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def handle_trail_build_request(user_id, data):
-    """v3 (#1414): trail build mission targets the captain's active chain segment.
+def get_worker_trail_multiplier(user_id, worker_type):
+    """Single source of truth for a crew member's trail-build multiplier.
 
-    Body still accepts `destination_name` for back-compat (e.g. "N chain seg 3")
-    but the actual target is auto-resolved to the next unbuilt segment of the
-    captain's active chain direction.
+    Used by handle_trail_build_request() and ARIA resonance (aria_skills.py).
+    Returns {stat_multiplier, stat_bonus_desc, suit_multiplier, suit_level,
+    total_multiplier}.
     """
-    from utilities.postgres.trails import get_crew_mission_status, start_crew_mission
-    from utilities.postgres.trails.chains import (
-        ensure_user_trail_chains_table, get_user_active_direction, get_active_chain_segments,
-    )
     from utilities.postgres.core import db_cursor
     from config import get_scientist_trail_bonus, COLONY_SCIENTISTS
 
-    worker_type = data.get('worker_type', '').lower()
-    if worker_type not in ('captain', 'scientist', 'aria'):
-        return {'success': False, 'error': 'Invalid worker type'}
-
-    # Check if crew member is already busy
-    status = get_crew_mission_status(user_id)
-    member_status = status.get(worker_type) or {}
-    if member_status.get('busy'):
-        return {'success': False, 'error': f'{worker_type.title()} is already on a mission'}
-    if member_status.get('complete'):
-        return {'success': False, 'error': f'{worker_type.title()} has a mission to claim first'}
-
-    # Resolve target: the next unbuilt segment of the captain's active chain.
-    ensure_user_trail_chains_table()
-    direction = get_user_active_direction(user_id)
-    chain_state = get_active_chain_segments(user_id).get(direction) or {}
-    next_seg = chain_state.get('next_unbuilt')
-    if not next_seg:
-        return {'success': False, 'error': f'Your {direction} chain is complete — switch direction to keep building'}
-    destination = next_seg['to_landmark']
-    from_landmark = next_seg['from_landmark']
-
-    # Calculate km based on crew stats, scanner, and consumable
-    # Stats are the PRIMARY driver (1x-6x). See config_shop.BASE_TRAIL_RATE_KMH.
-    from config_shop import calculate_trail_km
     stat_multiplier = 1.0
     stat_bonus_desc = ""
 
@@ -98,7 +69,58 @@ def handle_trail_build_request(user_id, data):
     suit_level = get_user_upgrade_level(user_id, 'gear', 'suit')
     suit_multiplier = 1.0 + (suit_level * 0.05)
 
-    total_multiplier = stat_multiplier * suit_multiplier
+    return {
+        'stat_multiplier': stat_multiplier,
+        'stat_bonus_desc': stat_bonus_desc,
+        'suit_multiplier': suit_multiplier,
+        'suit_level': suit_level,
+        'total_multiplier': stat_multiplier * suit_multiplier,
+    }
+
+
+def handle_trail_build_request(user_id, data):
+    """v3 (#1414): trail build mission targets the captain's active chain segment.
+
+    Body still accepts `destination_name` for back-compat (e.g. "N chain seg 3")
+    but the actual target is auto-resolved to the next unbuilt segment of the
+    captain's active chain direction.
+    """
+    from utilities.postgres.trails import get_crew_mission_status, start_crew_mission
+    from utilities.postgres.trails.chains import (
+        ensure_user_trail_chains_table, get_user_active_direction, get_active_chain_segments,
+    )
+
+    worker_type = data.get('worker_type', '').lower()
+    if worker_type not in ('captain', 'scientist', 'aria'):
+        return {'success': False, 'error': 'Invalid worker type'}
+
+    # Check if crew member is already busy
+    status = get_crew_mission_status(user_id)
+    member_status = status.get(worker_type) or {}
+    if member_status.get('busy'):
+        return {'success': False, 'error': f'{worker_type.title()} is already on a mission'}
+    if member_status.get('complete'):
+        return {'success': False, 'error': f'{worker_type.title()} has a mission to claim first'}
+
+    # Resolve target: the next unbuilt segment of the captain's active chain.
+    ensure_user_trail_chains_table()
+    direction = get_user_active_direction(user_id)
+    chain_state = get_active_chain_segments(user_id).get(direction) or {}
+    next_seg = chain_state.get('next_unbuilt')
+    if not next_seg:
+        return {'success': False, 'error': f'Your {direction} chain is complete — switch direction to keep building'}
+    destination = next_seg['to_landmark']
+    from_landmark = next_seg['from_landmark']
+
+    # Calculate km based on crew stats, scanner, and consumable
+    # Stats are the PRIMARY driver (1x-6x). See config_shop.BASE_TRAIL_RATE_KMH.
+    from config_shop import calculate_trail_km
+    mult = get_worker_trail_multiplier(user_id, worker_type)
+    stat_multiplier = mult['stat_multiplier']
+    stat_bonus_desc = mult['stat_bonus_desc']
+    suit_multiplier = mult['suit_multiplier']
+    suit_level = mult['suit_level']
+    total_multiplier = mult['total_multiplier']
     trail_calc = calculate_trail_km(total_multiplier)
     duration_minutes = trail_calc['duration_minutes']
     km_to_add = trail_calc['km_to_add']

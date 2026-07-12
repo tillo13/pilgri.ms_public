@@ -2438,6 +2438,7 @@
   "utilities/expeditions/trails.py": {
     "description": "Trail-building crew mission orchestration.",
     "exports": [
+      "get_worker_trail_multiplier — Single source of truth for a crew member's trail-build multiplier.",
       "handle_trail_build_request — v3 (#1414): trail build mission targets the captain's active chain segment."
     ],
     "keywords": "handle_trail_build_request, EVA suit trail bonus, consumables"

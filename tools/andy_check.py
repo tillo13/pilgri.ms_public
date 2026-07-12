@@ -41,13 +41,16 @@ Close loops:
 Claim accumulated:
   7. Infrastructure income — claims passive Sepolia + SV from generators
   8. Echo sites — claims any unclaimed Signal echo site
+  9. Origin sites — claims any origin site Andy is eligible for
 
 Kick off new activity:
-  9. Crew trails — sends idle crew on new missions
-  10. Expeditions — launches idle vehicles
-  11. Depot upgrades — buys cheapest affordable upgrade
-  12. Lab research — starts cheapest available tech
-  13. New infrastructure — starts cheapest unbuilt structure type
+  10. Crew trails — sends idle crew on new missions
+  11. Expeditions — launches idle vehicles
+  12. Depot upgrades — fills all concurrent upgrade slots, cheapest first
+  13. Lab research — starts cheapest available tech
+  14. New infrastructure — starts every affordable unbuilt structure, cheapest first
+  15. Xenobiology — runs an experiment, spends research points on weakest stat
+  16. ARIA resonance — fires the daily +km trail boost (24h cooldown)
 """
 
 import logging
@@ -174,40 +177,45 @@ def check_expeditions():
 
 
 def check_depot_upgrades():
-    """Buy the cheapest affordable upgrade if any available."""
+    """Buy cheapest affordable upgrades until all concurrent slots are full."""
     try:
         from utilities.upgrades_utils import get_upgrade_catalog_for_user, perform_upgrade
-        catalog = get_upgrade_catalog_for_user(ANDY_USER_ID)
     except (ImportError, ModuleNotFoundError) as e:
         log.info(f"  ⚠️  Skipped locally (needs web3 — works on GCP)")
         return
-    candidates = []
 
-    for category, items in catalog.items():
-        for item_key, item in items.items():
-            if item.get('is_max_level') or item.get('is_building'):
-                continue
-            cost = item.get('upgrade_cost')
-            if cost and item.get('can_afford'):
-                candidates.append({
-                    'category': category,
-                    'item_key': item_key,
-                    'name': item.get('name', item_key),
-                    'cost': cost,
-                    'level': item.get('current_level', 0),
-                })
+    bought = 0
+    for _ in range(8):  # hard cap; game slot limit (4) stops us first
+        catalog = get_upgrade_catalog_for_user(ANDY_USER_ID)
+        candidates = []
+        for category, items in catalog.items():
+            for item_key, item in items.items():
+                if item.get('is_max_level') or item.get('is_building'):
+                    continue
+                cost = item.get('upgrade_cost')
+                if cost and item.get('can_afford'):
+                    candidates.append({
+                        'category': category,
+                        'item_key': item_key,
+                        'name': item.get('name', item_key),
+                        'cost': cost,
+                        'level': item.get('current_level', 0),
+                    })
 
-    if not candidates:
-        log.info("  ✓ No affordable upgrades available")
-        return
+        if not candidates:
+            log.info("  ✓ No affordable upgrades available" if not bought
+                     else f"  ✓ {bought} upgrade(s) started, nothing else affordable")
+            return
 
-    # Buy cheapest affordable upgrade
-    cheapest = min(candidates, key=lambda c: c['cost'])
-    result = perform_upgrade(ANDY_USER_ID, cheapest['category'], cheapest['item_key'])
-    if result.get('success'):
-        log.info(f"  🔧 Upgraded {cheapest['name']} lvl {cheapest['level']}→{cheapest['level']+1} ({cheapest['cost']} shards)")
-    else:
-        log.info(f"  ⚠️  Upgrade {cheapest['name']} failed: {result.get('error', '?')}")
+        cheapest = min(candidates, key=lambda c: c['cost'])
+        result = perform_upgrade(ANDY_USER_ID, cheapest['category'], cheapest['item_key'])
+        if result.get('success'):
+            bought += 1
+            log.info(f"  🔧 Upgraded {cheapest['name']} lvl {cheapest['level']}→{cheapest['level']+1} ({cheapest['cost']} shards)")
+        else:
+            # 'Maximum concurrent upgrades reached' = slots full — the goal state
+            log.info(f"  — {cheapest['name']}: {result.get('error', '?')}")
+            return
 
 
 def check_lab_research():
@@ -572,21 +580,27 @@ def check_new_infrastructure():
         except Exception:
             return 9_999_999
 
-    cheapest = min(unbuilt, key=_cost)
-    cost = _cost(cheapest)
     home = get_or_set_user_mars_home(ANDY_USER_ID)
-    try:
-        result = start_construction(
-            ANDY_USER_ID, cheapest,
-            latitude=float(home['latitude']) + 0.01,
-            longitude=float(home['longitude']) + 0.01,
-        )
-        if result.get('success'):
-            log.info(f"  ✓ started {cheapest} (cost {cost})")
-        else:
-            log.info(f"  — {cheapest}: {result.get('error', 'declined')}")
-    except Exception as e:
-        log.info(f"  ❌ start_construction({cheapest}) ERR: {e}")
+    started = 0
+    for key in sorted(unbuilt, key=_cost):  # cheapest first, keep going until blocked
+        try:
+            result = start_construction(
+                ANDY_USER_ID, key,
+                latitude=float(home['latitude']) + 0.01,
+                longitude=float(home['longitude']) + 0.01,
+            )
+            if result.get('success'):
+                started += 1
+                log.info(f"  ✓ started {key} (cost {_cost(key)})")
+            else:
+                err = result.get('error', 'declined')
+                log.info(f"  — {key}: {err}")
+                # Slot/fund limits block everything costlier too — stop here
+                if 'concurrent' in err.lower() or 'insufficient' in err.lower() or 'not enough' in err.lower():
+                    return
+        except Exception as e:
+            log.info(f"  ❌ start_construction({key}) ERR: {e}")
+            return
 
 
 def check_infrastructure_income():
@@ -660,6 +674,70 @@ AUTHED_API_PROBES = [
     # ARIA
     ('GET', '/api/aria/hint', None, None),
 ]
+
+
+def check_xenobiology():
+    """Run a xenobiology experiment, then spend research points on the weakest stat."""
+    from utilities.xenobiology import (
+        get_xenobiology_status, run_xenobiology_experiment, upgrade_xenobiology_stat,
+    )
+
+    result = run_xenobiology_experiment(ANDY_USER_ID, session={})
+    if result.get('success'):
+        log.info(f"  ✓ experiment: +{result['points_gained']}pts (roll 1-{result['max_roll']})")
+    else:
+        log.info(f"  — {result.get('error', '?')}")
+
+    status = get_xenobiology_status(ANDY_USER_ID)
+    if not status.get('success') or status.get('research_points', 0) < 1:
+        return
+    # Spend on the lowest upgradeable stat so points never sit idle
+    upgradeable = [(v['total'], k) for k, v in status['effective_stats'].items() if v['can_upgrade']]
+    if not upgradeable:
+        log.info("  — research points banked (all stats maxed)")
+        return
+    _, stat = min(upgradeable)
+    up = upgrade_xenobiology_stat(ANDY_USER_ID, stat)
+    if up.get('success'):
+        log.info(f"  ✓ stat upgrade: {stat} +1 (now {up['new_total']})")
+    else:
+        log.info(f"  ⚠ {stat}: {up.get('error', '?')}")
+
+
+def check_aria_resonance():
+    """Fire ARIA's daily resonance boost (24h cooldown handled server-side)."""
+    from utilities.postgres.trails import use_aria_resonance
+
+    result = use_aria_resonance(ANDY_USER_ID)
+    if result.get('success'):
+        log.info(f"  ✓ resonance: +{result.get('km_added', '?')}km on active trail")
+    else:
+        log.info(f"  — {result.get('error', '?')}")
+
+
+def check_origin_sites():
+    """Claim any origin site Andy is eligible for (echo sites handled separately)."""
+    from utilities.signal_utils import get_user_origin_site_eligibility, claim_origin_site
+
+    eligibility = get_user_origin_site_eligibility(ANDY_USER_ID) or []
+    claimable = [s for s in eligibility if s.get('can_claim') and not s.get('is_claimed')]
+    if not claimable:
+        log.info(f"  — no claimable origin sites ({len(eligibility)} tracked)")
+        return
+
+    for site in claimable:
+        exp_id = (site.get('closest_expedition') or {}).get('id')
+        try:
+            result = claim_origin_site(
+                site_id=site['id'], user_id=ANDY_USER_ID,
+                commander_name="Andy", wallet_address=None, expedition_id=exp_id,
+            )
+            if result.get('success'):
+                log.info(f"  ✓ claimed origin site {site.get('site_code')}")
+            else:
+                log.info(f"  ⚠ {site.get('site_code')}: {result.get('error', '?')}")
+        except Exception as e:
+            log.info(f"  ❌ claim_origin_site ERR: {e}")
 
 
 def check_authed_api_probes():
@@ -775,12 +853,15 @@ def main(run_probes=True):
         # --- CLAIM ACCUMULATED ---
         ("Infrastructure Income", check_infrastructure_income),
         ("Echo Sites", check_echo_sites),
+        ("Origin Sites", check_origin_sites),
         # --- KICK OFF NEW ACTIVITY ---
         ("Crew Trails", check_crew_trails),
         ("Expeditions", check_expeditions),
         ("Depot Upgrades", check_depot_upgrades),
         ("Lab Research", check_lab_research),
         ("New Infrastructure", check_new_infrastructure),
+        ("Xenobiology", check_xenobiology),
+        ("ARIA Resonance", check_aria_resonance),
     ]
     if run_probes:
         checks += [

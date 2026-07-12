@@ -122,9 +122,14 @@ def use_aria_resonance(user_id: int, destination_name: str = None) -> dict:
                     return {'success': False, 'error': f'ARIA resonance on cooldown ({hours_remaining:.1f}h remaining)'}
             cur.execute("UPDATE pilgrim.users SET aria_last_resonance = %s WHERE id = %s", (now, user_id))
 
-        # Resonance chunk = base rate × 15min session worth of km
-        from config_shop import BASE_TRAIL_RATE_KMH
-        resonance_km = BASE_TRAIL_RATE_KMH * (15 / 60)
+        # Resonance = one full bonus crew session at ARIA's total multiplier
+        # (was base rate × 15min ≈ 0.19km — invisible next to 500-800km segments).
+        # Reuses the same math as dispatched trail missions so stat/suit
+        # investment scales resonance identically.
+        from config_shop import calculate_trail_km
+        from utilities.expeditions.trails import get_worker_trail_multiplier
+        mult = get_worker_trail_multiplier(user_id, 'aria')
+        resonance_km = calculate_trail_km(mult['total_multiplier'])['km_to_add']
 
         state = add_km_to_active_chain(user_id, resonance_km, 'aria')
         if not state:
