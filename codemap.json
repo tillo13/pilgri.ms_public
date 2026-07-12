@@ -2941,7 +2941,7 @@
       "set_request_log — Begin recording every _request() call to `target_list` (or pass None to",
       "llm_generate — Auto-routes to a free backend. Returns (text, backend_name).",
       "llm_chat — Pinned-backend multi-turn chat. Returns (text, backend_name).",
-      "llm_chat_resilient — Server-side fallback chat. Tries each backend in `backends` (list, in",
+      "llm_chat_resilient — Server-side fallback chat. Returns (text, winning_backend,",
       "llm_chat_eval — Eval-pool scoring call. Signature mirrors kumori_free_llms.chat_eval.",
       "llm_backends — List available backends. Returns the list of backend dicts.",
       "llm_usage — Cluster-wide usage summary across backends.",
@@ -3723,7 +3723,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3810,7 +3810,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {
