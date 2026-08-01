@@ -5,6 +5,7 @@ import logging
 import time as _time
 
 from utilities.claude_utils import create_client, CLAUDE_MODELS, log_api_usage
+from utilities.anthropic.pricing import sampling_kwargs
 from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
 
 from utilities.pilgrimbot.storage import _strip_markdown_json
@@ -45,7 +46,8 @@ Be MINIMAL. Most simple questions need NO context at all. A greeting needs nothi
         client = create_client(model=MODEL)
         _start = _time.time()
         resp = client.client.messages.create(
-            model=MODEL, max_tokens=300, temperature=0,
+            model=MODEL, max_tokens=300,
+            **sampling_kwargs(MODEL, 0),
             messages=[{"role": "user", "content": planner_prompt}]
         )
         _ms = int((_time.time() - _start) * 1000)

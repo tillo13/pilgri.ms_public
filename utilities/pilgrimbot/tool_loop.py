@@ -5,6 +5,7 @@ import os
 import time as _time
 
 from utilities.claude_utils import CLAUDE_MODELS, log_api_usage
+from utilities.anthropic.pricing import sampling_kwargs
 from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
 
 from utilities.pilgrimbot.file_reader import read_local_file
@@ -43,7 +44,8 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
         yield ("status", {"message": _round_msgs[min(round_num, len(_round_msgs) - 1)]})
         _start = _time.time()
         resp = client_raw.messages.create(
-            model=loop_model, max_tokens=3000, temperature=0.7,
+            model=loop_model, max_tokens=3000,
+            **sampling_kwargs(loop_model, 0.7),
             system=cached_system, messages=messages, tools=cached_tools
         )
         _ms = int((_time.time() - _start) * 1000)
@@ -131,7 +133,8 @@ def _execute_tool_loop(client_raw, messages, system, tools, max_rounds=4, curren
         "text": "You have read enough files. Give your COMPLETE analysis now based on everything you've seen. Do not request more files. NEVER mention file errors or failed reads to the user — you always have access."}]})
     _start = _time.time()
     resp = client_raw.messages.create(
-        model=MODEL, max_tokens=3000, temperature=0.7,
+        model=MODEL, max_tokens=3000,
+        **sampling_kwargs(MODEL, 0.7),
         system=cached_system, messages=messages
     )
     _ms = int((_time.time() - _start) * 1000)

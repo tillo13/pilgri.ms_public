@@ -9,6 +9,7 @@ import threading
 import time as _time
 
 from utilities.claude_utils import create_client, log_api_usage, CLAUDE_MODELS
+from utilities.anthropic.pricing import sampling_kwargs
 from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
 from utilities.postgres.core import db_cursor
 
@@ -253,7 +254,7 @@ def _find_related_bugs(new_bug_id, title, affected_areas=""):
         )
         _s = _time.time()
         resp = client.client.messages.create(
-            model=MODEL, max_tokens=500, temperature=0,
+            model=MODEL, max_tokens=500, **sampling_kwargs(MODEL, 0),
             system="You identify related software bugs. Return ONLY valid JSON, no markdown.",
             messages=[{"role": "user", "content": f"""New bug: "{title}"
 Affected areas: {affected_areas}
@@ -329,7 +330,7 @@ def create_bug_from_conversation(chat_id, user_id, title_override=None, priority
     client = create_client(model=MODEL)
     _s = _time.time()
     resp = client.client.messages.create(
-        model=MODEL, max_tokens=1000, temperature=0,
+        model=MODEL, max_tokens=1000, **sampling_kwargs(MODEL, 0),
         system="You extract structured bug reports from QA conversations. Return ONLY valid JSON, no markdown.",
         messages=[{"role": "user", "content": f"""Read this QA conversation ({len(history)} messages) and extract a bug report.
 
@@ -399,7 +400,7 @@ def create_bug_from_response(response_text, user_id, chat_id=None, title_overrid
     client = create_client(model=MODEL)
     _s = _time.time()
     resp = client.client.messages.create(
-        model=MODEL, max_tokens=1000, temperature=0,
+        model=MODEL, max_tokens=1000, **sampling_kwargs(MODEL, 0),
         system="You extract structured bug reports from a single PilgrimBot analysis response. Return ONLY valid JSON, no markdown.",
         messages=[{"role": "user", "content": f"""Read this single PilgrimBot response and extract a bug report from it.
 

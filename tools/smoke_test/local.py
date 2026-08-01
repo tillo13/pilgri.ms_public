@@ -3313,6 +3313,66 @@ def test_scientist_building_bonus_display():
     return True
 
 
+@test("No hardcoded sampling params on Anthropic messages.create()", tier=1, features=['api'], mode='local')
+def test_no_hardcoded_sampling_params():
+    """temperature/top_p/top_k were REMOVED from the API on Opus 4.7+ / Opus 5 /
+    Sonnet 5 / Fable 5 — sending one returns HTTP 400, it is not ignored.
+
+    2026-08-01: PilgrimBot's math/deep path routes to Opus 4.8 while the default
+    chat path is Haiku 4.5, so a hardcoded `temperature=0.7` in tool_loop.py 400'd
+    every math question while ordinary chat kept working. ClaudeClient already had
+    a model-aware guard; the raw `client.messages.create()` / `client.client.messages.create()`
+    call sites bypassed it.
+
+    Every Anthropic call site must go through sampling_kwargs(model, ...) so the
+    guard travels with the model. Gateway calls (utilities/kumori_utils.py and its
+    callers) hit the free-LLM catalog, not Anthropic, and are out of scope."""
+    import os, re
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    util_dir = os.path.join(project_root, 'utilities')
+
+    # Anthropic SDK call sites: .messages.create( or .messages.stream(
+    call = re.compile(r'\.messages\.(create|stream)\(')
+    offenders = []
+    for dirpath, dirnames, filenames in os.walk(util_dir):
+        dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '_antiquated_files')]
+        for fn in filenames:
+            if not fn.endswith('.py'):
+                continue
+            path = os.path.join(dirpath, fn)
+            # pricing.py defines sampling_kwargs and shows the canonical call in its
+            # docstring — scanning it would flag the documentation of the fix.
+            if os.path.relpath(path, project_root) == 'utilities/anthropic/pricing.py':
+                continue
+            with open(path) as f:
+                lines = f.readlines()
+            for i, line in enumerate(lines):
+                if not call.search(line):
+                    continue
+                # Scan the call's argument block (until balanced-ish: next 12 lines)
+                block = ''.join(lines[i:i + 12])
+                block = block[:block.find(')\n')] if ')\n' in block else block
+                for param in ('temperature', 'top_p', 'top_k'):
+                    if re.search(rf'\b{param}\s*=', block):
+                        rel = os.path.relpath(path, project_root)
+                        offenders.append(f"{rel}:{i + 1} passes {param}= directly")
+
+    assert not offenders, (
+        "Hardcoded sampling param(s) on an Anthropic call — these HTTP 400 on Opus 4.7+/5:\n  "
+        + "\n  ".join(offenders)
+        + "\nUse **sampling_kwargs(model, temperature) from utilities/anthropic/pricing.py instead.")
+
+    # The helper itself must still strip params for the models that reject them.
+    from utilities.anthropic.pricing import sampling_kwargs
+    for rejecting in ('claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5'):
+        assert sampling_kwargs(rejecting, 0.7) == {}, \
+            f"sampling_kwargs must drop temperature for {rejecting} (API returns 400)"
+    for accepting in ('claude-haiku-4-5-20251001', 'claude-sonnet-4-6'):
+        assert sampling_kwargs(accepting, 0.7) == {'temperature': 0.7}, \
+            f"sampling_kwargs must keep temperature for {accepting}"
+    return True
+
+
 @test("Expedition timestamp ordering: departed <= arrives <= return_arrives", tier=1, features=['db'], mode='local')
 def test_expedition_timestamp_ordering():
     """An expedition can never arrive before it left, return before it arrived, or

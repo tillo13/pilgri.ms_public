@@ -74,6 +74,31 @@ WEB_SEARCH_TOOL_VERSION = "web_search_20260209"  # update here when Anthropic re
 
 APP_NAME = 'galactica'
 
+# Model families that REJECT temperature/top_p/top_k with HTTP 400 — the params
+# were removed from the API, not merely ignored. Steer these via prompting or
+# output_config.effort instead. Substring match against the resolved model id.
+_NO_SAMPLING_PARAMS = ('opus-4-7', 'opus-4-8', 'opus-5', 'sonnet-5', 'fable-5', 'mythos-5')
+
+
+def sampling_kwargs(model, temperature=None, top_p=None, top_k=None) -> Dict:
+    """Sampling kwargs for messages.create(), model-aware. Splat the result:
+    `client.messages.create(model=m, **sampling_kwargs(m, 0.7), ...)`.
+
+    THE single source of truth for this — any raw `messages.create()` that hardcodes
+    `temperature=` will 400 the moment its model moves to Opus 4.7+. That is exactly
+    what broke PilgrimBot's math/deep path (Opus 4.8) on 2026-08-01. Locked by the
+    "no hardcoded sampling params" smoke test."""
+    if any(fam in (model or '') for fam in _NO_SAMPLING_PARAMS):
+        return {}
+    kw = {}
+    if temperature is not None:
+        kw['temperature'] = temperature
+    if top_p is not None:
+        kw['top_p'] = top_p
+    if top_k is not None:
+        kw['top_k'] = top_k
+    return kw
+
 
 def log_api_usage(model, usage, feature=None, streaming=False,
                   image_count=0, user_id=None, duration_ms=None):
