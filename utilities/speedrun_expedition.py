@@ -84,7 +84,9 @@ def load_expedition_context(expedition_id: int) -> dict:
         travel_hours = 0
         if exp.get('departed_at') and exp.get('arrives_at'):
             delta = exp['arrives_at'] - exp['departed_at']
-            travel_hours = delta.total_seconds() / 3600
+            # max(0): a corrupted row with arrives_at < departed_at otherwise feeds a
+            # negative travel time into calculate_discovery_checkpoints, which divides by it.
+            travel_hours = max(0.0, delta.total_seconds() / 3600)
         travel_time_seconds = int(travel_hours * 3600)
 
         # Cargo capacity: stored on expedition + engineering bonus already applied at launch

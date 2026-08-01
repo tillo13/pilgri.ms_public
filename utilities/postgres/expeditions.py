@@ -85,6 +85,12 @@ def create_expedition(user_id: int, commander_asset_id: int, destination_name: s
             # that ran with a non-UTC TZ, producing arrives_at < departed_at
             # by the offset (~5-7h). 56 historical rows patched 2026-04-30.
             now = datetime.utcnow()
+            # Clamp: a non-positive travel time walks both legs backwards, producing
+            # arrives_at < departed_at. 5 rows (ids 29/45/48/49/50, Jan 2026) were
+            # written that way before the pricing rewrite; repaired by
+            # _oneoff/fix_expedition_timestamps.py, and the ordering invariant is
+            # locked by the "expedition timestamp ordering" smoke test.
+            travel_time_seconds = max(60, int(travel_time_seconds))
             arrives_at = now + timedelta(seconds=travel_time_seconds)
             return_arrives_at = arrives_at + timedelta(seconds=travel_time_seconds)  # Same time back
 

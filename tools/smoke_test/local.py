@@ -3313,6 +3313,34 @@ def test_scientist_building_bonus_display():
     return True
 
 
+@test("Expedition timestamp ordering: departed <= arrives <= return_arrives", tier=1, features=['db'], mode='local')
+def test_expedition_timestamp_ordering():
+    """An expedition can never arrive before it left, return before it arrived, or
+    complete before it launched.
+
+    Two historical breaches (Jan 2026, both repaired by
+    _oneoff/fix_expedition_timestamps.py): a negative travel_time_seconds walked both
+    legs backwards, and a manual force-complete script stamped local-time
+    datetime.now() against UTC departed_at values. Guards now sit at both write points
+    (create_expedition clamps travel time; speedrun_expedition clamps the
+    reconstruction) — this locks the data side so a new breach can't ship silently."""
+    from utilities.postgres.core import db_cursor
+    checks = [
+        ('arrives_at < departed_at', 'arrived before it departed'),
+        ('return_arrives_at < arrives_at', 'returned before it arrived'),
+        ('completed_at < departed_at', 'completed before it departed'),
+    ]
+    with db_cursor() as cur:
+        for cond, desc in checks:
+            cur.execute(f"SELECT id, user_id FROM pilgrim.expeditions WHERE {cond} ORDER BY id LIMIT 5")
+            bad = [dict(r) for r in cur.fetchall()]
+            assert not bad, (
+                f"{len(bad)}+ expedition(s) {desc} ({cond}): "
+                f"{', '.join('#%s(u%s)' % (b['id'], b['user_id']) for b in bad)}. "
+                "Run _oneoff/fix_expedition_timestamps.py to inspect and repair.")
+    return True
+
+
 @test("GCS bucket accessible", tier=3, features=['api'], mode='local')
 def test_gcs_bucket():
     import requests

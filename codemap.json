@@ -1102,6 +1102,13 @@
       "test_currency_conversion"
     ]
   },
+  "_oneoff/fix_expedition_timestamps.py": {
+    "description": "Repair historical pilgrim.expeditions rows that violate timestamp ordering.",
+    "exports": [
+      "repair — Return the corrected (arrives_at, return_arrives_at, completed_at).",
+      "main"
+    ]
+  },
   "docs/2026apr10plan.md": {
     "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
     "exports": [
@@ -3723,7 +3730,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3739,7 +3746,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
