@@ -52,23 +52,15 @@ PRESETS = {
 
 # Default LLM backend chain — STRONGEST first. Used for prompt synthesis and
 # caption rewriting where instruction-following + prose quality matter.
-# Ranked by capability for structured creative tasks:
-#   openrouter-hermes      → Hermes 3 Llama 3.1 405B (the biggest free model)
-#   mistral-mistral-large  → Mistral Large (top Mistral tier)
-#   sambanova-meta-llama   → Llama 3.3 70B on SambaNova (very fast)
-#   github-llama-70b       → Llama 3.3 70B (GitHub Models, reliable)
-#   openrouter-nemotron    → NVIDIA Nemotron 120B
-#   github-gpt4nano        → GPT-4.1 nano (small but solid for fallback)
-#   mistral-medium         → final fallback
-DEFAULT_LLM_BACKENDS = [
-    'openrouter-hermes',
-    'mistral-mistral-large-latest',
-    'sambanova-meta-llama-3.3-70b-instruct',
-    'github-llama-70b',
-    'openrouter-nemotron-120b',
-    'github-gpt4nano',
-    'mistral-medium',
-]
+# Backend selection is INTENT MODE by default (min_quality_tier='high' +
+# allow_degrade): kumori resolves the best live free lanes server-side, so
+# galactica never pins provider names. The old DEFAULT_LLM_BACKENDS pin list
+# (hermes/mistral-large/sambanova/github/nemotron/gpt4nano/mistral-medium)
+# rotted to 1 live lane out of 7 by 2026-08 — retirements, org pauses, and a
+# mistral tripwire took the rest — and ARIA's 13:00Z snapshot cron 502'd with
+# 'all 6 backends failed' whenever that last lane was daily-capped. Pass
+# backends=[...] explicitly only when a call truly needs a specific lane.
+DEFAULT_MIN_QUALITY_TIER = 'high'
 
 _initialized = False
 
@@ -241,13 +233,16 @@ def kumori_llm_chat(system: str, user_prompt: str, *,
     When debug=True, debug_info has {upstream_calls: [...]} listing every
     HTTP call kumori made to LLM provider APIs (Groq, Mistral, GitHub Models, etc.)
     with full request/response payloads."""
-    chain = backends or DEFAULT_LLM_BACKENDS
     messages = [{"role": "user", "content": user_prompt}]
-    text, backend, attempts, debug_info = _kc_llm_chat_resilient(
-        backends=chain, messages=messages, max_tokens=max_tokens,
-        temperature=temperature, system=system, min_chars=min_chars,
-        debug=debug,
-    )
+    kw = dict(messages=messages, max_tokens=max_tokens,
+              temperature=temperature, system=system, min_chars=min_chars,
+              debug=debug, app_name='galactica')
+    if backends:
+        kw['backends'] = backends
+    else:
+        kw['min_quality_tier'] = DEFAULT_MIN_QUALITY_TIER
+        kw['allow_degrade'] = True
+    text, backend, attempts, debug_info = _kc_llm_chat_resilient(**kw)
     return text or '', backend or '?', attempts or [], debug_info
 
 
@@ -262,10 +257,13 @@ def kumori_llm_chat_messages(system: str, messages: List[Dict[str, str]], *,
 
     min_chars defaults to 1 (not 80) because a short valid chat reply
     ("Acknowledged, Captain.") must not count as a backend failure."""
-    chain = backends or DEFAULT_LLM_BACKENDS
-    text, backend, attempts, debug_info = _kc_llm_chat_resilient(
-        backends=chain, messages=messages, max_tokens=max_tokens,
-        temperature=temperature, system=system, min_chars=min_chars,
-        debug=debug, app_name='galactica',
-    )
+    kw = dict(messages=messages, max_tokens=max_tokens,
+              temperature=temperature, system=system, min_chars=min_chars,
+              debug=debug, app_name='galactica')
+    if backends:
+        kw['backends'] = backends
+    else:
+        kw['min_quality_tier'] = DEFAULT_MIN_QUALITY_TIER
+        kw['allow_degrade'] = True
+    text, backend, attempts, debug_info = _kc_llm_chat_resilient(**kw)
     return text or '', backend or '?', attempts or [], debug_info
