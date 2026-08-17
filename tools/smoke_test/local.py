@@ -2075,6 +2075,13 @@ def test_signal_node_link_affordance():
         html = f.read()
     if 'signal-node-link' not in html or '/expeditions?tab=map' not in html:
         return "signal.html lost the signal-node-link anchors or the /expeditions?tab=map deep-link"
+    # #1432 round 3 (Luke 2026-06-12): dormant nodes link ONLY when this captain
+    # has located them (expedition path within unlock radius). The template must
+    # gate the anchor on `located` and give un-located nodes a plain-text fallback.
+    if '{% if located %}' not in html:
+        return "signal.html lost the per-captain `located` gate on dormant node links (#1432)"
+    if 'Signal not yet located' not in html:
+        return "signal.html lost the plain-text fallback for un-located dormant nodes (#1432)"
     return True
 
 

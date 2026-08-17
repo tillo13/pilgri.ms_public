@@ -99,11 +99,20 @@
             {% set lon_code = "%03d"|format((site.longitude|abs * 10)|int) %}
             {% set node_id = "NODE-" ~ lat_code ~ lon_code %}
             {% set card = user_signal_cards.get(node_id) if user_signal_cards else None %}
+            {# #1432 (Luke 2026-06-12): only nodes THIS captain has located get the map
+               deep-link — an expedition path within the unlock radius, the same threshold
+               the claim system calls "discovered". Un-located nodes render as plain text:
+               the link would spoil a position the captain hasn't earned. #}
+            {% set located = card and card.distance_km is not none and card.unlock_radius_km and card.distance_km <= card.unlock_radius_km %}
             <div class="signal-detail-card{% if card and card.can_claim %} claimable{% endif %}">
                 <div class="signal-node-cryptic">
+                    {% if located %}
                     <a class="signal-node-id signal-node-link"
                        href="/expeditions?tab=map&lat={{ site.latitude }}&lon={{ site.longitude }}&zoom=6&marker={{ node_id }}"
                        title="Find this signal on the Expedition Map">{{ node_id }}</a>
+                    {% else %}
+                    <span class="signal-node-id" title="Signal not yet located — explore closer to pinpoint it">{{ node_id }}</span>
+                    {% endif %}
                     <span class="signal-node-hint">
                         {% if site.mission_status == 'successful' %}
                         Signal strength: Strong
