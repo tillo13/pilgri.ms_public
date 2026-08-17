@@ -292,22 +292,26 @@ def launch_expedition(
 
         # signal_claim expeditions skip discovery generation entirely — they return 0 finds.
         # The reward is the founder/visitor slot, awarded at completion via _complete_signal_claim_expedition.
+        storage_limited = False
+        storage_capacity = None
+        current_total = None
         if expedition_type != 'signal_claim':
             try:
                 from utilities.discovery_utils import generate_expedition_discoveries
                 from utilities.postgres.expeditions import get_total_discovery_count
 
                 # Storage capacity check - counts ALL inventory (claimed + unclaimed, not analyzed)
+                # #1525: no longer pre-clamps cargo_capacity here — the old clamp ran BEFORE
+                # the +4 distance bonus inside generate_expedition_discoveries, so "storage
+                # full" silently produced exactly 3+4=7 finds for a week of Luke's launches.
+                # The limit now binds on the final cap inside the generator, and the launch
+                # response tells the player it happened instead of hiding it in a log line.
                 storage_capacity = upgrade_effects.get('storage_capacity', 300)
                 current_total = get_total_discovery_count(user_id)
                 remaining_capacity = max(0, storage_capacity - current_total)
-
-                if remaining_capacity == 0:
-                    logger.warning(f"⚠️ Storage full: {current_total}/{storage_capacity} discoveries. Limiting to minimum cargo.")
-                    cargo_capacity = min(cargo_capacity, 3)  # Still get SOME finds
-                elif remaining_capacity < cargo_capacity:
-                    logger.info(f"📦 Storage nearly full: {current_total}/{storage_capacity}. Limiting cargo to {remaining_capacity}.")
-                    cargo_capacity = max(3, remaining_capacity)  # Never below 3
+                storage_limited = remaining_capacity < cargo_capacity
+                if storage_limited:
+                    logger.warning(f"📦 Storage nearly full: {current_total}/{storage_capacity}. Haul will be capped (bunker slots free: {remaining_capacity}).")
 
                 all_items = get_discovery_items_catalog()
                 nearby_features = get_nearest_mars_landmarks(
@@ -330,7 +334,8 @@ def launch_expedition(
                     nearby_features=nearby_features,
                     travel_time_seconds=travel_time_seconds,
                     user_expedition_count=user_expedition_count,
-                    cargo_capacity=cargo_capacity
+                    cargo_capacity=cargo_capacity,
+                    storage_remaining=remaining_capacity
                 )
 
                 create_expedition_discoveries(discoveries)
@@ -403,7 +408,11 @@ def launch_expedition(
             'total_round_trip_seconds': travel_time_seconds * 2,
             'vehicle_type': vehicle_type,
             'cargo_capacity': cargo_capacity,
-            'first_mission_discount': is_first_mission
+            'first_mission_discount': is_first_mission,
+            # #1525: tell the player when the Storage Bunker capped this haul
+            'storage_limited': storage_limited,
+            'storage_used': current_total,
+            'storage_capacity': storage_capacity
         }
 
     except Exception as e:

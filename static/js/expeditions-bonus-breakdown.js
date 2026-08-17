@@ -52,7 +52,9 @@ function mergeBlurb(op) {
         case 'max_then_mult':
             return 'Within Player Upgrades and Infrastructure: <strong>max()</strong> wins (best level supersedes lower ones). Tech Tree: each tech counts once at its highest level, distinct techs <strong>add</strong> within a branch, then × across branches. ARIA Bonds: × on top. <strong>Final = max(upgrades) × max(infra) × tech × bond</strong>.';
         case 'mult':
-            return 'Cost reductions <strong>stack multiplicatively</strong> across every source. <strong>Final = product of all rows</strong> (lower = better — a cost mult of 0.60 means you pay 60%, i.e. −40% off).';
+            // #1528: metric-neutral (this blurb serves Build Time, cost, and every ×-stacking
+            // metric) + the sentence that answers "why don't the row percents add up":
+            return 'These bonuses <strong>stack multiplicatively</strong> — each discount applies to what the previous rows already reduced, so the row percentages do <strong>not</strong> simply add. <strong>Final = product of all rows</strong> (lower = better — ×0.60 means 60% of the base value, i.e. −40%).';
         case 'add':
             return 'All contributions <strong>add together</strong> across every source. <strong>Final = sum of all rows</strong>.';
         case 'or':
@@ -124,6 +126,17 @@ function renderBreakdownBody(key, data, source) {
         body += `</div>`;
     }
     body += `</div>`;
+
+    // #1528: show the receipts — the literal product of every row, so a captain
+    // can verify the total by multiplying (48% ≠ sum of row percents by design).
+    if (meta.op === 'mult' && rows.length > 1) {
+        const product = rows.reduce((p, r) => p * Number(r.value), 1);
+        const equation = rows.map(r => `×${Number(r.value).toFixed(3)}`).join(' ');
+        body += `<div style="margin-top:10px;padding:8px 12px;background:rgba(0,0,0,0.35);border-radius:6px;font-size:12px;color:var(--text-primary);text-align:center;">
+            <span style="opacity:.85;">${equation}</span>
+            <strong> = ${product.toFixed(3)}× (${product >= 1 ? '+' : '−'}${Math.abs((product - 1) * 100).toFixed(1)}%)</strong>
+        </div>`;
+    }
 
     body += `<div style="font-size:10.5px;color:var(--text-muted);margin-top:10px;line-height:1.55;opacity:.85;">
         Source of truth: <code>utilities/upgrades/effects.py</code> (aggregator) and

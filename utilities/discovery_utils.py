@@ -260,13 +260,18 @@ def calculate_enhanced_item_value(base_value: int, exploration_stat: int, item_e
 def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
                                    available_items: List[dict], nearby_features: List[dict],
                                    travel_time_seconds: int = None, user_expedition_count: int = 1,
-                                   cargo_capacity: int = None) -> List[dict]:
+                                   cargo_capacity: int = None, storage_remaining: int = None) -> List[dict]:
     """
     Generate discoveries with GEOGRAPHIC FILTERING and CARGO LIMITS.
     Mission artifacts ONLY spawn if mission landing site is on expedition path.
 
     cargo_capacity: Max discoveries the vehicle can carry back. If None, uses default of 5.
                    Excess discoveries are left behind (vehicle takes the most valuable).
+    storage_remaining: Free Storage Bunker slots. When set, it caps the FINAL haul
+                   (after the distance cargo bonus) at max(3, min(cap, storage_remaining)).
+                   #1525: the old pre-clamp in lifecycle ran BEFORE the +4 distance
+                   bonus here, so "storage full → 3" actually delivered 3+4=7 items
+                   into a full warehouse — Luke's week of exactly-7 hauls.
     """
     from utilities.expeditions.terrain import is_item_geographically_valid
 
@@ -445,6 +450,12 @@ def generate_expedition_discoveries(expedition_id: int, expedition_data: dict,
         distance_cargo_bonus = min(4, int((distance_km - 500) / 500) + 1)
         cargo_capacity += distance_cargo_bonus
         logger.info(f"Distance cargo bonus: +{distance_cargo_bonus} slots (total {cargo_capacity}) for {distance_km}km expedition")
+
+    # Storage Bunker limit binds on the FINAL cap, after the distance bonus (#1525).
+    # Floor of 3: a full warehouse still yields SOME finds, but never bonus-inflated ones.
+    if storage_remaining is not None and storage_remaining < cargo_capacity:
+        cargo_capacity = max(3, min(cargo_capacity, storage_remaining))
+        logger.info(f"Storage limit: haul capped at {cargo_capacity} ({storage_remaining} bunker slots free)")
 
     # Enforce cargo capacity: total discoveries (all types) capped by vehicle capacity
     # Sort by value (highest first) so we keep the best finds

@@ -209,6 +209,7 @@ INFRASTRUCTURE_CATALOG = {
         'description': 'Processes Martian regolith into Sepolia shards',
         'icon': '\u2699\ufe0f',  # ⚙️
         'category': 'extraction',
+        'generates_resource': 'sepolia',  # #1524: income gate — without this the row inserts NULL and never accrues
         'max_level': 10,
         'default_level': 0,
         'requirements': ['water_extractor', 'solar_array'],
@@ -901,6 +902,7 @@ INFRASTRUCTURE_CATALOG = {
         'description': 'Ancient resonance array that detects deep Sepolia shard formations',
         'icon': '\U0001f5fc',  # 🗼
         'category': 'research',
+        'generates_resource': 'sepolia',  # #1524: income gate — without this the row inserts NULL and never accrues
         'max_level': 10,
         'default_level': 0,
         'requirements': ['thermal_vent_tap'],

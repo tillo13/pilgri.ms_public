@@ -254,44 +254,44 @@ def get_frontier_landmarks_beyond_point(
     dots, so it's impossible to starve a direction while undiscovered landmarks
     remain in it — no constant-tuning required.
 
+    OCTANT-TRUE (#1519 take 2): a direction's dots must LIE in that direction as
+    seen from home. The old filter was a lat/lon half-plane past the furthest
+    point ("E" = any longitude east of it, at ANY latitude), so a near-polar
+    expedition classified E (Δlon dwarfs Δlat in the angle math) pushed the "E"
+    half-plane past the antimeridian and the nearest survivors were near-home or
+    polar dots — Luke's "dots only close to base or far north/south, nothing far
+    east/west". Now a candidate qualifies only if its map-space octant from HOME
+    (same wrap-aware angle used to bucket expeditions) equals `direction`, and it
+    sits farther from home than the furthest point. Assigned direction == where
+    the dot visually renders, so E/W can no longer starve while undiscovered
+    landmarks remain there.
+
     STEPPING STONES: Uses adaptive band sizing — 500km bands near home, scaling
     down to 200km bands at extreme distances — to prevent clustering.
     """
     exclude_names = exclude_names or set()
-    # Build SQL conditions based on direction
-    conditions = []
-    if 'N' in direction:
-        conditions.append(f'latitude > {furthest_lat}')
-    if 'S' in direction:
-        conditions.append(f'latitude < {furthest_lat}')
-    if 'E' in direction:
-        conditions.append(f'longitude > {furthest_lon}')
-    if 'W' in direction:
-        conditions.append(f'longitude < {furthest_lon}')
-
-    if not conditions:
-        return []
-
     try:
+        # "Beyond" = farther from home than the furthest expedition in this octant
+        # (0 when called with furthest == home, i.e. the top-up/no-expeditions path).
+        min_dist_km = calculate_mars_distance(home_lat, home_lon, furthest_lat, furthest_lon)
+
         # Python-filter from the cached mars_mappings pool (memoized per-request).
         def _matches(r):
-            lat, lon = r['latitude'], r['longitude']
             # #1519: drop already-discovered landmarks up front so the [:150] cap
             # and per-band pick below only ever consider UNDISCOVERED candidates.
             if r['name'] in exclude_names: return False
-            if 'N' in direction and not lat > furthest_lat: return False
-            if 'S' in direction and not lat < furthest_lat: return False
-            # Wrap-aware E/W (#1485): "further east/west" follows the shortest arc
-            # around the sphere, so reaching lon≈0 no longer dead-ends the W/NW/SW dots.
-            if 'E' in direction and not _lon_delta(furthest_lon, lon) > 0: return False
-            if 'W' in direction and not _lon_delta(furthest_lon, lon) < 0: return False
-            return True
+            # #1519 take 2: octant membership from home, wrap-aware via _lon_delta (#1485).
+            angle = math.degrees(math.atan2(_lon_delta(home_lon, r['longitude']),
+                                            r['latitude'] - home_lat))
+            return _get_direction_from_angle(angle) == direction
 
         candidates = []
         for r in get_all_mars_mappings():
             if not _matches(r):
                 continue
             dist = calculate_mars_distance(home_lat, home_lon, r['latitude'], r['longitude'])
+            if dist <= min_dist_km:
+                continue
             out = dict(r)
             out['distance_km'] = dist
             candidates.append(out)

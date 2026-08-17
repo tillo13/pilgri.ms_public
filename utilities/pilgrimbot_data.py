@@ -700,6 +700,7 @@ def query_player_data(category, user_id):
             lines.append("  • Per-checkpoint terrain matching: items with `preferred_mars_features` not matching `nearby_feature.type` are filtered from the weighted draw at that checkpoint.")
             lines.append("  • Item-level `min_distance_km`/`max_distance_km` re-filter the pool at each checkpoint (not just the trip's total distance).")
             lines.append("  • Cargo capacity overflow keeps highest-`enhanced_value` items — value-weighted, so rarity mix can shift after the cap.")
+            lines.append("  • Storage Bunker limit (#1525): when free bunker slots < vehicle cargo, the FINAL haul (after the +4 distance bonus) is capped at max(3, free slots). A full warehouse yields exactly 3 finds per trip until discoveries are extracted/sharded — this is why a run of identical small hauls usually means storage was full, not a drop-rate bug.")
             lines.append("  • Equipment effects (scanner/drone rare+legendary bonuses) at time of trip are not stored historically.")
             lines.append("")
             lines.append("INTERPRETATION GUIDE: cross-reference the tier table at the top with YOUR TIER EXPOSURE. If legendary-eligible trips are low, low legendary count is by design. If exposure is high but actual count is still near zero, that's the signal to investigate the spawn pipeline.")

@@ -812,13 +812,18 @@ def test_frontier_longitude_wraps():
         return f"_lon_delta(0.1,5)={_lon_delta(0.1,5.0):.1f} should be >0 (east)"
 
     # The actual bug repro: furthest NW point at the western meridian must still
-    # surface frontier dots (they live at lon≈350-360, one wrap away).
+    # surface frontier dots. Since #1519 take 2 the invariant is octant-true from
+    # HOME (wrap-aware via _lon_delta inside the angle), not "west of the furthest
+    # point's longitude" — that half-plane was itself the take-2 bug.
+    import math
+    from utilities.postgres.map import _get_direction_from_angle
     dots = get_frontier_landmarks_beyond_point('NW', 46.0, 0.1, -30.7, 90.0, limit=3)
     if not dots:
         return "NW frontier from a lon≈0 furthest point returned 0 dots — meridian-wrap regression"
     for d in dots:
-        if not _lon_delta(0.1, d['longitude']) < 0:
-            return f"NW dot {d['name']} at lon {d['longitude']} is not west (wrap) of 0.1"
+        angle = math.degrees(math.atan2(_lon_delta(90.0, d['longitude']), d['latitude'] - (-30.7)))
+        if _get_direction_from_angle(angle) != 'NW':
+            return f"NW dot {d['name']} at lat {d['latitude']} lon {d['longitude']} is not in the NW octant from home"
     return True
 
 
@@ -844,6 +849,94 @@ def test_frontier_excludes_discovered():
         return "excluding the first NW dots returned 0 — direction starved despite undiscovered remaining"
     if fresh_names & excluded:
         return f"excluded dots leaked back into result: {fresh_names & excluded}"
+    return True
+
+
+@test("Frontier dots lie in their assigned octant (#1519 take 2)", tier=1, features=['map'], mode='local')
+def test_frontier_dots_octant_true():
+    """Bug #1519 take 2 (Luke, 2026-08-01): dots spawned only near base or far
+    N/S, nothing far E/W. Root cause — direction was a lat/lon HALF-PLANE past the
+    furthest expedition, so a near-polar expedition classified 'E' (its Δlon dwarfs
+    its Δlat) pushed the E half-plane past the antimeridian and the nearest
+    survivors were near-home/polar dots, mislabeled E. Repro uses Luke's real
+    geometry: home (-30.7146, 90.0306), furthest-E expedition Parva Planum
+    (-73.7, 264.9). Lock: every dot returned for a direction sits in that octant
+    as seen from home, beyond the furthest point's distance.
+    """
+    import math
+    from utilities.postgres.map import (_lon_delta, _get_direction_from_angle,
+                                        get_frontier_landmarks_beyond_point)
+    from utilities.mars_math import calculate_mars_distance
+
+    home_lat, home_lon = -30.7146, 90.0306
+    furthest_lat, furthest_lon = -73.7, 264.9
+    min_dist = calculate_mars_distance(home_lat, home_lon, furthest_lat, furthest_lon)
+
+    dots = get_frontier_landmarks_beyond_point('E', furthest_lat, furthest_lon,
+                                               home_lat, home_lon, limit=5)
+    if not dots:
+        return "E frontier beyond a near-polar furthest point returned 0 dots"
+    for d in dots:
+        angle = math.degrees(math.atan2(_lon_delta(home_lon, d['longitude']),
+                                        d['latitude'] - home_lat))
+        if _get_direction_from_angle(angle) != 'E':
+            return f"dot {d['name']} (lat {d['latitude']}, lon {d['longitude']}) assigned E but not in E octant from home"
+        if d['distance_km'] <= min_dist:
+            return f"dot {d['name']} at {d['distance_km']}km is not beyond the furthest point ({min_dist:.0f}km)"
+    return True
+
+
+@test("Storage-full haul caps at the floor, not floor+distance-bonus (#1525)", tier=1, features=['config'], mode='local')
+def test_storage_cap_binds_after_distance_bonus():
+    """Bug #1525: lifecycle clamped cargo to 3 when the Storage Bunker was full,
+    then generate_expedition_discoveries added the +4 distance bonus AFTER the
+    clamp — every launch during Luke's full-storage week returned exactly 3+4=7
+    items into a full warehouse, silently. Lock: with storage_remaining=0 the
+    final haul is <= 3 regardless of distance; with plenty of storage the cap
+    stays cargo+bonus (unchanged behavior).
+    """
+    import inspect
+    from utilities.discovery_utils import generate_expedition_discoveries
+
+    sig = inspect.signature(generate_expedition_discoveries)
+    if 'storage_remaining' not in sig.parameters:
+        return "generate_expedition_discoveries lost the storage_remaining param (#1525 regression)"
+
+    src = inspect.getsource(generate_expedition_discoveries)
+    bonus_idx = src.find('distance_cargo_bonus')
+    storage_idx = src.find('storage_remaining is not None')
+    if storage_idx == -1:
+        return "storage_remaining cap logic missing from generate_expedition_discoveries"
+    if storage_idx < bonus_idx:
+        return "storage cap applies BEFORE the distance bonus — the +4 re-inflation bug is back (#1525)"
+
+    from utilities.expeditions import lifecycle
+    launch_src = inspect.getsource(lifecycle.launch_expedition)
+    if 'storage_remaining=remaining_capacity' not in launch_src:
+        return "launch_expedition no longer passes storage_remaining — cap silently dropped (#1525)"
+    if 'storage_limited' not in launch_src:
+        return "launch_expedition response lost the storage_limited flag — cap is silent again (#1525)"
+    return True
+
+
+@test("Shard-generating buildings carry the sepolia income flag (#1524)", tier=1, features=['config'], mode='local')
+def test_generating_buildings_flagged():
+    """Bug #1524: monolith_antenna had per-level generation_rate but no top-level
+    generates_resource, so purchases inserted NULL and calculate_accumulated_income
+    (which gates on the DB flag) never accrued its shards — real income loss, the
+    'building visible in-game but missing from the rate breakdown' class Luke has
+    flagged 5+ times (#1039 #1109 #1163). refinery had silently lost the same flag.
+    Lock: every catalog entry with any level generation_rate > 0 declares
+    generates_resource == 'sepolia'.
+    """
+    from config_infrastructure import INFRASTRUCTURE_CATALOG
+    broken = []
+    for key, cat in INFRASTRUCTURE_CATALOG.items():
+        max_gen = max((lv.get('generation_rate', 0) for lv in cat.get('levels', {}).values()), default=0)
+        if max_gen > 0 and cat.get('generates_resource') != 'sepolia':
+            broken.append(f"{key} (rate up to {max_gen}/hr, generates_resource={cat.get('generates_resource')!r})")
+    if broken:
+        return "shard-generating buildings missing the sepolia flag: " + "; ".join(broken)
     return True
 
 

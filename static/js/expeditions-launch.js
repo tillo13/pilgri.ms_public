@@ -36,6 +36,12 @@ function renderPreLaunchModal(l, preview) {
                 <a href="/brainstorm/trail-network" target="_blank" style="color:var(--text-muted); opacity:0.7; text-decoration:none;">Trail Roadmap ↗</a>
             </div>
         </div>
+        ${preview.storage && preview.storage.warning ? `
+        <!-- Storage warning (#1525): backend has sent this since the storage block existed; the modal dropped it -->
+        <div style="margin-bottom:14px; padding:10px 12px; border-radius:8px; border:2px solid var(--color-mars); background:rgba(0,0,0,0.55); color:#fff; font-size:12px; font-weight:600;">
+            &#9888; STORAGE: ${preview.storage.warning}<br>
+            <span style="font-weight:400; opacity:0.9;">Hauls are capped by free bunker slots (${preview.storage.remaining} free) — extract or shard discoveries to carry full loads.</span>
+        </div>` : ''}
         <!-- Vehicle Selector -->
         <div class="mm-section-label">Select Vehicle</div>
         <div id="modal-vehicle-selector" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
@@ -265,8 +271,13 @@ async function confirmExpeditionLaunch() {
             }
             closePreLaunchModal();
             const roundTripHours = Math.round((data.total_round_trip_seconds || data.travel_time_seconds * 2) / 3600);
-            showToast(`Launched! Returns in ${roundTripHours}h.`, 'success');
-            setTimeout(() => location.reload(), 2000);
+            if (data.storage_limited) {
+                // #1525: never let a storage-capped haul happen silently
+                showToast(`Launched, but storage is nearly full (${data.storage_used}/${data.storage_capacity}) — this haul is capped. Extract or shard discoveries!`, 'error');
+            } else {
+                showToast(`Launched! Returns in ${roundTripHours}h.`, 'success');
+            }
+            setTimeout(() => location.reload(), data.storage_limited ? 4500 : 2000);
         } else {
             showToast(data.error || 'Failed to launch', 'error');
             launchBtn.disabled = false;
