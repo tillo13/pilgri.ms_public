@@ -3556,8 +3556,15 @@ def test_cache_policy():
     assert cc and 'immutable' in cc.group(1) and 'max-age=31536000' in cc.group(1), (
         f"/static must send 'public, max-age=31536000, immutable', got: "
         f"{cc.group(1) if cc else 'no Cache-Control'!r}")
-    assert 'expiration:' not in block.group(1), (
-        "/static must not also set 'expiration:' — it fights the http_headers Cache-Control")
+    # Shipped 2026-08-20 without this and prod served TWO conflicting
+    # cache-control headers: ours plus App Engine's default 'max-age=600'.
+    # App Engine always emits a Cache-Control derived from 'expiration'; the
+    # only way to stop it contradicting http_headers is to set it to match.
+    exp = re.search(r'expiration:\s*"([^"]+)"', block.group(1))
+    assert exp and exp.group(1) == '365d', (
+        "/static must set expiration: \"365d\" alongside http_headers — without it "
+        "App Engine appends its own 'cache-control: public, max-age=600', giving the "
+        f"browser two conflicting directives. Got: {exp.group(1) if exp else 'none'!r}")
 
     # 3. Page HTML carries no-cache
     src = open(os.path.join(root, 'app.py')).read()
