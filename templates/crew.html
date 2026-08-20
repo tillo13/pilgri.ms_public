@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="crew-tab-label">Trails</span>
     </button>
     <button class="crew-tab" data-tab="captain" onclick="switchCrewTab('captain')" title="View and upgrade your captain's stats">
-        <img src="{{ character_url if character_url else '/static/img/placeholder.png' }}" alt="" class="crew-tab-icon" style="border: 2px solid var(--color-success);">
+        <img src="{{ character_url if character_url else '/static/img/placeholder.png?v=' ~ static_v }}" alt="" class="crew-tab-icon" style="border: 2px solid var(--color-success);">
         <span class="crew-tab-label">Captain</span>
     </button>
     <button class="crew-tab" data-tab="scientist" onclick="switchCrewTab('scientist')" title="Your scientist extracts shards from discoveries">

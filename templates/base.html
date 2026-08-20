@@ -16,7 +16,7 @@
     <meta property="og:title" content="{% block og_title %}Pilgrims — Mars Colony Strategy Game{% endblock %}">
     <meta property="og:description" content="{% block og_description %}A Mars colony strategy game that respects your time. Build, explore, and research at your own pace — no streaks, no penalties. Your colony runs even when you are away.{% endblock %}">
     <meta property="og:url" content="https://pilgri.ms{{ request.path }}">
-    <meta property="og:image" content="https://pilgri.ms/static/og-card.svg">
+    <meta property="og:image" content="https://pilgri.ms/static/og-card.svg?v={{ static_v }}">
 
     <link rel="alternate" type="application/atom+xml" title="Pilgrims Changelog Feed" href="/feed.xml">
     <link rel="stylesheet" href="/static/css/core.css?v={{ static_v }}">
@@ -26,11 +26,11 @@
     <link rel="stylesheet" href="/static/css/core-utilities.css?v={{ static_v }}">
     <link rel="stylesheet" href="/static/css/epic-reveal.css?v={{ static_v }}">
     {% block extra_css %}{% endblock %}
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="/static/manifest.json?v={{ static_v }}">
     <meta name="theme-color" content="#ec7427">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/static/images/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/images/icon-192.png?v={{ static_v }}">
     <link rel="icon" type="image/png" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/favicon_crystal_1768501259.png">
     <!-- Preload OPTIMIZED nav icons (~2KB each vs 400-700KB originals!) -->
     <!-- NOTE: research_icon_1769189735_nav.png is 605KB (not optimized like the others ~2KB) — excluded from preload -->
@@ -429,7 +429,11 @@
 </div>
 <script src="/static/js/aria.js?v={{ static_v }}"></script>
 
-<script>window.initialBalance = {{ total_balance if total_balance is defined else 0 }};</script>
+<script>window.initialBalance = {{ total_balance if total_balance is defined else 0 }};
+// Deploy id. External JS has zero Jinja, so any JS that builds a /static URL
+// reads the buster from here (see crew-notifications.js). core.js also compares
+// it against the server's to detect a deploy under an open tab.
+window.STATIC_V = "{{ static_v }}";</script>
 <!-- #38: global icon registry so external JS can render custom Mars icons (no inline emojis). DRY: one block, every page. -->
 <script type="application/json" id="globalIcons">{{ icons | tojson }}</script>
 <script src="/static/js/core.js?v={{ static_v }}"></script>

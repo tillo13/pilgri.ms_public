@@ -265,13 +265,15 @@ def get_default_leader_urls(leader_id, use_static=False):
         use_static: If True, return static paths for local serving (anonymous users).
                    If False, return GCS URLs (authenticated users for permanent storage).
     """
-    from config import BUCKET_NAME, DEFAULT_LEADERS_GCS_BASE
+    from config import BUCKET_NAME, DEFAULT_LEADERS_GCS_BASE, STATIC_V
 
     if use_static:
-        # Use local static paths (for anonymous onboarding flow)
+        # Use local static paths (for anonymous onboarding flow).
+        # ?v= is required: app.yaml serves /static immutable for a year, so an
+        # unversioned URL would pin replaced leader art in browsers indefinitely.
         return {
-            'image_url': f"/static/images/default_leaders/{leader_id}.png",
-            'video_url': f"/static/videos/default_leaders/{leader_id}.mp4",
+            'image_url': f"/static/images/default_leaders/{leader_id}.png?v={STATIC_V}",
+            'video_url': f"/static/videos/default_leaders/{leader_id}.mp4?v={STATIC_V}",
             'image_blob': None,
             'video_blob': None
         }

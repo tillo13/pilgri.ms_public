@@ -911,3 +911,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+
+// ═══════════════════════════════════════════════════════════════════
+// NEW-VERSION DETECTION
+// ═══════════════════════════════════════════════════════════════════
+// Cache headers can't reach a tab that's already open — its HTML is already in
+// memory, pointing at the previous deploy's ?v= assets. Checking when the tab
+// regains focus costs nothing while idle (no polling) and covers the real case:
+// user leaves a tab open, we deploy, they come back. Never auto-reloads — that
+// would discard whatever they were mid-way through.
+let newVersionShown = false;
+let lastVersionCheck = 0;
+async function checkForNewVersion() {
+    if (newVersionShown || !window.STATIC_V) return;
+    if (Date.now() - lastVersionCheck < 60000) return;  // 60s floor
+    lastVersionCheck = Date.now();
+    try {
+        const r = await fetch('/api/version', { cache: 'no-store' });
+        if (!r.ok) return;
+        const { v } = await r.json();
+        if (v && v !== window.STATIC_V) {
+            newVersionShown = true;
+            showToast(
+                'A new version of Pilgrims is live. <a href="#" onclick="location.reload();return false;" class="toast-reload-link">Reload</a> to get it.',
+                'info', 'Update available', 0
+            );
+        }
+    } catch (e) { /* offline or blocked — try again next time the tab focuses */ }
+}
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkForNewVersion();
+});

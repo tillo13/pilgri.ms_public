@@ -33,7 +33,7 @@
                 <!-- Captain -->
                 <div id="crew-option-captain" class="crew-option" style="background: var(--bg-tertiary); border-radius: 12px; padding: 16px; border: 2px solid var(--color-success); transition: all 0.2s;">
                     <div class="flex items-center gap-12">
-                        <img src="{{ character_url if character_url else '/static/img/placeholder.png' }}" alt="Captain" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
+                        <img src="{{ character_url if character_url else '/static/img/placeholder.png?v=' ~ static_v }}" alt="Captain" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover;">
                         <div class="flex-1">
                             <div class="font-semibold">{{ commander.commander_name if commander and commander.commander_name else 'Captain' }}</div>
                             <div class="text-xs opacity-70">Uses Logistics stat</div>

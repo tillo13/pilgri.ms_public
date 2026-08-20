@@ -207,7 +207,7 @@
         <div class="text-xs opacity-50 mb-8">Your Crew • <span style="color: var(--color-warning);">Orange = building trail</span> • % = share of your total trail km</div>
         <div class="grid gap-12 mb-12" style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));" id="crew-status-row">
             <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid var(--color-success);">
-                <img src="{{ character_url if character_url else '/static/img/placeholder.png' }}" alt="Captain" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
+                <img src="{{ character_url if character_url else '/static/img/placeholder.png?v=' ~ static_v }}" alt="Captain" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
                 <div class="text-xs font-semibold">{{ commander.commander_name if commander and commander.commander_name else 'Captain' }}</div>
                 <div id="captain-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
                 <div id="captain-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>

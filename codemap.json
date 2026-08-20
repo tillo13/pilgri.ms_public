@@ -59,12 +59,12 @@
       "log_request_time — Log request duration to console for performance monitoring.",
       "set_security_headers — Add security headers including HSTS to force HTTPS.",
       "inject_global_stats — Inject global user stats into all templates. Delegates to utilities.session.user_hydration.",
+      "api_version — Current deploy id, for open tabs to notice a deploy (core.js checkForNewVersion).",
       "handle_api_error — Decorator for consistent API error handling",
       "login_required — Require authentication for route. Sets g.user_id for convenience.",
       "cron_only — Reject non-cron traffic. GAE adds the X-Appengine-Cron header on all cron.yaml calls.",
       "indexnow_key — Serve IndexNow verification key.",
-      "sitemap",
-      "robots"
+      "sitemap"
     ]
   },
   "config.py": {
@@ -1117,6 +1117,9 @@
   },
   "_oneoff/repair_1524_generates_resource.py": {
     "description": "Bug #1524 data repair: flag shard-generating buildings whose colony_infrastructure"
+  },
+  "_oneoff/shot_1432_signal.js": {
+    "description": "#1432 — capture what /signal renders for Luke (user 112) on live prod."
   },
   "docs/2026apr10plan.md": {
     "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
@@ -3740,7 +3743,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

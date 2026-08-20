@@ -245,7 +245,7 @@
                  Wan render — only on genuine first-time builds (video_updated_at IS NULL). -->
             <div class="robot-hero-pair" {% if _video_first_time %}id="robot-hero-awaiting-video"{% endif %}>
                 <div class="robot-hero-slot">
-                    <img src="{{ robot.current_image_url or '/static/img/placeholder.png' }}"
+                    <img src="{{ robot.current_image_url or '/static/img/placeholder.png?v=' ~ static_v }}"
                          alt="Narog" id="robot-hero-img"
                          onclick="showImageModal(this.src)"
                          class="rounded-lg cursor-pointer"

@@ -4,6 +4,11 @@
 // ═══════════════════════════════════════════════════════════════════
 // MISSION COMPLETION NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════════════
+// /static is served immutable for a year (app.yaml), so every asset URL
+// must carry the deploy buster. External JS has no Jinja — base.html sets
+// window.STATIC_V.
+const NOTIF_ICON = '/static/img/favicon.png?v=' + (window.STATIC_V || '0');
+
 let lastCaptainBusy = null;
 let lastScientistBusy = null;
 let notificationsEnabled = false;
@@ -61,7 +66,7 @@ function showMissionCompleteNotification(member) {
         try {
             new Notification('Mission Complete!', {
                 body: `${memberName} returned from trail mission`,
-                icon: '/static/img/favicon.png',
+                icon: NOTIF_ICON,
                 tag: `mission-${member}`
             });
         } catch (e) { /* ignore */ }
@@ -85,7 +90,7 @@ function showMissionReadyToast(member, target) {
         try {
             new Notification(`${memberName} Ready!`, {
                 body: `Mission to ${target || 'trail'} complete. Tap to claim.`,
-                icon: '/static/img/favicon.png',
+                icon: NOTIF_ICON,
                 tag: `ready-${member}`
             });
         } catch (e) { /* ignore */ }

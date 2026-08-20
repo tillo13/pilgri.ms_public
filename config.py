@@ -22,6 +22,18 @@ GOOGLE_CLIENT_SECRET_SECRET = "GOOGLE_CLIENT_SECRET"
 _BT_ID = "1akw5Z8LzHjdFBDnS1FOD" + "Ut3tJVP9skG1PLf5yJ3AvbI"
 BUG_TRACKER_URL = f"https://docs.google.com/spreadsheets/d/{_BT_ID}"
 
+# Static asset cache-buster (app.py + utilities).
+# MUST be stable across every instance of a deploy and change only on deploy.
+# App Engine sets GAE_VERSION/GAE_DEPLOYMENT_ID per deployed version; the
+# timestamp fallback only applies to local dev. A per-boot timestamp here would
+# mint a different ?v= on every cold start (and per instance), re-busting every
+# user's CSS/JS for byte-identical files.
+def _static_version():
+    import os, time
+    return os.environ.get('GAE_VERSION') or os.environ.get('GAE_DEPLOYMENT_ID') or str(int(time.time()))
+
+STATIC_V = _static_version()
+
 # Server Settings (app.py)
 DEFAULT_HOST = '0.0.0.0'
 PORT_RANGE_START = 5001  # Start at 5001 (macOS Control Center uses 5000)

@@ -3513,3 +3513,103 @@ def test_gcs_bucket():
     except Exception:
         SKIPPED.append("GCS bucket (network error)")
         return True
+
+
+@test("Cache policy: HTML revalidates, /static immutable, every asset versioned", tier=1, features=['config', 'templates'], mode='local')
+def test_cache_policy():
+    """Users must never be told to hard-refresh after a deploy.
+
+    2026-08-20 (#1432/#1509): Luke reported "I still see old code" three times.
+    /signal was serving page HTML with NO Cache-Control, no ETag, no Last-Modified
+    — freshness was left to browser heuristics — while STATIC_V was a per-BOOT
+    timestamp, so up to 3 instances minted 3 different ?v= for identical bytes and
+    every cold start re-busted every user's CSS/JS.
+
+    The contract, all three parts of which must hold together:
+      1. Page HTML -> 'no-cache' (revalidate every load). It is the manifest that
+         names the ?v= asset URLs; stale HTML pins the user to stale assets.
+      2. /static -> 'immutable' (cache a year, never revalidate).
+      3. Therefore EVERY /static URL must carry ?v=. An unversioned asset under an
+         immutable header is frozen in users' browsers for a year — the exact
+         failure mode this test exists to prevent.
+    """
+    import os, re
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+    # 1. STATIC_V is deploy-stable, not per-boot
+    from config import STATIC_V, _static_version
+    assert STATIC_V, "STATIC_V must be non-empty"
+    os.environ['GAE_VERSION'] = 'version-smoketest'
+    try:
+        assert _static_version() == 'version-smoketest', (
+            "STATIC_V must derive from GAE_VERSION on App Engine, not a boot timestamp — "
+            "a per-boot value differs per instance and re-busts every cold start")
+    finally:
+        del os.environ['GAE_VERSION']
+
+    # 2. app.yaml serves /static immutable. Text-scanned rather than yaml-parsed:
+    # PyYAML is not a runtime dependency and this is not worth adding one for.
+    ay = open(os.path.join(root, 'app.yaml')).read()
+    block = re.search(r'^\s*-\s*url:\s*/static\s*$(.*?)(?=^\s*-\s*url:)', ay, re.M | re.S)
+    assert block, "app.yaml must have a /static handler"
+    cc = re.search(r'Cache-Control:\s*"?([^"\n]+)"?', block.group(1))
+    assert cc and 'immutable' in cc.group(1) and 'max-age=31536000' in cc.group(1), (
+        f"/static must send 'public, max-age=31536000, immutable', got: "
+        f"{cc.group(1) if cc else 'no Cache-Control'!r}")
+    assert 'expiration:' not in block.group(1), (
+        "/static must not also set 'expiration:' — it fights the http_headers Cache-Control")
+
+    # 3. Page HTML carries no-cache
+    src = open(os.path.join(root, 'app.py')).read()
+    assert re.search(r"mimetype\s*==\s*'text/html'", src) and 'private, no-cache' in src, (
+        "app.py set_security_headers must send 'private, no-cache' on text/html — "
+        "without it a stale page pins users to stale ?v= assets")
+
+    # 4. No unversioned /static reference anywhere (the immutable landmine)
+    ALLOWED = {
+        # Fetched by the browser at a fixed path with no ?v=; app.yaml gives it a
+        # bounded 7d expiration instead of immutable.
+        '/static/favicon.ico',
+        # Referenced from inside static/manifest.json, which is a static file and
+        # cannot be templated. PWA icons are fetched at install time, not per page.
+        '/static/images/icon-192.png', '/static/images/icon-512.png',
+    }
+    ref = re.compile(r'/static/[A-Za-z0-9_./-]+')
+    offenders = []
+    for sub in ('templates', 'static/js', 'static/css', 'utilities'):
+        for dirpath, dirnames, filenames in os.walk(os.path.join(root, sub)):
+            dirnames[:] = [d for d in dirnames if d not in ('__pycache__', '_antiquated_files', 'archive')]
+            for fn in filenames:
+                # Only files actually served to a browser. Docs/backups aren't.
+                if not fn.endswith(('.html', '.js', '.css', '.py')):
+                    continue
+                if fn.endswith(('.bak', '.map')):
+                    continue
+                fp = os.path.join(dirpath, fn)
+                try:
+                    body = open(fp, encoding='utf-8').read()
+                except (UnicodeDecodeError, OSError):
+                    continue
+                for m in ref.finditer(body):
+                    url = m.group(0)
+                    if url in ALLOWED or url.endswith('/'):
+                        continue
+                    # Versioned if ?v= follows, or the path is built with a
+                    # trailing dynamic segment that appends it (f-string / concat).
+                    tail = body[m.end():m.end() + 40]
+                    if not (tail.startswith('?v=') or '?v=' in tail[:20]):
+                        offenders.append(f"{os.path.relpath(fp, root)}: {url} (no ?v=)")
+                        continue
+                    # A hardcoded buster ('?v=20260516a') is worse than none under
+                    # an immutable header: it looks versioned but only changes when
+                    # a human remembers to edit the string.
+                    if tail.startswith('?v=') and not re.match(r"\?v=(\{\{|'|\" \+|\"|\$\{)", tail):
+                        if not re.match(r"\?v=\{static_v\}", tail):
+                            offenders.append(f"{os.path.relpath(fp, root)}: {url}{tail[:14]} (hardcoded buster — use static_v)")
+                    continue
+                    offenders.append(f"{os.path.relpath(fp, root)}: {url}")
+    assert not offenders, (
+        f"{len(offenders)} unversioned /static reference(s) under an immutable "
+        f"cache header — these would freeze in users' browsers for a year: "
+        + '; '.join(sorted(set(offenders))[:10]))
+    return True

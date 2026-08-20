@@ -7,15 +7,13 @@ from functools import wraps
 from datetime import timedelta, datetime
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g, Response, stream_with_context
 from werkzeug.routing import IntegerConverter
+import json
 import logging
 import time
 import os
 import threading
 
-from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes, TRAIL_DIR_PALETTE
-
-# Cache-bust static files on each deploy (timestamp at startup)
-STATIC_V = str(int(time.time()))
+from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes, TRAIL_DIR_PALETTE, STATIC_V
 from utilities.replicate_utils import FluxGenerator, process_uploaded_image, animate_character_video
 from utilities.google_auth_utils import SimpleGoogleAuth, get_secret
 from utilities.postgres.core import db_cursor
@@ -231,6 +229,13 @@ def set_security_headers(response):
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     # Prevent MIME type sniffing
     response.headers['X-Content-Type-Options'] = 'nosniff'
+    # Page HTML is the manifest that names every ?v= asset URL, so a stale page
+    # pins the user to stale CSS/JS. 'no-cache' = store it but revalidate before
+    # use; 'private' keeps per-user pages out of shared proxies. Static files are
+    # served by the App Engine handler (app.yaml) and never reach Flask; the
+    # mimetype gate keeps local dev's Flask-served /static consistent with prod.
+    if response.mimetype == 'text/html':
+        response.headers['Cache-Control'] = 'private, no-cache'
     return response
 
 try:
@@ -245,6 +250,21 @@ def inject_global_stats():
     """Inject global user stats into all templates. Delegates to utilities.session.user_hydration."""
     from utilities.session.user_hydration import build_global_context
     return build_global_context(auth, STATIC_V)
+
+
+@app.route('/api/version')
+def api_version():
+    """Current deploy id, for open tabs to notice a deploy (core.js checkForNewVersion).
+
+    Headers can't reach a tab that is already open — its HTML is in memory. This
+    is the only path that can. no-store on the check itself, or the browser would
+    cache the answer and never see the change.
+    """
+    return Response(
+        json.dumps({'v': STATIC_V}),
+        mimetype='application/json',
+        headers={'Cache-Control': 'no-store'}
+    )
 
 
 

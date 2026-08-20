@@ -702,6 +702,10 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 .toast-content { flex: 1; min-width: 0; }
 .toast-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--color-aria); }
 .toast-message { font-size: 13px; color: var(--text-primary); line-height: 1.4; white-space: pre-line; }
+/* Reload link inside the "Update available" toast. Underlined + bold so the
+   affordance is shape-based, not colour-based (colourblind safety). */
+.toast-reload-link { color: var(--text-primary); font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; cursor: pointer; }
+.toast-reload-link:hover { color: var(--color-aria); }
 .toast-close { background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all var(--tr); flex-shrink: 0; }
 .toast-close:hover { background: var(--bg-secondary); color: var(--text-secondary); }
 .toast.removing { animation: slideOut 0.3s ease; }
