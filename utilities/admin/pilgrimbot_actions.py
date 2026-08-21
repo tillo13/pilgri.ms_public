@@ -44,8 +44,12 @@ def _pool_health_action():
         text = "\n--- DB POOL HEALTH (live) ---\n"
         text += (f"Pool: {ph['status'].upper()} — {ph.get('used', 0)}/{ph['maxconn']} used, "
                  f"{ph.get('available', 0)} available\n")
+        # These are two different failures and used to be reported as one:
+        # a fallback means Cloud SQL was unreachable, NOT that the pool was full.
         text += (f"Fallbacks since boot: {ph['fallbacks']} "
-                 f"{'(NONE — healthy!)' if ph['fallbacks'] == 0 else '(pool was exhausted this many times)'}\n")
+                 f"{'(NONE — healthy!)' if ph['fallbacks'] == 0 else '(Cloud SQL was unreachable this many times)'}\n")
+        text += (f"Pool starvation since boot: {ph.get('starvations', 0)} "
+                 f"{'(NONE — pool is big enough)' if not ph.get('starvations') else '(pool genuinely ran out of slots)'}\n")
         if ds and not ds.get('error'):
             text += f"Global DB: {ds['total_used']}/{ds['max_connections']} connections ({ds['pct_used']}% used)\n"
             text += f"States: {ds['by_state']}\n"

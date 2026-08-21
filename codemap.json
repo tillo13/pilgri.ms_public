@@ -1116,6 +1116,13 @@
   "_oneoff/shot_1432_signal.js": {
     "description": "#1432 — capture what /signal renders for Luke (user 112) on live prod."
   },
+  "_oneoff/verify_pool.py": {
+    "description": "Verify the checkout gate: many threads, bounded connections, no permit leak.",
+    "exports": [
+      "worker",
+      "observe"
+    ]
+  },
   "docs/2026apr10plan.md": {
     "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
     "exports": [
@@ -2157,7 +2164,8 @@
     "description": "utilities.postgres.core — connection pool, cursor, generic helpers.",
     "exports": [
       "get_secret — Get secret from environment variable first, then Google Secret Manager (cached)",
-      "get_db_connection — Get a connection from the pool (fast!) or create new if pool fails.",
+      "class _FairGate — FIFO checkout gate for pool slots.",
+      "get_db_connection — Get a pooled connection, waiting for a slot if the pool is busy.",
       "get_pool_health — Return connection pool health stats for admin monitoring.",
       "get_db_connection_stats — Query pg_stat_activity for global connection stats.",
       "reset_db_counter",
@@ -3754,7 +3762,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/pool_health, api/admin/speed_test"
+      "calls: api/admin/speed_test, api/admin/pool_health"
     ]
   },
   "templates/aria_album.html": {
@@ -3825,7 +3833,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {

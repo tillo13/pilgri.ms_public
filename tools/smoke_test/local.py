@@ -12,10 +12,12 @@ from . import test, requires_web3, requires_flask, TESTS, PASSED, FAILED, SKIPPE
 
 @test("Database connection", tier=1, features=['db'], mode='local')
 def test_db_connection():
-    from utilities.postgres.core import get_db_connection
+    from utilities.postgres.core import get_db_connection, _return_connection
     conn = get_db_connection()
     assert conn is not None, "Failed to get DB connection"
-    conn.close()
+    # _return_connection, not conn.close(): closing a pooled connection strands its
+    # checkout permit and shrinks the pool for the life of the process.
+    _return_connection(conn)
     return True
 
 
@@ -3620,3 +3622,142 @@ def test_cache_policy():
         f"cache header — these would freeze in users' browsers for a year: "
         + '; '.join(sorted(set(offenders))[:10]))
     return True
+
+
+@test("DB pool: bounded ceiling, FIFO gate, starvation never widens", tier=1,
+      features=['db'], mode='local')
+def test_db_pool_contract():
+    """maxconn must be a real ceiling, not the point where the app stops obeying it.
+
+    2026-08-21 fleet connection audit. galactica ran minconn=2/maxconn=20 against a
+    50-slot shared instance (47 usable after superuser reserve) — 3 instances x 20 =
+    60 potential, so one app could oversubscribe every other app on kumori. Two root
+    causes, both of which this test locks shut:
+
+      1. maxconn was never a ceiling. psycopg2's getconn() raises PoolError the
+         instant every slot is checked out; the old code caught that and opened an
+         UNPOOLED direct connection. So 20 was the threshold past which galactica
+         began opening *uncapped* connections — exactly backwards.
+      2. The 12->20 raise was made on a signal that meant something else. One
+         counter (_pool_fallback_count) was incremented both when Cloud SQL was
+         unreachable AND when the pool was full, so "2k+ fallbacks" could not
+         distinguish them. 30d of App Engine logs showed 4 fallbacks — all four
+         "server closed the connection unexpectedly"/"Connection refused" inside one
+         3-minute window — and ZERO genuine exhaustion events.
+
+    A plain BoundedSemaphore is not enough: a thread that releases a slot can
+    re-acquire it ahead of already-queued threads (barging). Measured with 24
+    threads against 8 slots — 8 hot threads completed all their work while the other
+    16 waited out the full timeout and raised. Hence the FIFO gate.
+    """
+    import os, re, threading
+    from utilities.postgres import core
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+    # 1. The ceiling is bounded, and justified by the gunicorn thread count.
+    ay = open(os.path.join(root, 'app.yaml')).read()
+    m = re.search(r'--threads\s+(\d+)', ay)
+    assert m, "app.yaml entrypoint must declare --threads (pool sizing depends on it)"
+    threads, maxconn = int(m.group(1)), core.DEFAULT_MAXCONN
+    inst = re.search(r'max_instances:\s*(\d+)', ay)
+    max_instances = int(inst.group(1)) if inst else 1
+    assert maxconn >= threads, (
+        f"maxconn ({maxconn}) below gunicorn --threads ({threads}) — request threads "
+        f"would queue on the gate before the pool is even full")
+    assert maxconn * max_instances <= 47, (
+        f"maxconn {maxconn} x max_instances {max_instances} = {maxconn * max_instances} "
+        f"exceeds the 47 usable slots on the shared kumori instance. Raising this "
+        f"starves every other app — resize the instance instead.")
+
+    # 2. The gate is FIFO-fair, not a barging semaphore.
+    core._get_connection_pool()          # ensure the pool + its gate exist
+    assert isinstance(core._pool_semaphore, core._FairGate), (
+        f"pool gate is {type(core._pool_semaphore).__name__}, must be _FairGate. "
+        f"threading.BoundedSemaphore lets a thread that just released a slot "
+        f"re-acquire ahead of queued threads; measured 16 of 24 threads timing out "
+        f"while 8 hot threads cycled through all their work.")
+    # Exercise the pool's ACTUAL gate class, so swapping it out fails here.
+    gate = type(core._pool_semaphore)(1)
+    assert gate.acquire(timeout=1), "fresh gate must hand out its only slot"
+    order, started = [], []
+    def waiter(tag):
+        started.append(tag)
+        if gate.acquire(timeout=5):
+            order.append(tag)
+    ts = []
+    for tag in ('first', 'second', 'third'):
+        t = threading.Thread(target=waiter, args=(tag,)); t.start(); ts.append(t)
+        while tag not in started:
+            pass
+        threading.Event().wait(0.05)   # let it reach acquire() and queue
+    # A late arrival must NOT jump the queue of already-waiting threads.
+    assert not gate.acquire(timeout=0.05), (
+        "a new caller took a slot while three threads were already queued — that is "
+        "the barging behaviour BoundedSemaphore has and the FIFO gate exists to stop")
+    # Release ONE slot at a time and wait for it to be claimed before releasing the
+    # next. Releasing all three at once would only measure OS thread wake-up order,
+    # not which waiter the gate chose (that mistake made this assertion flap).
+    import time as _time
+    for i in range(len(ts)):
+        gate.release()
+        deadline = _time.time() + 5
+        while len(order) <= i and _time.time() < deadline:
+            _time.sleep(0.005)
+        assert len(order) == i + 1, (
+            f"released slot {i + 1} was not claimed by any queued waiter within 5s")
+    for t in ts:
+        t.join(timeout=5)
+    assert order == ['first', 'second', 'third'], (
+        f"gate must hand freed slots to the longest waiter first, got {order}")
+
+    # 3. Starvation raises; it must never become an uncapped direct connection.
+    real_gate, real_wait = core._pool_semaphore, core.POOL_WAIT_SECS
+    fallbacks_before = core._pool_fallback_count
+    try:
+        core._pool_semaphore = core._FairGate(1)
+        core.POOL_WAIT_SECS = 0.05
+        assert core._pool_semaphore.acquire(timeout=1)   # gate now full
+        raised = False
+        try:
+            core.get_db_connection()
+        except Exception as e:
+            raised = isinstance(e, core.psycopg2.pool.PoolError)
+        assert raised, (
+            "a full pool must raise PoolError. If this returns a connection, the "
+            "direct-connect fallback is back and maxconn is not a ceiling again.")
+        assert core._pool_fallback_count == fallbacks_before, (
+            "starvation incremented the Cloud-SQL-unreachable counter — the two "
+            "causes must stay distinguishable or the next capacity call repeats "
+            "the 12->20 mistake")
+        assert core._pool_starvation_count > 0, "starvation must be counted separately"
+    finally:
+        core._pool_semaphore, core.POOL_WAIT_SECS = real_gate, real_wait
+        core._pool_starvation_count = 0
+
+    # 4. Connections are labelled, so a connection audit can attribute them.
+    # galactica connects as the role `pilgrim_app` (named after a different app and
+    # shared with the deploy tool), so application_name is the only thing that
+    # identifies galactica in pg_stat_activity.
+    assert core._app_identity(), "application_name must be non-empty"
+
+    # 5. The liveness probe must leave the connection IDLE, not IDLE IN TRANSACTION.
+    # The original probe ran a bare SELECT 1 and never rolled back, so every pooled
+    # connection was handed out mid-transaction and held that way for its whole life.
+    from psycopg2 import extensions as _ext
+    conn = core.get_db_connection()
+    try:
+        assert conn.info.transaction_status == _ext.TRANSACTION_STATUS_IDLE, (
+            "checkout handed out a connection that is not IDLE — an idle-in-transaction "
+            "connection pins a snapshot and blocks vacuum on the shared instance")
+    finally:
+        core._return_connection(conn)
+
+    # 6. Every checkout path returns its permit, or the pool shrinks permanently.
+    before = core._pool_semaphore.free
+    for _ in range(3):
+        c = core.get_db_connection()
+        core._return_connection(c)
+    assert core._pool_semaphore.free == before, (
+        f"permit leaked across checkout/return ({before} -> {core._pool_semaphore.free}); "
+        f"a leaked permit shrinks the pool for the life of the process")
+    assert not core._permits, f"permit registry not drained: {len(core._permits)} left"
