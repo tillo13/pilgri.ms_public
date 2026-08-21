@@ -1,16 +1,11 @@
 {
   "CLAUDE.md": {
-    "description": "Developer guide — code philosophy, critical rules, frontend patterns, deployment, ARIA context",
+    "description": "CLAUDE.md — Pilgrims / Galactica",
     "exports": [
-      "Code Philosophy - ALWAYS FOLLOW",
-      "CRITICAL RULES - NEVER VIOLATE",
-      "Key Documentation",
-      "Commands",
-      "Frontend Patterns - ENFORCED",
-      "Speed & UX Performance - ENFORCED",
-      "Image Generation Style - MANDATORY",
-      "Accessibility - COLORBLIND HIGH CONTRAST",
-      "Icons - NO DEFAULT EMOJIS"
+      "Values — these don't bend",
+      "Design values — the game's own physics",
+      "Working rules",
+      "Commands"
     ]
   },
   "NAROG_HANDOFF.md": {
@@ -3743,7 +3738,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
