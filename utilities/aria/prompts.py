@@ -470,6 +470,59 @@ Write a brief narrative in ARIA's voice describing this moment, like an Instagra
         return f"Another moment preserved for the archives. {commander} and I continue our work here on Mars."
 
 
+def _extract_json_object(text: str, backend: str = '?') -> dict:
+    """Parse the first balanced JSON object out of an LLM reply.
+
+    Handles the reply shapes the free lanes actually produce: a <think>
+    reasoning preamble (nemotron), markdown code fences, prose before the JSON
+    ("Here is the JSON you asked for:"), and trailing extra data after the
+    closing brace. The old inline version only extracted when the reply STARTED
+    with '{', so any preamble skipped extraction and fed the prose straight to
+    json.loads — 'Expecting value: char 0' three times per photo cron via the
+    nemotron lanes, 2026-08-23. Raises ValueError labeled with the lane + reply
+    head so the error digest names the culprit instead of a bare parse error.
+    """
+    cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+    if cleaned.startswith('```'):
+        lines = cleaned.split('\n')
+        start = 1 if lines[0].startswith('```') else 0
+        end = len(lines) - 1 if lines[-1].strip() == '```' else len(lines)
+        cleaned = '\n'.join(lines[start:end])
+    start_idx = cleaned.find('{')
+    if start_idx == -1:
+        raise ValueError(f"no JSON object in reply (backend={backend}): {cleaned[:120]!r}")
+    depth = 0
+    in_string = False
+    escape_next = False
+    end_idx = None
+    for idx in range(start_idx, len(cleaned)):
+        ch = cleaned[idx]
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if not in_string:
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end_idx = idx + 1
+                    break
+    # end_idx None = truncated reply: keep the tail so the error names the spot.
+    try:
+        # strict=False tolerates control characters in LLM output
+        return json.loads(cleaned[start_idx:end_idx], strict=False)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"unparseable JSON from backend={backend}: {e} :: {cleaned[start_idx:end_idx][:120]!r}")
+
+
 def generate_aria_snapshot_prompt(user_context: dict, forced_category: str = None) -> dict:
     """
     Generate a completely unique, dynamic image prompt for ARIA Photo Journal.
@@ -811,41 +864,7 @@ Return ONLY valid JSON."""
         logger.info(f"aria_snapshot_prompt via kumori backend={backend}")
 
         if text:
-            result_text = text.strip()
-
-            # Handle markdown code blocks
-            if result_text.startswith('```'):
-                lines = result_text.split('\n')
-                start = 1 if lines[0].startswith('```') else 0
-                end = len(lines) - 1 if lines[-1].strip() == '```' else len(lines)
-                result_text = '\n'.join(lines[start:end])
-
-            # Extract first valid JSON object (Claude sometimes returns extra data after the JSON)
-            if result_text.strip().startswith('{'):
-                depth = 0
-                in_string = False
-                escape_next = False
-                for idx, ch in enumerate(result_text):
-                    if escape_next:
-                        escape_next = False
-                        continue
-                    if ch == '\\' and in_string:
-                        escape_next = True
-                        continue
-                    if ch == '"' and not escape_next:
-                        in_string = not in_string
-                        continue
-                    if not in_string:
-                        if ch == '{':
-                            depth += 1
-                        elif ch == '}':
-                            depth -= 1
-                            if depth == 0:
-                                result_text = result_text[:idx + 1]
-                                break
-
-            # Use strict=False to handle control characters in LLM output
-            result = json.loads(result_text, strict=False)
+            result = _extract_json_object(text, backend)
 
             if 'prompt' not in result or 'caption' not in result:
                 raise ValueError("Missing required fields")
