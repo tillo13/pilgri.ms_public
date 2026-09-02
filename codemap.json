@@ -1472,6 +1472,7 @@
     "exports": [
       "get_client — Returns the shared Anthropic client (cached). Use only when you need raw",
       "new_client — Return a FRESH Anthropic client with the canonical API key + any extra",
+      "create_params — Keyword params the INSTALLED SDK's messages.create() accepts, cached.",
       "class _TracingMessages",
       "class _TracingAnthropic — Duck-typed proxy that intercepts .messages.create / .messages.stream.",
       "log_usage_async — Log to kumori_api_usage.",
@@ -2045,6 +2046,12 @@
   },
   "utilities/pilgrimbot/__init__.py": {
     "description": "PilgrimBot package — codebase Q&A bot split into focused modules."
+  },
+  "utilities/pilgrimbot/alerts.py": {
+    "description": "PilgrimBot failure alert: one email to Andy the moment a chat dies, debounced.",
+    "exports": [
+      "alert_pilgrimbot_failure — Email Andy about a PilgrimBot chat failure. Never raises."
+    ]
   },
   "utilities/pilgrimbot/context.py": {
     "description": "PilgrimBot context planner + surgical context loader.",
@@ -2758,7 +2765,7 @@
   "utilities/anthropic/pricing.py": {
     "description": "Claude model catalog, pricing, and kumori_api_usage logging.",
     "exports": [
-      "sampling_kwargs — Sampling kwargs for messages.create(), model-aware. Splat the result:",
+      "sampling_kwargs — Sampling kwargs for messages.create(), model- AND SDK-aware. Splat the result:",
       "log_api_usage — Thin compatibility shim — routes to the canonical kumori logger.",
       "get_model_pricing — Get accurate pricing per token for different Claude models"
     ]
@@ -3746,7 +3753,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3833,7 +3840,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/cancel, api/tech/research"
+      "calls: api/tech/research, api/tech/cancel"
     ]
   },
   "templates/signal.html": {

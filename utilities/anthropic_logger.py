@@ -14,6 +14,7 @@ Public API:
     logged_stream(app_name, feature, **stream_kwargs) -> context manager yielding SDK stream
     get_client() -> Anthropic  (raw client for tool-loop edge cases)
     log_usage_async(app_name, model, usage, feature, ...) -> None  (fire-and-forget)
+    create_params() -> frozenset  (kwargs the installed SDK's messages.create() accepts)
 
 Key source: kumori-404602/KUMORI_ANTHROPIC_API_KEY (cross-project read).
 DB target:  kumori-404602 Postgres, table kumori_api_usage.
@@ -253,6 +254,35 @@ def _caller_site() -> tuple[str, int, str]:
             continue
         return fn, frame.lineno, frame.function
     return ('unknown', 0, 'unknown')
+
+
+_CREATE_PARAMS: Optional[frozenset] = None
+
+
+def create_params() -> frozenset:
+    """Keyword params the INSTALLED SDK's messages.create() accepts, cached.
+
+    anthropic 1.0.0 (2026-08-20) removed temperature/top_p/top_k from
+    messages.create() — passing one raises TypeError before any HTTP request,
+    so no retry, fallback lane, or API-side guard can save the call. Each
+    app's sampling helper filters against this set so an SDK upgrade can never
+    turn a kwarg into a crash again. (galactica PilgrimBot was dark 2026-08-20
+    to 2026-09-02 this way: unpinned `anthropic>=0.40.0`, three deploys pulled
+    1.x, local venv still on 0.96 so the pre-deploy smoke stayed green.)
+
+    Fail-safe direction: if the signature cannot be read, return an empty set —
+    a dropped sampling param never breaks a call, a passed one can.
+    """
+    global _CREATE_PARAMS
+    if _CREATE_PARAMS is None:
+        try:
+            from anthropic.resources.messages import Messages
+            _CREATE_PARAMS = frozenset(inspect.signature(Messages.create).parameters) - {'self'}
+        except Exception as e:
+            logger.warning(f"anthropic_logger: could not read messages.create() signature ({e}); "
+                           "treating every sampling param as unsupported")
+            _CREATE_PARAMS = frozenset()
+    return _CREATE_PARAMS
 
 
 def _infer_app_from_file(p: str) -> str:

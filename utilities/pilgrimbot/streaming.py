@@ -16,6 +16,7 @@ from utilities.pilgrimbot.storage import (
 from utilities.pilgrimbot.file_reader import PROJECT_ROOT, _build_codemap_summary
 from utilities.pilgrimbot.tool_loop import _execute_tool_loop
 from utilities.pilgrimbot.context import _plan_context, _load_surgical_context
+from utilities.pilgrimbot.alerts import alert_pilgrimbot_failure
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -93,6 +94,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         yield _sse({'type': 'status', 'message': 'Thinking...'})
 
     full_response = ""
+    active_model = MODEL   # whichever model the failing call was on — for the error row + the alert
     try:
         # === PHASE 1: Fast response with minimal context ===
         show_code = user_role in ('dev', 'qa') or bug_mode
@@ -241,6 +243,7 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
         # Use Opus for math questions (#1493: top-tier reasoner), Haiku for everything else
         is_math = 'math' in plan
         deep_model = CLAUDE_MODELS.get("opus-4.8", "claude-opus-4-8") if is_math else MODEL
+        active_model = deep_model
 
         deep_system = system_base + surgical_context
 
@@ -307,12 +310,16 @@ def handle_chat_streaming(message, chat_id, user_id, history=None, bug_mode=Fals
 
     except Exception as e:
         logger.error(f"PilgrimBot stream error: {e}", exc_info=True)
-        log_pilgrimbot_call(user_id, chat_id, 'error', MODEL, 0, [], 0,
+        log_pilgrimbot_call(user_id, chat_id, 'error', active_model, 0, [], 0,
                            success=False, error_message=str(e))
         # Save partial response as-is so user doesn't lose it
         if full_response:
             save_message(user_id, chat_id, "assistant", full_response)
+        # Page Andy BEFORE the error event goes out — the client may close the stream
+        # the moment it sees 'error', and the alert must not depend on what follows.
+        alert_pilgrimbot_failure(user_id, chat_id, message, e, active_model, bool(full_response))
         err_msg = ""  # Empty = no visible error if we have a response
         if not full_response:
-            err_msg = "Ran into an issue — try rephrasing or asking about a specific part?"
+            err_msg = ("PilgrimBot hit a snag on that one — Andy has been paged automatically. "
+                       "Try again in a bit, or rephrase?")
         yield _sse({'type': 'error', 'message': err_msg})

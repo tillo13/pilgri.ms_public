@@ -3464,14 +3464,117 @@ def test_no_hardcoded_sampling_params():
         + "\n  ".join(offenders)
         + "\nUse **sampling_kwargs(model, temperature) from utilities/anthropic/pricing.py instead.")
 
-    # The helper itself must still strip params for the models that reject them.
+    # Gate 1 — model family: the helper must still strip params for models that 400 on them.
+    from utilities.anthropic import pricing
     from utilities.anthropic.pricing import sampling_kwargs
+    from utilities.anthropic_logger import create_params
     for rejecting in ('claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-5', 'claude-sonnet-5', 'claude-fable-5'):
         assert sampling_kwargs(rejecting, 0.7) == {}, \
             f"sampling_kwargs must drop temperature for {rejecting} (API returns 400)"
+
+    # Gate 2 — installed SDK: whatever the helper returns must be a kwarg the installed
+    # anthropic SDK's messages.create() accepts. anthropic 1.0.0 (2026-08-20) removed
+    # temperature/top_p/top_k outright — TypeError before any HTTP call. The assertion
+    # that used to live here (== {'temperature': 0.7}) would have gone red on that
+    # upgrade IF the local venv had matched prod. It didn't; see the SDK-pin test.
+    accepted = create_params()
+    assert {'model', 'messages', 'max_tokens'} <= accepted, \
+        f"create_params() looks wrong: {sorted(accepted)[:8]}"
     for accepting in ('claude-haiku-4-5-20251001', 'claude-sonnet-4-6'):
-        assert sampling_kwargs(accepting, 0.7) == {'temperature': 0.7}, \
-            f"sampling_kwargs must keep temperature for {accepting}"
+        kw = sampling_kwargs(accepting, 0.7, top_p=0.9, top_k=5)
+        assert set(kw) <= accepted, \
+            f"{accepting}: sampling_kwargs returned {sorted(kw)} but this SDK accepts none of them"
+        expected = {k: v for k, v in (('temperature', 0.7), ('top_p', 0.9), ('top_k', 5)) if k in accepted}
+        assert kw == expected, f"{accepting}: got {kw}, expected {expected} for the installed SDK"
+
+    # The exact kwarg set PilgrimBot's tool loop sends must be accepted by the installed SDK.
+    tool_loop_kwargs = {'model', 'max_tokens', 'system', 'messages', 'tools'} | set(
+        sampling_kwargs('claude-haiku-4-5-20251001', 0.7))
+    assert tool_loop_kwargs <= accepted, \
+        f"tool loop would TypeError on: {sorted(tool_loop_kwargs - accepted)}"
+
+    # Negative controls — swap the SDK signature and the helper must follow it both ways.
+    real = pricing.create_params
+    try:
+        pricing.create_params = lambda: frozenset({'model', 'messages', 'max_tokens'})
+        assert sampling_kwargs('claude-haiku-4-5-20251001', 0.7) == {}, \
+            "helper must drop temperature when the SDK lacks it"
+        pricing.create_params = lambda: frozenset({'model', 'messages', 'max_tokens', 'temperature'})
+        assert sampling_kwargs('claude-haiku-4-5-20251001', 0.7) == {'temperature': 0.7}, \
+            "helper must keep temperature when the SDK accepts it"
+        assert sampling_kwargs('claude-opus-4-8', 0.7) == {}, "model-family gate must still win"
+    finally:
+        pricing.create_params = real
+    return True
+
+
+@test("Anthropic SDK pinned exactly and the local venv matches the pin", tier=1, features=['api'], mode='local')
+def test_anthropic_sdk_pin_matches_venv():
+    """2026-08-20 → 09-02: requirements.txt said anthropic>=0.40.0, three deploys pulled
+    1.x (which removed temperature=), the local venv stayed on 0.96, and 109/109 smoke
+    tests passed against an SDK prod no longer ran. PilgrimBot was dark 13 days.
+    The pre-deploy gate is only as honest as the venv: an exact pin plus this test
+    makes 'local passed' mean 'prod will pass'."""
+    import os, re
+    from importlib.metadata import version
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    pin = re.compile(r'^anthropic==([\w.]+)\s*$', re.M)
+    with open(os.path.join(project_root, 'requirements.txt')) as f:
+        m = pin.search(f.read())
+    assert m, "requirements.txt must pin anthropic exactly (anthropic==X.Y.Z), not a range — " \
+              "a range lets a deploy silently change the SDK under the app"
+    pinned, installed = m.group(1), version('anthropic')
+    assert installed == pinned, (
+        f"venv has anthropic {installed} but requirements.txt pins {pinned} — "
+        f"run: pip install anthropic=={pinned}  so smoke runs on what prod runs")
+    # Negative control: the regex rejects the range that caused the incident.
+    assert not pin.search('anthropic>=0.40.0\n'), "pin regex must reject ranges"
+    return True
+
+
+@test("PilgrimBot failure pages Andy: alert wired, debounced, Andy-only, never raises", tier=1, features=['pilgrimbot', 'db'], mode='local')
+def test_pilgrimbot_failure_alert_wired():
+    """Luke typed 'hi, are you working' into a dead PilgrimBot on 2026-08-25 and the only
+    trace was 5 lines inside a 57-error daily digest. The catch-all in streaming.py now
+    emails Andy directly, before the error SSE goes out, debounced to one email per
+    error signature per hour. Sender failures must never reach the chat handler."""
+    import os
+    from utilities.pilgrimbot import alerts
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    with open(os.path.join(project_root, 'utilities', 'pilgrimbot', 'streaming.py')) as f:
+        src = f.read()
+    tail = src[src.rfind('except Exception as e:'):]
+    assert 'alert_pilgrimbot_failure(' in tail, "streaming.py catch-all must call alert_pilgrimbot_failure"
+    assert tail.index('alert_pilgrimbot_failure(') < tail.index("'type': 'error'"), \
+        "alert must fire BEFORE the error SSE — the client may close the stream on it"
+    assert alerts.ALERT_TO == ['andy.tillo@gmail.com'], "alerts go to Andy only (CLAUDE.md email safety)"
+
+    # Real SQL, real table, impossible signature → 0 rows (proves the debounce query runs).
+    assert alerts._recent_same_failures('smoke-test-signature-that-never-happened') == 0
+
+    sent = []
+    real = (alerts._send, alerts._recent_same_failures, alerts._captain_label)
+    try:
+        alerts._send = lambda subject, body: sent.append((subject, body)) or True
+        alerts._captain_label = lambda uid: f"Luke <luketillo@gmail.com> (user {uid})"
+        alerts._recent_same_failures = lambda msg, minutes=60: 1       # first occurrence
+        exc = TypeError("Messages.create() got an unexpected keyword argument 'temperature'")
+        assert alerts.alert_pilgrimbot_failure(112, 'chat-1', 'is it odd to come back with 47 olives',
+                                               exc, 'claude-haiku-4-5-20251001', False) is True
+        assert len(sent) == 1
+        subject, body = sent[0]
+        assert 'Luke' in subject and 'temperature' in subject, subject
+        assert '47 olives' in body and 'anthropic' in body and 'chat-1' in body, body
+        alerts._recent_same_failures = lambda msg, minutes=60: 2       # repeat inside the window
+        assert alerts.alert_pilgrimbot_failure(112, 'chat-2', 'again', TypeError('same'), 'm', False) is False
+        assert len(sent) == 1, "a repeat inside the debounce window must not send"
+        def boom(subject, body):
+            raise RuntimeError('gmail down')
+        alerts._send = boom
+        alerts._recent_same_failures = lambda msg, minutes=60: 1
+        assert alerts.alert_pilgrimbot_failure(112, 'chat-3', 'q', ValueError('x'), 'm', True) is False
+    finally:
+        alerts._send, alerts._recent_same_failures, alerts._captain_label = real
     return True
 
 

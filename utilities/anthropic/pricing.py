@@ -6,6 +6,8 @@ Extracted from utilities/claude_utils.py (Round 5 refactor).
 import logging
 from typing import Dict
 
+from utilities.anthropic_logger import create_params
+
 logger = logging.getLogger("claude_utils")
 
 if not logger.handlers:
@@ -78,25 +80,37 @@ APP_NAME = 'galactica'
 # were removed from the API, not merely ignored. Steer these via prompting or
 # output_config.effort instead. Substring match against the resolved model id.
 _NO_SAMPLING_PARAMS = ('opus-4-7', 'opus-4-8', 'opus-5', 'sonnet-5', 'fable-5', 'mythos-5')
+_SAMPLING_NAMES = ('temperature', 'top_p', 'top_k')
+_sdk_drop_logged = set()
 
 
 def sampling_kwargs(model, temperature=None, top_p=None, top_k=None) -> Dict:
-    """Sampling kwargs for messages.create(), model-aware. Splat the result:
+    """Sampling kwargs for messages.create(), model- AND SDK-aware. Splat the result:
     `client.messages.create(model=m, **sampling_kwargs(m, 0.7), ...)`.
 
-    THE single source of truth for this — any raw `messages.create()` that hardcodes
-    `temperature=` will 400 the moment its model moves to Opus 4.7+. That is exactly
-    what broke PilgrimBot's math/deep path (Opus 4.8) on 2026-08-01. Locked by the
-    "no hardcoded sampling params" smoke test."""
+    THE single source of truth for this. Two gates, both required:
+      1. model family — Opus 4.7+/5-class models 400 on these params. That broke
+         PilgrimBot's math/deep path (Opus 4.8) on 2026-08-01.
+      2. installed SDK — anthropic 1.0.0 (2026-08-20) removed them from
+         messages.create() entirely, so passing one is a TypeError before any HTTP
+         call. That killed EVERY PilgrimBot chat 2026-08-20 → 2026-09-02: the
+         unpinned `anthropic>=0.40.0` pulled 1.x on deploy while the local venv
+         stayed on 0.96, so the pre-deploy smoke never saw it.
+    Anything the SDK does not accept is dropped and logged once per process.
+    Locked by the "no hardcoded sampling params" smoke test."""
     if any(fam in (model or '') for fam in _NO_SAMPLING_PARAMS):
         return {}
+    accepted = create_params()
     kw = {}
-    if temperature is not None:
-        kw['temperature'] = temperature
-    if top_p is not None:
-        kw['top_p'] = top_p
-    if top_k is not None:
-        kw['top_k'] = top_k
+    for name, value in zip(_SAMPLING_NAMES, (temperature, top_p, top_k)):
+        if value is None:
+            continue
+        if name in accepted:
+            kw[name] = value
+        elif name not in _sdk_drop_logged:
+            _sdk_drop_logged.add(name)
+            logger.info(f"sampling_kwargs: dropping {name}= — the installed anthropic SDK's "
+                        "messages.create() no longer accepts it")
     return kw
 
 
