@@ -16,6 +16,10 @@ Public API:
     log_usage_async(app_name, model, usage, feature, ...) -> None  (fire-and-forget)
     create_params() -> frozenset  (kwargs the installed SDK's messages.create() accepts)
 
+Every client from get_client()/new_client() strips temperature/top_p/top_k when the
+installed SDK (anthropic>=1.0.0, 2026-08-20) no longer accepts them — logged once, never
+a TypeError. See _drop_unsupported_sampling.
+
 Key source: kumori-404602/KUMORI_ANTHROPIC_API_KEY (cross-project read).
 DB target:  kumori-404602 Postgres, table kumori_api_usage.
 
@@ -256,33 +260,61 @@ def _caller_site() -> tuple[str, int, str]:
     return ('unknown', 0, 'unknown')
 
 
-_CREATE_PARAMS: Optional[frozenset] = None
+_SAMPLING_PARAMS = ('temperature', 'top_p', 'top_k')
+_ACCEPTED_PARAMS: dict = {}
+_drop_logged: set = set()
+
+
+def _accepted_params(method: str) -> frozenset:
+    """Keyword params the INSTALLED SDK accepts on Messages.<method>, cached per method.
+    Fail-safe direction: unreadable signature -> empty set, so every sampling param is
+    treated as unsupported (a dropped param never breaks a call; a passed one can)."""
+    if method not in _ACCEPTED_PARAMS:
+        try:
+            from anthropic.resources.messages import Messages
+            _ACCEPTED_PARAMS[method] = frozenset(
+                inspect.signature(getattr(Messages, method)).parameters) - {'self'}
+        except Exception as e:
+            logger.warning(f"anthropic_logger: could not read Messages.{method}() signature ({e}); "
+                           "treating every sampling param as unsupported")
+            _ACCEPTED_PARAMS[method] = frozenset()
+    return _ACCEPTED_PARAMS[method]
 
 
 def create_params() -> frozenset:
     """Keyword params the INSTALLED SDK's messages.create() accepts, cached.
 
     anthropic 1.0.0 (2026-08-20) removed temperature/top_p/top_k from
-    messages.create() — passing one raises TypeError before any HTTP request,
-    so no retry, fallback lane, or API-side guard can save the call. Each
-    app's sampling helper filters against this set so an SDK upgrade can never
-    turn a kwarg into a crash again. (galactica PilgrimBot was dark 2026-08-20
-    to 2026-09-02 this way: unpinned `anthropic>=0.40.0`, three deploys pulled
-    1.x, local venv still on 0.96 so the pre-deploy smoke stayed green.)
+    messages.create() and messages.stream() — passing one raises TypeError before
+    any HTTP request, so no retry, fallback lane, or API-side guard can save the
+    call. Three apps went dark on their first deploy after that date because
+    `anthropic` was unpinned and each local venv was older, so pre-deploy tests
+    stayed green: galactica PilgrimBot (08-20 → 09-02), scatterbrain synapses
+    (08-22 → 09-02), kumori streaming chat (08-22 → 09-02).
 
-    Fail-safe direction: if the signature cannot be read, return an empty set —
-    a dropped sampling param never breaks a call, a passed one can.
+    The tracing wrapper below strips those three params itself, so every client
+    from get_client()/new_client() is safe regardless of app code. This helper is
+    for app-level sampling policy that wants to know up front (galactica's
+    sampling_kwargs).
     """
-    global _CREATE_PARAMS
-    if _CREATE_PARAMS is None:
-        try:
-            from anthropic.resources.messages import Messages
-            _CREATE_PARAMS = frozenset(inspect.signature(Messages.create).parameters) - {'self'}
-        except Exception as e:
-            logger.warning(f"anthropic_logger: could not read messages.create() signature ({e}); "
-                           "treating every sampling param as unsupported")
-            _CREATE_PARAMS = frozenset()
-    return _CREATE_PARAMS
+    return _accepted_params('create')
+
+
+def _drop_unsupported_sampling(method: str, kwargs: dict) -> dict:
+    """Strip temperature/top_p/top_k when the installed SDK's Messages.<method> no
+    longer takes them (anthropic>=1.0.0). ONLY those three — any other unknown kwarg
+    still raises, so a typo stays a typo. Logged once per process per (method, param)
+    with the first call site, so the drop is visible in the app log, never silent."""
+    accepted = _accepted_params(method)
+    for name in _SAMPLING_PARAMS:
+        if name in kwargs and name not in accepted:
+            kwargs.pop(name)
+            if (method, name) not in _drop_logged:
+                _drop_logged.add((method, name))
+                cf, cl, fn = _caller_site()
+                logger.info(f"anthropic_logger: dropped {name}= from messages.{method}() — the installed "
+                            f"anthropic SDK no longer accepts it (first seen {cf}:{cl} in {fn})")
+    return kwargs
 
 
 def _infer_app_from_file(p: str) -> str:
@@ -400,6 +432,7 @@ class _TracingMessages:
         self._real = real
 
     def create(self, **kwargs):
+        kwargs = _drop_unsupported_sampling('create', kwargs)
         if getattr(_skip_trace_local, 'skip', False):
             return self._real.create(**kwargs)
         cf, cl, fn = _caller_site()
@@ -411,6 +444,7 @@ class _TracingMessages:
         return resp
 
     def stream(self, **kwargs):
+        kwargs = _drop_unsupported_sampling('stream', kwargs)
         if getattr(_skip_trace_local, 'skip', False):
             return self._real.stream(**kwargs)
         cf, cl, fn = _caller_site()
