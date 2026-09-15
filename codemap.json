@@ -2949,7 +2949,7 @@
       "1. Vendor it into your project",
       "2. Provision a per-consumer API key",
       "3. Initialize at app boot",
-      "4. The four entry points",
+      "4. The entry points",
       "5. Full HTTP trace (debug console pattern)",
       "6. Daily-cap awareness",
       "7. Attribution model (NEW 2026-05-11)",
@@ -2972,6 +2972,7 @@
       "llm_generate — Auto-routes to a free backend. Returns (text, backend_name).",
       "llm_chat — Pinned-backend multi-turn chat. Returns (text, backend_name).",
       "llm_chat_resilient — Server-side fallback chat. Returns (text, winning_backend,",
+      "llm_chat_reserve — Reserve tier — paid Claude (kumori's MODEL_TIERS['sonnet']) for this APP's",
       "llm_chat_eval — Eval-pool scoring call. Signature mirrors kumori_free_llms.chat_eval.",
       "llm_backends — List available backends. Returns the list of backend dicts.",
       "llm_usage — Cluster-wide usage summary across backends.",
@@ -2979,8 +2980,7 @@
       "llm_backoff_state — Current per-backend backoff state. Returns",
       "llm_is_backed_off — Convenience: True if backend is currently in backoff.",
       "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as",
-      "embed_text — Embed a list of strings via the shared free-LLM pool. Auto-selects",
-      "embed_image — Embed images via Cohere v3-image variants. Accepts a list of base64"
+      "embed_text — Embed a list of strings via the shared free-LLM pool. Auto-selects"
     ]
   },
   "utilities/email/__init__.py": {
@@ -3753,7 +3753,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/generate_snapshots, api/admin/test_email"
+      "calls: api/admin/test_email, api/admin/generate_snapshots"
     ]
   },
   "templates/admin_bugs.html": {
@@ -3840,7 +3840,7 @@
   "templates/research.html": {
     "description": "Page: Lab - Pilgrims",
     "notes": [
-      "calls: api/tech/research, api/tech/cancel"
+      "calls: api/tech/cancel, api/tech/research"
     ]
   },
   "templates/signal.html": {
