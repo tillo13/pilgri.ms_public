@@ -502,6 +502,9 @@ img[loading="lazy"].loaded, img[loading="lazy"]:not([src=""]) { opacity: 1; }
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 .nav-brand { font-size: 20px; font-weight: 700; background: var(--gradient-mars); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.nav-kumori { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600;
+    text-decoration: none; color: var(--nav-text); opacity: .65; white-space: nowrap; align-self: center; }
+.nav-kumori:hover { opacity: 1; color: var(--color-primary); }
 .nav-tabs { display: none; gap: 6px; flex: 1; }
 .nav-tab { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; text-decoration: none; color: var(--nav-text); font-weight: 600; transition: all var(--tr); font-size: 13px; }
 .nav-tab:hover { background: var(--bg-secondary); color: var(--color-primary); }
@@ -889,6 +892,7 @@ h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-w
 @media (max-width: 768px) {
     .top-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; }
     .nav-brand { grid-column: 1; }
+    .nav-kumori { display: none; }   /* phones: the bottom nav owns the chrome */
     .nav-tabs { display: none; }
     .login-btn-desktop { display: inline-flex; font-size: 11px; padding: 4px 8px; } /* Show on mobile next to theme toggle */
     .nav-user { grid-column: 3; justify-self: end; }
