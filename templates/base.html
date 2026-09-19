@@ -54,7 +54,7 @@
       "operatingSystem": "Web Browser",
       "numberOfPlayers": {"@type": "QuantitativeValue", "minValue": 1},
       "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-      "author": {"@type": "Person", "name": "Andy Tillo"}
+      "author": {"@type": "Organization", "name": "Kumori", "url": "https://kumori.ai"}
     }
     </script>
 
@@ -66,11 +66,12 @@
 <div style="position:fixed;top:0;left:0;right:0;bottom:0;border:6px solid #39ff14;pointer-events:none;z-index:9999;box-shadow:inset 0 0 15px rgba(57,255,20,0.3);"></div>
 {% endif %}
 <div class="app-container">
+{% include "_kumori_context.html" %}
     <!-- Top Navigation -->
     <nav class="top-nav">
         <div class="nav-brand">Pilgrims</div>
         <!-- ARIA's images and the colony's writing run on Kumori's free lanes; the door page explains the setup. -->
-        <a class="nav-kumori" href="https://kumori.ai/sunshine/pilgrims" target="_blank" rel="noopener">Runs on Kumori &#8599;</a>
+        <a class="nav-kumori" href="https://kumori.ai/products/pilgrims" target="_blank" rel="noopener">Runs on Kumori &#8599;</a>
 
         <!-- Desktop tabs (hidden on mobile) -->
         <div class="nav-tabs">
