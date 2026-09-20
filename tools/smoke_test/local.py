@@ -10,6 +10,13 @@ from . import test, requires_web3, requires_flask, TESTS, PASSED, FAILED, SKIPPE
 # TIER 1: QUICK TESTS (~20 critical, must pass before deploy)
 # =============================================================================
 
+@test("Cron management module is importable", tier=1, features=['config'], mode='local')
+def test_cron_management_import():
+    from tools.andy_check import main
+    assert callable(main)
+    return True
+
+
 @test("Database connection", tier=1, features=['db'], mode='local')
 def test_db_connection():
     from utilities.postgres.core import get_db_connection, _return_connection

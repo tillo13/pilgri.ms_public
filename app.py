@@ -2304,8 +2304,8 @@ def cron_andy_check():
     import threading
 
     def _run():
-        from tools.andy_check import main
         try:
+            from tools.andy_check import main
             main(run_probes=False)
             logger.info("Andy check cron completed")
         except Exception as e:
