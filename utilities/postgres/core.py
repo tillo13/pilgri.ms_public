@@ -156,32 +156,54 @@ def _get_connection_pool():
                 # letting one instance claim 20 slots. At max_instances:3 the old
                 # ceiling was 3x20=60 against 47 usable -- galactica alone could
                 # oversubscribe the whole instance.
-                _connection_pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=2,
-                    maxconn=DEFAULT_MAXCONN,
-                    host=host,
-                    database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
-                    user=get_secret('PILGRIM_POSTGRES_USERNAME'),
-                    password=get_secret('PILGRIM_POSTGRES_PASSWORD'),
-                    connect_timeout=10,
-                    # TCP keepalives: let the OS hold idle pooled conns open and
-                    # detect drops at the socket layer, cutting how often Cloud SQL
-                    # silently reaps one (19 "Stale DB connection" events in 30d).
-                    keepalives=1,
-                    keepalives_idle=30,
-                    keepalives_interval=10,
-                    keepalives_count=3,
-                    # Every galactica connection is attributed to the role
-                    # `pilgrim_app`, which is shared with the deploy tool and named
-                    # after a different app -- so a connection audit cannot tell
-                    # galactica apart without tracing secret names. Labelling the
-                    # connection fixes attribution without a role rename.
-                    application_name=_app_identity(),
-                    # statement_timeout caps a single query; the idle-in-transaction
-                    # timeout reaps a stuck txn server-side so it can't pin a slot.
-                    options=('-c statement_timeout=30000 '
-                             '-c idle_in_transaction_session_timeout=60000')
-                )
+                #
+                # Cloud SQL IAM login (#170): on GCP with KUMORI_DB_AUTH=iam the pool logs in as
+                # galactica-character-game@appspot with a one-hour token and runs as pilgrim_app;
+                # no DB password read. The IAM pool is kumori's canonical one (utilities/kumori_db.py,
+                # vendored on deploy); this module keeps its own gate and checkout. search_path is
+                # passed per connection because pilgrim_app's own setting only applies to its login.
+                if is_gcp and os.environ.get('KUMORI_DB_AUTH') == 'iam':
+                    try:
+                        from utilities.kumori_db import _IAMConnectionPool, _iam_db_user
+                        _connection_pool = _IAMConnectionPool(
+                            minconn=2, maxconn=DEFAULT_MAXCONN, host=host,
+                            database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
+                            user=_iam_db_user(), password='', connect_timeout=10,
+                            keepalives=1, keepalives_idle=30, keepalives_interval=10,
+                            keepalives_count=3, application_name=_app_identity(),
+                            options=('-c statement_timeout=30000 '
+                                     '-c idle_in_transaction_session_timeout=60000 '
+                                     '-c role=pilgrim_app -c search_path=pilgrim,public'))
+                    except Exception as e:
+                        logger.error(f"IAM DB auth failed, falling back to password login: {e}")
+                        _connection_pool = None
+                if _connection_pool is None:
+                    _connection_pool = psycopg2.pool.ThreadedConnectionPool(
+                        minconn=2,
+                        maxconn=DEFAULT_MAXCONN,
+                        host=host,
+                        database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
+                        user=get_secret('PILGRIM_POSTGRES_USERNAME'),
+                        password=get_secret('PILGRIM_POSTGRES_PASSWORD'),
+                        connect_timeout=10,
+                        # TCP keepalives: let the OS hold idle pooled conns open and
+                        # detect drops at the socket layer, cutting how often Cloud SQL
+                        # silently reaps one (19 "Stale DB connection" events in 30d).
+                        keepalives=1,
+                        keepalives_idle=30,
+                        keepalives_interval=10,
+                        keepalives_count=3,
+                        # Every galactica connection is attributed to the role
+                        # `pilgrim_app`, which is shared with the deploy tool and named
+                        # after a different app -- so a connection audit cannot tell
+                        # galactica apart without tracing secret names. Labelling the
+                        # connection fixes attribution without a role rename.
+                        application_name=_app_identity(),
+                        # statement_timeout caps a single query; the idle-in-transaction
+                        # timeout reaps a stuck txn server-side so it can't pin a slot.
+                        options=('-c statement_timeout=30000 '
+                                 '-c idle_in_transaction_session_timeout=60000')
+                    )
                 global _pool_semaphore
                 _pool_semaphore = _FairGate(_connection_pool.maxconn)
                 logger.info("✅ Database connection pool initialized (2-8 connections, app=%s)",
