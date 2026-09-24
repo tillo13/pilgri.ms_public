@@ -1741,6 +1741,12 @@
       "ensure_legacy_migrated — Check and migrate old shop purchases to player_upgrades. Runs once per session."
     ]
   },
+  "utilities/mail_guard.py": {
+    "description": "The shared-sender guard: one admission check in front of every app's mail (task #34).",
+    "exports": [
+      "admit — (ok, reason). Call before every send; on refusal, drop the message (it is logged here)."
+    ]
+  },
   "utilities/mars_environment_utils.py": {
     "description": "Mars Environment Utilities - Scientifically Accurate Mars Conditions",
     "exports": [
@@ -3765,7 +3771,7 @@
   "templates/admin.html": {
     "description": "Page: Admin Dashboard",
     "notes": [
-      "calls: api/admin/test_email, api/admin/generate_snapshots"
+      "calls: api/admin/generate_snapshots, api/admin/test_email"
     ]
   },
   "templates/admin_bugs.html": {

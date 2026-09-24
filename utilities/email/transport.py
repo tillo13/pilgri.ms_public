@@ -77,6 +77,12 @@ def send_email(
     from_name: str = "Pilgrims"
 ) -> bool:
     """Send an email via Gmail API as kumoridotai@gmail.com."""
+    # Shared-sender guard (kumori task #34): every app mails as kumoridotai, so a repeat
+    # or a burst here is refused and logged, never queued. Canonical: kumori/utilities/mail_guard.py.
+    from utilities.mail_guard import admit
+    from utilities.postgres.core import db_cursor
+    if not admit('galactica', ','.join(sorted(to_emails)), subject, db_cursor=db_cursor)[0]:
+        return False
     try:
         message = MIMEMultipart()
         message['From'] = f'{from_name} <{SENDER_EMAIL}>'
