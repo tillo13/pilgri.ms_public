@@ -3871,3 +3871,35 @@ def test_db_pool_contract():
         f"permit leaked across checkout/return ({before} -> {core._pool_semaphore.free}); "
         f"a leaked permit shrinks the pool for the life of the process")
     assert not core._permits, f"permit registry not drained: {len(core._permits)} left"
+
+    # 7. minconn is 1, and unreachable backs off through the pool, never a direct
+    # connect (2026-09-25). minconn is held until exit, so 2 made every local heredoc
+    # take 2 of pilgrim_app's 3 slots; the direct fallback then grabbed any slot that
+    # freed, and on prod it logged in by password, bypassing IAM.
+    assert core.DEFAULT_MINCONN == 1 and core._connection_pool.minconn == 1, (
+        f"minconn must be 1 (constant {core.DEFAULT_MINCONN}, live pool "
+        f"{core._connection_pool.minconn}); psycopg2 holds minconn until the process exits")
+    real_get_pool, real_connect = core._get_connection_pool, core.psycopg2.connect
+    real_backoff, real_sleep = core.POOL_CONNECT_BACKOFF_SECS, core._sleep
+    fb_before, calls, direct = core._pool_fallback_count, [], []
+    def unreachable():
+        calls.append(1)
+        raise core.psycopg2.OperationalError('too many connections for role "pilgrim_app"')
+    try:
+        core._get_connection_pool = unreachable
+        core.psycopg2.connect = lambda *a, **k: direct.append(1)
+        core.POOL_CONNECT_BACKOFF_SECS, core._sleep = (0.5, 1.5), lambda s: None
+        raised = None
+        try:
+            core.get_db_connection()
+        except Exception as e:
+            raised = e
+    finally:
+        core._get_connection_pool, core.psycopg2.connect = real_get_pool, real_connect
+        core.POOL_CONNECT_BACKOFF_SECS, core._sleep = real_backoff, real_sleep
+    assert not direct, "unreachable DB opened a direct connection; the fallback is back"
+    assert isinstance(raised, core.psycopg2.OperationalError), (
+        f"unreachable DB must raise after its retries, got {raised!r}")
+    assert len(calls) == 3, f"expected 3 pool attempts (2 backoffs), got {len(calls)}"
+    assert core._pool_fallback_count - fb_before == 3, "each unreachable attempt is counted"
+    core._pool_fallback_count = fb_before

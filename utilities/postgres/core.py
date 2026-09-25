@@ -18,7 +18,7 @@ import logging
 from dotenv import load_dotenv
 import threading
 from collections import deque
-from time import perf_counter as _perf_counter
+from time import perf_counter as _perf_counter, sleep as _sleep
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -39,13 +39,20 @@ _permits = {}             # id(conn) -> True for conns holding a permit
 # logs (2026-08-21) showed 4 fallbacks, all 4 "server closed the connection
 # unexpectedly"/"Connection refused" in one 3-minute window, and ZERO real
 # exhaustion events. Keep these apart so the next capacity decision has a signal.
-_pool_fallback_count = 0     # pool/Cloud SQL UNREACHABLE -> direct connect
+_pool_fallback_count = 0     # pool/Cloud SQL UNREACHABLE -> backed off and retried
 _pool_starvation_count = 0   # pool genuinely FULL -> waited POOL_WAIT_SECS, then raised
 
 # Wait for a slot instead of instantly opening an uncapped direct connection.
 POOL_WAIT_SECS = 10
 POOL_WAIT_WARN_MS = 500
 DEFAULT_MAXCONN = 8
+# minconn is held until the process exits (psycopg2 only closes conns ABOVE it), so
+# 2 meant every local heredoc took 2 of pilgrim_app's 3 slots (2026-09-25 lockouts).
+DEFAULT_MINCONN = 1
+# Unreachable / role-at-cap: retry the pool with these sleeps between attempts, then
+# raise. Never a direct connect -- on prod that bypassed IAM and logged in as the
+# 3-slot pilgrim_app password role that every local session shares.
+POOL_CONNECT_BACKOFF_SECS = (0.5, 1.5)
 
 
 _secrets_cache = {}
@@ -166,7 +173,7 @@ def _get_connection_pool():
                     try:
                         from utilities.kumori_db import _IAMConnectionPool, _iam_db_user
                         _connection_pool = _IAMConnectionPool(
-                            minconn=2, maxconn=DEFAULT_MAXCONN, host=host,
+                            minconn=DEFAULT_MINCONN, maxconn=DEFAULT_MAXCONN, host=host,
                             database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
                             user=_iam_db_user(), password='', connect_timeout=10,
                             keepalives=1, keepalives_idle=30, keepalives_interval=10,
@@ -179,7 +186,7 @@ def _get_connection_pool():
                         _connection_pool = None
                 if _connection_pool is None:
                     _connection_pool = psycopg2.pool.ThreadedConnectionPool(
-                        minconn=2,
+                        minconn=DEFAULT_MINCONN,
                         maxconn=DEFAULT_MAXCONN,
                         host=host,
                         database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
@@ -206,8 +213,8 @@ def _get_connection_pool():
                     )
                 global _pool_semaphore
                 _pool_semaphore = _FairGate(_connection_pool.maxconn)
-                logger.info("✅ Database connection pool initialized (2-8 connections, app=%s)",
-                            _app_identity())
+                logger.info("✅ Database connection pool initialized (%s-%s connections, app=%s)",
+                            _connection_pool.minconn, _connection_pool.maxconn, _app_identity())
     return _connection_pool
 
 
@@ -259,50 +266,54 @@ def get_db_connection():
     just the threshold past which galactica started opening uncapped connections
     against a 47-slot shared instance. Now callers queue for up to POOL_WAIT_SECS
     and a genuinely full pool raises instead of silently widening the footprint.
+
+    Unreachable (socket drop, restart, role at its connection cap) gets the same
+    treatment: back off and retry through the pool, then raise. The old path opened
+    a direct password connection, which took any slot that freed up and, on prod,
+    bypassed IAM entirely.
     """
     global _pool_fallback_count, _pool_starvation_count
-    acquired = False
-    sem = None
-    try:
-        pool = _get_connection_pool()
-        sem = _pool_semaphore
-        if sem is not None:
-            t0 = _perf_counter()
-            if not sem.acquire(timeout=POOL_WAIT_SECS):
-                _pool_starvation_count += 1
-                logger.error("DB pool starvation: no slot after %ss (maxconn=%s)",
-                             POOL_WAIT_SECS, pool.maxconn)
-                raise psycopg2.pool.PoolError(
-                    f"connection pool exhausted (waited {POOL_WAIT_SECS}s for a slot)")
-            acquired = True
-            waited_ms = (_perf_counter() - t0) * 1000
-            if waited_ms >= POOL_WAIT_WARN_MS:
-                logger.warning("DB pool contention: waited %.0fms for a slot", waited_ms)
-        conn = _checkout_live(pool)
-        if acquired:
-            with _permit_lock:
-                _permits[id(conn)] = True
-        return conn
-    except psycopg2.pool.PoolError:
-        # Genuine starvation. Deliberately NOT converted into a direct connection —
-        # that is the behaviour this gate exists to stop.
-        if acquired and sem is not None:
-            _release(sem)
-        raise
-    except Exception as e:
-        # The pool or Cloud SQL is unreachable (socket drop, instance restart).
-        # This is the ONLY case that earns an unpooled connection.
-        if acquired and sem is not None:
-            _release(sem)
-        _pool_fallback_count += 1
-        logger.warning(f"⚠️ Pool connection failed, using direct: {e}")
-        is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
-        host = f"/cloudsql/{get_secret('PILGRIM_POSTGRES_CONNECTION_NAME')}" if is_gcp else get_secret('PILGRIM_POSTGRES_IP')
-        return psycopg2.connect(
-            host=host, database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
-            user=get_secret('PILGRIM_POSTGRES_USERNAME'), password=get_secret('PILGRIM_POSTGRES_PASSWORD'),
-            connect_timeout=10, application_name=_app_identity()
-        )
+    attempts = len(POOL_CONNECT_BACKOFF_SECS) + 1
+    for attempt in range(attempts):
+        acquired = False
+        sem = None
+        try:
+            pool = _get_connection_pool()
+            sem = _pool_semaphore
+            if sem is not None:
+                t0 = _perf_counter()
+                if not sem.acquire(timeout=POOL_WAIT_SECS):
+                    _pool_starvation_count += 1
+                    logger.error("DB pool starvation: no slot after %ss (maxconn=%s)",
+                                 POOL_WAIT_SECS, pool.maxconn)
+                    raise psycopg2.pool.PoolError(
+                        f"connection pool exhausted (waited {POOL_WAIT_SECS}s for a slot)")
+                acquired = True
+                waited_ms = (_perf_counter() - t0) * 1000
+                if waited_ms >= POOL_WAIT_WARN_MS:
+                    logger.warning("DB pool contention: waited %.0fms for a slot", waited_ms)
+            conn = _checkout_live(pool)
+            if acquired:
+                with _permit_lock:
+                    _permits[id(conn)] = True
+            return conn
+        except psycopg2.pool.PoolError:
+            # Genuine starvation. Deliberately NOT retried or converted into a direct
+            # connection — the caller already queued POOL_WAIT_SECS.
+            if acquired and sem is not None:
+                _release(sem)
+            raise
+        except Exception as e:
+            if acquired and sem is not None:
+                _release(sem)
+            _pool_fallback_count += 1
+            if attempt == attempts - 1:
+                logger.error("DB unreachable after %s attempts: %s", attempts, e)
+                raise
+            delay = POOL_CONNECT_BACKOFF_SECS[attempt]
+            logger.warning("DB connect failed (attempt %s/%s), retrying in %ss: %s",
+                           attempt + 1, attempts, delay, e)
+            _sleep(delay)
 
 
 def _release(sem):
@@ -316,8 +327,8 @@ def _release(sem):
 def _return_connection(conn):
     """Return a connection to the pool and free its checkout permit.
 
-    The permit is released on EVERY path, including when the connection came from
-    the direct-connect fallback (it holds no permit and is simply closed).
+    The permit is released on EVERY path, including when the pool is gone and the
+    connection is simply closed.
     """
     with _permit_lock:
         held = _permits.pop(id(conn), False) if conn is not None else False
@@ -325,7 +336,7 @@ def _return_connection(conn):
         pool = _get_connection_pool()
         pool.putconn(conn)
     except Exception:
-        # Not a pooled connection (direct fallback), or the pool is gone.
+        # Not a pooled connection, or the pool is gone.
         try:
             conn.close()
         except Exception:
