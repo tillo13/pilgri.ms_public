@@ -164,7 +164,9 @@ EXTRA_KEYWORDS = {
 
 # Skip these directories
 SKIP_DIRS = {"venv_galactica", "archive", "antiquated_code", ".git", "__pycache__",
-             "node_modules", ".claude", "testing"}
+             "node_modules", ".claude", "testing", "_oneoff"}
+# Scratch and retired code (gitignored); indexing it fed PilgrimBot one-off scripts.
+SKIP_DIR_PREFIXES = ("_antiquated",)
 
 # Skip deprecated/blocked files (matches deploy.py blocklist)
 # andy_check.py: deploy-time dev smoke test, NOT gameplay — must never appear
@@ -290,7 +292,7 @@ def extract_html_summary(filepath):
     if "api/" in source:
         api_calls = re.findall(r'["\']/(api/\w+/?\w*)["\']', source)
         if api_calls:
-            patterns.append(f"calls: {', '.join(set(api_calls[:5]))}")
+            patterns.append(f"calls: {', '.join(sorted(set(api_calls[:5])))}")
     if patterns:
         info["notes"] = patterns
 
@@ -345,7 +347,8 @@ def generate_codemap():
 
     for dirpath, dirnames, filenames in os.walk(ROOT):
         # Skip excluded dirs
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        dirnames[:] = [d for d in dirnames
+                       if d not in SKIP_DIRS and not d.startswith(SKIP_DIR_PREFIXES)]
 
         for fname in sorted(filenames):
             if fname in SKIP_FILES:

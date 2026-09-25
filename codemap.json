@@ -1092,44 +1092,6 @@
       "test_sanitize_error"
     ]
   },
-  "_oneoff/bug_read_via_prod.js": {
-    "description": "Read-only: find PilgrimBot-related bugs and dump the full record of any matching process.argv[2]."
-  },
-  "_oneoff/fix_expedition_timestamps.py": {
-    "description": "Repair historical pilgrim.expeditions rows that violate timestamp ordering.",
-    "exports": [
-      "repair — Return the corrected (arrives_at, return_arrives_at, completed_at).",
-      "main"
-    ]
-  },
-  "_oneoff/grant_speed_test_runs.py": {
-    "description": "One-off admin grant, Andy-approved 2026-08-17: the Jun-25 least-privilege",
-    "exports": [
-      "sec"
-    ]
-  },
-  "_oneoff/pilgrimbot_history_check.js": {
-    "description": "Read-only: fetch latest PilgrimBot chat + messages for user 45 on prod."
-  },
-  "_oneoff/pilgrimbot_live_check.js": {
-    "description": "One live PilgrimBot question on prod via the real UI; captures the SSE stream.",
-    "exports": [
-      "secs"
-    ]
-  },
-  "_oneoff/repair_1524_generates_resource.py": {
-    "description": "Bug #1524 data repair: flag shard-generating buildings whose colony_infrastructure"
-  },
-  "_oneoff/shot_1432_signal.js": {
-    "description": "#1432 — capture what /signal renders for Luke (user 112) on live prod."
-  },
-  "_oneoff/verify_pool.py": {
-    "description": "Verify the checkout gate: many threads, bounded connections, no permit leak.",
-    "exports": [
-      "worker",
-      "observe"
-    ]
-  },
   "docs/2026apr10plan.md": {
     "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
     "exports": [
@@ -3799,7 +3761,7 @@
   "templates/admin_speed.html": {
     "description": "Page: Speed Test - Admin",
     "notes": [
-      "calls: api/admin/speed_test, api/admin/pool_health"
+      "calls: api/admin/pool_health, api/admin/speed_test"
     ]
   },
   "templates/aria_album.html": {

@@ -3778,6 +3778,22 @@ def test_db_pool_contract():
         f"maxconn {maxconn} x max_instances {max_instances} = {maxconn * max_instances} "
         f"exceeds the 47 usable slots on the shared kumori instance. Raising this "
         f"starves every other app — resize the instance instead.")
+    # The binding cap is the prod login role's, read live so a cap change can't drift
+    # past this test. 2026-09-25: 8 x 3 = 24 passed the 47 check above against a
+    # role capped at 17, so a third instance would have been refused with FATAL.
+    if re.search(r'KUMORI_DB_AUTH:\s*iam', ay):
+        import json
+        project = json.load(open(os.path.join(root, 'deploy.json')))['project_id']
+        with core.db_cursor() as cur:
+            cur.execute("SELECT rolconnlimit FROM pg_roles WHERE rolname = %s",
+                        (f"{project}@appspot",))
+            row = cur.fetchone()
+        assert row, f"IAM login role {project}@appspot not found; prod cannot log in"
+        cap = row['rolconnlimit']
+        assert cap < 0 or maxconn * max_instances <= cap, (
+            f"maxconn {maxconn} x max_instances {max_instances} = {maxconn * max_instances} "
+            f"exceeds the {project}@appspot role's connection limit of {cap}. At full "
+            f"scale-out the extra connections are refused with FATAL instead of queueing.")
 
     # 2. The gate is FIFO-fair, not a barging semaphore.
     core._get_connection_pool()          # ensure the pool + its gate exist
