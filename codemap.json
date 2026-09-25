@@ -1092,6 +1092,9 @@
       "test_sanitize_error"
     ]
   },
+  "_oneoff/bug_read_via_prod.js": {
+    "description": "Read-only: find PilgrimBot-related bugs and dump the full record of any matching process.argv[2]."
+  },
   "_oneoff/fix_expedition_timestamps.py": {
     "description": "Repair historical pilgrim.expeditions rows that violate timestamp ordering.",
     "exports": [
@@ -1103,6 +1106,15 @@
     "description": "One-off admin grant, Andy-approved 2026-08-17: the Jun-25 least-privilege",
     "exports": [
       "sec"
+    ]
+  },
+  "_oneoff/pilgrimbot_history_check.js": {
+    "description": "Read-only: fetch latest PilgrimBot chat + messages for user 45 on prod."
+  },
+  "_oneoff/pilgrimbot_live_check.js": {
+    "description": "One live PilgrimBot question on prod via the real UI; captures the SSE stream.",
+    "exports": [
+      "secs"
     ]
   },
   "_oneoff/repair_1524_generates_resource.py": {
