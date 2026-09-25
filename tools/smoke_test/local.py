@@ -1849,6 +1849,37 @@ def test_codemap_always_loaded():
     return True
 
 
+@test("Codemap generator skips scratch dirs and writes a stable order", tier=1, features=['pilgrimbot'], mode='local')
+def test_codemap_generator_scratch_and_order():
+    """2026-09-25: codemap.json (PilgrimBot's map of the codebase) carried 5 _oneoff/
+    scratch scripts, and its "calls:" notes came from a set(), so every regen reordered
+    them and left a stray diff in the checkout. Runs the real generator on a temp tree."""
+    import os, tempfile
+    from tools import generate_codemap as gen
+    html = ('{% block title %}T{% endblock %}'
+            '<script>fetch("/api/zeta");fetch("/api/alpha");fetch("/api/mid");'
+            'fetch("/api/omega");fetch("/api/beta")</script>')
+    real_root = gen.ROOT
+    with tempfile.TemporaryDirectory() as root:
+        for rel, body in [('keep/kept.py', '"""Kept."""\n'),
+                          ('_oneoff/scratch.py', '"""Scratch."""\n'),
+                          ('_antiquated_files/old.py', '"""Old."""\n'),
+                          ('templates/page.html', html)]:
+            os.makedirs(os.path.join(root, os.path.dirname(rel)), exist_ok=True)
+            open(os.path.join(root, rel), 'w').write(body)
+        try:
+            gen.ROOT = root
+            cm = gen.generate_codemap()
+        finally:
+            gen.ROOT = real_root
+    assert 'keep/kept.py' in cm, f"generator missed an ordinary file: {sorted(cm)}"
+    leaked = [p for p in cm if p.startswith(('_oneoff/', '_antiquated'))]
+    assert not leaked, f"scratch indexed into PilgrimBot's codemap: {leaked}"
+    notes = cm['templates/page.html']['notes']
+    assert 'calls: api/alpha, api/beta, api/mid, api/omega, api/zeta' in notes, (
+        f"calls list must be sorted so regens are byte-stable, got {notes}")
+
+
 @test("Bug #21 Deploy D: XP grants removed from complete_crew_mission", tier=1, features=['captain_stats'], mode='local')
 def test_xp_grants_deprecated():
     """Luke 2026-05-09 #2: 'Ok to deprecate extra experience'. The +5 XP grant
