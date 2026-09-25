@@ -54,6 +54,10 @@ POOL_MAX = int(os.environ.get('DB_POOL_MAX')
 # role, same privilege) if the IAM login fails, until every app has proven it on a cold start.
 DB_AUTH = os.environ.get('KUMORI_DB_AUTH', 'password')
 DB_ROLE = os.environ.get('DB_ROLE') or ('kumori_batch' if DB_TIER == 'batch' else 'kumori_app')
+# The batch tier logs in as kumori_batch (its own connection cap) but runs as kumori_app, so
+# what it creates is owned like everything else. Under IAM the batch service account is a
+# member of kumori_batch and gets the same SET ROLE.
+SESSION_ROLE = 'kumori_app' if DB_TIER == 'batch' else DB_ROLE
 # Per-connection, because Postgres applies ALTER ROLE ... SET only for the LOGIN role: under IAM
 # the login is the service account, so the app role's own search_path would never take effect.
 DB_SEARCH_PATH = os.environ.get('DB_SEARCH_PATH', '')
@@ -221,10 +225,10 @@ def _get_connection_pool(gcp_project_id: str) -> psycopg2.pool.ThreadedConnectio
                     host=f"{socket_dir()}/{get_secret('KUMORI_POSTGRES_CONNECTION_NAME', gcp_project_id)}",
                     connect_timeout=10, keepalives=1, keepalives_idle=30, keepalives_interval=10,
                     keepalives_count=3, application_name=_app_identity(),
-                    options=f'{_SESSION_OPTS} -c role={DB_ROLE}', **_CURSOR_KW)
+                    options=f'{_SESSION_OPTS} -c role={SESSION_ROLE}', **_CURSOR_KW)
                 _connection_pools[gcp_project_id] = pool
                 _pool_semaphores[gcp_project_id] = threading.BoundedSemaphore(pool.maxconn)
-                logger.info(f"Created IAM-auth connection pool for {gcp_project_id} as {DB_ROLE}")
+                logger.info(f"Created IAM-auth connection pool for {gcp_project_id} as {SESSION_ROLE}")
                 return pool
             except Exception as e:
                 logger.error(f"IAM DB auth failed, falling back to password login: {e}")
