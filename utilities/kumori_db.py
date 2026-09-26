@@ -179,6 +179,34 @@ def socket_dir():
     return os.environ.get("DB_SOCKET_DIR", "/cloudsql")
 
 
+# ── Local path through the Cloud SQL Auth Proxy (#205, 2026-09-26) ──────────────
+# A local session used to connect straight to the instance's public IP (one allowlisted /32 + SSL:
+# security-infra's fallback, not its gold standard). With the proxy (a launchd agent on Andy's Mac,
+# 127.0.0.1:5433) the tunnel is authenticated by IAM and encrypted by the proxy, and the /32 can
+# later be removed. KUMORI_DB_LOCAL: proxy | direct | auto (default: the proxy when it listens).
+# 5433, not 6543: the admin recipe's proxy uses --auto-iam-authn, which breaks password logins.
+_local_route = None
+
+
+def _local_host(public_ip):
+    """(host, port, sslmode) for a connection from a machine that is not on Google Cloud."""
+    global _local_route
+    if _local_route is None:
+        import socket
+        mode = os.environ.get('KUMORI_DB_LOCAL', 'auto').strip().lower()
+        port = int(os.environ.get('KUMORI_DB_PROXY_PORT', '5433'))
+        use_proxy = mode == 'proxy'
+        if mode == 'auto':
+            try:
+                with socket.create_connection(('127.0.0.1', port), timeout=0.3):
+                    use_proxy = True
+            except OSError:
+                use_proxy = False
+        _local_route = ('127.0.0.1', port, 'disable') if use_proxy else (public_ip, 5432, 'require')
+        logger.info(f"kumori_db local route: {'Auth Proxy 127.0.0.1:%d' % port if use_proxy else 'direct public IP'}")
+    return _local_route
+
+
 def on_gcp():
     """True when the Cloud SQL connector socket is the right way to reach the instance.
 
@@ -242,6 +270,9 @@ def _get_connection_pool(gcp_project_id: str) -> psycopg2.pool.ThreadedConnectio
             host = f"{db_socket_dir}/{cloud_sql_connection_name}"
         else:
             host = db_credentials['host']
+        _port, _ssl = 5432, None
+        if not is_gcp:
+            host, _port, _ssl = _local_host(host)
 
         # Budget: 50 max_connections shared across 8+ apps on db-f1-micro
         # See kumori/docs/postgres_connections.md for allocation
@@ -258,6 +289,7 @@ def _get_connection_pool(gcp_project_id: str) -> psycopg2.pool.ThreadedConnectio
             user=db_credentials['user'],
             password=db_credentials['password'],
             host=host,
+            **({'port': _port, 'sslmode': _ssl} if _ssl else {}),
             connect_timeout=10,
             # TCP keepalives so the OS keeps idle pooled conns alive / detects
             # drops at the socket layer, cutting how often Cloud SQL silently
@@ -355,8 +387,9 @@ def get_admin_connection(gcp_project_id: str = 'kumori-404602', dbname: str = 'p
                            capture_output=True, text=True, timeout=30).stdout.strip()
     if not account or not token:
         raise RuntimeError('no gcloud login: run `gcloud auth login` first')
-    conn = psycopg2.connect(host=get_secret('KUMORI_POSTGRES_IP', gcp_project_id), dbname=dbname,
-                            user=account, password=token, sslmode='require', connect_timeout=15)
+    host, port, ssl = _local_host(get_secret('KUMORI_POSTGRES_IP', gcp_project_id))
+    conn = psycopg2.connect(host=host, port=port, dbname=dbname,
+                            user=account, password=token, sslmode=ssl, connect_timeout=15)
     with conn.cursor() as cur:
         cur.execute('SET ROLE cloudsqlsuperuser')
     conn.commit()   # SET ROLE is session-level; end the implicit transaction it opened

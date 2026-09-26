@@ -151,6 +151,13 @@ def _get_connection_pool():
             if _connection_pool is None:
                 is_gcp = os.environ.get('GAE_ENV', '').startswith('standard')
                 host = f"/cloudsql/{get_secret('PILGRIM_POSTGRES_CONNECTION_NAME')}" if is_gcp else get_secret('PILGRIM_POSTGRES_IP')
+                # Off Google Cloud, route through the Cloud SQL Auth Proxy when it listens (kumori #205,
+                # 2026-09-26): the vendored kumori_db decides (KUMORI_DB_LOCAL=auto|direct|proxy).
+                local_kw = {}
+                if not is_gcp:
+                    from utilities.kumori_db import _local_host
+                    host, _port, _ssl = _local_host(host)
+                    local_kw = {'port': _port, 'sslmode': _ssl}
 
                 # ThreadedConnectionPool is thread-safe.
                 # Budget: 50 max_connections (3 superuser-reserved -> 47 usable)
@@ -192,6 +199,7 @@ def _get_connection_pool():
                         database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
                         user=get_secret('PILGRIM_POSTGRES_USERNAME'),
                         password=get_secret('PILGRIM_POSTGRES_PASSWORD'),
+                        **local_kw,
                         connect_timeout=10,
                         # TCP keepalives: let the OS hold idle pooled conns open and
                         # detect drops at the socket layer, cutting how often Cloud SQL
