@@ -58,7 +58,8 @@ def _connect():
         host = f"{socket_dir}/{creds['connection_name']}"
         return psycopg2.connect(host=host, dbname=creds['dbname'],
                                 user=creds['user'], password=creds['password'])
-    return psycopg2.connect(host=creds['host'], dbname=creds['dbname'],
+    from utilities.anthropic_logger import _local_route   # the proxy when it listens (kumori #205)
+    return psycopg2.connect(**_local_route(creds['host']), dbname=creds['dbname'],
                             user=creds['user'], password=creds['password'])
 
 

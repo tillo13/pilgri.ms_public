@@ -2606,12 +2606,12 @@ def api_admin_kumori_usage():
     # Pulled directly from kumori's DB — not from imggen_usage since this
     # tracks ALL endpoints not just imggen. Per-key 20K/day.
     import psycopg2
-    from utilities.anthropic_logger import _get_db_creds
+    from utilities.anthropic_logger import _get_db_creds, _local_route
     creds = _get_db_creds()
     is_gcp = os.environ.get('GAE_ENV', '').startswith('standard') or os.path.exists('/cloudsql')
-    host = (f"{os.environ.get('DB_SOCKET_DIR', '/cloudsql')}/{creds['connection_name']}"
-            if is_gcp else creds['host'])
-    conn = psycopg2.connect(host=host, dbname=creds['dbname'], user=creds['user'],
+    where = ({'host': f"{os.environ.get('DB_SOCKET_DIR', '/cloudsql')}/{creds['connection_name']}"}
+             if is_gcp else _local_route(creds['host']))   # the proxy when it listens (kumori #205)
+    conn = psycopg2.connect(**where, dbname=creds['dbname'], user=creds['user'],
                             password=creds['password'], connect_timeout=5,
                             options='-c statement_timeout=10000')
     try:
