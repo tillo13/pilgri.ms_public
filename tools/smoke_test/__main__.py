@@ -22,6 +22,7 @@ from . import TESTS, PASSED, FAILED, SKIPPED, reset_results, print_summary, FEAT
 
 # Import test modules to register tests
 from . import local
+from . import local_free_first
 from . import deployed
 
 

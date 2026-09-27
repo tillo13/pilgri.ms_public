@@ -4,9 +4,7 @@ import json
 import logging
 import time as _time
 
-from utilities.claude_utils import create_client, CLAUDE_MODELS, log_api_usage
-from utilities.anthropic.pricing import sampling_kwargs
-from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
+from utilities.anthropic.pricing import CLAUDE_MODELS
 
 from utilities.pilgrimbot.storage import _strip_markdown_json
 from utilities.pilgrimbot.file_reader import read_local_file
@@ -17,7 +15,7 @@ MODEL = CLAUDE_MODELS.get("haiku-4.5", "claude-haiku-4-5-20251001")
 
 
 def _plan_context(message, history, bug_mode, user_id=None):
-    """Phase 2: Ask Haiku what context is needed to answer this question.
+    """Phase 2: Plan context through the free pool, then Claude if needed.
     Returns a dict of context tags like {'math': ['shard_generation'], 'endgame': True, 'code': ['db_expeditions.py'], 'player_data': ['balance', 'shard_generation']}."""
     # Build a lightweight prompt for the planner
     recent = ""
@@ -43,19 +41,16 @@ Return ONLY a JSON object with these optional keys (omit keys you don't need):
 Be MINIMAL. Most simple questions need NO context at all. A greeting needs nothing. "How do expeditions work?" needs maybe one code file. Only request what's truly needed."""
 
     try:
-        client = create_client(model=MODEL)
+        from utilities.free_first_text import free_first_text, validate_context
         _start = _time.time()
-        resp = client.client.messages.create(
+        text = free_first_text(
             model=MODEL, max_tokens=300,
-            **sampling_kwargs(MODEL, 0),
-            messages=[{"role": "user", "content": planner_prompt}]
+            temperature=0, feature='pilgrimbot_plan_context', user_id=user_id,
+            validate=validate_context,
+            messages=[{"role": "user", "content": planner_prompt}],
         )
         _ms = int((_time.time() - _start) * 1000)
-        log_api_usage(
-            model=MODEL, usage=resp.usage, feature='pilgrimbot_plan_context',
-            duration_ms=_ms, user_id=str(user_id) if user_id else "system:galactica_pilgrimbot",
-        )
-        text = _strip_markdown_json(resp.content[0].text)
+        text = _strip_markdown_json(text)
         plan = json.loads(text)
         if not isinstance(plan, dict):
             logger.warning(f"Planner returned non-dict: {type(plan)}, using fallback")

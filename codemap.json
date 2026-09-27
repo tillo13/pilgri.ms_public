@@ -1092,6 +1092,14 @@
       "test_sanitize_error"
     ]
   },
+  "tools/smoke_test/local_free_first.py": {
+    "description": "Offline return-type and fallback checks for plaintext routing.",
+    "exports": [
+      "test_free_first_text",
+      "test_free_first_fallback",
+      "test_bug_extraction_failures"
+    ]
+  },
   "docs/2026apr10plan.md": {
     "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
     "exports": [
@@ -1472,7 +1480,7 @@
   "utilities/brainstorm_chat.py": {
     "description": "Generic brainstorm chat used by tech tree and trail brainstorm pages.",
     "exports": [
-      "brainstorm_chat — Generic brainstorm chat with Claude. Used by tech tree and trail brainstorm pages."
+      "brainstorm_chat — Brainstorm through Kumori's free pool, with the existing Claude fallback."
     ]
   },
   "utilities/build_completions.py": {
@@ -1587,6 +1595,16 @@
       "utilities.email.fomo",
       "utilities.postgres.users",
       "utilities.video_utils"
+    ]
+  },
+  "utilities/free_first_text.py": {
+    "description": "Plain-text helpers only; PilgrimBot's tool loop keeps its existing transport.",
+    "exports": [
+      "parse_json",
+      "validate_context",
+      "validate_bug",
+      "validate_related",
+      "free_first_text"
     ]
   },
   "utilities/gmail_utils.py": {

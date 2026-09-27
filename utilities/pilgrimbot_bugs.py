@@ -6,12 +6,9 @@ Extracted from pilgrimbot_utils.py for file size management.
 import json
 import logging
 import threading
-import time as _time
-
-from utilities.claude_utils import create_client, log_api_usage, CLAUDE_MODELS
-from utilities.anthropic.pricing import sampling_kwargs
-from utilities.anthropic_logger import new_client  # canonical chain proof (noqa: F401)
+from utilities.anthropic.pricing import CLAUDE_MODELS
 from utilities.postgres.core import db_cursor
+from utilities.free_first_text import free_first_text, validate_bug, validate_related
 
 logger = logging.getLogger("pilgrimbot")
 
@@ -245,16 +242,16 @@ def _find_related_bugs(new_bug_id, title, affected_areas=""):
     if not candidates:
         return []
 
-    # Haiku pass: let AI rank relevance and explain connections
+    # Free-first pass: rank relevance and explain connections.
     try:
-        client = create_client(model=MODEL)
         bug_list = "\n".join(
             f"#{b['id']}: {b['name']} ({b['status']}/{b['priority']}) — {(b.get('description') or '')[:150]}"
             for b in candidates
         )
-        _s = _time.time()
-        resp = client.client.messages.create(
-            model=MODEL, max_tokens=500, **sampling_kwargs(MODEL, 0),
+        text = free_first_text(
+            model=MODEL, max_tokens=500, temperature=0,
+            feature='pilgrimbot_related_bugs', validate=validate_related,
+            user_id='system:galactica_pilgrimbot_bugs',
             system="You identify related software bugs. Return ONLY valid JSON, no markdown.",
             messages=[{"role": "user", "content": f"""New bug: "{title}"
 Affected areas: {affected_areas}
@@ -267,12 +264,7 @@ Exclude bugs that just happen to share a common word but are about different iss
 Format: [{{"id": 123, "reason": "one sentence why it's related"}}]
 Return empty array [] if none are truly related."""}]
         )
-        log_api_usage(
-            model=MODEL, usage=resp.usage, feature='pilgrimbot_related_bugs',
-            duration_ms=int((_time.time() - _s) * 1000),
-            user_id="system:galactica_pilgrimbot_bugs",
-        )
-        text = _strip_markdown_json(resp.content[0].text)
+        text = _strip_markdown_json(text)
         ai_picks = json.loads(text)
         # Filter candidates to only AI-approved ones, preserving bug data
         ai_ids = {p['id'] for p in ai_picks}
@@ -311,6 +303,15 @@ def handle_create_bug_request(user_id, data: dict) -> dict:
     )
 
 
+def _bug_report_text(**kwargs):
+    """Keep invalid output or exhausted providers on the structured-error path."""
+    try:
+        return free_first_text(validate=validate_bug, **kwargs)
+    except Exception as exc:
+        logger.warning('Bug extraction unavailable (%s)', type(exc).__name__)
+        return ''
+
+
 def create_bug_from_conversation(chat_id, user_id, title_override=None, priority_override=None):
     """Use Claude to parse a PilgrimBot conversation into a structured bug report, then create it.
     Includes evidence trail: key data points, source references, and DB lookup info.
@@ -327,10 +328,9 @@ def create_bug_from_conversation(chat_id, user_id, title_override=None, priority
         ts = msg.get('created_at', '')
         convo_text += f"[{i+1}] {role} ({ts}): {msg['content'][:800]}\n\n"
 
-    client = create_client(model=MODEL)
-    _s = _time.time()
-    resp = client.client.messages.create(
-        model=MODEL, max_tokens=1000, **sampling_kwargs(MODEL, 0),
+    text = _bug_report_text(
+        model=MODEL, max_tokens=1000, temperature=0,
+        feature='pilgrimbot_create_bug', user_id=user_id,
         system="You extract structured bug reports from QA conversations. Return ONLY valid JSON, no markdown.",
         messages=[{"role": "user", "content": f"""Read this QA conversation ({len(history)} messages) and extract a bug report.
 
@@ -346,13 +346,8 @@ Return JSON with exactly these fields:
   "affected_areas": "Which game systems/pages are affected (e.g. shard generation, colony page, expeditions)"
 }}"""}]
     )
-    log_api_usage(
-        model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug',
-        duration_ms=int((_time.time() - _s) * 1000),
-        user_id=str(user_id) if user_id else "system:galactica_pilgrimbot_bugs",
-    )
     try:
-        text = _strip_markdown_json(resp.content[0].text)
+        text = _strip_markdown_json(text)
         parsed = json.loads(text)
     except (json.JSONDecodeError, IndexError) as e:
         logger.warning(f"Bug extraction parse error: {e}")
@@ -397,10 +392,9 @@ def create_bug_from_response(response_text, user_id, chat_id=None, title_overrid
     if not response_text:
         return {'success': False, 'error': 'No response text'}
 
-    client = create_client(model=MODEL)
-    _s = _time.time()
-    resp = client.client.messages.create(
-        model=MODEL, max_tokens=1000, **sampling_kwargs(MODEL, 0),
+    text = _bug_report_text(
+        model=MODEL, max_tokens=1000, temperature=0,
+        feature='pilgrimbot_create_bug_from_response', user_id=user_id,
         system="You extract structured bug reports from a single PilgrimBot analysis response. Return ONLY valid JSON, no markdown.",
         messages=[{"role": "user", "content": f"""Read this single PilgrimBot response and extract a bug report from it.
 
@@ -415,13 +409,8 @@ Return JSON with exactly these fields:
   "evidence": "Key findings from this specific response"
 }}"""}]
     )
-    log_api_usage(
-        model=MODEL, usage=resp.usage, feature='pilgrimbot_create_bug_from_response',
-        duration_ms=int((_time.time() - _s) * 1000),
-        user_id=str(user_id) if user_id else "system:galactica_pilgrimbot_bugs",
-    )
     try:
-        text = _strip_markdown_json(resp.content[0].text)
+        text = _strip_markdown_json(text)
         parsed = json.loads(text)
     except (json.JSONDecodeError, IndexError) as e:
         logger.warning(f"Bug extraction from response parse error: {e}")

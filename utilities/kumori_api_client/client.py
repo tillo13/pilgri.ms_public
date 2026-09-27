@@ -408,14 +408,17 @@ def llm_chat_resilient(backends=None, messages=None, max_tokens=500, temperature
 
 
 def llm_chat_reserve(messages, system=None, max_tokens=300, temperature=0.7,
-                     auth_sub=None, app_name=None, timeout=(5, 30)):
+                     auth_sub=None, app_name=None, timeout=(5, 30), openrouter_first=False):
     """Reserve tier — paid Claude (kumori's MODEL_TIERS['sonnet']) for this APP's
     users. The grant is the `llm.reserve` scope on your key; spend is bounded by
     the key's daily cap. auth_sub (your login's Google `sub`) is optional and
     only tags usage for attribution. Raises KumoriAPIError on 403 (no scope),
     429 (cap) or 5xx — catch it and fall back to llm_chat_resilient. Returns
-    (text, backend). No client-side retry: a paid call is never doubled."""
+    (text, backend). No client-side retry: a paid call is never doubled.
+    openrouter_first=True tries kumori's capped paid OpenRouter hop ($1/day) before Claude."""
     body = {'messages': messages, 'max_tokens': max_tokens, 'temperature': temperature}
+    if openrouter_first:
+        body['openrouter_first'] = True
     if auth_sub:
         body['auth_sub'] = auth_sub
     if system:

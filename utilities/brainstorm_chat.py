@@ -4,22 +4,13 @@ Extracted from utilities/claude_utils.py (Round 5 refactor).
 """
 
 import os
-import time
 import logging
-
-from utilities.anthropic_logger import new_client
-
-from utilities.anthropic.client import _get_anthropic_api_key
-from utilities.anthropic.pricing import log_api_usage
 
 logger = logging.getLogger("claude_utils")
 
 
 def brainstorm_chat(message, context, history, user_id=None):
-    """Generic brainstorm chat with Claude. Used by tech tree and trail brainstorm pages."""
-    api_key = _get_anthropic_api_key()
-
-    client = new_client()
+    """Brainstorm through Kumori's free pool, with the existing Claude fallback."""
 
     # Enrich context with endgame registry for signal/endgame-related pages
     enriched_context = context
@@ -56,21 +47,12 @@ When brainstorming surfaces a concrete bug, feature request, or action item:
     # brainstorm chat follows the same current Sonnet as the rest of the app.
     from utilities.anthropic.pricing import CLAUDE_MODELS
     _brainstorm_model = CLAUDE_MODELS.get("sonnet-4.6", "claude-sonnet-4-6")
-    _start = time.time()
-    response = client.messages.create(
+    from utilities.free_first_text import free_first_text
+    return free_first_text(
         model=_brainstorm_model,
         max_tokens=1000,
         system=enriched_context,
-        messages=messages
-    )
-    _elapsed = time.time() - _start
-
-    log_api_usage(
-        model=_brainstorm_model,
-        usage=response.usage,
+        messages=messages,
         feature='brainstorm_chat',
-        duration_ms=int(_elapsed * 1000),
         user_id=str(user_id) if user_id else "system:galactica_brainstorm",
     )
-
-    return response.content[0].text
