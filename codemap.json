@@ -2984,13 +2984,13 @@
       "llm_chat_resilient — Server-side fallback chat. Returns (text, winning_backend,",
       "llm_chat_reserve — Reserve tier — paid Claude (kumori's MODEL_TIERS['sonnet']) for this APP's",
       "llm_chat_eval — Eval-pool scoring call. Signature mirrors kumori_free_llms.chat_eval.",
+      "lane_status — {name: kumori lifecycle status} for named lanes, retired ones included; 'unknown' when",
       "llm_backends — List available backends. Returns the list of backend dicts.",
       "llm_usage — Cluster-wide usage summary across backends.",
       "llm_registry — Full backend_registry snapshot. Returns dict with keys: backends, models,",
       "llm_backoff_state — Current per-backend backoff state. Returns",
       "llm_is_backed_off — Convenience: True if backend is currently in backoff.",
-      "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as",
-      "embed_text — Embed a list of strings via the shared free-LLM pool. Auto-selects"
+      "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as"
     ]
   },
   "utilities/email/__init__.py": {

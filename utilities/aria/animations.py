@@ -91,129 +91,54 @@ def get_contextual_hint(user_id: int) -> Dict[str, Any]:
         Dict with 'hint' (the message) and 'priority' (for sorting)
     """
     from utilities.postgres.core import db_cursor
-    from utilities.depot_utils import get_live_balance_and_wallet_info
 
     hints = []
 
     try:
-        # Get user's current balance
-        total_balance, _, _ = get_live_balance_and_wallet_info(user_id)
-
+        # One read against the live schema (rewritten 2026-09-27: the old reads named columns and
+        # tables that no longer exist, so every player got the fallback line). Expeditions are
+        # traveling/returning while out and complete when done; a discovery is unclaimed until
+        # it is extracted to inventory (claimed_at).
         with db_cursor() as cur:
-            # Check infrastructure
             cur.execute("""
-                SELECT COUNT(*) as count,
-                       SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count
-                FROM pilgrim.colony_infrastructure
-                WHERE user_id = %s
-            """, (user_id,))
-            infra = cur.fetchone()
-            has_infrastructure = infra and infra[0] > 0
+                SELECT (SELECT COUNT(*) FROM pilgrim.colony_infrastructure
+                         WHERE user_id = %(u)s AND status = 'active') AS infrastructure,
+                       (SELECT COUNT(*) FROM pilgrim.expeditions
+                         WHERE user_id = %(u)s AND status IN ('traveling', 'returning')) AS active,
+                       (SELECT COUNT(*) FROM pilgrim.expeditions
+                         WHERE user_id = %(u)s AND status = 'complete') AS completed,
+                       (SELECT COUNT(*) FROM pilgrim.expedition_discoveries ed
+                          JOIN pilgrim.expeditions e ON e.id = ed.expedition_id
+                         WHERE e.user_id = %(u)s AND e.status = 'complete' AND ed.claimed_at IS NULL) AS unclaimed
+            """, {'u': user_id})
+            row = cur.fetchone()
+        active_expeditions, unclaimed_discoveries = row['active'], row['unclaimed']
 
-            # Check for harvestable shards (accumulated > 100)
-            cur.execute("""
-                SELECT COALESCE(SUM(accumulated_sepolia), 0) as pending
-                FROM pilgrim.colony_infrastructure
-                WHERE user_id = %s AND status = 'active'
-            """, (user_id,))
-            pending_harvest = cur.fetchone()[0] or 0
-
-            # Check active expeditions
-            cur.execute("""
-                SELECT COUNT(*) FROM pilgrim.expeditions
-                WHERE user_id = %s AND status = 'in_progress'
-            """, (user_id,))
-            active_expeditions = cur.fetchone()[0]
-
-            # Check completed expeditions (ever)
-            cur.execute("""
-                SELECT COUNT(*) FROM pilgrim.expeditions
-                WHERE user_id = %s AND status = 'completed'
-            """, (user_id,))
-            completed_expeditions = cur.fetchone()[0]
-
-            # Check unclaimed discoveries
-            cur.execute("""
-                SELECT COUNT(*) FROM pilgrim.expedition_discoveries
-                WHERE user_id = %s AND status = 'unclaimed'
-            """, (user_id,))
-            unclaimed_discoveries = cur.fetchone()[0]
-
-            # Check items under construction
-            cur.execute("""
-                SELECT COUNT(*) FROM pilgrim.colony_infrastructure
-                WHERE user_id = %s AND status = 'building'
-            """, (user_id,))
-            building_count = cur.fetchone()[0]
-
-            # Check shop items owned
-            cur.execute("""
-                SELECT COUNT(*) FROM pilgrim.user_equipment
-                WHERE user_id = %s
-            """, (user_id,))
-            equipment_count = cur.fetchone()[0]
-
-        # Priority 1: No infrastructure - critical first step
-        if not has_infrastructure:
+        if not row['infrastructure']:
             hints.append({
                 'priority': 1,
                 'hint': "**Your first move:** Visit the **Depot** and build a Solar Array. It's free and generates shards passively!\n\nThis is the foundation of your colony."
             })
-
-        # Priority 2: Large harvest pending
-        elif pending_harvest >= 500:
-            hints.append({
-                'priority': 2,
-                'hint': f"**Harvest ready!** You have **{int(pending_harvest):,} shards** waiting.\n\nGo to **Base HQ** and click Harvest before you hit the 7-day cap!"
-            })
-
-        # Priority 3: Unclaimed discoveries
         elif unclaimed_discoveries > 0:
             hints.append({
                 'priority': 3,
-                'hint': f"**{unclaimed_discoveries} discovery{'s' if unclaimed_discoveries > 1 else ''} unclaimed!**\n\nVisit the **Colony** tab to view and extract shards from your finds."
+                'hint': f"**{unclaimed_discoveries} {'discoveries' if unclaimed_discoveries > 1 else 'discovery'} unclaimed!**\n\nVisit the **Colony** tab to view and extract shards from your finds."
             })
-
-        # Priority 4: No active expedition and none ever completed
-        elif active_expeditions == 0 and completed_expeditions == 0:
+        elif active_expeditions == 0 and row['completed'] == 0:
             hints.append({
                 'priority': 4,
                 'hint': "**Time to explore!** You haven't launched any expeditions yet.\n\nGo to **Expeditions** and tap a destination on the Mars map. Start close to save shards!"
             })
-
-        # Priority 5: No active expedition (but has completed some)
         elif active_expeditions == 0:
             hints.append({
                 'priority': 5,
                 'hint': "**No expedition active.** Your rover is idle!\n\nVisit the **Expeditions** tab to launch a new mission and discover more artifacts."
             })
-
-        # Priority 6: Has balance but no equipment
-        elif equipment_count == 0 and total_balance >= 1000:
-            hints.append({
-                'priority': 6,
-                'hint': "**Consider equipment!** You have shards but no gear.\n\nVisit the **Depot** → Equipment tab. Items like the Terrain Scanner boost discovery chances!"
-            })
-
-        # Priority 7: Building items in progress
-        elif building_count > 0:
-            hints.append({
-                'priority': 7,
-                'hint': f"**{building_count} item{'s' if building_count > 1 else ''} under construction.** Your colony is growing!\n\nCheck **Base HQ** for completion times. Meanwhile, launch expeditions to stay productive."
-            })
-
-        # Priority 8: Everything is going well
         else:
-            if active_expeditions > 0:
-                hints.append({
-                    'priority': 8,
-                    'hint': f"**Colony running smoothly!** {active_expeditions} expedition{'s' if active_expeditions > 1 else ''} in progress.\n\nCheck back when they return, or browse the **Depot** for upgrades."
-                })
-            else:
-                hints.append({
-                    'priority': 8,
-                    'hint': "**All systems nominal.** Your colony is in good shape!\n\nLaunch an **Expedition** to keep discovering, or visit the **Depot** to plan your next upgrade."
-                })
+            hints.append({
+                'priority': 8,
+                'hint': f"**Colony running smoothly!** {active_expeditions} expedition{'s' if active_expeditions > 1 else ''} in progress.\n\nCheck back when they return, or browse the **Depot** for upgrades."
+            })
 
         # Return highest priority hint
         hints.sort(key=lambda x: x['priority'])

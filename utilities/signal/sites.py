@@ -411,8 +411,8 @@ def maybe_spawn_echo_site(
             msg_row = cur.fetchone()
 
             if msg_row:
-                message_id = msg_row[0]
-                memory_text = msg_row[1]
+                message_id = msg_row['id']          # dict rows: msg_row[0] was KeyError 0
+                memory_text = msg_row['message_text']
 
                 # Update usage count
                 cur.execute("""

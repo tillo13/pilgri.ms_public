@@ -157,7 +157,7 @@ def _auto_complete_research(user_id: int) -> Optional[Dict]:
                 from utilities.postgres.wallets import update_sepolia_wallet_balance
                 update_sepolia_wallet_balance(
                     wallet['wallet_address'],
-                    wallet.get('current_balance_eth', 0) + 0.0000001
+                    float(wallet.get('current_balance_eth') or 0) + 0.0000001  # NUMERIC comes back Decimal
                 )
                 with db_cursor(commit=True) as cur2:
                     cur2.execute("""
