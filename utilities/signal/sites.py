@@ -481,7 +481,9 @@ def claim_echo_site(
             if not row:
                 return {'success': False, 'error': 'Echo Site not found or inactive'}
 
-            site_code, memory_text, total_claims, max_ranked = row
+            # dict rows: unpacking `row` gave its KEYS, so total_claims + 1 raised on a str
+            site_code, memory_text, total_claims, max_ranked = (row['site_code'], row['memory_text'],
+                                                               row['total_claims'], row['max_ranked_claims'])
             new_rank = total_claims + 1
 
             # Check if user already claimed
