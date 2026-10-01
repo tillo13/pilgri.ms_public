@@ -15,6 +15,7 @@ import time
 
 from config import FLUX_MODEL
 from utilities.claude_utils import generate_aria_snapshot_prompt
+from utilities.kumori_api_client.client import KumoriAPIError
 from utilities.google_cloud_storage_utils import upload_blob_from_bytes_with_thumbnail
 from utilities.postgres.core import db_cursor
 
@@ -39,6 +40,24 @@ from utilities.aria.photos.prompts import (
 from utilities.aria.photos.storage import save_generated_image
 
 logger = logging.getLogger(__name__)
+
+
+def _snapshot_prompt_with_retry(user_context, forced_category):
+    """Retry up to 3 times on a bad parse or a kumori 5xx. A 502 (a free lane answered with
+    nothing) skipped that day's snapshot outright on 2026-09-30 and 10-01; a 4xx is a request
+    problem, not a lane one, so it still raises at once."""
+    for attempt in range(3):
+        try:
+            prompt_data = generate_aria_snapshot_prompt(user_context, forced_category=forced_category)
+            if not prompt_data:
+                raise ValueError("snapshot prompt came back empty")
+            return prompt_data
+        except (json.JSONDecodeError, ValueError, KumoriAPIError) as retry_err:
+            is_4xx = isinstance(retry_err, KumoriAPIError) and (retry_err.status_code or 500) < 500
+            if attempt == 2 or is_4xx:
+                raise
+            logger.warning(f"  ⚠ Claude prompt attempt {attempt + 1} failed: {retry_err}, retrying...")
+            time.sleep(min(getattr(retry_err, 'retry_after', None) or 2, 30))
 
 
 def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_snapshots=1, forced_category=None):
@@ -149,20 +168,7 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
         try:
             logger.info(f"\n  [{i + 1}/{num_snapshots}] Asking Claude to generate unique prompt...")
 
-            # Retry Claude up to 3 times on JSON parse errors
-            prompt_data = None
-            for attempt in range(3):
-                try:
-                    prompt_data = generate_aria_snapshot_prompt(user_context, forced_category=forced_category)
-                    break
-                except (json.JSONDecodeError, ValueError) as retry_err:
-                    if attempt < 2:
-                        logger.warning(f"  ⚠ Claude prompt attempt {attempt + 1} failed: {retry_err}, retrying...")
-                        time.sleep(2)
-                    else:
-                        raise
-            if not prompt_data:
-                raise ValueError("Failed to generate prompt after 3 attempts")
+            prompt_data = _snapshot_prompt_with_retry(user_context, forced_category)
 
             scene_type = prompt_data.get('scene_type', 'daily_scene')
             prompt = prompt_data['prompt']
