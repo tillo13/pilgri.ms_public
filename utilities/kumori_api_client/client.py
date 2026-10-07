@@ -296,7 +296,7 @@ def llm_generate(prompt, max_tokens=500, temperature=1.0):
     return data.get('text'), data.get('backend')
 
 
-RECOVER_WAIT_S = 150    # after a cut-off: the router's own bound is 140 s from the start, so this is generous
+RECOVER_WAIT_S = 200    # after a cut-off at 100 s: the router's bound is 140 s from the start, 260 s for a long_call
 RECOVER_POLL_S = 10
 
 
@@ -324,7 +324,7 @@ def _chat_recoverable(body, request_id, timeout):
 
 def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=None,
              app_name=None, timeout=None, timeout_s=None, include_metadata=False, request_id=None,
-             substitute=False, spread_key=None):
+             substitute=False, spread_key=None, long_call=False, reasoning_effort=None):
     """Pinned-backend multi-turn chat. Returns (text, backend_name).
 
     request_id: for calls that may outlast Cloudflare's 100 s cutoff (long proofs); 16-64 chars of
@@ -358,6 +358,10 @@ def llm_chat(backend_name, messages, max_tokens=500, temperature=0.3, system=Non
         body['app_name'] = app_name
     if timeout_s:
         body['timeout_s'] = int(timeout_s)   # server-side per-attempt ceiling (default 30, max 60): proofs need it
+    if long_call:
+        body['long_call'] = True             # one attempt up to 240 s; honored only for sparebrains.write keys
+    if reasoning_effort:
+        body['reasoning_effort'] = reasoning_effort   # low/medium/high; OpenRouter and Groq GPT-OSS honor it
     if request_id:
         body['request_id'] = request_id
         data = _chat_recoverable(body, request_id, timeout or (5, 60))
@@ -639,6 +643,17 @@ def sparebrains_heartbeat(row):
         return _request('POST', '/api/v1/sparebrains/heartbeat', row, timeout=(5, 20), retry_on_5xx=False)
     except Exception as e:
         logger.warning(f"sparebrains_heartbeat failed for {row.get('run_id')}: {e}")
+        return None
+
+
+def sparebrains_thread(payload):
+    """Upsert one problem's GitHub comments into sparebrains_threads: {target_set, target,
+    issue_number, comments: [{id, author, author_type, created_at, updated_at, body, url}]}.
+    Returns {ok, comments} or None; the dossier simply shows the last sync on failure."""
+    try:
+        return _request('POST', '/api/v1/sparebrains/thread', payload, timeout=(5, 30), retry_on_5xx=False)
+    except Exception as e:
+        logger.warning(f"sparebrains_thread failed for {payload.get('target')}: {e}")
         return None
 
 

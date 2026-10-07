@@ -24,6 +24,7 @@ from .client import (
     sparebrains_heartbeat,
     sparebrains_previous,
     sparebrains_summary,
+    sparebrains_thread,
     imggen_generate,
     imggen_edit,
     imggen_usage,

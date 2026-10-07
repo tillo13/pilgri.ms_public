@@ -859,7 +859,10 @@ Return ONLY valid JSON."""
         from utilities.kumori_utils import kumori_llm_chat
         text, backend, _attempts, _debug = kumori_llm_chat(
             system=system_prompt, user_prompt=user_prompt,
-            max_tokens=800, temperature=0.5, min_chars=80,
+            # Reasoning lanes think before they answer, inside the same budget. At 800 (floored
+            # to 1,500 by the router) successful gptoss-20b replies used 1,235-1,428 tokens and
+            # every failed one stopped at exactly 1,500 mid-JSON (8 days to 2026-10-07).
+            max_tokens=3000, temperature=0.5, min_chars=80,
         )
         logger.info(f"aria_snapshot_prompt via kumori backend={backend}")
 
