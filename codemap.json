@@ -1100,6 +1100,12 @@
       "test_bug_extraction_failures"
     ]
   },
+  "tools/smoke_test/local_journal_quality.py": {
+    "description": "Journal grading return contract, without live provider calls.",
+    "exports": [
+      "test_journal_quality_contract"
+    ]
+  },
   "docs/2026apr10plan.md": {
     "description": "2026-04-10 Plan — Robot Crew + Multiplier Cleanup + Cinematic Framework",
     "exports": [
@@ -1475,6 +1481,14 @@
       "render_scene — Render the synthesized scene via Klein. Returns",
       "verify_and_caption — Post-render redundancy loop. Two HTTP calls:",
       "generate_journal_entry — End-to-end pipeline. Returns the full synth payload PLUS rendered image."
+    ]
+  },
+  "utilities/aria_journal_quality.py": {
+    "description": "Best-effort prompt adherence grades using the journal's existing vision read.",
+    "exports": [
+      "parse_grade — Reject invalid scores rather than fabricating or clamping evidence.",
+      "grade_render — One bounded text call; grading/telemetry failures never fail a journal.",
+      "grade_saved_snapshot — Daily snapshots have no caption verification; describe only after saving."
     ]
   },
   "utilities/brainstorm_chat.py": {

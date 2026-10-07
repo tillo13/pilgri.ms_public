@@ -735,6 +735,8 @@ def generate_journal_entry(user_id: int, *, seed: Optional[int] = None,
         verification = verify_and_caption(synth, rendered['image_bytes'], debug=debug)
         verify_ms = int((time.time() - t_verify_start) * 1000)
         synth.update(verification)
+        from utilities.aria_journal_quality import grade_render
+        synth['quality_grade'] = grade_render(synth, rendered, verification)
     finally:
         if debug:
             set_request_log(None)

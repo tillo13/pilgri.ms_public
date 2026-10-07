@@ -3039,7 +3039,13 @@ def api_admin_kumori_generate_stream():
                 'ms': cap_ms,
             })
 
+            from utilities.aria_journal_quality import grade_render
+            quality_grade = grade_render(synth, rendered, {
+                'verification_vision_description': vision_text,
+                'verification_vision_backend': vision_backend,
+            })
             yield sse('done', {
+                'quality_grade': quality_grade,
                 'pipeline_total_ms': int((_time.time()-t_pipeline)*1000),
                 'pipeline_stage_log': stage_log,
                 'galactica_to_kumori_http': galactica_to_kumori_http,

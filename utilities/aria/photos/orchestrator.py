@@ -316,6 +316,10 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
                 'source_images': source_image_urls,
             })
 
+            from utilities.aria_journal_quality import grade_saved_snapshot
+            results[-1]['quality_grade'] = grade_saved_snapshot(
+                prompt, res, modality='imggen_edit' if refs_used_count else 'imggen')
+
             logger.info(f"  ✓ [{i + 1}/{num_snapshots}] {scene_type} complete")
             time.sleep(2)
 
