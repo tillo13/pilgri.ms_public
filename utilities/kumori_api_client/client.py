@@ -636,6 +636,23 @@ def sparebrains_previous(target_set, target, backend):
         return None
 
 
+def sparebrains_ablation_todo(slice_spec, after_id=0, limit=100):
+    """One page of stored cold rejects not yet re-run for the loop's ablation (id, target_set, target, backend,
+    quality_tier, rung, proof, lean_output), the attempt ids in `slice_spec` (k/N). Raises on failure: a
+    re-run that cannot read its queue must stop, not report an empty one."""
+    q = f'/api/v1/sparebrains/ablation/todo?slice={slice_spec}&after_id={int(after_id)}&limit={int(limit)}'
+    return _request('GET', q, None, timeout=(5, 60)).get('rows', [])
+
+
+def sparebrains_ablation(row):
+    """Upsert one stored cold try's B and C results by attempt_id. Fire-and-forget like sparebrains_attempt."""
+    try:
+        return _request('POST', '/api/v1/sparebrains/ablation', row, timeout=(5, 30), retry_on_5xx=True)
+    except Exception as e:
+        logger.warning(f"sparebrains_ablation failed for attempt {row.get('attempt_id')}: {e}")
+        return None
+
+
 def sparebrains_heartbeat(row):
     """Upsert the job's progress row (run_id, mode, status, cells_total, cells_owed, calls,
     accepts, lanes, targets). Fire-and-forget like sparebrains_attempt."""

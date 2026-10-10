@@ -45,7 +45,11 @@ logger = logging.getLogger(__name__)
 def _snapshot_prompt_with_retry(user_context, forced_category):
     """Retry up to 3 times on a bad parse or a kumori 5xx. A 502 (a free lane answered with
     nothing) skipped that day's snapshot outright on 2026-09-30 and 10-01; a 4xx is a request
-    problem, not a lane one, so it still raises at once."""
+    problem, not a lane one, so it still raises at once.
+
+    A 5xx waits 20 s, then 60 s (jittered) before the next try, or what the server asked for.
+    Two seconds later the same slow lanes answer the same way: on 2026-10-10 three tries inside
+    three minutes all drew a 504 and that user's snapshot was skipped. Nobody waits on this cron."""
     for attempt in range(3):
         try:
             prompt_data = generate_aria_snapshot_prompt(user_context, forced_category=forced_category)
@@ -57,7 +61,11 @@ def _snapshot_prompt_with_retry(user_context, forced_category):
             if attempt == 2 or is_4xx:
                 raise
             logger.warning(f"  ⚠ Claude prompt attempt {attempt + 1} failed: {retry_err}, retrying...")
-            time.sleep(min(getattr(retry_err, 'retry_after', None) or 2, 30))
+            if not isinstance(retry_err, KumoriAPIError):
+                wait = 2                                    # a bad parse is a re-roll, not an outage
+            else:
+                wait = min((retry_err.retry_after or 20 * 3 ** attempt) * random.uniform(0.8, 1.2), 90)
+            time.sleep(wait)
 
 
 def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_snapshots=1, forced_category=None):
