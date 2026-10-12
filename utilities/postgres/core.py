@@ -219,6 +219,21 @@ def _get_connection_pool():
                         options=('-c statement_timeout=30000 '
                                  '-c idle_in_transaction_session_timeout=60000')
                     )
+                # Off Google Cloud the pool logs in as the password role, whose CONNECTION LIMIT
+                # (3 on 2026-10-11) is below maxconn. A fourth checkout was refused by the server
+                # ("too many connections for role", 4x in a post-deploy andy_check on 2026-10-10,
+                # paged as an outage). Sized to the role's own limit, it queues at the gate instead.
+                if not is_gcp:
+                    probe = _connection_pool.getconn()
+                    try:
+                        with probe.cursor() as cur:
+                            cur.execute("SELECT rolconnlimit FROM pg_roles WHERE rolname = current_user")
+                            limit = cur.fetchone()[0]
+                        probe.rollback()
+                    finally:
+                        _connection_pool.putconn(probe)
+                    if 0 < limit < _connection_pool.maxconn:
+                        _connection_pool.maxconn = limit
                 global _pool_semaphore
                 _pool_semaphore = _FairGate(_connection_pool.maxconn)
                 logger.info("✅ Database connection pool initialized (%s-%s connections, app=%s)",
