@@ -1716,6 +1716,7 @@
     "description": "DB connection pool + canonical cursor pattern, for EVERY app on the shared Cloud SQL.",
     "exports": [
       "class _IAMConnectionPool — Every new physical connection gets a fresh token; pooled connections outlive their token.",
+      "class _LocalIAMConnectionPool",
       "background_db — Mark this thread's database use as background work for the duration: it queues for one of",
       "get_secret — Fetch secret from Google Secret Manager with in-memory cache.",
       "get_postgres_credentials — Get database credentials - cached to avoid repeated Secret Manager calls",

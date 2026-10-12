@@ -191,6 +191,26 @@ def _get_connection_pool():
                     except Exception as e:
                         logger.error(f"IAM DB auth failed, falling back to password login: {e}")
                         _connection_pool = None
+                # Local sessions (2026-10-11): through the Auth Proxy, log in as the shared
+                # local-sessions service account and run as pilgrim_app, the way production does,
+                # so local work stops spending pilgrim_app's own 3 slots. Kumori's canonical pool
+                # mints the token; a failed login falls back to the password role below.
+                if not is_gcp and local_kw.get('sslmode') == 'disable':
+                    try:
+                        from utilities.kumori_db import _LocalIAMConnectionPool, LOCAL_IAM_USER
+                        _connection_pool = _LocalIAMConnectionPool(
+                            minconn=DEFAULT_MINCONN, maxconn=DEFAULT_MAXCONN, host=host, **local_kw,
+                            database=get_secret('PILGRIM_POSTGRES_DB_NAME'),
+                            user=LOCAL_IAM_USER, password='', connect_timeout=10,
+                            keepalives=1, keepalives_idle=30, keepalives_interval=10,
+                            keepalives_count=3, application_name=_app_identity(),
+                            options=('-c statement_timeout=30000 '
+                                     '-c idle_in_transaction_session_timeout=60000 '
+                                     '-c role=pilgrim_app'))
+                        _connection_pool.putconn(_connection_pool.getconn())   # prove the login now
+                    except Exception as e:
+                        logger.warning(f"local IAM DB login failed, using the pilgrim_app password login: {e}")
+                        _connection_pool = None
                 if _connection_pool is None:
                     _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                         minconn=DEFAULT_MINCONN,
@@ -219,21 +239,14 @@ def _get_connection_pool():
                         options=('-c statement_timeout=30000 '
                                  '-c idle_in_transaction_session_timeout=60000')
                     )
-                # Off Google Cloud the pool logs in as the password role, whose CONNECTION LIMIT
-                # (3 on 2026-10-11) is below maxconn. A fourth checkout was refused by the server
-                # ("too many connections for role", 4x in a post-deploy andy_check on 2026-10-10,
-                # paged as an outage). Sized to the role's own limit, it queues at the gate instead.
+                # Off Google Cloud the login's CONNECTION LIMIT (8 for local-sessions, 3 for the
+                # pilgrim_app password role, 2026-10-11) is at or below maxconn. A fourth checkout
+                # was refused by the server ("too many connections for role", 4x in a post-deploy
+                # andy_check on 2026-10-10, paged as an outage). Sized to the login's own limit it
+                # queues at the gate instead; the same call passes pilgrim_app's search_path.
                 if not is_gcp:
-                    probe = _connection_pool.getconn()
-                    try:
-                        with probe.cursor() as cur:
-                            cur.execute("SELECT rolconnlimit FROM pg_roles WHERE rolname = current_user")
-                            limit = cur.fetchone()[0]
-                        probe.rollback()
-                    finally:
-                        _connection_pool.putconn(probe)
-                    if 0 < limit < _connection_pool.maxconn:
-                        _connection_pool.maxconn = limit
+                    from utilities.kumori_db import _fit_pool_to_login
+                    _fit_pool_to_login(_connection_pool, 'pilgrim_app')
                 global _pool_semaphore
                 _pool_semaphore = _FairGate(_connection_pool.maxconn)
                 logger.info("✅ Database connection pool initialized (%s-%s connections, app=%s)",
