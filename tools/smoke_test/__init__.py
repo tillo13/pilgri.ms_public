@@ -7,7 +7,7 @@ Tiered, feature-aware testing system with local and deployed test modes.
 
 Usage:
     # Local tests (pre-deploy)
-    python -m tools.smoke_test local --quick      # Quick: ~20 tests
+    python -m tools.smoke_test local --quick      # Quick: tier 1 (117 tests, 67s on 2026-10-15)
     python -m tools.smoke_test local              # Default: ~50 tests
     python -m tools.smoke_test local --full       # Full: ~100+ tests
     python -m tools.smoke_test local --depot      # Feature-specific
@@ -34,6 +34,12 @@ TESTS = []  # All registered tests
 PASSED = []
 FAILED = []
 SKIPPED = []
+NOT_RUN = []  # cut by the global cap: never run, so never counted as passed
+
+# Whole-run cap (seconds). Tests past it are NOT_RUN and the run is INCOMPLETE (nonzero).
+# Measured 2026-10-15: tier 1 (117 tests) took 67s on db-custom-1-3840; the same run hit
+# this cap on the old shared-core instance and still printed ALL TESTS PASSED.
+GLOBAL_CAP_SECS = 180
 
 # Feature tags for filtering
 FEATURE_TAGS = {
@@ -147,11 +153,10 @@ def requires_flask(func):
 # =============================================================================
 
 def reset_results():
-    """Reset test results for a fresh run."""
-    global PASSED, FAILED, SKIPPED
-    PASSED = []
-    FAILED = []
-    SKIPPED = []
+    """Reset test results for a fresh run. Clears in place: __main__ imports these lists
+    by name, so rebinding them would leave it appending to the old ones."""
+    for lst in (PASSED, FAILED, SKIPPED, NOT_RUN):
+        lst.clear()
 
 
 def get_results():
@@ -160,6 +165,7 @@ def get_results():
         'passed': PASSED.copy(),
         'failed': FAILED.copy(),
         'skipped': SKIPPED.copy(),
+        'not_run': NOT_RUN.copy(),
     }
 
 
@@ -171,6 +177,8 @@ def print_summary(verbose=False):
     print(f"  \u2705 Passed:  {len(PASSED)}")
     print(f"  \u274c Failed:  {len(FAILED)}")
     print(f"  \u23ed\ufe0f  Skipped: {len(SKIPPED)}")
+    if NOT_RUN:
+        print(f"  \u26a0\ufe0f  Not run: {len(NOT_RUN)} (global cap {GLOBAL_CAP_SECS}s)")
 
     if FAILED:
         print("\n\u274c FAILURES:")
@@ -188,6 +196,9 @@ def print_summary(verbose=False):
 
     if FAILED:
         print("\U0001f534 SOME TESTS FAILED")
+        return 1
+    elif NOT_RUN:
+        print(f"\U0001f534 INCOMPLETE: {len(NOT_RUN)} tests not run (global cap {GLOBAL_CAP_SECS}s)")
         return 1
     else:
         print("\U0001f7e2 ALL TESTS PASSED")

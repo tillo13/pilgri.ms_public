@@ -7,13 +7,52 @@ Run these before deploying to verify DB, config, and utility functions.
 from . import test, requires_web3, requires_flask, TESTS, PASSED, FAILED, SKIPPED
 
 # =============================================================================
-# TIER 1: QUICK TESTS (~20 critical, must pass before deploy)
+# TIER 1: QUICK TESTS (117 critical as of 2026-10-15, must pass before deploy)
 # =============================================================================
 
 @test("Cron management module is importable", tier=1, features=['config'], mode='local')
 def test_cron_management_import():
     from tools.andy_check import main
     assert callable(main)
+    return True
+
+
+@test("Smoke gate: a run cut by the global cap is INCOMPLETE, never ALL PASSED", tier=1, features=['config'], mode='local')
+def test_smoke_cap_is_incomplete():
+    # 2026-10-15: the cap cut tier-1 tests on the old shared DB and the gate still printed
+    # ALL TESTS PASSED (exit 0). Runs two fake tests with the cap at -1 so the second is cut.
+    import io, contextlib
+    from tools.smoke_test import PASSED, FAILED, SKIPPED, NOT_RUN, print_summary
+    import tools.smoke_test as pkg
+    from tools.smoke_test import __main__ as runner
+    saved = [list(x) for x in (PASSED, FAILED, SKIPPED, NOT_RUN)]
+    saved_cap = pkg.GLOBAL_CAP_SECS
+
+    class _Fake:
+        def __init__(self, name):
+            self._test_name = name
+            self.ran = False
+
+        def __call__(self):
+            self.ran = True
+            PASSED.append(self._test_name)
+            return True
+
+    first, second = _Fake("cap-canary-1"), _Fake("cap-canary-2")
+    try:
+        for x in (PASSED, FAILED, SKIPPED, NOT_RUN):
+            x.clear()
+        pkg.GLOBAL_CAP_SECS = -1
+        with contextlib.redirect_stdout(io.StringIO()):
+            ok = runner.run_tests([first, second])
+            code = print_summary()
+        assert first.ran and not second.ran, "cap did not stop the run"
+        assert NOT_RUN == ["cap-canary-2"], f"cut test not recorded: {NOT_RUN}"
+        assert ok is False and code == 1, f"cut run reported success (ok={ok}, exit={code})"
+    finally:
+        pkg.GLOBAL_CAP_SECS = saved_cap
+        for x, old in zip((PASSED, FAILED, SKIPPED, NOT_RUN), saved):
+            x[:] = old
     return True
 
 

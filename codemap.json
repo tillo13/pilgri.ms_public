@@ -1039,7 +1039,7 @@
       "test — Register a test with name, tier level, feature tags, and mode (local/deployed).",
       "requires_web3 — Skip if web3 not available (venv not activated).",
       "requires_flask — Skip if Flask context not available.",
-      "reset_results — Reset test results for a fresh run.",
+      "reset_results — Reset test results for a fresh run. Clears in place: __main__ imports these lists",
       "get_results — Get current test results.",
       "print_summary — Print test results summary."
     ]
@@ -1048,7 +1048,7 @@
     "description": "Pilgrims Smoke Test CLI Runner",
     "exports": [
       "filter_tests — Filter tests by mode, tier, and optional features.",
-      "run_tests — Run a list of tests and return success status. Global 3-min safety cap.",
+      "run_tests — Run a list of tests and return success status. Stops at the package GLOBAL_CAP_SECS.",
       "main"
     ]
   },
@@ -1076,6 +1076,7 @@
     "description": "Local Smoke Tests - Pre-deploy verification against local environment.",
     "exports": [
       "test_cron_management_import",
+      "test_smoke_cap_is_incomplete",
       "test_db_connection",
       "test_users_table",
       "test_upgrades_schema",
@@ -1088,8 +1089,7 @@
       "test_shard_rush_infra_cost_nonzero",
       "test_config_tech",
       "test_math_registry",
-      "test_upgrade_build_times",
-      "test_sanitize_error"
+      "test_upgrade_build_times"
     ]
   },
   "tools/smoke_test/local_free_first.py": {

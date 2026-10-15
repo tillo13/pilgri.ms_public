@@ -4,7 +4,7 @@ Pilgrims Smoke Test CLI Runner
 
 Usage:
     # Local tests (pre-deploy)
-    python -m tools.smoke_test local --quick      # Quick: ~20 tests
+    python -m tools.smoke_test local --quick      # Quick: tier 1 (117 tests, 67s on 2026-10-15)
     python -m tools.smoke_test local              # Default: ~50 tests
     python -m tools.smoke_test local --full       # Full: ~100+ tests
     python -m tools.smoke_test local --depot      # Feature-specific
@@ -18,7 +18,13 @@ import sys
 import argparse
 from datetime import datetime
 
-from . import TESTS, PASSED, FAILED, SKIPPED, reset_results, print_summary, FEATURE_TAGS, TEST_TIMEOUT
+from . import (TESTS, PASSED, FAILED, SKIPPED, NOT_RUN, reset_results, print_summary,
+               FEATURE_TAGS, TEST_TIMEOUT)
+
+
+def _cap():
+    # Read from the package each time so the summary and the runner share one value.
+    return sys.modules[__package__].GLOBAL_CAP_SECS
 
 # Import test modules to register tests
 from . import local
@@ -50,19 +56,23 @@ def filter_tests(mode, tier_max, features=None):
     return filtered
 
 
+def _cut_remaining(remaining, elapsed):
+    """Record tests the global cap cut. They are NOT_RUN, never passed, so the run is INCOMPLETE."""
+    NOT_RUN.extend(r._test_name for r in remaining)
+    print(f"\n  ⚠️  GLOBAL CAP: {elapsed:.0f}s elapsed (cap {_cap()}s), "
+          f"{len(remaining)} tests NOT RUN")
+
+
 def run_tests(tests, verbose=False):
-    """Run a list of tests and return success status. Global 3-min safety cap."""
+    """Run a list of tests and return success status. Stops at the package GLOBAL_CAP_SECS."""
     start_time = datetime.now()
     for i, test_func in enumerate(tests):
         test_func()
         elapsed = (datetime.now() - start_time).total_seconds()
-        if elapsed > 180:
-            remaining = tests[i + 1:]
-            for r in remaining:
-                SKIPPED.append(f"{r._test_name} (global timeout)")
-            print(f"\n  ⚠️  GLOBAL TIMEOUT: {elapsed:.0f}s elapsed, skipped {len(remaining)} remaining tests")
+        if elapsed > _cap() and tests[i + 1:]:
+            _cut_remaining(tests[i + 1:], elapsed)
             break
-    return len(FAILED) == 0
+    return len(FAILED) == 0 and not NOT_RUN
 
 
 def main():
@@ -86,7 +96,7 @@ Examples:
     # Tier flags
     tier_group = parser.add_mutually_exclusive_group()
     tier_group.add_argument('--quick', action='store_true',
-                            help="Tier 1 only: ~20 critical tests (~5 sec)")
+                            help="Tier 1 only: critical tests (117 tests, 67s on 2026-10-15)")
     tier_group.add_argument('--full', action='store_true',
                             help="All tiers: ~100+ comprehensive tests")
 
@@ -152,24 +162,22 @@ Examples:
     print("=" * 60)
     print()
 
-    # Group tests by tier for display
+    # Run in tier order, printing a header per tier. Past the cap, everything not yet run
+    # (the rest of this tier AND all later tiers) is recorded as NOT_RUN.
+    tier_names = {1: "TIER 1: CRITICAL", 2: "TIER 2: DEFAULT", 3: "TIER 3: FULL"}
+    ordered = [t for tier in range(1, tier_max + 1) for t in tests if t._tier == tier]
     start_time = datetime.now()
-    global_timed_out = False
-    for tier in range(1, tier_max + 1):
-        if global_timed_out:
-            break
-        tier_tests = [t for t in tests if t._tier == tier]
-        if tier_tests:
-            tier_names = {1: "TIER 1: CRITICAL", 2: "TIER 2: DEFAULT", 3: "TIER 3: FULL"}
-            print(f"\n{tier_names[tier]}")
+    current_tier = None
+    for i, test_func in enumerate(ordered):
+        if test_func._tier != current_tier:
+            current_tier = test_func._tier
+            print(f"\n{tier_names[current_tier]}")
             print("-" * 40)
-            for test_func in tier_tests:
-                test_func()
-                elapsed = (datetime.now() - start_time).total_seconds()
-                if elapsed > 180:
-                    print(f"\n  ⚠️  GLOBAL TIMEOUT: {elapsed:.0f}s elapsed, skipping remaining tests")
-                    global_timed_out = True
-                    break
+        test_func()
+        elapsed = (datetime.now() - start_time).total_seconds()
+        if elapsed > _cap() and ordered[i + 1:]:
+            _cut_remaining(ordered[i + 1:], elapsed)
+            break
 
     # Summary
     exit_code = print_summary(verbose=args.verbose)
