@@ -1547,6 +1547,13 @@
       "generate_conversation_summary — Generate a summary of the conversation using Claude"
     ]
   },
+  "utilities/csrf_guard.py": {
+    "description": "csrf_guard: refuse state-changing requests that a browser sent from another site.",
+    "exports": [
+      "verdict — None to let the request through, or a short reason it was refused.",
+      "install — Set the cookie defaults the app left unset and register the cross-site check."
+    ]
+  },
   "utilities/depot_utils.py": {
     "description": "Depot Utilities - Supply Depot Operations",
     "exports": [

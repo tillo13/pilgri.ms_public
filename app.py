@@ -95,6 +95,8 @@ logger = logging.getLogger(__name__)
 
 kill_port_processes(PORT_RANGE_START)
 app = Flask(__name__)
+from utilities.csrf_guard import install as install_csrf_guard
+install_csrf_guard(app)  # refuse cross-site POSTs; session cookie SameSite=Lax (audit 2026-10-14)
 
 
 # GA4 tag injection — registers `ga_snippet(slug)` for use in base.html
