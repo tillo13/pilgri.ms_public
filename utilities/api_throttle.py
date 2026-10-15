@@ -4,7 +4,7 @@ A broken or abusive client must NEVER be able to translate into unbounded DB
 load. On 2026-05-29 the Narog recalibration countdown (crew-robot.js) entered a
 feedback loop and fetched /api/robot/recalibration_state as fast as the network
 allowed, for as long as the tab stayed open. A single captain's stuck tab
-saturated the shared db-f1-micro and dragged EVERY page site-wide to 10-17s.
+saturated the shared Cloud SQL (db-f1-micro at the time) and dragged EVERY page site-wide to 10-17s.
 
 The client bug is fixed at the source, but "trust no single tool ever": this is
 the second layer. `throttle_per_user` caps a polled endpoint to at most ONE real
