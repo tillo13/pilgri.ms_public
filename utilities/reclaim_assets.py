@@ -18,7 +18,7 @@ import logging
 import time
 from datetime import datetime
 from utilities.postgres.core import db_cursor
-from utilities.sepolia_utils import MarsAsteroidMiner, PILGRIM_ADDRESS
+from utilities.sepolia_utils import MarsAsteroidMiner, hub_address
 from utilities.gmail_utils import send_email
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -292,7 +292,7 @@ def send_audit_email(wallet_results: list, deletion_results: list,
     body = f"""PILGRIMS ASSET RECLAMATION AUDIT REPORT
 ==========================================
 Timestamp: {timestamp}
-Hub Address: {PILGRIM_ADDRESS}
+Hub Address: {hub_address()}
 
 WALLET RECLAMATION SUMMARY
 --------------------------
@@ -390,7 +390,7 @@ def reclaim_assets(dry_run: bool = True):
 
         logger.info("-" * 70)
         logger.info(f"TOTAL RECLAIMABLE: {total_reclaimable:.6f} ETH ({total_reclaimable * 10_000_000:.0f} display)")
-        logger.info(f"HUB ADDRESS: {PILGRIM_ADDRESS}")
+        logger.info(f"HUB ADDRESS: {hub_address()}")
     else:
         total_reclaimable = 0
 

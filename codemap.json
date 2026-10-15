@@ -1908,6 +1908,8 @@
   "utilities/sepolia_utils.py": {
     "description": "Sepolia Integration - Refactored for DRY principles",
     "exports": [
+      "hub_key",
+      "hub_address",
       "sanitize_tx_error — Convert raw blockchain errors to user-friendly messages.",
       "append_cryptic_mars_message — Append cryptic Mars mission message to transaction",
       "validate_pilgrim_security — Validate pilgrim transactions",
@@ -3006,13 +3008,13 @@
       "llm_chat_resilient — Server-side fallback chat. Returns (text, winning_backend,",
       "llm_chat_reserve — Reserve tier — paid Claude (kumori's MODEL_TIERS['sonnet']) for this APP's",
       "llm_chat_eval — Eval-pool scoring call. Signature mirrors kumori_free_llms.chat_eval.",
+      "research_company — Ask kumori for a company's shared dossier (#349). {'status': 'ready', 'dossier'} when every",
+      "research_job — A research job's status: queued, running, done or failed (unmetered).",
+      "research_dossier — A company's dossier as it stands, or None (unmetered).",
       "lane_status — {name: kumori lifecycle status} for named lanes, retired ones included; 'unknown' when",
       "llm_backends — List available backends. Returns the list of backend dicts.",
       "llm_usage — Cluster-wide usage summary across backends.",
-      "llm_registry — Full backend_registry snapshot. Returns dict with keys: backends, models,",
-      "llm_backoff_state — Current per-backend backoff state. Returns",
-      "llm_is_backed_off — Convenience: True if backend is currently in backoff.",
-      "llm_backoff_until — Legacy-compat: returns {backend_name: until_timestamp} — same shape as"
+      "llm_registry — Full backend_registry snapshot. Returns dict with keys: backends, models,"
     ]
   },
   "utilities/email/__init__.py": {

@@ -18,7 +18,25 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 PILGRIM_MAX_TRANSACTION_ETH = 1.0
-PILGRIM_ADDRESS = '0x82482c729cCDE2479cD0e303FA634fdc1759B9d3'
+# The hub wallet: its key lives in Secret Manager (SEPOLIA_HUB_WHALE_RANDOMIZER), pinned to one
+# version by HUB_KEY_VERSION in app.yaml, and its address is DERIVED from that key, never hardcoded.
+# A key rotation is then one deploy that changes the pin: an instance can never pair a new key with
+# the old address. 2026-10-15: v1 (0x82482c72...) leaked in a public repo and was used by a third
+# party on Base; rotated to v2.
+HUB_KEY_VERSION = os.environ.get('HUB_KEY_VERSION', 'latest')
+_hub_address = None
+
+
+def hub_key():
+    from utilities.google_secret_utils import get_credential_blob
+    return get_credential_blob(version_id=HUB_KEY_VERSION)
+
+
+def hub_address():
+    global _hub_address
+    if _hub_address is None:
+        _hub_address = Account.from_key(hub_key()).address
+    return _hub_address
 
 DEFAULT_SEPOLIA_RPCS = [
     "https://ethereum-sepolia.publicnode.com",
@@ -109,7 +127,7 @@ ALLOWED_CONTEXTS = [
 def validate_pilgrim_security(sender_address: str, amount_eth: float, context: str) -> tuple:
     """Validate pilgrim transactions"""
     sender_lower = sender_address.lower() if sender_address else ""
-    pilgrim_lower = PILGRIM_ADDRESS.lower()
+    pilgrim_lower = hub_address().lower()
     
     if sender_lower == pilgrim_lower:
         try:
@@ -460,8 +478,7 @@ class MarsAsteroidMiner:
             if not self.w3 and not self.connect():
                 return {'success': False, 'error': 'Failed to connect'}
             
-            from utilities.google_secret_utils import get_credential_blob
-            pilgrim_key = get_credential_blob()
+            pilgrim_key = hub_key()
             if not pilgrim_key:
                 return {'success': False, 'error': 'Mining pool not available'}
             
@@ -470,7 +487,7 @@ class MarsAsteroidMiner:
             
             gas_config = self.gas_estimator.get_optimal_gas_price(use_dynamic=True, manual_gwei=1, speed='standard')
             transaction = self.transaction_manager.create_transfer_transaction(
-                PILGRIM_ADDRESS, to_address, amount_eth, gas_config, message, context=context
+                hub_address(), to_address, amount_eth, gas_config, message, context=context
             )
             tx_hash = self.transaction_manager.sign_and_send_transaction(transaction, pilgrim_key, context=context)
             
@@ -526,8 +543,7 @@ class MarsAsteroidMiner:
             if not self.w3 and not self.connect():
                 return {'success': False, 'error': 'Failed to connect'}
 
-            from utilities.google_secret_utils import get_credential_blob
-            pilgrim_key = get_credential_blob()
+            pilgrim_key = hub_key()
             if not pilgrim_key:
                 return {'success': False, 'error': 'Mining pool not available'}
 
@@ -536,7 +552,7 @@ class MarsAsteroidMiner:
 
             gas_config = self.gas_estimator.get_optimal_gas_price(use_dynamic=True, manual_gwei=1, speed='standard')
             transaction = self.transaction_manager.create_transfer_transaction(
-                PILGRIM_ADDRESS, to_address, amount_eth, gas_config, message, context=context
+                hub_address(), to_address, amount_eth, gas_config, message, context=context
             )
             tx_hash = self.transaction_manager.sign_and_send_transaction(transaction, pilgrim_key, context=context)
 
@@ -566,7 +582,7 @@ class MarsAsteroidMiner:
             
             gas_config = self.gas_estimator.get_optimal_gas_price(use_dynamic=True, speed='standard')
             transaction = self.transaction_manager.create_transfer_transaction(
-                from_address, PILGRIM_ADDRESS, amount_eth, gas_config, 
+                from_address, hub_address(), amount_eth, gas_config, 
                 f"Return to Hub: {reason}", context="return_to_hub"
             )
             tx_hash = self.transaction_manager.sign_and_send_transaction(transaction, from_private_key, context="return_to_hub")
@@ -615,7 +631,7 @@ class MarsAsteroidMiner:
             
             gas_config = self.gas_estimator.get_optimal_gas_price(use_dynamic=True, speed='standard')
             transaction = self.transaction_manager.create_transfer_transaction(
-                from_address, PILGRIM_ADDRESS, estimated_total_eth, gas_config, 
+                from_address, hub_address(), estimated_total_eth, gas_config, 
                 f"Mars Expedition: {reason}", context="expedition_launch"
             )
             tx_hash = self.transaction_manager.sign_and_send_transaction(transaction, from_private_key, context="expedition_launch")
