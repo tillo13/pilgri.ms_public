@@ -863,6 +863,10 @@ Return ONLY valid JSON."""
             # to 1,500 by the router) successful gptoss-20b replies used 1,235-1,428 tokens and
             # every failed one stopped at exactly 1,500 mid-JSON (8 days to 2026-10-07).
             max_tokens=3000, temperature=0.5, min_chars=80,
+            # A cron nobody waits on: kumori's 30 s default cascade budget ran out at the 06:00
+            # burst (504 at 32-34 s, 3 tries each on 2026-10-14 and 10-15, one user skipped each day).
+            # 55 s is the router's ceiling; the client read timeout (70 s) stays under Cloudflare's 100 s.
+            budget_ms=55000,
         )
         logger.info(f"aria_snapshot_prompt via kumori backend={backend}")
 

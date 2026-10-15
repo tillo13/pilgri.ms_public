@@ -88,8 +88,10 @@ def grade_render(synth, rendered, verification, *, modality='imggen_edit'):
                     backend, grade['score'], probe_id)
         return {'status': 'graded', **grade, 'judge_backend': judge_backend,
                 'probe_id': probe_id}
-    except Exception:
-        logger.warning('ARIA quality grading unavailable; journal preserved', exc_info=True)
+    except Exception as e:
+        # One line, no traceback: App Engine files any stderr traceback as ERROR, so this
+        # nonfatal miss paged as an outage (kumori 504s, 2026-10-14).
+        logger.warning('ARIA quality grading unavailable; journal preserved: %s: %s', type(e).__name__, e)
         return {'status': 'failed'}
 
 
@@ -105,6 +107,6 @@ def grade_saved_snapshot(prompt, rendered, *, modality):
             'verification_vision_description': description,
             'verification_vision_backend': vision_backend,
         }, modality=modality)
-    except Exception:
-        logger.warning('ARIA snapshot grading unavailable; saved snapshot preserved', exc_info=True)
+    except Exception as e:
+        logger.warning('ARIA snapshot grading unavailable; saved snapshot preserved: %s: %s', type(e).__name__, e)
         return {'status': 'failed'}

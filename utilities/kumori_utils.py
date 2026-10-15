@@ -226,7 +226,8 @@ def kumori_describe(image_url_or_bytes, prompt: str = "Describe this image brief
 def kumori_llm_chat(system: str, user_prompt: str, *,
                     backends: Optional[List[str]] = None,
                     max_tokens: int = 700, temperature: float = 0.4,
-                    min_chars: int = 80, debug: bool = False) -> Tuple[str, str, List[dict], Optional[Dict[str, Any]]]:
+                    min_chars: int = 80, debug: bool = False,
+                    budget_ms: Optional[int] = None) -> Tuple[str, str, List[dict], Optional[Dict[str, Any]]]:
     """LLM with server-side backend fallback. Returns
     (text, winning_backend, attempt_log, debug_info_or_None).
 
@@ -242,6 +243,8 @@ def kumori_llm_chat(system: str, user_prompt: str, *,
     else:
         kw['min_quality_tier'] = DEFAULT_MIN_QUALITY_TIER
         kw['allow_degrade'] = True
+    if budget_ms:
+        kw['budget_ms'] = budget_ms
     text, backend, attempts, debug_info = _kc_llm_chat_resilient(**kw)
     return text or '', backend or '?', attempts or [], debug_info
 

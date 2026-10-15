@@ -68,6 +68,13 @@ def _snapshot_prompt_with_retry(user_context, forced_category):
             time.sleep(wait)
 
 
+def _refused_by_model(e):
+    """The image model's filter refused this prompt (kumori 422 bad_input, "output has been
+    flagged", 2026-10-15): a skipped snapshot, not an outage, so it logs without a traceback."""
+    return isinstance(e, KumoriAPIError) and isinstance(e.payload, dict) \
+        and e.payload.get('error_code') == 'bad_input'
+
+
 def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_snapshots=1, forced_category=None):
     """Generate `num_snapshots` snapshots for one user using Claude-generated prompts.
 
@@ -332,9 +339,12 @@ def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_s
             time.sleep(2)
 
         except Exception as e:
-            logger.error(f"  ✗ Failed to generate snapshot {i + 1}: {e}")
-            import traceback
-            traceback.print_exc()
+            if _refused_by_model(e):
+                logger.warning(f"  ✗ Snapshot {i + 1} refused by the image model: {e}")
+            else:
+                logger.error(f"  ✗ Failed to generate snapshot {i + 1}: {e}")
+                import traceback
+                traceback.print_exc()
             results.append({
                 'error': f'{type(e).__name__}: {e}',
                 'snapshot_index': i + 1,
