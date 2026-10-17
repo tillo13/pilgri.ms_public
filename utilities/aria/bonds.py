@@ -319,27 +319,18 @@ def _generate_bond_image_async(bond_id: int, user_id_1: int, user_id_2: int, lan
                 f"mysterious ancient relic feel, legendary artifact quality"
             )
 
-            from utilities.replicate_utils import FluxGenerator
-            from utilities.google_cloud_storage_utils import upload_blob_from_url
-            from config import FLUX_MODEL
+            from utilities.kumori_utils import kumori_klein_generate
+            from utilities.google_cloud_storage_utils import upload_blob_from_bytes
             import time
 
-            flux = FluxGenerator()
             logger.info(f"🎨 Generating bond image for bond {bond_id}...")
-
-            from utilities.replicate_utils import _killswitched_run
-            replicate_url = _killswitched_run(flux.client, FLUX_MODEL,
-                                               {'prompt': prompt}, feature='aria_bond')
-            if isinstance(replicate_url, list):
-                replicate_url = replicate_url[0]
-            else:
-                replicate_url = str(replicate_url)
+            image_bytes = kumori_klein_generate(prompt, feature='aria_bond', verbiage=prompt[:500])['image_bytes']
 
             # Upload to GCS - include tx_hash in filename for traceability
             tx_short = tx_hash[:10] if tx_hash else 'pending'
             timestamp = int(time.time())
             blob_name = f"aria_bonds/bond_{bond_id}_{tx_short}_{timestamp}.png"
-            gcs_url = upload_blob_from_url(replicate_url, blob_name, 'image/png')
+            gcs_url = upload_blob_from_bytes(image_bytes, blob_name, 'image/png')
 
             if gcs_url:
                 with db_cursor(commit=True) as cur:

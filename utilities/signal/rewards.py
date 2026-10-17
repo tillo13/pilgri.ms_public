@@ -139,12 +139,9 @@ def generate_legendary_item_for_origin(
         logger.info(f"Generating legendary item image for {site_code}: {item_name}")
 
         # Generate the image using Flux
-        from utilities.replicate_utils import FluxGenerator
-        from utilities.google_cloud_storage_utils import upload_blob_from_url
-        from config import FLUX_MODEL
+        from utilities.kumori_utils import kumori_klein_generate
+        from utilities.google_cloud_storage_utils import upload_blob_from_bytes
         import time
-
-        generator = FluxGenerator()
 
         # Build the founder inscription text
         # Format: "FOUNDED BY Andy ◆ 0x570a" engraved on the artifact
@@ -161,10 +158,8 @@ def generate_legendary_item_for_origin(
         # Use the project's standard Flux model (flux-kontext-pro) with just a prompt
         # The prompt already follows the Mars-material aesthetic from CLAUDE.md
         try:
-            from utilities.replicate_utils import _killswitched_run
-            output = _killswitched_run(generator.client, FLUX_MODEL,
-                                        {"prompt": engraved_prompt},
-                                        feature='signal_reward_engrave')
+            output = kumori_klein_generate(engraved_prompt, feature='signal_reward_engrave',
+                                           verbiage=engraved_prompt[:500])['image_bytes']
         except Exception as e:
             logger.error(f"Flux generation failed for {site_code}: {e}")
             return None
@@ -173,20 +168,11 @@ def generate_legendary_item_for_origin(
             logger.error(f"Flux returned no output for {site_code}")
             return None
 
-        # Get the image URL from Replicate
-        if isinstance(output, list) and len(output) > 0:
-            replicate_url = str(output[0])
-        elif hasattr(output, 'url'):
-            replicate_url = output.url
-        else:
-            replicate_url = str(output)
-
-        logger.info(f"Flux generated image: {replicate_url[:60]}...")
 
         # Save to GCS with permanent URL
         timestamp = int(time.time())
         blob_name = f"legendary_items/{site_code.lower()}_{timestamp}.png"
-        gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
+        gcs_url = upload_blob_from_bytes(output, blob_name, content_type='image/png')
 
         if not gcs_url:
             logger.error(f"Failed to upload legendary item to GCS for {site_code}")
@@ -317,12 +303,9 @@ def generate_visitor_reward_image(
 
         logger.info(f"Generating visitor reward image for {commander_name} at {site_code}")
 
-        from utilities.replicate_utils import FluxGenerator
-        from utilities.google_cloud_storage_utils import upload_blob_from_url
-        from config import FLUX_MODEL
+        from utilities.kumori_utils import kumori_klein_generate
+        from utilities.google_cloud_storage_utils import upload_blob_from_bytes
         import time
-
-        generator = FluxGenerator()
 
         # Add visitor name to prompt for personalization
         visitor_text = commander_name
@@ -334,10 +317,8 @@ def generate_visitor_reward_image(
         logger.info(f"Flux prompt: {engraved_prompt[:80]}...")
 
         try:
-            from utilities.replicate_utils import _killswitched_run
-            output = _killswitched_run(generator.client, FLUX_MODEL,
-                                        {"prompt": engraved_prompt},
-                                        feature='signal_reward_engrave')
+            output = kumori_klein_generate(engraved_prompt, feature='signal_reward_engrave',
+                                           verbiage=engraved_prompt[:500])['image_bytes']
         except Exception as e:
             logger.error(f"Flux generation failed for visitor {claim_id}: {e}")
             return None
@@ -346,21 +327,12 @@ def generate_visitor_reward_image(
             logger.error(f"Flux returned no output for visitor {claim_id}")
             return None
 
-        # Get the image URL from Replicate
-        if isinstance(output, list) and len(output) > 0:
-            replicate_url = str(output[0])
-        elif hasattr(output, 'url'):
-            replicate_url = output.url
-        else:
-            replicate_url = str(output)
-
-        logger.info(f"Flux generated image: {replicate_url[:60]}...")
 
         # Save to GCS
         timestamp = int(time.time())
         tier_slug = tier_name.lower().replace(' ', '_')
         blob_name = f"origin_visitor_rewards/{site_code.lower()}_{tier_slug}_{claim_id}_{timestamp}.png"
-        gcs_url = upload_blob_from_url(replicate_url, blob_name, content_type='image/png')
+        gcs_url = upload_blob_from_bytes(output, blob_name, content_type='image/png')
 
         if not gcs_url:
             logger.error(f"Failed to upload visitor reward to GCS for claim {claim_id}")

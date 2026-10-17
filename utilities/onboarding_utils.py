@@ -759,13 +759,13 @@ def get_mars_location_data():
     return {'success': True, 'coordinates': coords, 'landmarks': landmarks}
 
 
-def handle_custom_commander_upload(session, image_file, flux, logger):
+def handle_custom_commander_upload(session, image_file, logger):
     """
     Handle custom captain photo upload with escalating transmutation cost.
     Lore: The Sepolia shards transmute the captain's essence using your photo as a template.
     Returns result dict for JSON response.
     """
-    from utilities.replicate_utils import process_uploaded_image
+    from utilities.kumori_utils import process_uploaded_image, render_uploaded_captain
     from utilities.postgres.assets import update_asset_stats, set_primary_commander
     from utilities.postgres.users import get_user_escalation_counts, increment_transmutation_count, calculate_transmutation_cost
     from utilities.depot_utils import (
@@ -773,9 +773,6 @@ def handle_custom_commander_upload(session, image_file, flux, logger):
         check_sufficient_balance, execute_purchase_transaction,
         update_session_balance
     )
-
-    if not flux:
-        return {'success': False, 'error': 'Service not available'}
 
     user_id = session.get('user_id')
     if not user_id:
@@ -796,13 +793,16 @@ def handle_custom_commander_upload(session, image_file, flux, logger):
         transmutation_cost_display = calculate_transmutation_cost(total_transmutations)
         transmutation_cost_eth = display_to_eth(transmutation_cost_display)
 
-        # Check balance and charge
+        # Check balance; charge only after the render succeeds (no refund path exists)
         wallet, current_balance_eth = get_user_wallet_and_balance(session)
         sufficient, error_msg = check_sufficient_balance(current_balance_eth, transmutation_cost_eth)
         if not sufficient:
             return {'success': False, 'error': f"Need {transmutation_cost_display:,} shards for transmutation #{total_transmutations + 1}"}
 
-        # Deduct balance immediately, blockchain tx fires in background
+    rendered = render_uploaded_captain(image_file.read(), user_id)
+
+    if not is_first_free:
+        # Deduct balance, blockchain tx fires in background
         new_balance_eth = execute_purchase_transaction(
             wallet, transmutation_cost_eth, f"TRANSMUTE:{total_transmutations + 1}",
             user_id=user_id, purchase_type='transmutation',
@@ -810,7 +810,7 @@ def handle_custom_commander_upload(session, image_file, flux, logger):
         )
 
     # Process the image
-    result = process_uploaded_image(image_file, flux)
+    result = process_uploaded_image(image_file, rendered=rendered)
     asset_id = session.get('current_asset_id')
 
     if not asset_id:

@@ -283,7 +283,8 @@ def upload_blob_from_bytes_with_thumbnail(image_bytes, destination_blob_name, co
     return None
 
 
-def save_character_image(replicate_url, user_id=None, commander_stats=None, commander_name=None):
+def save_character_image(replicate_url, user_id=None, commander_stats=None, commander_name=None,
+                         image_bytes=None, model='black-forest-labs/flux-kontext-pro'):
     """
     Save character image from Replicate to GCS and record in database
     
@@ -302,7 +303,8 @@ def save_character_image(replicate_url, user_id=None, commander_stats=None, comm
     user_prefix = f"user{user_id}_" if user_id else "guest_"
     blob_name = f"characters/{user_prefix}{timestamp}.png"
     
-    gcs_url = upload_blob_from_url(replicate_url, blob_name, 'image/png')
+    gcs_url = (upload_blob_from_bytes(image_bytes, blob_name, 'image/png') if image_bytes is not None
+               else upload_blob_from_url(replicate_url, blob_name, 'image/png'))
     
     # Save to database WITH STATS
     asset_id = None
@@ -314,7 +316,7 @@ def save_character_image(replicate_url, user_id=None, commander_stats=None, comm
             gcs_url=gcs_url,
             gcs_blob_name=blob_name,
             is_original=True,
-            replicate_model='black-forest-labs/flux-kontext-pro',
+            replicate_model=model,
             content_type='image/png',
             commander_stats=commander_stats,  # ✅ SAVE STATS HERE
             commander_name=commander_name
@@ -327,7 +329,8 @@ def save_character_image(replicate_url, user_id=None, commander_stats=None, comm
     }
 
 
-def save_edited_image(replicate_url, user_id=None, edit_number=1, parent_asset_id=None, prompt=None):
+def save_edited_image(replicate_url, user_id=None, edit_number=1, parent_asset_id=None, prompt=None,
+                      image_bytes=None, model='black-forest-labs/flux-kontext-pro'):
     """
     Save edited character image from Replicate to GCS and record in database
 
@@ -348,7 +351,8 @@ def save_edited_image(replicate_url, user_id=None, edit_number=1, parent_asset_i
     user_prefix = f"user{user_id}_" if user_id else "guest_"
     blob_name = f"characters/{user_prefix}{timestamp}_edit{edit_number}.png"
 
-    gcs_url = upload_blob_from_url(replicate_url, blob_name, 'image/png')
+    gcs_url = (upload_blob_from_bytes(image_bytes, blob_name, 'image/png') if image_bytes is not None
+               else upload_blob_from_url(replicate_url, blob_name, 'image/png'))
 
     # Get commander_name from parent asset to preserve it
     parent_commander_name = None
@@ -377,7 +381,7 @@ def save_edited_image(replicate_url, user_id=None, edit_number=1, parent_asset_i
             prompt_used=prompt,
             edit_number=edit_number,
             parent_asset_id=parent_asset_id,
-            replicate_model='black-forest-labs/flux-kontext-pro',
+            replicate_model=model,
             content_type='image/png',
             commander_name=parent_commander_name  # Preserve commander name from parent
         )

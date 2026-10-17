@@ -598,6 +598,13 @@ def _full_build_worker(user_id: int, sources: list) -> None:
 def start_background_full_build(user_id: int, sources: list) -> bool:
     """Spawn a single daemon thread that drives the whole build to completion.
     Replaces the per-stage tick-and-respawn loop."""
+    from utilities.replicate_utils import replicate_available, FORGE_OFFLINE
+    if not replicate_available():
+        with db_cursor(commit=True) as cur:
+            cur.execute("UPDATE pilgrim.robot SET build_error = %s, updated_at = NOW() "
+                        "WHERE user_id = %s AND build_error IS DISTINCT FROM %s",
+                        (FORGE_OFFLINE, user_id, FORGE_OFFLINE))
+        return False
     key = (user_id, 'full')
     with _IN_FLIGHT_LOCK:
         if key in _IN_FLIGHT:

@@ -270,3 +270,66 @@ def kumori_llm_chat_messages(system: str, messages: List[Dict[str, str]], *,
         kw['allow_degrade'] = True
     text, backend, attempts, debug_info = _kc_llm_chat_resilient(**kw)
     return text or '', backend or '?', attempts or [], debug_info
+
+
+# ---------------------------------------------------------------------------
+# Captain images on kumori (were Replicate Flux Kontext until 2026-10-15)
+# ---------------------------------------------------------------------------
+
+def _upright(image_bytes: bytes) -> bytes:
+    """Apply EXIF orientation so a phone photo isn't rendered sideways."""
+    from PIL import Image, ImageOps
+    im = ImageOps.exif_transpose(Image.open(BytesIO(image_bytes)))
+    buf = BytesIO()
+    im.convert('RGB').save(buf, 'PNG')
+    return buf.getvalue()
+
+
+def render_uploaded_captain(image_bytes: bytes, user_id: Optional[int] = None) -> Dict[str, Any]:
+    """Turn an uploaded photo into a captain. Raises KumoriAPIError when every rung fails."""
+    from config import STANDALONE_CARTOON_PROMPT
+    return kumori_klein_edit(STANDALONE_CARTOON_PROMPT, _upright(image_bytes),
+                             feature='captain.process_upload', verbiage=STANDALONE_CARTOON_PROMPT[:500],
+                             caller_user_id=user_id)
+
+
+def process_uploaded_image(image_file, rendered: Optional[Dict[str, Any]] = None):
+    """Process uploaded image, save to GCS, create new commander with fresh stats.
+    Pass `rendered` (from render_uploaded_captain) when the caller rendered first to charge after."""
+    from flask import session
+    from utilities.depot_utils import generate_commander_stats
+    from utilities.google_cloud_storage_utils import save_character_image
+
+    user_id = session.get('user_id')
+    rendered = rendered or render_uploaded_captain(image_file.read(), user_id)
+    stats = generate_commander_stats()
+    result = save_character_image(None, user_id, commander_stats=stats, commander_name=None,
+                                  image_bytes=rendered['image_bytes'], model=f"kumori:{rendered['provider']}")
+    if not result['gcs_url']:
+        raise Exception('Could not save the captain image')
+
+    session['current_asset_id'] = result['asset_id']
+    session['edit_count'] = 0
+    return {'image_url': result['gcs_url'], 'stats': stats}
+
+
+def edit_character_image(image_url, edit_prompt, rendered: Optional[Dict[str, Any]] = None):
+    """Apply edit to character image, save to GCS with provenance.
+    Pass `rendered` (from kumori_klein_edit) when the caller rendered first to charge after."""
+    from flask import session
+    from utilities.google_cloud_storage_utils import save_edited_image
+
+    user_id = session.get('user_id')
+    rendered = rendered or kumori_klein_edit(edit_prompt, image_url, feature='captain.modify',
+                                             verbiage=edit_prompt[:500], caller_user_id=user_id)
+    parent_id = session.get('current_asset_id')
+    edit_count = session.get('edit_count', 0) + 1
+    session['edit_count'] = edit_count
+
+    result = save_edited_image(None, user_id=user_id, edit_number=edit_count,
+                               parent_asset_id=parent_id, prompt=edit_prompt,
+                               image_bytes=rendered['image_bytes'], model=f"kumori:{rendered['provider']}")
+    if not result['gcs_url']:
+        raise Exception('Could not save the edited image')
+    session['current_asset_id'] = result['asset_id']
+    return result['gcs_url']

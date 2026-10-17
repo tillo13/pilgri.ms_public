@@ -14,7 +14,8 @@ import os
 import threading
 
 from config import APP_NAME, SECRET_KEY_ID, DEV_SECRET_KEY, DEFAULT_HOST, PORT_RANGE_START, get_available_port, kill_port_processes, TRAIL_DIR_PALETTE, STATIC_V
-from utilities.replicate_utils import FluxGenerator, process_uploaded_image, animate_character_video
+from utilities.replicate_utils import FluxGenerator, animate_character_video, replicate_available, FORGE_OFFLINE, VIDEO_OFFLINE
+from utilities.kumori_utils import process_uploaded_image
 from utilities.google_auth_utils import SimpleGoogleAuth, get_secret
 from utilities.postgres.core import db_cursor
 from utilities.postgres.assets import (
@@ -254,6 +255,12 @@ def inject_global_stats():
     return build_global_context(auth, STATIC_V)
 
 
+@app.context_processor
+def inject_media_flags():
+    """Awakening/briefing videos render only on Replicate (paused since 2026-10-15)."""
+    return {'media_video_on': replicate_available()}
+
+
 @app.route('/api/version')
 def api_version():
     """Current deploy id, for open tabs to notice a deploy (core.js checkForNewVersion).
@@ -447,6 +454,8 @@ def api_robot_build():
     """Start a new robot build. Accepts an optional locked-in `sources` list
     (from the /api/robot/preview re-roll UI); falls back to a fresh pick."""
     from utilities.postgres.robot import start_build_with_name_prefetch
+    if not replicate_available():
+        return jsonify({'success': False, 'error': FORGE_OFFLINE}), 503
     cmd_name = session.get('_cmd') or None
     sci_name = session.get('scientist_name')
     body = request.get_json(silent=True) or {}
@@ -531,6 +540,8 @@ def api_robot_retry_forge():
     from utilities.postgres.core import db_cursor
     from utilities.postgres.robot import get_robot
     from utilities.robot_visuals import start_background_full_build
+    if not replicate_available():
+        return jsonify({'success': False, 'error': FORGE_OFFLINE}), 503
     robot = get_robot(g.user_id)
     if not robot:
         return jsonify({'success': False, 'error': 'No Narog build in progress.'}), 400
@@ -643,6 +654,8 @@ def api_robot_reroll_image():
         charge_reforge_action, get_robot, get_recalibration_state, ReforgeError,
     )
     from utilities.robot_visuals import start_background_full_build
+    if not replicate_available():
+        return jsonify({'success': False, 'error': FORGE_OFFLINE}), 503
     try:
         charge = charge_reforge_action(g.user_id, 'reroll_image')
     except ReforgeError as e:
@@ -704,6 +717,8 @@ def api_robot_reroll_video():
         get_recalibration_state, ReforgeError,
     )
     from utilities.postgres.core import db_cursor
+    if not replicate_available():
+        return jsonify({'success': False, 'error': VIDEO_OFFLINE}), 503
     try:
         charge = charge_reforge_action(g.user_id, 'reroll_video')
     except ReforgeError as e:
@@ -744,7 +759,7 @@ def api_robot_lock_in():
     )
     robot = get_robot(g.user_id) or {}
     video_charge = None
-    if not robot.get('video_url'):
+    if not robot.get('video_url') and replicate_available():  # videos paused: lock in without one
         try:
             video_charge = charge_reforge_action(g.user_id, 'reroll_video')
         except ReforgeError as e:
@@ -779,6 +794,8 @@ def api_robot_cinematic_played():
 def api_robot_generate_video():
     """Generate an awakening video for the golem using its current image."""
     from utilities.postgres.robot import start_robot_awakening_video
+    if not replicate_available():
+        return jsonify({'success': False, 'error': VIDEO_OFFLINE}), 503
     payload, status = start_robot_awakening_video(g.user_id, app.config, flux)
     return jsonify(payload), status
 
@@ -807,6 +824,8 @@ def api_robot_reset_video():
         return jsonify({'success': False, 'error': 'forbidden'}), 403
     from utilities.postgres.core import db_cursor
     from utilities.postgres.robot import start_robot_awakening_video
+    if not replicate_available():  # never wipe the video we have for one we can't render
+        return jsonify({'success': False, 'error': VIDEO_OFFLINE}), 503
     with db_cursor(commit=True) as cur:
         cur.execute(
             "UPDATE pilgrim.robot SET video_url = NULL, updated_at = NOW() WHERE user_id = %s",
@@ -1178,7 +1197,7 @@ def colony_profile():
 @handle_api_error
 def api_upload_custom_commander():
     """Upload custom commander photo (authenticated users only - FREE)"""
-    return jsonify(handle_custom_commander_upload(session, request.files['image'], flux, logger))
+    return jsonify(handle_custom_commander_upload(session, request.files['image'], logger))
 
 @app.route('/api/commander/set_primary/<int:asset_id>', methods=['POST'])
 @login_required
@@ -2031,10 +2050,7 @@ def api_signal_decode_tx():
 @handle_api_error
 def upload():
     """Process uploaded character image"""
-    if not flux:
-        raise Exception('Service not available')
-    
-    result = process_uploaded_image(request.files['image'], flux)
+    result = process_uploaded_image(request.files['image'])
     initialize_character_session(session, result['image_url'], result['stats'])
     
     return jsonify({
@@ -2112,7 +2128,7 @@ def api_clear_session_wallet():
 def api_shop_generate_video():
     """Purchase video generation for latest commander image"""
     if not flux:
-        return jsonify({'success': False, 'error': 'Service not available'})
+        return jsonify({'success': False, 'error': VIDEO_OFFLINE})
     return jsonify(start_video_generation(session, flux, app.config, animate_character_video))
 
 @app.route('/api/shop/reroll_stats', methods=['POST'])
@@ -2125,13 +2141,10 @@ def api_shop_reroll_stats():
 @handle_api_error
 def api_shop_modify_character():
     """Purchase character modification with Sepolia"""
-    if not flux:
-        return jsonify({'success': False, 'error': 'Service not available'})
-
     data = request.get_json()
     edit_prompt = data.get('prompt', '').strip()
 
-    return jsonify(purchase_character_modification(session, edit_prompt, flux))
+    return jsonify(purchase_character_modification(session, edit_prompt))
 
 @app.route('/api/discovery_items')
 def api_discovery_items():

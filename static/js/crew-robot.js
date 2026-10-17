@@ -1324,6 +1324,8 @@
             ? recalState.actions.reroll_video.cost : null;
         const videoLine = robot.video_url
             ? '<span style="color:#22c55e;">' + icon('checkmark_done') + ' rendered</span>'
+            : window.MEDIA_VIDEO_ON === false
+            ? '<span style="color:var(--text-muted);">paused for now, no charge</span>'
             : `<span style="color:#fbbf24;">${icon('error_x')} not yet rendered — the scientist will record it now for <strong style="color:#ffc88a;">${fmtCost(videoCost)}</strong> when you lock in.</span>`;
 
         return new Promise((resolve) => {

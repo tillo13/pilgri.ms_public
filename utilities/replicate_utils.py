@@ -70,6 +70,24 @@ def get_secret(secret_id, project_id=None):
     return val
 
 
+_replicate_available = None
+FORGE_OFFLINE = "The Narog forge is offline right now. Nothing was spent."
+VIDEO_OFFLINE = "Awakening videos are paused right now. Nothing was spent."
+
+
+def replicate_available():
+    """Whether a Replicate token can be read, checked once per process. Every Replicate
+    token was destroyed 2026-10-15, so the forge and videos refuse before charging;
+    restoring the secret turns them back on with no code change."""
+    global _replicate_available
+    if _replicate_available is None:
+        try:
+            _replicate_available = bool(get_secret(REPLICATE_TOKEN_ID))
+        except Exception:
+            _replicate_available = False
+    return _replicate_available
+
+
 # ---------------------------------------------------------------------------
 # KILLSWITCH + USAGE LOGGING WRAPPER
 # ---------------------------------------------------------------------------

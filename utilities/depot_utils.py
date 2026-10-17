@@ -595,12 +595,12 @@ def purchase_stat_reroll(session) -> dict:
 # CHARACTER MODIFICATION
 ##############################################################################
 
-def purchase_character_modification(session, edit_prompt: str, flux_generator) -> dict:
+def purchase_character_modification(session, edit_prompt: str) -> dict:
     """
     Process character modification purchase
     ALWAYS modifies the LATEST image (edited or original)
     """
-    from utilities.replicate_utils import edit_character_image
+    from utilities.kumori_utils import edit_character_image, kumori_klein_edit
 
     if not edit_prompt or not edit_prompt.strip():
         raise Exception('No modification description provided')
@@ -616,13 +616,6 @@ def purchase_character_modification(session, edit_prompt: str, flux_generator) -
     if not sufficient:
         raise Exception(error_msg)
     
-    # Deduct balance immediately, blockchain tx fires in background
-    new_balance_eth = execute_purchase_transaction(
-        wallet, CHARACTER_MODIFY_COST_ETH, f"Character modification: {edit_prompt[:50]}",
-        user_id=user_id, purchase_type='character_modification',
-        item_details={'prompt': edit_prompt}
-    )
-
     # Get the LATEST image to modify
     last_image_url = None
     parent_asset_id = None
@@ -639,7 +632,18 @@ def purchase_character_modification(session, edit_prompt: str, flux_generator) -
     logger.info(f"🎨 Modifying: {last_image_url[:50]}...")
     logger.info(f"📝 Prompt: {edit_prompt}")
 
-    result_url = edit_character_image(last_image_url, edit_prompt, flux_generator)
+    # Render before charging: a failed render must not cost shards (no refund path exists).
+    rendered = kumori_klein_edit(edit_prompt, last_image_url, feature='captain.modify',
+                                 verbiage=edit_prompt[:500], caller_user_id=user_id)
+
+    # Deduct balance, blockchain tx fires in background
+    new_balance_eth = execute_purchase_transaction(
+        wallet, CHARACTER_MODIFY_COST_ETH, f"Character modification: {edit_prompt[:50]}",
+        user_id=user_id, purchase_type='character_modification',
+        item_details={'prompt': edit_prompt}
+    )
+
+    result_url = edit_character_image(last_image_url, edit_prompt, rendered=rendered)
     update_character_session(session, result_url)
 
     new_asset_id = session.get('current_asset_id')

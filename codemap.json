@@ -54,12 +54,12 @@
       "log_request_time — Log request duration to console for performance monitoring.",
       "set_security_headers — Add security headers including HSTS to force HTTPS.",
       "inject_global_stats — Inject global user stats into all templates. Delegates to utilities.session.user_hydration.",
+      "inject_media_flags — Awakening/briefing videos render only on Replicate (paused since 2026-10-15).",
       "api_version — Current deploy id, for open tabs to notice a deploy (core.js checkForNewVersion).",
       "handle_api_error — Decorator for consistent API error handling",
       "login_required — Require authentication for route. Sets g.user_id for convenience.",
       "cron_only — Reject non-cron traffic. GAE adds the X-Appengine-Cron header on all cron.yaml calls.",
-      "indexnow_key — Serve IndexNow verification key.",
-      "sitemap"
+      "indexnow_key — Serve IndexNow verification key."
     ]
   },
   "config.py": {
@@ -1746,7 +1746,10 @@
       "kumori_klein_generate — Text→image via kumori. No reference images. kumori cascades server-side",
       "kumori_describe — Vision LLM → text. Returns (description_text, backend_used).",
       "kumori_llm_chat — LLM with server-side backend fallback. Returns",
-      "kumori_llm_chat_messages — Multi-turn variant of kumori_llm_chat. Pass a full role/content message"
+      "kumori_llm_chat_messages — Multi-turn variant of kumori_llm_chat. Pass a full role/content message",
+      "render_uploaded_captain — Turn an uploaded photo into a captain. Raises KumoriAPIError when every rung fails.",
+      "process_uploaded_image — Process uploaded image, save to GCS, create new commander with fresh stats.",
+      "edit_character_image — Apply edit to character image, save to GCS with provenance."
     ]
   },
   "utilities/legacy_migration.py": {
@@ -1890,6 +1893,7 @@
   "utilities/replicate_utils.py": {
     "exports": [
       "get_secret — Retrieve secret from env var or Google Cloud Secret Manager (cached).",
+      "replicate_available — Whether a Replicate token can be read, checked once per process. Every Replicate",
       "class FluxGenerator",
       "process_uploaded_image — Process uploaded image, save to GCS, create new commander with fresh stats.",
       "edit_character_image — Apply edit to character image, save to GCS with provenance.",
