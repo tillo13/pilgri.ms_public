@@ -160,7 +160,7 @@ def _add_expedition_context(context, expeditions, include_hours=False):
 # Flux Kontext single-image generation
 # ---------------------------------------------------------------------------
 
-def generate_snapshot(user_id, snapshot_type, user_data, flux, dry_run=False):
+def generate_snapshot(user_id, snapshot_type, user_data, dry_run=False):
     """Generate a snapshot by editing an existing image with Flux Kontext.
 
     Returns dict with gcs_url, caption, snapshot_type, source_image.
@@ -269,7 +269,7 @@ def _pick_nano_caption(template, context, discoveries, expeditions, infrastructu
     return caption_template.format(**context)
 
 
-def generate_nano_banana_snapshot(user_id, snapshot_type, user_data, flux, dry_run=False):
+def generate_nano_banana_snapshot(user_id, snapshot_type, user_data, dry_run=False):
     """Multi-character snapshot via Nano Banana Pro.
 
     Combines multiple reference images (captain + ARIA, etc.) with character
@@ -391,8 +391,6 @@ def generate_snapshot_for_user(email, snapshot_type=None, dry_run=False, premium
     Auto-selects a sensible snapshot_type if none given. Uses Flux Kontext by
     default; pass premium=True for Nano Banana Pro.
     """
-    from utilities.replicate_utils import FluxGenerator
-
     user = get_user_by_email(email)
     if not user:
         raise ValueError(f"No user found matching email: {email}")
@@ -444,5 +442,4 @@ def generate_snapshot_for_user(email, snapshot_type=None, dry_run=False, premium
             f"Available: {list(available_types.keys())}"
         )
 
-    flux = None if dry_run else FluxGenerator()
-    return generator_func(user_id, snapshot_type, user_data, flux, dry_run)
+    return generator_func(user_id, snapshot_type, user_data, dry_run)

@@ -490,7 +490,6 @@ def handle_admin_sync_balances():
 def handle_admin_generate_snapshots(target_user_id=None, dry_run=False):
     """Generate ARIA Photo Journal snapshots."""
     from utilities.aria.photos import generate_daily_snapshots, generate_daily_snapshots_for_user
-    from utilities.replicate_utils import FluxGenerator
 
     if target_user_id:
         with db_cursor() as cur:
@@ -499,8 +498,7 @@ def handle_admin_generate_snapshots(target_user_id=None, dry_run=False):
         if not user:
             return {'success': False, 'error': f'User {target_user_id} not found'}
 
-        flux = None if dry_run else FluxGenerator()
-        results = generate_daily_snapshots_for_user(user['id'], user['email'], flux, dry_run=dry_run)
+        results = generate_daily_snapshots_for_user(user['id'], user['email'], dry_run=dry_run)
         return {
             'success': True,
             'user_id': target_user_id,

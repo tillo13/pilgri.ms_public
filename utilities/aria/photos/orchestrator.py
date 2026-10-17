@@ -75,7 +75,7 @@ def _refused_by_model(e):
         and e.payload.get('error_code') == 'bad_input'
 
 
-def generate_daily_snapshots_for_user(user_id, email, flux, dry_run=False, num_snapshots=1, forced_category=None):
+def generate_daily_snapshots_for_user(user_id, email, dry_run=False, num_snapshots=1, forced_category=None):
     """Generate `num_snapshots` snapshots for one user using Claude-generated prompts.
 
     Claude invents the scene fresh each time based on:
@@ -360,8 +360,6 @@ def generate_daily_snapshots(dry_run=False, limit=None):
 
     Returns a summary dict with processed/failed counts and cost estimate.
     """
-    from utilities.replicate_utils import FluxGenerator
-
     logger.info("=" * 60)
     logger.info("DAILY SNAPSHOT GENERATION")
     logger.info(f"Dry run: {dry_run}")
@@ -372,8 +370,6 @@ def generate_daily_snapshots(dry_run=False, limit=None):
     if limit:
         users = users[:limit]
     logger.info(f"Found {total_users} active users, processing {len(users)}")
-
-    flux = None if dry_run else FluxGenerator()
 
     summary = {
         'total_users': total_users,
@@ -387,7 +383,7 @@ def generate_daily_snapshots(dry_run=False, limit=None):
         user_id = user['id']
         email = user['email']
         try:
-            results = generate_daily_snapshots_for_user(user_id, email, flux, dry_run)
+            results = generate_daily_snapshots_for_user(user_id, email, dry_run)
             successes = [r for r in results if r.get('gcs_url')]
             failures = [r for r in results if not r.get('gcs_url')]
             summary['processed_users'] += 1
