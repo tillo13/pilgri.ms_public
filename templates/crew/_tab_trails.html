@@ -1,0 +1,277 @@
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB: TRAILS (Default) -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-trails" class="crew-tab-content">
+
+<!-- Two-column layout: Captain + Crew Teaser (original grid, now inside tab) -->
+<div class="crew-hero-grid" style="display: none;">
+    <!-- Active Captain -->
+    <div class="dashboard-card relative overflow-hidden p-20">
+        <!-- Ship Interior Background -->
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+        <div class="card-bg-overlay"></div>
+        <!-- Content -->
+        <div class="relative z-2">
+            <div class="flex items-center gap-8 mb-16">
+                <div class="text-xs text-success uppercase tracking-wide rounded" style="background: rgba(var(--color-success-rgb), 0.1); padding: 4px 8px;">Active Captain</div>
+            </div>
+
+        <!-- Image/Video Toggle -->
+        <div class="text-center mb-12">
+            <div class="flex gap-6 mb-12" style="display: inline-flex;">
+                <button class="btn text-sm" id="imageTabButton" style="background: var(--color-primary); color: white; padding: 6px 12px;"><img src="{{ icons.camera }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Image</button>
+                <button class="btn text-sm" id="videoTabButton" style="background: var(--bg-tertiary); color: var(--text-secondary); padding: 6px 12px;"><img src="{{ icons.video_film }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> Video</button>
+            </div>
+            <div id="imageTab" class="flex justify-center">
+                <img src="{{ character_url }}" alt="Captain" id="mainCommanderImage" onclick="showImageModal(this.src)"
+                     class="rounded-lg cursor-pointer" style="max-width: 100%; max-height: 280px; width: auto; height: auto; border: 3px solid var(--color-success); box-shadow: 0 6px 24px rgba(var(--color-success-rgb), 0.3);">
+            </div>
+            <div id="videoTab" class="flex justify-center" style="display: none;">
+                {% if character_video_url %}
+                <video autoplay muted loop playsinline onclick="openVideoModal('{{ character_video_url }}')"
+                       class="rounded-lg cursor-pointer" style="max-width: 100%; max-height: 280px; width: auto; height: auto; border: 3px solid var(--color-primary);">
+                    <source src="{{ character_video_url }}" type="video/mp4">
+                </video>
+                {% else %}
+                <div class="flex flex-col items-center justify-center rounded-lg border" style="width: 200px; height: 200px; background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border: 2px dashed var(--border-default);">
+                    <img src="{{ icons.video_film }}" alt="" class="mb-8 opacity-50" style="width: 48px; height: 48px;">
+                    <div class="text-sm text-muted">No video yet</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-center">
+            <h2 class="text-2xl font-bold m-0 mb-4">{% if commander.commander_name %}{{ commander.commander_name }}{% else %}{{ user.name.split()[0] }}{% endif %}</h2>
+        </div>
+        </div>
+    </div>
+
+    <!-- Colony Crew (Scientist + Future Allies) -->
+    {% if scientist %}
+    <div class="dashboard-card card-dark text-white relative overflow-hidden p-20">
+        <!-- Ship Interior Background with lighter overlay for dark card -->
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="absolute inset-0 w-full h-full z-0" style="object-fit: cover; opacity: 0.2;">
+        <div class="absolute inset-0 w-full h-full z-1" style="background: linear-gradient(180deg, rgba(26,26,46,0.7) 0%, rgba(22,33,62,0.85) 100%);"></div>
+        <!-- Content -->
+        <div class="relative z-2 text-center">
+            <!-- Scientist Section -->
+            <div class="flex items-center justify-center gap-8 mb-12">
+                <div class="text-xs text-sepolia uppercase tracking-wide rounded" style="background: rgba(var(--color-sepolia-rgb), 0.2); padding: 4px 8px;">Colony Scientist</div>
+            </div>
+
+        <!-- Scientist image centered and larger -->
+        <div class="mb-16">
+            <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" onclick="showImageModal('{{ scientist.image_url }}')"
+                 class="rounded-lg cursor-pointer" style="width: 140px; height: 140px; object-fit: cover; border: 3px solid var(--color-sepolia); box-shadow: 0 6px 24px rgba(var(--color-sepolia-rgb), 0.3);">
+            <h3 class="text-xl font-bold mt-12 mb-0">{{ scientist.name }}</h3>
+            <div class="text-sm text-sepolia">{{ scientist.specialty }} Specialist</div>
+            <p class="text-xs opacity-80 leading-tight mt-8 m-0">Analyzes discoveries and extracts ancient Sepolia shards.</p>
+            {% if has_research_station %}
+            <a href="/research" class="btn btn-small mt-12" style="background: rgba(var(--color-sepolia-rgb), 0.3); color: var(--color-sepolia); border: 1px solid rgba(var(--color-sepolia-rgb), 0.4); font-size: 11px; padding: 6px 12px;">View Research →</a>
+            {% endif %}
+        </div>
+
+        <!-- Signal Detected Section -->
+        <div class="pt-16" style="border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="text-xs text-mars uppercase tracking-wider mb-8">{{ scientist.name }}'s Discovery</div>
+            <h4 class="text-md font-semibold text-white m-0 mb-8">We May Not Be Alone</h4>
+            <p class="text-sm leading-normal mb-12 text-light">Faint signals detected from the northern hemisphere while analyzing expedition data. The patterns suggest... intelligence.</p>
+            <div class="flex gap-8 flex-wrap justify-center">
+                <div class="text-xs rounded" style="background: rgba(255,255,255,0.1); padding: 6px 10px;">
+                    <div class="text-sepolia font-semibold">Specialists</div>
+                    <div class="text-light-secondary">Awaiting recruitment</div>
+                </div>
+                <div class="text-xs rounded" style="background: rgba(255,255,255,0.1); padding: 6px 10px;">
+                    <div class="text-success font-semibold">Allies</div>
+                    <div class="text-light-secondary">Unknown entities</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    {% else %}
+    <!-- If no scientist yet, show teaser -->
+    <div class="dashboard-card card-dark text-white flex flex-col justify-center relative overflow-hidden p-20">
+        <!-- Ship Interior Background with lighter overlay for dark card -->
+        <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="absolute inset-0 w-full h-full z-0" style="object-fit: cover; opacity: 0.2;">
+        <div class="absolute inset-0 w-full h-full z-1" style="background: linear-gradient(180deg, rgba(26,26,46,0.7) 0%, rgba(22,33,62,0.85) 100%);"></div>
+        <div class="relative z-2">
+        <div class="text-xs text-mars uppercase tracking-wider mb-12">Signal Detected</div>
+        <h3 class="text-xl font-semibold text-white m-0 mb-12">We May Not Be Alone</h3>
+        <p class="text-sm leading-normal mb-16 text-light">Long-range sensors have detected faint signals from the northern hemisphere. The patterns suggest... intelligence. Your captain is preparing protocols for potential contact.</p>
+        <div class="flex gap-8 flex-wrap">
+            <div class="text-xs rounded" style="background: rgba(255,255,255,0.1); padding: 8px 12px;">
+                <div class="text-sepolia font-semibold">Specialists</div>
+                <div class="text-light-secondary">Awaiting recruitment</div>
+            </div>
+            <div class="text-xs rounded" style="background: rgba(255,255,255,0.1); padding: 8px 12px;">
+                <div class="text-success font-semibold">Allies</div>
+                <div class="text-light-secondary">Unknown entities</div>
+            </div>
+        </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Crew Trail Missions Section -->
+<div class="dashboard-card relative overflow-hidden p-20 mb-20" id="crew-missions-section">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2">
+        <div class="flex items-center justify-between mb-16">
+            <div class="text-xs uppercase tracking-wide" style="color: var(--color-sepolia);"><img src="{{ icons.tab_map }}" alt="" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; opacity: 0.9;"> Trails — Antipode Chains</div>
+        </div>
+
+        <!-- Trail Map FIRST (per UX feedback): captains want to see the chains immediately -->
+        <div id="crew-trail-map-container" class="mb-8" style="height: 720px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-default); background: var(--bg-primary);">
+            <div id="crew-trail-map" style="height: 100%; width: 100%;"></div>
+        </div>
+        <!-- Map pan controls (antipode is on the far side of the planet, so jump-to buttons are needed) -->
+        <div class="flex justify-end items-center mb-12" style="gap: 8px;">
+            <button onclick="flyToBase()" class="btn btn-secondary" style="font-size: 11px; padding: 6px 14px;" title="Re-center the map on your colony base"><img src="{{ icons.tab_map }}" alt="" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"> View Base</button>
+            <button onclick="flyToAntipode()" class="btn btn-primary" style="font-size: 11px; padding: 6px 14px; background: linear-gradient(135deg, #ec7427, #ffb060);" title="Pan to your antipode landmark — where all 4 chains converge on the far side of Mars">◆ Fly to Antipode</button>
+        </div>
+
+        <!-- ONE merged dropdown — closed by default. Math + colors + how chains work, all in one place. -->
+        {% set skills = aria_skills or {} %}
+        {% set cmd_stats = commander_stats or {} %}
+        {% set cmd_log = cmd_stats.get('logistics', 0)|float %}
+        {% set log_xp = (commander or {}).get('captain_logistics_xp', 0)|default(0)|int %}
+        {% set capt_mult = 1.0 + (cmd_log / 30) + (log_xp / 2000) %}
+        <details class="mb-16" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+            <summary style="cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 13px; color: var(--text-primary); list-style: none; display: flex; align-items: center; justify-content: space-between;">
+                <span><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> How trails work — the 4 chains, colors, math</span>
+                <span class="opacity-50" style="font-size: 11px;">click to expand</span>
+            </summary>
+            <div style="padding: 0 16px 16px 16px; color: var(--text-secondary); font-size: 12px; line-height: 1.6;">
+
+                <!-- The 4 chains (cardinal legend, colorblind-safe) -->
+                <p class="mt-12 mb-8"><strong style="color: var(--text-primary);">Every captain has exactly 4 trails — one per cardinal direction (N / E / S / W).</strong> Each is a chain of landmark hops from your base out to your <em>antipode</em> — the landmark on the opposite side of Mars. All 4 chains terminate at the same antipode, just routed through different hemispheres.</p>
+                <p class="mb-8"><strong style="color: var(--text-primary);">On the map:</strong> a single throbbing orange beacon marks your antipode (where all 4 chains converge). Click it for per-direction progress. The map is intentionally clean — Top Trails below shows the 4 chains color-coded.</p>
+                {# #1434: legend reads the ONE canonical trail_palette (config.TRAIL_DIR_PALETTE),
+                   same source the map lines + boxes use, so colours can't drift. The black
+                   direction gets a white backing pill so it stays legible on the dark legend. #}
+                <div class="grid mb-12" style="grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                    {% for d in ['N', 'E', 'S', 'W'] %}
+                    {% set tp = trail_palette[d] %}
+                    {% set routes = {'N': 'via the North Pole', 'E': 'east through the equator', 'S': 'via the South Pole', 'W': 'west through the equator'} %}
+                    <div style="border-left: 4px solid {{ tp.color }}; padding: 6px 10px; background: {{ tp.color }}1A; border-radius: 0 6px 6px 0;">
+                        <strong style="color: {{ tp.color }};{% if tp.color == '#000000' %} background: rgba(255,255,255,0.85); padding: 1px 4px; border-radius: 3px;{% endif %}">{{ tp.label }}</strong><br>
+                        <span class="opacity-70">routes {{ routes[d] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- The map legend -->
+                <p class="mb-12"><strong style="color: var(--text-primary);">On the map:</strong> each chain shows as a dashed line in its signature color tracing the FULL route from base to antipode. Bright thick segments = what you've built. The color circle at the end of each line is the antipode beacon (same landmark, four routes). Click + Build / drone cron / ARIA Resonance all advance whichever direction is set as active (highlighted in Top Trails below).</p>
+
+                <!-- Math (per crew session) -->
+                <div class="p-10 mb-12" style="background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid var(--color-sepolia);">
+                    <div class="font-semibold mb-6" style="color: var(--text-primary);">Per-session km formula</div>
+                    <code style="color: var(--text-secondary); font-size: 11px;">0.75 × crew_mult × scanner × eva_suit × consumable × (duration/60)</code>
+                    <div class="mt-8 mb-4 font-semibold" style="color: var(--color-success);">Crew multipliers (your current stats):</div>
+                    <div class="mb-2">Captain: Logistics {{ cmd_log|int }} + {{ log_xp }} XP → <strong style="color: var(--color-success);">{{ "%.1f"|format(capt_mult) }}×</strong></div>
+                    <div class="mb-2">Scientist: Nav XP + {{ (scientist or {}).get('specialty', 'Specialty') }} → <strong style="color: var(--color-sepolia);">stat-dependent</strong></div>
+                    <div class="mb-8">ARIA: Resonance Lv{{ (skills.get('resonance_level', 1)) }} + Lore Lv{{ (skills.get('lore_memory_level', 1)) }} → <strong style="color: #a855f7;">{{ "%.1f"|format(1.0 + (skills.get('resonance_level', 1)) / 20 + (skills.get('lore_memory_level', 1)) / 200) }}×</strong></div>
+                    <div class="font-semibold mb-4" style="color: var(--color-sepolia);">Equipment (stacks):</div>
+                    <div>Scanner +1-10%/lv · EVA Suit +5%/lv · Consumables +6-15%</div>
+                </div>
+
+                <!-- Drones / passive -->
+                <div class="p-10 mb-12" style="background: rgba(0,0,0,0.3); border-radius: 6px; border-left: 3px solid var(--color-success);">
+                    <div class="font-semibold mb-4" style="color: var(--color-success);">Passive (24/7) — runs every 30 min via cron</div>
+                    <div class="mb-2">Maintenance Drone: Lv1 0.5 km/hr → Lv3 1.0 km/hr</div>
+                    <div class="mb-2">Mining Drone: Lv1 1.5 km/hr → Lv7 8.0 km/hr</div>
+                    <div>Robot Crew: dial[exploration] × stage × Narog Foundry × scientist Nav</div>
+                </div>
+
+                <!-- Why -->
+                <p class="mb-0"><strong style="color: var(--text-primary);">Why this matters:</strong> chains are the only trail system. ~10,500–12,000 km per direction, 18–20 segments. At ~20–25 km/day baseline you finish one chain in 12–18 months — all four is the grand circumnavigation. Speed it up with depot upgrades, scientist Engineering stat, captain Logistics stat, and tech research. Off-chain expeditions get no trail bonus.</p>
+            </div>
+        </details>
+
+        <!-- Top Trails Section - Shows best trails to continue -->
+        <div id="top-trails-section" class="mb-16" style="display: none;">
+            <div class="text-sm font-semibold mb-8" style="color: var(--color-sepolia);"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Your Top Trails</div>
+            <div id="top-trails-list" class="grid gap-8">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        {# Bug #1303: Drone + Narog cards added so the trail summary reflects
+           ALL contributors. Grid uses auto-fit so 3-5 cards wrap cleanly on
+           any width. Drone card appears once any maintenance/mining drone is
+           built; Narog card appears once the captain has forged a Narog. #}
+        <!-- Crew Status Row (compact, shows who's available + trail contribution) -->
+        <div class="text-xs opacity-50 mb-8">Your Crew • <span style="color: var(--color-warning);">Orange = building trail</span> • % = share of your total trail km</div>
+        <div class="grid gap-12 mb-12" style="grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));" id="crew-status-row">
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid var(--color-success);">
+                <img src="{{ character_url if character_url else '/static/img/placeholder.png?v=' ~ static_v }}" alt="Captain" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
+                <div class="text-xs font-semibold">{{ commander.commander_name if commander and commander.commander_name else 'Captain' }}</div>
+                <div id="captain-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="captain-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% if scientist %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid var(--color-sepolia);">
+                <img src="{{ scientist.image_url }}" alt="{{ scientist.name }}" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
+                <div class="text-xs font-semibold">{{ scientist.name }}</div>
+                <div id="scientist-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="scientist-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% else %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid var(--border-default); opacity: 0.5;">
+                <div class="text-xs"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"></div>
+                <div class="text-xs font-semibold">Scientist</div>
+                <div class="text-xs opacity-60">Not assigned</div>
+            </div>
+            {% endif %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid #a855f7;">
+                <img src="{{ icons.aria_avatar }}" alt="ARIA" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
+                <div class="text-xs font-semibold">ARIA</div>
+                <div id="aria-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="aria-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% if has_drone %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid #f59e0b;">
+                <img src="{{ icons.vehicle_drone }}" alt="Drone" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px;">
+                <div class="text-xs font-semibold">Drone</div>
+                <div id="drone-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="drone-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% endif %}
+            {% if robot_data and robot_data.is_complete %}
+            <div class="text-center p-8" style="background: var(--bg-tertiary); border-radius: 8px; border: 2px solid #ffc88a;">
+                <img src="{{ robot_data.robot.current_image_url or icons.robot_avatar }}" alt="Narog" style="width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 4px; object-fit: cover;">
+                <div class="text-xs font-semibold">{{ robot_data.robot.name or 'Narog' }}</div>
+                <div id="robot-status-badge" class="text-xs" style="color: var(--color-success);">Ready</div>
+                <div id="robot-trail-contrib" class="text-xs opacity-50 mt-4" style="font-size: 10px;">—</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Global Mars Progress -->
+        <div class="mb-16 p-12 text-center" style="background: var(--bg-tertiary); border-radius: 8px; border: 1px solid var(--border-default);">
+            <div class="text-xs opacity-50 mb-4">Your Total Trail Progress</div>
+            <div class="flex justify-center gap-16 flex-wrap">
+                <div>
+                    <div id="global-km-built" class="text-lg font-bold" style="color: var(--color-sepolia);">0 km</div>
+                    <div class="text-xs opacity-50">built by your crew</div>
+                </div>
+                <div>
+                    <div id="global-mars-percent" class="text-lg font-bold" style="color: var(--color-mars);">0%</div>
+                    <div class="text-xs opacity-50">of Mars surface (144.8M km²)</div>
+                </div>
+            </div>
+        </div>
+
+        {# Bug #21 Deploy D: legacy Crew XP bars removed per Luke 2026-05-09 #2
+           ("Ok to deprecate extra experience"). The +5 XP grants are folded
+           into the new captain stat events (+0.05 Leadership per crew mission),
+           which display on the Captain tab. Frozen XP values still feed the
+           trail-mission multiplier formula (see "How trails work" panel above)
+           — that's separate from the visible progression. #}
+    </div>
+</div>
+
+</div><!-- End tab-trails -->

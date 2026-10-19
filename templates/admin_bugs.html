@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Bug Tracker - Admin{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/admin-bugs.css?v={{ static_v }}">{% endblock %}
+
+{% block extra_head %}
+<style>
+    .bottom-nav { display: none !important; }
+    .main-content { max-width: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1100px; margin: 0 auto; padding: 20px;">
+    <!-- Header -->
+    <div class="bt-header">
+        <div>
+            <h2 style="color: var(--color-sepolia); margin-bottom: 4px;">Bug Tracker</h2>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <p class="text-sm text-muted">Track bugs, features, and ideas</p>
+                <span style="font-size: 12px; color: rgba(255,255,255,0.25);">Old Google Sheet archived</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <a href="/admin" class="bt-back-link">&larr; Admin</a>
+            <button class="bt-btn bt-btn-primary" onclick="BT.openAddModal()">+ Add Bug</button>
+        </div>
+    </div>
+
+    <!-- Lifecycle -->
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.7;">
+        <strong style="color: rgba(255,255,255,0.7);">Bug Lifecycle:</strong>
+        <strong style="color:#60a5fa;">Backlog</strong> (filed) &rarr;
+        <strong style="color:#60a5fa;">Todo</strong> (prioritized) &rarr;
+        <strong style="color:#2dd4bf;">Ready For Dev</strong> (researched) &rarr;
+        <strong style="color:#f59e0b;">In Progress</strong> (dev fixing) &rarr;
+        <strong style="color:#c084fc;">In Review</strong> (QA testing) &rarr;
+        <strong style="color:#4ade80;">Done</strong>
+        &nbsp;|&nbsp; QA: test the fix, add comments, mark <em>QA Passed</em> when verified, then Complete.
+        &nbsp;|&nbsp; Use <em>Ask PilgrimBot</em> to analyze any bug before diving in.
+    </div>
+
+    <!-- Stats -->
+    <!-- Key counts -->
+    <div class="bt-stats">
+        <div class="bt-stat"><span class="bt-stat-val" id="btStatActive">{{ stats.active_count or 0 }}</span><span class="bt-stat-label">Active</span></div>
+        <div class="bt-stat"><span class="bt-stat-val" id="btStatQA">{{ stats.awaiting_qa or 0 }}</span><span class="bt-stat-label">In Review</span></div>
+        <div class="bt-stat"><span class="bt-stat-val bt-stat-p1" id="btStatP1">{{ stats.p1_count or 0 }}</span><span class="bt-stat-label">P1</span></div>
+        <div class="bt-stat"><span class="bt-stat-val bt-stat-p2" id="btStatP2">{{ stats.p2_count or 0 }}</span><span class="bt-stat-label">P2</span></div>
+        <div class="bt-stat"><span class="bt-stat-val" id="btStatDone">{{ stats.completed_count or 0 }}</span><span class="bt-stat-label">Completed</span></div>
+    </div>
+    <!-- Dev velocity -->
+    {% set closed_week = stats.closed_this_week or 0 %}
+    {% set filed_week = stats.filed_this_week or 0 %}
+    {% set avg_hrs = (stats.avg_close_hours or 0)|int %}
+    {% set oldest = stats.oldest_open_days or 0 %}
+    {% set closed_month = stats.closed_this_month or 0 %}
+    {% set dev_queue = stats.dev_queue or 0 %}
+    {% set net = filed_week - closed_week %}
+    <div class="bt-velocity bt-vel-dev">
+        <span class="bt-vel-label">DEV</span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ closed_week }}</span> closed /wk
+            <span class="bt-vel-note">({{ filed_week }} filed, {{ '+' if net > 0 }}{{ net }} net)</span>
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ closed_month }}</span> closed /mo
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            avg close <span class="bt-vel-val">{% if avg_hrs > 48 %}{{ (avg_hrs / 24)|int }}d{% elif avg_hrs > 0 %}{{ avg_hrs }}h{% else %}—{% endif %}</span>
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ dev_queue }}</span> in dev queue
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            oldest open <span class="bt-vel-val {% if oldest > 30 %}bt-vel-warn{% endif %}">{{ oldest }}d</span>
+        </span>
+    </div>
+    <!-- QA velocity -->
+    {% set qa_queue = stats.qa_queue or 0 %}
+    {% set qa_passed = stats.qa_passed_this_week or 0 %}
+    {% set reopened = stats.reopened_count or 0 %}
+    {% set reopened_mo = stats.reopened_this_month or 0 %}
+    {% set untriaged = stats.new_untriaged or 0 %}
+    {% set backlog = stats.backlog_count or 0 %}
+    <div class="bt-velocity bt-vel-qa">
+        <span class="bt-vel-label">QA</span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ qa_queue }}</span> awaiting QA
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ qa_passed }}</span> passed /wk
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val {% if reopened > 0 %}bt-vel-warn{% endif %}">{{ reopened }}</span> reopened
+            {% if reopened_mo > 0 %}<span class="bt-vel-note">({{ reopened_mo }} /mo)</span>{% endif %}
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ untriaged }}</span> untriaged
+        </span>
+        <span class="bt-vel-sep"></span>
+        <span class="bt-vel-item">
+            <span class="bt-vel-val">{{ backlog }}</span> in backlog
+        </span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bt-tabs">
+        <button class="bt-tab active" data-tab="active" onclick="BT.switchTab('active')">Active</button>
+        <button class="bt-tab" data-tab="completed" onclick="BT.switchTab('completed')">Completed</button>
+        <button class="bt-tab" data-tab="ideas" onclick="BT.switchTab('ideas')">Ideas</button>
+    </div>
+
+    <!-- Search bar -->
+    <div class="bt-search-bar">
+        <input type="text" id="btSearch" placeholder="Search bugs... (use #123 for ID)" oninput="BT.applyFilters()">
+    </div>
+
+    <!-- Hidden filter state (still used by JS) -->
+    <select id="btFilterStatus" style="display:none"><option value="">All</option></select>
+    <select id="btFilterPriority" style="display:none"><option value="">All</option></select>
+    <select id="btSort" style="display:none"><option value="priority">priority</option></select>
+
+    <!-- Sortable column headers -->
+    <div class="bt-col-header" id="btColHeader">
+        <span class="bt-col bt-col-sortable" data-sort="id">#</span>
+        <span class="bt-col bt-col-sortable" data-sort="priority">Pri</span>
+        <span class="bt-col bt-col-name bt-col-sortable" data-sort="name">Name</span>
+        <span class="bt-col bt-col-sortable" data-sort="status">Status</span>
+        <span class="bt-col bt-col-sortable" data-sort="type">Type</span>
+        <span class="bt-col bt-col-sortable bt-col-active" data-sort="updated">Modified</span>
+        <span class="bt-col"></span>
+    </div>
+
+    <!-- Bug List -->
+    <div id="btBugList" class="bt-list"></div>
+</div>
+
+<!-- Add/Edit Bug Modal -->
+<div id="btModal" class="bt-modal-overlay" style="display: none;">
+    <div class="bt-modal">
+        <div class="bt-modal-header" id="btModalTitle">Add Bug</div>
+        <input type="hidden" id="btModalBugId">
+        <label class="bt-label">Name</label>
+        <input type="text" id="btModalName" class="bt-input" maxlength="200" placeholder="Brief bug/feature name" oninput="BT.searchRelated()">
+        <div id="btRelatedBugs" style="display:none; margin: 6px 0 4px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 6px; font-size: 12px; max-height: 120px; overflow-y: auto;"></div>
+        <label class="bt-label">Description</label>
+        <textarea id="btModalDesc" class="bt-textarea" rows="4" placeholder="What's happening?"></textarea>
+        <div style="display: flex; gap: 12px;">
+            <div style="flex: 1;">
+                <label class="bt-label">Type</label>
+                <select id="btModalType" class="bt-input">
+                    <option>Bug</option><option>Feature</option><option>Design</option><option>Lore</option><option>Task</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label class="bt-label">Priority</label>
+                <select id="btModalPriority" class="bt-input">
+                    <option>P1</option><option>P2</option><option selected>P3</option><option>P4</option><option>P5</option>
+                </select>
+            </div>
+        </div>
+        <label class="bt-label">Screenshot (paste, drag, or click to upload)</label>
+        <div class="bt-upload-zone" id="btUploadZone">
+            <input type="file" id="btFileInput" accept="image/*,video/*" style="display: none;">
+            <span id="btUploadText">Paste image, drop file, or click to browse</span>
+            <img id="btUploadPreview" style="display: none; max-width: 100%; max-height: 200px; border-radius: 8px;">
+        </div>
+        <div class="bt-modal-actions">
+            <button class="bt-btn" onclick="BT.closeModal()">Cancel</button>
+            <button class="bt-btn bt-btn-primary" id="btModalSubmit" onclick="BT.submitBug()">Save</button>
+        </div>
+        <div class="bt-modal-status" id="btModalStatus"></div>
+    </div>
+</div>
+
+<script type="application/json" id="bugPageData">
+{
+    "active": {{ active_bugs | tojson }},
+    "completed": {{ completed_bugs | tojson }},
+    "ideas": {{ ideas | tojson }},
+    "userName": {{ (user.name.split()[0] if user and user.name else "Admin") | tojson }},
+    "mentionUsers": {{ mention_users | tojson }}
+}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/static/js/admin-bugs.js?v={{ static_v }}" defer></script>
+{% endblock %}

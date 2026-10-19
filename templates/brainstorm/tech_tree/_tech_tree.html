@@ -1,0 +1,196 @@
+    <!-- The Tech Tree Structure -->
+    <div class="section">
+        <div class="section-title">Proposed Tech Tree (~24 Technologies)</div>
+
+        <p>Based on the research above, for a game our size: <strong>20-30 techs</strong> across <strong>4
+                branches</strong> with <strong>3 tiers</strong> is the sweet spot.</p>
+
+        <!-- Exploration Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">🔭</span>
+                <span>Exploration Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Drones, discovery,
+                    sensors</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Wind Analysis</div>
+                    <div class="tech-req">Requires: 5 Wind Readings + 5,000 SP</div>
+                    <div class="tech-effect">→ Drone speed +25%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Terrain Mapping</div>
+                    <div class="tech-req">Requires: 10 Soil Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Discovery chance +10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Storm Prediction</div>
+                    <div class="tech-req">Requires: Wind Analysis + 12,000 SP</div>
+                    <div class="tech-effect">→ Immune to dust storm penalties</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Advanced Sensors</div>
+                    <div class="tech-req">Requires: Terrain Mapping + 12,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Drone Level 3</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Deep Scanning</div>
+                    <div class="tech-req">Requires: Storm Prediction + Advanced Sensors + 25,000 SP</div>
+                    <div class="tech-effect">→ Legendary discovery chance +5%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vehicle Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">🚗</span>
+                <span>Vehicle Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Rovers, cargo,
+                    speed</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Material Science</div>
+                    <div class="tech-req">Requires: 30 Geometric Shapes + 5,000 SP</div>
+                    <div class="tech-effect">→ Rover cargo +15%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Suspension Engineering</div>
+                    <div class="tech-req">Requires: 15 Mineral Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Rover speed +10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Chassis Reinforcement</div>
+                    <div class="tech-req">Requires: Material Science + 12,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Rover Level 3</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">AI Navigation</div>
+                    <div class="tech-req">Requires: Suspension Engineering + 12,000 SP</div>
+                    <div class="tech-effect">→ Expedition cost -10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">All-Terrain Mastery</div>
+                    <div class="tech-req">Requires: Chassis + AI Nav + 25,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Rover Level 4</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Power Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">⚡</span>
+                <span>Power Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Solar, batteries,
+                    generation</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Solar Optimization</div>
+                    <div class="tech-req">Requires: 5 Crystalline Formations + 5,000 SP</div>
+                    <div class="tech-effect">→ Solar efficiency +20%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Battery Chemistry</div>
+                    <div class="tech-req">Requires: 10 Mineral Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Night generation +25%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Thermal Tap</div>
+                    <div class="tech-req">Requires: 5 Geothermal Readings + 12,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Geothermal Generator</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Power Grid</div>
+                    <div class="tech-req">Requires: Solar Optimization + 12,000 SP</div>
+                    <div class="tech-effect">→ All power buildings +10%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Fusion Basics</div>
+                    <div class="tech-req">Requires: Thermal Tap + Power Grid + 25,000 SP</div>
+                    <div class="tech-effect">→ Unlocks Nuclear RTG Level 2</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extraction Branch -->
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">💎</span>
+                <span>Extraction Branch</span>
+                <span style="font-weight: normal; font-size: 12px; color: var(--text-secondary);">— Shard value,
+                    processing</span>
+            </div>
+
+            <div class="tier-label t1">Tier 1 - Basic</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Shard Resonance</div>
+                    <div class="tech-req">Requires: 5 Crystalline Formations + 5,000 SP</div>
+                    <div class="tech-effect">→ Extraction value +10%</div>
+                </div>
+                <div class="tech-node tier-1">
+                    <div class="tech-name">Specimen Preservation</div>
+                    <div class="tech-req">Requires: 10 Biological Samples + 5,000 SP</div>
+                    <div class="tech-effect">→ Bio discovery value +20%</div>
+                </div>
+            </div>
+
+            <div class="tier-label t2">Tier 2 - Advanced</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Crystal Attunement</div>
+                    <div class="tech-req">Requires: Shard Resonance + 12,000 SP</div>
+                    <div class="tech-effect">→ Extraction value +25%</div>
+                </div>
+                <div class="tech-node tier-2">
+                    <div class="tech-name">Xenobiology Mastery</div>
+                    <div class="tech-req">Requires: Specimen Preservation + 12,000 SP</div>
+                    <div class="tech-effect">→ Xenolab experiments -25% cost</div>
+                </div>
+            </div>
+
+            <div class="tier-label t3">Tier 3 - Expert</div>
+            <div class="tech-tier">
+                <div class="tech-node tier-3">
+                    <div class="tech-name">Ancient Protocols</div>
+                    <div class="tech-req">Requires: Both Tier 2 + 1 Legendary + 50,000 SP</div>
+                    <div class="tech-effect">→ ??? (Mystery unlock)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+

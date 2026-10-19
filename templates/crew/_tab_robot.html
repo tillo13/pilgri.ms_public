@@ -1,0 +1,666 @@
+<script>window.MEDIA_VIDEO_ON = {{ 'true' if media_video_on else 'false' }};</script>
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- TAB: GOLEM — 4th crew member, forged from real expedition history    -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-robot" class="crew-tab-content" style="display: none;">
+
+{% set rd = robot_data %}
+
+{% if not rd or not rd.lab_unlocked %}
+
+<!-- ═════════ STATE 1: LOCKED — needs Narog Foundry Lv1+ ═════════ -->
+<div class="dashboard-card relative overflow-hidden p-20 text-center">
+    <img src="{{ icons.tab_map }}" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2">
+        <img src="{{ icons.robot_avatar }}" alt="" style="width: 96px; height: 96px; border-radius: 12px; border: 2px solid var(--color-sepolia); margin: 0 auto 12px; box-shadow: 0 0 24px rgba(6, 182, 212, 0.3);">
+        <h2 class="text-xl font-bold mb-8">Narog Construction</h2>
+        <div class="text-sm" style="color: var(--text-secondary); max-width: 520px; margin: 0 auto 20px;">
+            Your scientist has been studying the strange bond between Martian rock and Sepolia crystal —
+            how the shards pulse when pressed into stone, how certain formations seem to <em>remember</em>.
+            With enough research and the right materials, they believe they can fuse five expedition
+            discoveries into something unprecedented: a walking, thinking companion forged from Mars itself.
+        </div>
+
+        <!-- The Great Naming Debate -->
+        <div style="max-width: 480px; margin: 0 auto 20px; background: rgba(255,255,255,0.03); border-radius: 10px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.06);">
+            <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--text-muted); font-weight: 600; letter-spacing: 1px;">Colony Log — Naming Dispute</div>
+            <div style="font-size: 13px; line-height: 1.7; color: var(--text-secondary);">
+                <div style="margin-bottom: 6px;"><strong style="color: var(--text-primary);">{{ commander.commander_name or 'Captain' }}:</strong> It's clearly a golem. Look at it. It's made of rock.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--color-sepolia);">{{ scientist.name or 'Scientist' }}:</strong> It responds to commands and runs on crystal processors. That's a robot.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--text-primary);">{{ commander.commander_name or 'Captain' }}:</strong> It's literally carved from a boulder.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--color-sepolia);">{{ scientist.name or 'Scientist' }}:</strong> A boulder with autonomous locomotion and task scheduling.</div>
+                <div style="margin-bottom: 6px;"><strong style="color: var(--text-primary);">{{ commander.commander_name or 'Captain' }}:</strong> Fine. It's Not A Robot Or Golem. Happy?</div>
+                <div><strong style="color: var(--color-sepolia);">{{ scientist.name or 'Scientist' }}:</strong> ...NAROG. I can work with that.</div>
+            </div>
+        </div>
+
+        <!-- Prerequisite Cards -->
+        <div style="display: flex; flex-direction: column; gap: 12px; max-width: 480px; margin: 0 auto 20px; text-align: left;">
+            {% for p in rd.prereqs %}
+            <a href="/depot?upgrade=infrastructure:{{ p.key }}" style="text-decoration: none; display: block;">
+                <div style="background: var(--bg-secondary); border-radius: 10px; padding: 16px 18px; border: 2px solid {% if p.met %}rgba(34,197,94,0.4){% elif p.building %}rgba(168,85,247,0.4){% else %}rgba(255,255,255,0.08){% endif %}; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.borderColor='var(--color-sepolia)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='{% if p.met %}rgba(34,197,94,0.4){% elif p.building %}rgba(168,85,247,0.4){% else %}rgba(255,255,255,0.08){% endif %}';this.style.transform='none'">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="{{ p.image_url }}" alt="" style="width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; {% if not p.met and not p.building %}opacity: 0.4;{% endif %}">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">{{ p.name }}</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                {% if p.met %}
+                                    Lv{{ p.current_level }} — Requirement met
+                                {% elif p.building %}
+                                    Building...
+                                {% elif p.not_started %}
+                                    Not built — requires Lv{{ p.required_level }}
+                                {% else %}
+                                    Lv{{ p.current_level }} / Lv{{ p.required_level }} required
+                                {% endif %}
+                            </div>
+                            {% if p.building and p.ready_at %}
+                            <div style="font-size: 12px; color: var(--color-sepolia); font-weight: 600; margin-top: 4px; font-family: monospace;" class="robot-prereq-timer" data-ready-at="{{ p.ready_at }}">
+                                ...
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div style="flex-shrink: 0;">
+                            {% if p.met %}
+                                <span style="color: #22c55e; font-weight: 700; font-size: 20px;">&#10003;</span>
+                            {% elif p.building %}
+                                <span style="color: var(--color-sepolia); font-size: 11px; font-weight: 600; background: rgba(168,85,247,0.15); padding: 4px 10px; border-radius: 6px;">BUILDING</span>
+                            {% else %}
+                                <span style="color: var(--text-muted); font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px;">NEEDED</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% set all_met = rd.prereqs|selectattr('met')|list|length == rd.prereqs|length %}
+        {% if not all_met %}
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            Complete all prerequisites to begin Narog construction
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% elif not rd.has_robot %}
+
+<!-- ═════════ STATE 2: PRE-BUILD — lab unlocked, robot not started ═════════ -->
+<div class="dashboard-card relative overflow-hidden p-20">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">Narog Foundry — Lv{{ rd.lab_level }}</div>
+        <h2 class="text-2xl font-bold mb-12">Forge Your Narog</h2>
+
+        <!-- Scientist dialog -->
+        <div id="robot-sci-dialog" class="robot-sci-dialog mb-16">
+            <div class="robot-sci-name"><span id="robot-sci-name">Scientist</span> says:</div>
+            <div class="robot-sci-line" id="robot-sci-line">
+                I've laid out five candidates from the vault. Click any piece to inspect it, or have me reconsider.
+            </div>
+        </div>
+
+        <!-- Narog base stats: every Narog starts at 5/100 across all 4. Depot/Lab
+             upgrades raise these (formula TBD — see P1 bug). -->
+        <div class="robot-profile mb-16" id="robot-profile">
+            <div class="robot-profile-label">NAROG STARTING STATS — every robot begins here:</div>
+            <div class="robot-profile-rows">
+                <div class="robot-profile-row" data-stat="exploration">
+                    <div class="robot-profile-name"><img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm"> Exploration</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill exploration" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+                <div class="robot-profile-row" data-stat="logistics">
+                    <div class="robot-profile-name"><img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Logistics</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill logistics" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+                <div class="robot-profile-row" data-stat="research">
+                    <div class="robot-profile-name"><img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm"> Research</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill research" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+                <div class="robot-profile-row" data-stat="expeditions">
+                    <div class="robot-profile-name"><img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm"> Expeditions</div>
+                    <div class="robot-profile-bar"><div class="robot-profile-fill expeditions" style="width:5%"></div></div>
+                    <div class="robot-profile-pct">5/100</div>
+                </div>
+            </div>
+            <div class="robot-profile-hint">Stats raise as you upgrade Depot &amp; Narog Foundry buildings.</div>
+        </div>
+
+        <!-- 5 stage previews — JS replaces with real picks from /api/robot/preview -->
+        <div class="robot-stage-grid mb-16" id="robot-preview-grid">
+            {% for stage in rd.stages_meta %}
+            <div class="robot-stage-card mystery clickable" data-stage-idx="{{ stage.idx }}" data-stage-key="{{ stage.key }}" data-stage-label="{{ stage.label }}" data-stage-part="{{ stage.part }}">
+                <div class="robot-stage-num">{{ stage.idx }}</div>
+                <div class="robot-stage-img-wrap">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-img robot-stage-base-img mystery-img" data-role="base">
+                </div>
+                <div class="robot-stage-composite" style="display:none;">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon" data-role="base">
+                    <span class="robot-stage-plus">+</span>
+                    <img src="" alt="" class="robot-stage-item-icon" data-role="item">
+                </div>
+                <div class="robot-stage-label">{{ stage.label }}</div>
+                <div class="robot-stage-source">Loading…</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="robot-gate-msg" class="text-xs mb-8" style="color: var(--text-secondary); display:none;"></div>
+
+        <!-- Unlocked state: Reconsider + Lock In -->
+        <div id="robot-preview-actions" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button id="robot-reroll-btn" class="btn-secondary" style="background: var(--bg-secondary); color: var(--text-primary); padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border-default); cursor: pointer;">
+                Have <span class="robot-sci-name-inline">Scientist</span> Reconsider
+            </button>
+            <button id="robot-lockin-btn" class="btn-primary" style="background: var(--color-sepolia); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; border: none; cursor: pointer;">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Lock In These Parts
+            </button>
+        </div>
+
+        <!-- Locked state: Unlock + Begin Construction -->
+        <div id="robot-locked-actions" style="display:none;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button id="robot-unlock-btn" class="btn-secondary" style="background: var(--bg-secondary); color: var(--text-primary); padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 13px; border: 1px solid var(--border-default); cursor: pointer;">
+                Unlock &amp; Reconsider
+            </button>
+            <button id="robot-build-btn" class="btn-primary" style="background: linear-gradient(135deg, #a855f7, #ec4899); color: white; padding: 14px 32px; border-radius: 10px; font-weight: 800; font-size: 15px; border: none; cursor: pointer; box-shadow: 0 0 24px rgba(168,85,247,0.5);">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Begin Construction
+            </button>
+        </div>
+        <div class="text-xs mt-8" style="color: var(--text-secondary); opacity: 0.6;">
+            Forge runs as one ~30–40s Flux 2 Pro call. Stages animate as each item fuses onto the silhouette.
+        </div>
+    </div>
+</div>
+
+{% else %}
+
+<!-- ═════════ STATE 3+4: ACTIVE BUILD or COMPLETE ═════════ -->
+{% set robot = rd.robot %}
+
+{% if is_narog_dry_run %}
+<!-- Dry-run banner: Andy is rehearsing the forge. Sepolia broadcasts are
+     skipped, all stage_log rows have tx_hash=NULL, items WILL still be
+     consumed (and restored on Start Over). -->
+<div style="background: rgba(168,85,247,0.12); border: 2px dashed rgba(168,85,247,0.55); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; text-align: center;">
+    <div style="font-size: 11px; font-weight: 800; color: var(--color-sepolia); letter-spacing: 0.12em; text-transform: uppercase;">
+        🧪 Dry-run mode — no Sepolia broadcast
+    </div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.5;">
+        This forge runs Flux + Wan + cinematic but writes nothing on-chain. Stage tx hashes will stay <code>NULL</code>. Admin reset will restore consumed items. Remove user from <code>NAROG_DRY_RUN_USER_IDS</code> + deploy to go live.
+    </div>
+</div>
+{% endif %}
+
+{% if robot.build_error %}
+<!-- Forge failure banner: shown when the oneshot Flux call returned None or
+     stage-5 log_stage crashed. Items have already been consumed (analyzed=true)
+     so the captain cannot start over from scratch — the Retry button re-runs
+     ONLY the stage-5 forge using the already-locked sources, leaving
+     stages 1-4 + their tx hashes intact. -->
+<div class="dashboard-card mb-16" style="border: 2px solid rgba(239,68,68,0.55); background: rgba(239,68,68,0.06); padding: 16px 20px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <img src="{{ icons.rare_sparkle }}" alt="" style="width:32px;height:32px;flex-shrink:0;opacity:0.85;">
+        <div style="flex:1;min-width:240px;">
+            <div class="text-xs uppercase tracking-wide" style="color:#fca5a5;font-weight:700;letter-spacing:0.08em;">Forge interrupted</div>
+            <div class="text-sm" style="color:var(--text-primary);font-weight:600;margin-top:4px;">The image-gen step couldn't complete. Your component picks are locked in — only the final assembly needs to re-fire.</div>
+            <div class="text-xs" style="color:var(--text-muted);margin-top:6px;font-family:ui-monospace,Menlo,monospace;">{{ robot.build_error }}</div>
+        </div>
+        <button id="robot-retry-forge-btn" type="button"
+                style="background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.55); border-radius: 10px; padding: 12px 24px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;">
+            ↻ Retry Forge
+        </button>
+    </div>
+</div>
+{% endif %}
+
+{# ============================================================================ #}
+{# Recalibration moved BELOW hero — see below the hero card. #}
+
+<!-- Hero card: current robot image + name + status -->
+<div class="dashboard-card relative overflow-hidden p-20 mb-16">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_card_bg_1767636038_bg.png" alt="" class="card-bg-img">
+    <div class="card-bg-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia);">
+            {% if rd.is_complete %}Narog Online{% else %}Forging Narog — Stage {{ robot.visual_stage or 0 }}/5{% endif %}
+        </div>
+        <div class="flex justify-center items-center gap-16 mb-12" style="flex-wrap: wrap;">
+            {% if rd.is_complete %}
+            {# Stale-detection: video is "fresh" only when video_updated_at exists
+               AND it's >= image_updated_at. Otherwise the captain sees the
+               "Bring to Life" CTA. autoStartVideoGen still fires a free Wan
+               for true first-time captains (video_updated_at IS NULL). #}
+            {% set _video_fresh = robot.video_url
+                                  and robot.video_updated_at
+                                  and (not robot.image_updated_at
+                                       or robot.video_updated_at >= robot.image_updated_at) %}
+            {% set _video_first_time = not robot.video_updated_at %}
+            <!-- Completed: still portrait (left) + video / "generating" / "stale CTA" (right).
+                 The robot-hero-awaiting-video ID triggers autoStartVideoGen() to fire a free
+                 Wan render — only on genuine first-time builds (video_updated_at IS NULL). -->
+            <div class="robot-hero-pair" {% if _video_first_time and media_video_on %}id="robot-hero-awaiting-video"{% endif %}>
+                <div class="robot-hero-slot">
+                    <img src="{{ robot.current_image_url or '/static/img/placeholder.png?v=' ~ static_v }}"
+                         alt="Narog" id="robot-hero-img"
+                         onclick="showImageModal(this.src)"
+                         class="rounded-lg cursor-pointer"
+                         style="width: 240px; height: 240px; object-fit: cover; border: 3px solid var(--color-sepolia);"
+                         loading="lazy">
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Still portrait · click to expand</div>
+                </div>
+                <div class="robot-hero-slot">
+                    {% if _video_fresh %}
+                    <video src="{{ robot.video_url }}" id="robot-hero-video"
+                           playsinline muted autoplay loop
+                           onclick="showGolemVideoModal('{{ robot.video_url }}')"
+                           class="rounded-lg cursor-pointer"
+                           style="width: 240px; height: 240px; object-fit: cover; border: 3px solid var(--color-sepolia); box-shadow: 0 0 24px rgba(168,85,247,0.35);"></video>
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · click to expand</div>
+                    {% if is_app_dev %}
+                    <button id="robot-regen-video-btn" type="button"
+                            style="margin-top: 8px; background: rgba(168,85,247,0.12); color: var(--color-sepolia); border: 1px solid rgba(168,85,247,0.45); border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;">
+                        ↻ Regenerate Video (dev)
+                    </button>
+                    {% endif %}
+                    {% elif _video_first_time %}
+                    {# First-time: auto-render on page load via autoStartVideoGen #}
+                    <div class="robot-hero-video-placeholder robot-hero-forging">
+                        <img src="{{ icons.rare_sparkle }}" alt="" style="width: 36px; height: 36px; opacity: 0.8; margin-bottom: 8px;">
+                        {% if media_video_on %}
+                        <div id="robot-video-loading" class="robot-video-loading">
+                            Generating Awakening Video…
+                            <div class="text-xs" style="opacity: 0.7; margin-top: 4px;">~60 seconds</div>
+                        </div>
+                        {% else %}
+                        <div class="robot-video-loading">Awakening videos are paused for now.</div>
+                        {% endif %}
+                    </div>
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video</div>
+                    {% else %}
+                    {# Stale: image is newer than video. Captain pays for a fresh Wan render. #}
+                    {% if media_video_on %}
+                    <div class="robot-hero-video-cta" id="robot-bring-to-life-cta" style="cursor:pointer;">
+                        <img src="{{ icons.tornado_dust }}" alt="" style="width: 36px; height: 36px; opacity: 0.85; margin-bottom: 8px;">
+                        <div style="font-size: 13px; font-weight: 800; color: #ffc88a; letter-spacing: 0.04em; margin-bottom: 4px;">Bring Your Narog to Life</div>
+                        <div class="text-xs" style="color: var(--text-secondary); opacity: 0.85; line-height: 1.5; max-width: 200px;">
+                            Your image changed — re-render the awakening to match.
+                        </div>
+                        <div class="text-xs" style="color: #ffc88a; font-weight: 700; margin-top: 8px;" id="robot-bring-to-life-cost">…</div>
+                    </div>
+                    {% endif %}
+                    <div class="text-xs mt-4" style="color: var(--text-muted);">Awakening video · stale</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <!-- Forging: base silhouette stays put, each stage's item fades in on top
+                 at its anatomical slot. Visual_stage drives which overlays are active. -->
+            <div class="robot-hero-forge-wrap hero-stage-{{ robot.visual_stage or 0 }}">
+                <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/robot_placeholder_stage.png"
+                     alt="Narog" id="robot-hero-img"
+                     class="rounded-lg robot-hero-forging"
+                     style="max-width: 220px; max-height: 220px; border: 3px solid var(--color-sepolia);">
+                {% for stage in rd.stages %}
+                {% if stage.source and stage.source.item_image_url %}
+                <img src="{{ stage.source.item_image_url }}" alt=""
+                     class="robot-hero-overlay robot-hero-overlay-{{ stage.key }}"
+                     data-stage-idx="{{ stage.idx }}"
+                     loading="lazy">
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Name section -->
+        {% if not robot.name and rd.is_complete %}
+        <!-- First task: name your Narog! -->
+        <div id="golem-naming-card" style="background: rgba(168,85,247,0.08); border: 2px solid rgba(168,85,247,0.3); border-radius: 12px; padding: 20px; max-width: 420px; margin: 0 auto 16px;">
+            <div class="text-xs uppercase tracking-wide mb-8" style="color: var(--color-sepolia); font-weight: 600;">First Task: Name Your Narog</div>
+            <div class="text-xs mb-12" style="color: var(--text-secondary);">Every Narog needs a name. Pick one that fits, or write your own.</div>
+            <div id="golem-name-suggestions" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 12px;">
+                <div class="text-xs" style="color: var(--text-muted);">Loading suggestions...</div>
+            </div>
+            <div class="flex justify-center items-center gap-8">
+                <input type="text" id="robot-name-input"
+                       value=""
+                       placeholder="Or type your own..."
+                       maxlength="64"
+                       style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 200px;">
+                <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 10px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer;">Submit</button>
+            </div>
+        </div>
+        {% else %}
+        <!-- Already named — editable inline -->
+        <div class="flex justify-center items-center gap-8 mb-12">
+            <input type="text" id="robot-name-input"
+                   value="{{ robot.name or '' }}"
+                   placeholder="Name your Narog..."
+                   maxlength="64"
+                   style="background: var(--bg-secondary); border: 1px solid var(--border-default); color: var(--text-primary); padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; min-width: 220px;">
+            <button id="robot-name-save-btn" style="background: var(--color-sepolia); color: white; padding: 8px 16px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer;">Save</button>
+        </div>
+        {% endif %}
+
+        <!-- Active-build spinner. No countdown — Flux calls take ~30-40s
+             each and drive the cadence themselves. Page polls on interval. -->
+        {% if not rd.is_complete %}
+        <div class="robot-countdown-card">
+            <div class="text-xs uppercase tracking-wide" style="color: var(--text-secondary); opacity: 0.7;">Now forging</div>
+            <div class="text-sm font-bold" style="color: var(--color-sepolia);">
+                {{ rd.stages[robot.visual_stage].label if (robot.visual_stage or 0) < 5 else 'Final assembly' }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if rd.is_complete %}
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px;">
+            <button id="robot-replay-cinematic" style="font-size: 12px; color: var(--color-sepolia); padding: 6px 14px; background: rgba(168,85,247,0.1); border-radius: 6px; border: 1px solid rgba(168,85,247,0.2); cursor: pointer;">
+                Replay Awakening
+            </button>
+            <button id="robot-past-looks-btn" style="font-size: 12px; color: #ffc88a; padding: 6px 14px; background: rgba(255,200,140,0.08); border-radius: 6px; border: 1px solid rgba(255,200,140,0.3); cursor: pointer; display: none;">
+                <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm" style="vertical-align:-3px;"> View Past Looks (<span id="robot-past-looks-count">0</span>)
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Recalibration — sits BELOW the hero so the captain sees their Narog first, #}
+{# then the recalibration controls. Hidden via JS when locked + window closed. #}
+<div class="dashboard-card p-20 mb-16" id="narog-recal-card" style="display:none;">
+    <div class="text-xs uppercase tracking-wide mb-4" style="color: var(--color-sepolia); font-weight: 600;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> Recalibration
+    </div>
+    <div class="text-xs mb-4" style="color: var(--text-secondary); opacity: 0.75; line-height: 1.55;">
+        The scientist can rebuild your Narog. Each adjustment costs energy — the more often you recalibrate, the harder the resonance fields are to stabilize.
+    </div>
+    <div id="narog-recal-window-banner" class="text-xs mb-12" style="color:#ffc88a; opacity: 0.9; display:none;">
+        <strong>Test window open</strong> — <span id="narog-recal-countdown">…</span> remaining before auto-lock.
+    </div>
+    <div id="narog-recal-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <button class="narog-recal-action" data-action="repick" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.rare_sparkle }}" alt=""></div>
+            <div class="narog-recal-name">New Components</div>
+            <div class="narog-recal-desc">Pull 5 new materials from your inventory. Image &amp; awakening stay until you re-roll them.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+        <button class="narog-recal-action" data-action="reroll_image" type="button">
+            <div class="narog-recal-icon"><img src="{{ icons.palette_art }}" alt=""></div>
+            <div class="narog-recal-name">New Look</div>
+            <div class="narog-recal-desc">Re-render the silhouette from the current components. Awakening is reset — render it again separately.</div>
+            <div class="narog-recal-cost"><span class="cost-shards">…</span> · <span class="cost-counter">…</span></div>
+        </button>
+    </div>
+
+    {# Lock In — the WOW moment. #}
+    <button class="narog-recal-lockin-big" data-action="lock_in" type="button">
+        <div class="narog-recal-lockin-glow"></div>
+        <div class="narog-recal-lockin-content">
+            <div class="narog-recal-lockin-icon"><img src="{{ icons.star_milestone }}" alt=""></div>
+            <div class="narog-recal-lockin-text">
+                <div class="narog-recal-lockin-eyebrow">When you're ready</div>
+                <div class="narog-recal-lockin-name">Lock In Your Narog</div>
+                <div class="narog-recal-lockin-desc">
+                    Commit your Narog to the colony record forever. The scientist will document the awakening, your Narog comes fully online, and passive bonuses start ticking the moment you confirm.
+                </div>
+            </div>
+            <div class="narog-recal-lockin-cta">
+                <span class="narog-recal-lockin-arrow">→</span>
+            </div>
+        </div>
+    </button>
+
+    <div class="text-xs mt-12" style="color: var(--text-muted); opacity: 0.6; text-align: center; font-size: 10px;">
+        Test mode — 1% of live pricing. Real costs apply when this opens to all captains.
+    </div>
+</div>
+
+<!-- Build Manifest — collapsible accordion (state persisted in localStorage) -->
+<div class="narog-accordion mb-16" data-accordion-key="manifest" data-default="closed">
+    <button type="button" class="narog-accordion-head">
+        <img src="{{ icons.tab_map }}" alt="" class="inline-icon-sm">
+        <div class="narog-accordion-titlewrap">
+            <span class="narog-accordion-title">Build Manifest</span>
+            <span class="narog-accordion-meta">
+                {% set _legcount = (rd.stages | selectattr('source.rarity', 'equalto', 'legendary') | list | length) %}
+                {% set _rarecount = (rd.stages | selectattr('source.rarity', 'equalto', 'rare') | list | length) %}
+                {% set _unccount = (rd.stages | selectattr('source.rarity', 'equalto', 'uncommon') | list | length) %}
+                {% set _comcount = (rd.stages | selectattr('source.rarity', 'equalto', 'common') | list | length) %}
+                {{ _legcount }}L · {{ _rarecount }}R · {{ _unccount + _comcount }}C/U
+            </span>
+        </div>
+        <div class="narog-accordion-preview">
+            {% for stage in rd.stages %}
+            {% if stage.source and stage.source.item_image_url %}
+            <img src="{{ stage.source.item_image_url }}" alt="" class="narog-accordion-thumb rarity-{{ stage.source.rarity }}" loading="lazy">
+            {% endif %}
+            {% endfor %}
+        </div>
+        <span class="narog-accordion-caret">▾</span>
+    </button>
+    <div class="narog-accordion-body">
+        <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
+            Each component was forged from a real item you recovered on an expedition.
+        </div>
+        <div class="robot-stage-grid">
+            {% for stage in rd.stages %}
+            <div class="robot-stage-card clickable {{ stage.status }}"
+                 data-stage-idx="{{ stage.idx }}"
+                 data-stage-key="{{ stage.key }}"
+                 data-stage-label="{{ stage.label }}"
+                 data-stage-part="{{ stage.part }}"
+                 data-tx-hash="{{ stage.tx_hash or '' }}"
+                 data-source='{{ (stage.source or {}) | tojson }}'>
+                <div class="robot-stage-num">{{ stage.idx }}</div>
+                <div class="robot-stage-composite">
+                    <img src="{{ icons['robot_stage_' ~ stage.key] }}" alt="" class="robot-stage-base-icon" data-role="base">
+                    <span class="robot-stage-plus">+</span>
+                    {% if stage.source and stage.source.item_image_url %}
+                    <img src="{{ stage.source.item_image_url }}" alt="{{ stage.source.item_name }}" class="robot-stage-item-icon" data-role="item" loading="lazy">
+                    {% else %}
+                    <img src="{{ icons.shard_gem }}" alt="" class="robot-stage-item-icon" data-role="item">
+                    {% endif %}
+                    {% if stage.status == 'building' %}<div class="robot-stage-pulse"></div>{% endif %}
+                </div>
+                <div class="robot-stage-label">{{ stage.label }}</div>
+                {% if stage.source %}
+                <div class="robot-stage-source" title="{{ stage.source.lat }}, {{ stage.source.lon }}">
+                    Forged from <strong>{{ stage.source.item_name }}</strong><br>
+                    recovered at <em>{{ stage.source.landmark_name }}</em>
+                </div>
+                {% if stage.source.rarity %}
+                <div class="robot-stage-rarity rarity-{{ stage.source.rarity }}">{{ stage.source.rarity }}</div>
+                {% endif %}
+                {% endif %}
+                {% if stage.tx_hash %}
+                <div class="robot-stage-tx text-xs" style="color: var(--text-secondary); opacity: 0.5;">
+                    tx: {{ stage.tx_hash[:14] }}...
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if is_app_dev %}
+<!-- DEV-ONLY: Start Over wipes this captain's Narog + stage_log AND restores
+     the 5 consumed source discoveries. NEVER shown to regular captains or to
+     Luke (admin but not dev) — once Luke's Narog is forged, his items are
+     consumed and the on-chain tx is permanent. Future paid re-forge (#1400,
+     10% shard cost) is the captain-facing path. Server endpoint is also
+     is_app_dev gated; this is the UI half of the same gate. -->
+<div class="dashboard-card p-20 mb-16" style="border: 1px dashed rgba(239,68,68,0.35); background: rgba(239,68,68,0.04);">
+    <div class="text-xs uppercase tracking-wide mb-8" style="color: #fca5a5; font-weight: 600; letter-spacing: 0.08em;">
+        <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm"> DEV — Start Over
+    </div>
+    <div class="text-sm mb-12" style="color: var(--text-secondary);">
+        Wipe this Narog + stage log AND restore the 5 source discoveries to inventory (<code>analyzed→false</code>). Safe to repeat as many times as needed during dry-run.
+        {% if is_narog_dry_run %}
+        <strong style="color: var(--color-sepolia);">In dry-run — no Sepolia tx were written.</strong>
+        {% else %}
+        <strong style="color: #fca5a5;">LIVE mode: Sepolia tx already written cannot be undone.</strong>
+        {% endif %}
+    </div>
+    <div style="text-align: center;">
+        <button id="robot-reset-btn" type="button"
+            style="background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.5); border-radius: 10px; padding: 12px 28px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;">
+            ↻ Start Over
+        </button>
+    </div>
+</div>
+{% endif %}
+
+{# Recalibration card moved to ABOVE the hero — see top of this template #}
+
+{# Stat shortcuts used by the Robot Allocation accordion below.
+   Per #1436: stats scale linearly with Narog Foundry level (5/100 at L0
+   → 100/100 at L10) and unlock at Foundry tiers. stat_meta is computed
+   server-side in get_robot_page_data. #}
+{% set sm = robot_data.stat_meta if robot_data and robot_data.stat_meta else {} %}
+{% set se = (sm.exploration.value if sm.exploration else (robot.stat_exploration | default(5))) %}
+{% set sl = (sm.logistics.value   if sm.logistics   else (robot.stat_logistics   | default(5))) %}
+{% set sr = (sm.research.value    if sm.research    else (robot.stat_research    | default(5))) %}
+{% set sx = (sm.expeditions.value if sm.expeditions else (robot.stat_expeditions | default(5))) %}
+{% set log_locked = not (sm.logistics and sm.logistics.unlocked) %}
+{% set res_locked = not (sm.research and sm.research.unlocked) %}
+{% set exp_locked = not (sm.expeditions and sm.expeditions.unlocked) %}
+
+{# Bug #1441 (Luke 2026-05-14 P1): Narog "Passive Trails" chip moved from /home Base HQ hero    #}
+{# to this spot, just above the Robot Allocation accordion (so reading the chip naturally       #}
+{# leads into the slider that drives it). Wrapping <a> dropped — we're already on /crew.        #}
+{% if narog_summary %}
+<div style="background:linear-gradient(135deg, rgba(168,85,247,0.10), rgba(6,182,212,0.10)); border:1px solid rgba(168,85,247,0.35); border-radius:10px; padding:10px 14px; margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <img src="{{ icons.robot_avatar }}" alt="" style="width:32px;height:32px;border-radius:6px;border:1px solid rgba(168,85,247,0.45);flex-shrink:0;">
+        <div style="flex:1;min-width:160px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--color-sepolia);text-transform:uppercase;">{{ narog_summary.name }} · Passive Trails</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;line-height:1.45;">
+                Built <strong style="color:var(--text-primary);">{{ '%.2f'|format(narog_summary.lifetime_km) }} km</strong> lifetime ·
+                {% if narog_summary.km_per_day > 0 %}
+                currently <strong style="color:var(--text-primary);">{{ '%.2f'|format(narog_summary.km_per_day) }} km/day</strong>
+                at <strong style="color:var(--text-primary);">{{ narog_summary.exploration_pct }}%</strong> Exploration allocation
+                {% else %}
+                <span style="color:var(--text-muted);">idle — set Exploration allocation &gt; 0% to start</span>
+                {% endif %}
+            </div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);">tune below &darr;</div>
+    </div>
+</div>
+{% endif %}
+
+{# Robot Allocation — Luke's §4 "% Based System" rebranded. Wrapped in a       #}
+{# collapsible accordion (state persisted in localStorage; collapsed by default).#}
+<div class="narog-accordion mb-16" data-accordion-key="allocation" data-default="closed">
+    <button type="button" class="narog-accordion-head">
+        <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">
+        <div class="narog-accordion-titlewrap">
+            <span class="narog-accordion-title">Robot Allocation</span>
+            <span class="narog-accordion-meta">Split effort across tasks</span>
+        </div>
+        <div class="narog-accordion-preview narog-accordion-preview-alloc">
+            <span>Exp <strong>{{ robot.dial.exploration | default(100) }}%</strong></span>
+            <span>Log <strong>{{ robot.dial.logistics | default(0) }}%</strong></span>
+            <span>Res <strong>{{ robot.dial.research | default(0) }}%</strong></span>
+            <span>Exp <strong>{{ robot.dial.expeditions | default(0) }}%</strong></span>
+        </div>
+        <span class="narog-accordion-caret">▾</span>
+    </button>
+    <div class="narog-accordion-body">
+        <div class="text-xs mb-16" style="color: var(--text-secondary); opacity: 0.7;">
+            Split your Narog's effort across tasks. Effective bonus = <strong>Base × %</strong>. Unallocated effort is idle. Locked rows unlock with later upgrades.
+        </div>
+        <div id="robot-dial" data-dial='{{ robot.dial | tojson }}' style="display:flex; flex-direction:column; gap:10px;">
+        {# Slot 1: Exploration — always unlocked (Foundry L0+) #}
+        <div class="na-card" data-key="exploration" data-locked="false" data-unlock-foundry="0" data-base-stat="{{ se }}">
+            <div class="na-row-head">
+                <img src="{{ icons.compass_exploration }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Exploration</span>
+                <span class="na-row-stat">Base <strong>{{ se }}/100</strong> · Active <strong class="na-row-active">0.0</strong></span>
+            </div>
+            <div class="na-slot"></div>{# narog-allocator.js renders bar here #}
+            <div class="na-row-desc">Speeds up autonomous trail building while you're away.</div>
+        </div>
+        {# Slot 2: Logistics — unlocks at Narog Foundry L3 (#1436) #}
+        <div class="na-card{% if log_locked %} is-locked{% endif %}" data-key="logistics" data-locked="{{ 'true' if log_locked else 'false' }}" data-unlock-foundry="3" data-base-stat="{{ sl }}">
+            <div class="na-row-head">
+                <img src="{{ icons.wrench_repair }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Logistics</span>
+                <span class="na-row-stat">Base <strong>{{ sl }}/100</strong>{% if not log_locked %} · Active <strong class="na-row-active">0.0</strong>{% endif %}</span>
+                {% if log_locked %}<span class="na-row-lock">🔒</span>{% endif %}
+            </div>
+            <div class="na-slot"></div>
+            <div class="na-row-desc">{% if log_locked %}Unlocks at Narog Foundry Lv3{% else %}Speeds up Depot build times.{% endif %}</div>
+        </div>
+        {# Slot 3: Research — unlocks at Narog Foundry L6 (#1436) #}
+        <div class="na-card{% if res_locked %} is-locked{% endif %}" data-key="research" data-locked="{{ 'true' if res_locked else 'false' }}" data-unlock-foundry="6" data-base-stat="{{ sr }}">
+            <div class="na-row-head">
+                <img src="{{ icons.microscope_lab }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Research</span>
+                <span class="na-row-stat">Base <strong>{{ sr }}/100</strong>{% if not res_locked %} · Active <strong class="na-row-active">0.0</strong>{% endif %}</span>
+                {% if res_locked %}<span class="na-row-lock">🔒</span>{% endif %}
+            </div>
+            <div class="na-slot"></div>
+            <div class="na-row-desc">{% if res_locked %}Unlocks at Narog Foundry Lv6{% else %}Speeds up tech research while assigned.{% endif %}</div>
+        </div>
+        {# Slot 4: Expeditions — unlocks at Narog Foundry L9 (#1436) #}
+        <div class="na-card{% if exp_locked %} is-locked{% endif %}" data-key="expeditions" data-locked="{{ 'true' if exp_locked else 'false' }}" data-unlock-foundry="9" data-base-stat="{{ sx }}">
+            <div class="na-row-head">
+                <img src="{{ icons.target_strategy }}" alt="" class="inline-icon-sm">
+                <span class="na-row-name">Expeditions</span>
+                <span class="na-row-stat">Base <strong>{{ sx }}/100</strong>{% if not exp_locked %} · Active <strong class="na-row-active">0.0</strong>{% endif %}</span>
+                {% if exp_locked %}<span class="na-row-lock">🔒</span>{% endif %}
+            </div>
+            <div class="na-slot"></div>
+            <div class="na-row-desc">{% if exp_locked %}Unlocks at Narog Foundry Lv9{% else %}Solo scout runs — activates once Narog range is extended (coming soon).{% endif %}</div>
+        </div>
+        </div>
+        <div id="robot-dial-status" class="text-xs mt-12" style="color: var(--text-secondary); text-align: center;">Fully allocated · 100%</div>
+    </div>{# /accordion-body #}
+</div>{# /narog-accordion (allocation) #}
+
+{% endif %}
+
+</div>{# end #tab-robot #}
+
+<!-- PAGE_DATA bridge for crew-robot.js -->
+<script type="application/json" id="robotPageData">
+{
+    "lab_unlocked": {{ (robot_data and robot_data.lab_unlocked) | tojson }},
+    "has_robot": {{ (robot_data and robot_data.has_robot) | tojson }},
+    "is_complete": {{ (robot_data and robot_data.is_complete) | tojson }},
+    "show_cinematic": {{ (robot_data and robot_data.show_cinematic) | tojson }},
+    "stage_duration_seconds": {{ (robot_data.stage_duration_seconds if robot_data else 60) | tojson }},
+    "seconds_until_next_stage": {{ (robot_data.seconds_until_next_stage if robot_data else None) | tojson }},
+    "robot_name": {{ (robot.name if robot else "") | tojson }},
+    "visual_stage": {{ (robot.visual_stage if robot else 0) | tojson }},
+    "name_suggestions": {{ (robot.name_suggestions if robot and robot.name_suggestions else []) | tojson }}
+}
+</script>
+<script defer>
+// Prereq building countdowns
+document.addEventListener('DOMContentLoaded', function() {
+    const timers = document.querySelectorAll('.robot-prereq-timer');
+    if (!timers.length) return;
+    function tick() {
+        timers.forEach(el => {
+            const ready = new Date(el.dataset.readyAt);
+            const diff = Math.max(0, Math.floor((ready - Date.now()) / 1000));
+            if (diff <= 0) { el.textContent = 'Ready!'; el.style.color = '#22c55e'; return; }
+            const d = Math.floor(diff / 86400), h = Math.floor((diff % 86400) / 3600),
+                  m = Math.floor((diff % 3600) / 60), s = diff % 60;
+            el.textContent = (d > 0 ? d + 'd ' : '') + h + 'h ' + m + 'm ' + s + 's remaining';
+        });
+    }
+    tick();
+    setInterval(tick, 1000);
+});
+</script>

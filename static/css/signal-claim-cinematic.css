@@ -1,0 +1,76 @@
+/* Signal Claim Cinematic — Phase 2.3b */
+/* Mars dust-storm aesthetic, distinct from first-contact's starfield. */
+
+.sc-approach .sc-dust,
+.sc-approach .sc-horizon {
+    transition: opacity 1.2s ease;
+}
+
+.sc-dust {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 80% at 50% 110%, rgba(255, 120, 60, 0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 70% 80%, rgba(220, 80, 40, 0.25) 0%, transparent 70%),
+      linear-gradient(180deg, #0a0405 0%, #1a0808 60%, #2a0e08 100%);
+    opacity: 0;
+}
+.sc-dust.visible { opacity: 1; }
+
+.sc-horizon {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(180deg, transparent 0%, rgba(180, 60, 30, 0.4) 60%, rgba(120, 40, 20, 0.7) 100%);
+    box-shadow: inset 0 4px 30px rgba(255, 140, 80, 0.2);
+    opacity: 0;
+}
+.sc-horizon.visible { opacity: 1; }
+
+/* Vehicle silhouette cresting the ridge — pure CSS, no asset dependency */
+.sc-vehicle-silhouette {
+    position: absolute;
+    bottom: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 24px;
+    background: linear-gradient(180deg, #1a0808, #000);
+    border-radius: 12px 12px 4px 4px;
+    box-shadow:
+      0 -8px 16px rgba(255, 140, 80, 0.3),
+      inset 0 -2px 4px rgba(255, 100, 50, 0.4);
+    opacity: 0.85;
+}
+.sc-vehicle-silhouette::before,
+.sc-vehicle-silhouette::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    width: 14px;
+    height: 14px;
+    background: #000;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 100, 50, 0.4);
+}
+.sc-vehicle-silhouette::before { left: 8px; }
+.sc-vehicle-silhouette::after { right: 8px; }
+
+/* Site title in Mars colors instead of ARIA purple */
+.sc-site-title {
+    color: #ffaa55;
+    text-shadow: 0 0 24px rgba(255, 170, 85, 0.4);
+}
+
+.sc-founder {
+    color: var(--color-sepolia, #ffaa55);
+    font-weight: 700;
+}
+
+.sc-tier-legendary { color: #ffaa55; font-weight: 700; }
+.sc-tier-rare { color: #a855f7; font-weight: 700; }
+.sc-tier-uncommon { color: #22c55e; font-weight: 600; }
+.sc-tier-common { color: #94a3b8; font-weight: 500; }
+.sc-tier-visitor { color: #94a3b8; font-weight: 500; }

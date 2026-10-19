@@ -1,0 +1,9 @@
+{#
+  Bug tracker @mention email.
+  Context: bug_id, bug_name, author, comment_body, link
+#}
+<div style="font-family:sans-serif;max-width:600px;">
+    <p><strong>{{ author }}</strong> mentioned you on <a href="{{ link }}">Bug #{{ bug_id }}: {{ bug_name }}</a></p>
+    <div style="background:#1e1e36;color:#e0e0e0;padding:16px;border-radius:8px;margin:12px 0;white-space:pre-wrap;">{{ comment_body }}</div>
+    <p><a href="{{ link }}" style="display:inline-block;padding:10px 20px;background:#f97316;color:white;text-decoration:none;border-radius:6px;font-weight:bold;">View Bug</a></p>
+</div>

@@ -1,0 +1,918 @@
+/* ============================================================================
+   CORE.CSS - All styles, one file
+   Mars-themed color system with light/dark mode support
+   ============================================================================ */
+
+:root {
+    /* ==========================================================================
+       SAFE AREA INSETS (Android/iOS bottom nav handling)
+       Per Chrome edge-to-edge guide: https://developer.chrome.com/docs/css-ui/edge-to-edge
+       ========================================================================== */
+    --sai-bottom: env(safe-area-inset-bottom, 0px);
+    --bottom-nav-height: 60px; /* min-height of nav-item */
+
+    /* Typography */
+    --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+
+    /* ==========================================================================
+       PRIMITIVE COLOR SCALES (Tailwind-style 11-step scales)
+       ========================================================================== */
+
+    /* Mars (brand orange-red) - expeditions, primary actions */
+    --mars-50: #fef7f0;
+    --mars-100: #fdecd9;
+    --mars-200: #fad6b2;
+    --mars-300: #f6b880;
+    --mars-400: #f1924c;
+    --mars-500: #ec7427;  /* Base */
+    --mars-600: #dd5a1d;
+    --mars-700: #b7441a;
+    --mars-800: #92381d;
+    --mars-900: #76301b;
+    --mars-950: #40160b;
+
+    /* Sepolia (dusty mauve/clay) - ARIA, crystals, mystical elements
+       Dusty mauve with clay undertones - alien crystals in Mars dust, darker for contrast */
+    --sepolia-50: #faf6f5;
+    --sepolia-100: #f3ebe8;
+    --sepolia-200: #e5d4cf;
+    --sepolia-300: #d3b8b0;
+    --sepolia-400: #bc9489;
+    --sepolia-500: #a67567;  /* Base - dusty clay mauve */
+    --sepolia-600: #8f5f52;
+    --sepolia-700: #774d43;
+    --sepolia-800: #634139;
+    --sepolia-900: #533831;
+    --sepolia-950: #2c1d19;
+
+    /* Success (bronze/copper) - CTAs, confirmations, owned items
+       Warm bronze - "go" signal that fits Mars palette, darker for contrast */
+    --success-50: #fdf8f4;
+    --success-100: #f9ede2;
+    --success-200: #f0d7c2;
+    --success-300: #e4bb97;
+    --success-400: #d49b6a;
+    --success-500: #b57040;  /* Base - warm bronze (darkened) */
+    --success-600: #995c32;  /* Darkened for 4.5:1 contrast */
+    --success-700: #7d4a2a;
+    --success-800: #673d25;
+    --success-900: #563322;
+    --success-950: #2e1a10;
+
+    /* Primary (warm amber) - links, navigation, interactive elements
+       Mars sunset amber - warm and inviting, not cold tech blue */
+    --primary-50: #fef9f3;
+    --primary-100: #fdf0e1;
+    --primary-200: #fbd9b5;
+    --primary-300: #f6b87a;
+    --primary-400: #e8944d;
+    --primary-500: #d97706;  /* Base - warm amber */
+    --primary-600: #b45309;
+    --primary-700: #92400e;
+    --primary-800: #78350f;
+    --primary-900: #5c2b0a;
+    --primary-950: #3d1c07;
+
+    /* Danger (warm red) - errors, warnings, destructive actions
+       Slightly warmer red - still recognizable but fits Mars palette */
+    --danger-50: #fef3f2;
+    --danger-100: #fee4e2;
+    --danger-200: #fecdc9;
+    --danger-300: #fcaba4;
+    --danger-400: #f77c70;
+    --danger-500: #dc4432;  /* Base - warm red */
+    --danger-600: #c9382a;
+    --danger-700: #a82d22;
+    --danger-800: #8b2920;
+    --danger-900: #742821;
+    --danger-950: #3f110d;
+
+    /* Neutral (Mars-inspired warm dusty tones) - backgrounds, text, borders
+       Light: Martian sand, cream rocks, dusty horizon
+       Dark: Rusty charcoal, Mars night sky, dusty shadows */
+    --neutral-50: #faf8f5;   /* Warm cream - like sun-bleached Martian rock */
+    --neutral-100: #f5f0ea;  /* Sandy off-white - dusty terrain */
+    --neutral-200: #e8e0d8;  /* Warm sand - Martian dunes */
+    --neutral-300: #d4c9bd;  /* Dusty tan - weathered equipment */
+    --neutral-400: #a89a8a;  /* Warm taupe - shadow on sand */
+    --neutral-500: #7d6f5f;  /* Dusty brown - Mars regolith */
+    --neutral-600: #5c5045;  /* Deep dust - sunset shadows */
+    --neutral-700: #3d3530;  /* Mars night soil */
+    --neutral-800: #2a2420;  /* Deep rusty charcoal */
+    --neutral-900: #1e1916;  /* Mars midnight - warm black */
+    --neutral-950: #12100e;  /* Deep space with Mars dust */
+
+    /* ==========================================================================
+       SEMANTIC LAYER (maps to primitives - this is what components use)
+       ========================================================================== */
+
+    /* Backgrounds */
+    --bg-primary: var(--neutral-50);
+    --bg-secondary: var(--neutral-100);
+    --bg-tertiary: var(--neutral-200);
+    --bg-inverse: var(--neutral-900);
+    --bg-card: #fdfcfa;              /* Warm off-white cards */
+    --bg-input: #fefdfb;             /* Slightly warmer input fields */
+    --bg-overlay: rgba(30, 25, 22, 0.75);  /* Mars-tinted overlay */
+
+    /* Text - WCAG 2.1 AA compliant - LIGHT MODE needs dark text on cream backgrounds
+       Using darker neutrals for proper contrast */
+    --text-primary: var(--neutral-900);        /* #1e1916 - near black */
+    --text-secondary: var(--neutral-800);      /* #2a2420 - dark brown, very readable */
+    --text-tertiary: var(--neutral-700);       /* #3d3530 - medium dark */
+    --text-muted: var(--neutral-600);          /* #5c5045 - readable muted (was 500, too light) */
+    --text-inverse: var(--neutral-50);
+    --text-link: var(--primary-600);           /* var(--primary-600) - warm amber link */
+    --text-link-hover: var(--primary-700);     /* #92400e - darker on hover */
+
+    /* Brand text colors - warm palette, NO reds */
+    --text-brand-mars: var(--mars-600);        /* var(--mars-600) - vibrant orange */
+    --text-brand-sepolia: var(--sepolia-600);  /* var(--sepolia-600) - warm mauve */
+    --text-brand-success: var(--success-600);  /* #995c32 - bronze */
+    --text-brand-danger: var(--mars-700);      /* var(--mars-700) - warm rust, NOT red */
+    --text-brand-primary: var(--primary-600);  /* var(--primary-600) - warm amber */
+
+    /* Borders */
+    --border-default: var(--neutral-200);
+    --border-strong: var(--neutral-300);
+    --border-focus: var(--primary-500);
+
+    /* Brand colors (semantic) - LIGHT MODE warm Mars palette, NO cold reds */
+    --color-mars: var(--mars-600);            /* var(--mars-600) - vibrant orange */
+    --color-mars-hover: var(--mars-700);
+    --color-mars-dark: var(--mars-700);
+    --color-sepolia: var(--sepolia-600);      /* var(--sepolia-600) - warm mauve */
+    --color-sepolia-hover: var(--sepolia-700);
+    --color-sepolia-dark: var(--sepolia-700);
+    --color-success: var(--success-600);      /* #995c32 - warm bronze */
+    --color-success-hover: var(--success-700);
+    --color-success-dark: var(--success-700);
+    --color-danger: var(--mars-700);          /* var(--mars-700) - warm rust (NOT red) */
+    --color-danger-hover: var(--mars-800);
+    --color-danger-dark: var(--mars-800);
+    --color-warning: var(--mars-600);         /* var(--mars-600) - vibrant orange */
+    --color-warning-dark: var(--mars-700);
+    --color-warning-rgb: 221, 90, 29;         /* mars-600 */
+    --color-mars-rgb: 221, 90, 29;            /* mars-600 */
+    --color-sepolia-rgb: 143, 95, 82;         /* sepolia-600 */
+    --color-success-rgb: 153, 92, 50;         /* success-600 */
+    --color-primary: var(--primary-600);      /* var(--primary-600) - warm amber */
+    --color-primary-hover: var(--primary-700);
+    --color-primary-dark: var(--primary-700);
+
+    /* ARIA companion colors - Mars-themed */
+    --color-aria: var(--sepolia-600);         /* Warm mauve */
+    --color-aria-dark: var(--sepolia-700);
+    --color-aria-rgb: 143, 95, 82;            /* sepolia-600 (matches --color-aria) */
+
+    /* ==========================================================================
+       ACCENT SCALES - off-palette colors used across app for UI differentiation
+       Keep minimal: only shades actually used (grep-verified). Use CSS vars
+       instead of hardcoded hex to enforce DRY.
+       ========================================================================== */
+
+    /* Violet (ARIA orb + chat widget accents) */
+    --violet-300: #c084fc;
+    --violet-400: #a855f7;
+    --violet-500: #7c3aed;
+    --violet-700: #5b21b6;
+    --color-violet-rgb: 168, 85, 247;
+
+    /* Amber (attention/highlight - brighter than Mars brand orange)
+       Note: var(--primary-600) is --primary-600, use that for darker amber */
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --color-amber-rgb: 251, 191, 36;
+
+    /* Blue + Cyan (information states) */
+    --blue-400: #60a5fa;
+    --cyan-500: #06b6d4;
+
+    /* Emerald (affirmative / go signals - distinct from Mars bronze success) */
+    --emerald-400: #4ade80;
+    --emerald-500: #22c55e;
+
+    /* Red (pure error red, distinct from warm Mars danger) */
+    --red-300: #f87171;
+    --red-400: #ef4444;
+
+    /* White/black overlays - extracted from 150+ hardcoded rgba() calls */
+    --overlay-white-05: rgba(255,255,255,0.05);
+    --overlay-white-06: rgba(255,255,255,0.06);
+    --overlay-white-08: rgba(255,255,255,0.08);
+    --overlay-white-10: rgba(255,255,255,0.10);
+    --overlay-white-12: rgba(255,255,255,0.12);
+    --overlay-white-15: rgba(255,255,255,0.15);
+    --overlay-white-20: rgba(255,255,255,0.20);
+    --overlay-white-25: rgba(255,255,255,0.25);
+    --overlay-white-30: rgba(255,255,255,0.30);
+    --overlay-white-40: rgba(255,255,255,0.40);
+    --overlay-white-50: rgba(255,255,255,0.50);
+    --overlay-white-70: rgba(255,255,255,0.70);
+    --overlay-white-80: rgba(255,255,255,0.80);
+    --overlay-black-08: rgba(0,0,0,0.08);
+    --overlay-black-30: rgba(0,0,0,0.30);
+    --overlay-black-40: rgba(0,0,0,0.40);
+    --overlay-black-50: rgba(0,0,0,0.50);
+
+    /* Legacy aliases — referenced site-wide without fallbacks; map to canonical tokens */
+    --bg-dark: #1a1a2e;
+    --bg-hover: rgba(255,255,255,0.06);
+    --border-color: rgba(255,255,255,0.12);
+    --border-light: rgba(255,255,255,0.08);
+    --color-info: #60a5fa;
+    --color-purple: #c084fc;
+    --color-mars-light: #ff8a4c;
+    --color-primary-rgb: 255, 138, 76;
+    --color-danger-rgb: 248, 113, 113;
+    --text-muted-rgb: 255, 255, 255;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* Rarity colors - Mars-authentic palette */
+    --color-rarity-common: var(--neutral-600);        /* Dusty gray */
+    --color-rarity-uncommon: var(--success-600);      /* Bronze */
+    --color-rarity-rare: var(--primary-600);          /* Amber */
+    --color-rarity-legendary: var(--mars-600);        /* Mars orange */
+
+    /* Map marker colors - colorblind-friendly (yellow/blue/red on Mars terrain) */
+    --color-marker-base: var(--amber-400);                     /* Bright yellow - home base (stands out) */
+    --color-marker-base-border: var(--primary-500);
+    --color-marker-visited: #3b82f6;                  /* Blue - explored (clear contrast with red terrain) */
+    --color-marker-visited-border: #1d4ed8;
+    --color-marker-unexplored: var(--red-400);               /* Bright red - undiscovered (distinct from terrain orange) */
+    --color-marker-unexplored-border: #b91c1c;
+    --color-marker-route: var(--amber-400);                    /* Yellow route line - visible on Mars */
+
+    /* Interactive element backgrounds */
+    --bg-mars: var(--mars-500);
+    --bg-mars-light: var(--mars-100);
+    --bg-sepolia: var(--sepolia-500);
+    --bg-sepolia-light: var(--sepolia-100);
+    --bg-success: var(--success-500);
+    --bg-success-light: var(--success-100);
+    --bg-danger: var(--danger-500);
+    --bg-danger-light: var(--danger-100);
+    --bg-primary: var(--primary-600);
+    --bg-primary-light: var(--primary-100);
+
+    /* Gradients - light mode: softer, more muted for subtle transitions */
+    --gradient-mars: linear-gradient(135deg, var(--mars-500) 0%, var(--mars-600) 100%);
+    --gradient-sepolia: linear-gradient(135deg, var(--sepolia-500) 0%, var(--sepolia-600) 100%);
+    --gradient-success: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%);
+    --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+    --gradient-danger: linear-gradient(135deg, var(--danger-500) 0%, var(--danger-600) 100%);
+    --gradient-page: linear-gradient(180deg, var(--neutral-50) 0%, var(--neutral-100) 100%);  /* Very subtle vertical warm gradient */
+
+    /* Navigation - warm Mars tones */
+    --nav-bg: rgba(253, 252, 250, 0.98);  /* Warm cream nav */
+    --nav-border: var(--neutral-200);
+    --nav-text: var(--neutral-600);
+    --nav-text-active: var(--primary-600);
+    --nav-active-bg: var(--gradient-primary);
+
+    /* ==========================================================================
+       LEGACY MAPPINGS (for backwards compatibility during migration)
+       ========================================================================== */
+    --primary: var(--primary-600);
+    --primary-dark: var(--primary-700);
+    --primary-gradient: var(--gradient-primary);
+    --success: var(--success-600);
+    --success-gradient: var(--gradient-success);
+    --danger: var(--mars-700);
+    --danger-gradient: var(--gradient-mars);
+    --warning: var(--mars-600);
+    --warning-gradient: var(--gradient-mars);
+    --purple: var(--sepolia-600);
+    --purple-gradient: var(--gradient-sepolia);
+    --white: #ffffff;
+    --gray-50: var(--neutral-50);
+    --gray-100: var(--neutral-100);
+    --gray-200: var(--neutral-200);
+    --gray-300: var(--neutral-300);
+    --gray-400: var(--neutral-400);
+    --gray-500: var(--neutral-500);
+    --gray-600: var(--neutral-600);
+    --gray-700: var(--neutral-700);
+    --black: var(--neutral-950);
+
+    /* ==========================================================================
+       DESIGN TOKENS (non-color)
+       ========================================================================== */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 15px;
+    --radius-full: 50%;
+    --shadow-sm: 0 2px 4px var(--overlay-black-08);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.12);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+    --tr: 0.2s ease;
+}
+
+/* ==========================================================================
+   DARK MODE - Mars at night: deep rusty charcoal, dusty twilight
+   ========================================================================== */
+[data-theme="dark"] {
+    /* Backgrounds - Mars night with warm undertones */
+    --bg-primary: #1a1614;           /* Deep Mars night - warm not cold */
+    --bg-secondary: #231f1c;         /* Elevated surface - dusty charcoal */
+    --bg-tertiary: #2d2824;          /* Tertiary - rusty shadow */
+    --bg-inverse: var(--neutral-50);
+    --bg-card: #252120;              /* Cards - warm charcoal, not pure dark */
+    --bg-input: #2d2824;             /* Input fields */
+    --bg-overlay: rgba(18, 16, 14, 0.9);  /* Mars-tinted dark overlay */
+
+    /* Text - High contrast for accessibility (nearly white in dark mode)
+       Prioritizing readability for colorblind users */
+    --text-primary: #faf8f5;         /* Nearly white - 14.5:1 contrast ✓ */
+    --text-secondary: #ebe5dd;       /* Very light cream - 11.2:1 contrast ✓ */
+    --text-tertiary: #d4c9bd;        /* Light tan - 8.1:1 contrast ✓ */
+    --text-muted: #c0b3a5;           /* Boosted muted - 6.5:1 contrast ✓ */
+    --text-inverse: var(--neutral-900);
+    --text-link: var(--primary-300);           /* var(--primary-300) - 10.5:1 contrast ✓ (was 400) */
+    --text-link-hover: var(--primary-200);     /* #fbd9b5 - 13.1:1 contrast ✓ (was 300) */
+
+    /* Brand text colors - lighter shades for dark backgrounds, warm palette */
+    --text-brand-mars: var(--mars-400);        /* var(--mars-400) - warm orange */
+    --text-brand-sepolia: var(--sepolia-300);  /* #d3b8b0 - warm mauve */
+    --text-brand-success: var(--success-300);  /* #e4bb97 - light bronze */
+    --text-brand-danger: var(--mars-400);      /* var(--mars-400) - warm orange, NOT red */
+    --text-brand-primary: var(--primary-300);  /* var(--primary-300) - light amber */
+
+    /* Borders - warm, not cold gray */
+    --border-default: #3d3530;       /* Warm border */
+    --border-strong: #4d453e;        /* Stronger warm border */
+    --border-focus: var(--primary-400);
+
+    /* Brand colors - lighter for dark mode */
+    --color-mars: var(--mars-400);
+    --color-mars-hover: var(--mars-300);
+    --color-mars-dark: var(--mars-600);       /* Still readable on light backgrounds in dark mode */
+    --color-sepolia: var(--sepolia-400);
+    --color-sepolia-hover: var(--sepolia-300);
+    --color-sepolia-dark: var(--sepolia-600);
+    --color-success: var(--success-400);
+    --color-success-hover: var(--success-300);
+    --color-success-dark: var(--success-600); /* For text on light backgrounds */
+    --color-danger: var(--mars-400);          /* Warm orange, NOT red */
+    --color-danger-hover: var(--mars-300);
+    --color-danger-dark: var(--mars-600);
+    --color-warning: var(--mars-400);
+    --color-warning-dark: var(--mars-600);
+    --color-warning-rgb: 251, 146, 60;        /* Lighter orange for dark mode */
+    --color-mars-rgb: 241, 146, 76;           /* mars-400 (lighter for dark) */
+    --color-sepolia-rgb: 188, 148, 137;       /* sepolia-400 */
+    --color-success-rgb: 212, 155, 106;       /* success-400 */
+    --color-primary: var(--primary-400);
+    --color-primary-hover: var(--primary-300);
+    --color-primary-dark: var(--primary-600);
+
+    /* ARIA companion colors - Mars-themed (dark mode) */
+    --color-aria: var(--sepolia-400);
+    --color-aria-dark: var(--sepolia-500);
+    --color-aria-rgb: 188, 148, 137;          /* sepolia-400 (matches --color-aria) */
+
+    /* Rarity colors - lighter for dark mode */
+    --color-rarity-common: var(--neutral-400);
+    --color-rarity-uncommon: var(--success-400);
+    --color-rarity-rare: var(--primary-400);
+    --color-rarity-legendary: var(--mars-400);
+
+    /* Map marker colors - colorblind-friendly (yellow/blue/red for dark mode) */
+    --color-marker-base: #fcd34d;                     /* Bright yellow - home base */
+    --color-marker-base-border: var(--amber-500);
+    --color-marker-visited: var(--blue-400);                  /* Light blue - explored */
+    --color-marker-visited-border: #3b82f6;
+    --color-marker-unexplored: var(--red-300);               /* Light red - undiscovered */
+    --color-marker-unexplored-border: var(--red-400);
+    --color-marker-route: #fcd34d;                    /* Yellow route line */
+
+    /* Interactive backgrounds */
+    --bg-mars-light: var(--mars-900);
+    --bg-sepolia-light: var(--sepolia-900);
+    --bg-success-light: var(--success-900);
+    --bg-danger-light: var(--danger-900);
+    --bg-primary-light: var(--primary-900);
+
+    /* Gradients - use lighter shades */
+    --gradient-mars: linear-gradient(135deg, var(--mars-500) 0%, var(--mars-700) 100%);
+    --gradient-sepolia: linear-gradient(135deg, var(--sepolia-500) 0%, var(--sepolia-700) 100%);
+    --gradient-success: linear-gradient(135deg, var(--success-500) 0%, var(--success-700) 100%);
+    --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+    --gradient-danger: linear-gradient(135deg, var(--danger-500) 0%, var(--danger-700) 100%);
+    --gradient-page: linear-gradient(135deg, #1a1614 0%, #231f1c 100%);  /* Warm Mars night */
+
+    /* Navigation - warm Mars night */
+    --nav-bg: rgba(26, 22, 20, 0.98);  /* Warm dark nav */
+    --nav-border: #3d3530;             /* Warm border */
+    --nav-text: #c0b3a5;               /* Brighter nav text for readability */
+    --nav-text-active: var(--primary-400);
+
+    /* Legacy mappings update */
+    --primary: var(--primary-400);
+    --primary-dark: var(--primary-500);
+    --success: var(--success-400);
+    --danger: var(--mars-400);    /* Warm orange, NOT red */
+    --warning: var(--mars-400);
+    --purple: var(--sepolia-400);
+    --white: var(--neutral-800);
+    --gray-50: var(--neutral-800);
+    --gray-100: var(--neutral-700);
+    --gray-200: var(--neutral-600);
+    --gray-300: var(--neutral-500);
+    --gray-400: var(--neutral-400);
+    --gray-500: var(--neutral-300);
+    --gray-600: var(--neutral-200);
+    --gray-700: var(--neutral-100);
+    --black: var(--neutral-50);
+
+    /* Shadows - more subtle in dark mode */
+    --shadow-sm: 0 2px 4px var(--overlay-black-30);
+    --shadow-md: 0 4px 8px var(--overlay-black-40);
+    --shadow-lg: 0 4px 12px var(--overlay-black-50);
+}
+
+/* Dark mode icon brightness - boost visibility without separate icon sets */
+[data-theme="dark"] img[src*="/ui/icons/"] {
+    filter: brightness(1.3) saturate(1.1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: var(--gradient-page); min-height: 100vh; color: var(--text-primary); transition: background 0.3s ease, color 0.3s ease; overflow-x: hidden; }
+
+/* Global link colors - warm amber, not cold blue */
+a { color: var(--text-link); }
+a:hover { color: var(--text-link-hover); }
+
+/* THEME TOGGLE */
+.theme-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--tr);
+    color: var(--nav-text);
+    font-size: 20px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+}
+.theme-toggle:hover {
+    background: var(--neutral-100);
+    color: var(--mars-500);
+}
+[data-theme="dark"] .theme-toggle:hover {
+    background: var(--neutral-700);
+    color: var(--mars-400);
+}
+.theme-toggle .sun-icon,
+.theme-toggle .moon-icon { font-size: 18px; line-height: 1; }
+.theme-toggle .sun-icon { display: none; color: var(--mars-400); }
+.theme-toggle .moon-icon { display: block; color: var(--neutral-500); }
+[data-theme="dark"] .theme-toggle .sun-icon { display: block; }
+[data-theme="dark"] .theme-toggle .moon-icon { display: none; }
+
+/* IMAGE LOADING - smooth fade-in for lazy-loaded images */
+img[loading="lazy"] { opacity: 0; transition: opacity 0.3s ease-in; }
+img[loading="lazy"].loaded, img[loading="lazy"]:not([src=""]) { opacity: 1; }
+.img-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* LAYOUT */
+.app-container { min-height: 100vh; display: flex; flex-direction: column; }
+.main-content {
+    flex: 1;
+    /* Bottom padding accounts for bottom-nav height + max safe area */
+    padding: 70px 15px calc(var(--bottom-nav-height) + var(--sai-bottom) + 30px);
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* TOP NAV */
+.top-nav {
+    background: var(--nav-bg); border-bottom: 2px solid var(--nav-border);
+    padding: 10px 15px; display: flex; align-items: center; gap: 12px;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000; box-shadow: var(--shadow-sm);
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+.nav-brand { font-size: 20px; font-weight: 700; background: var(--gradient-mars); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.nav-kumori { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600;
+    text-decoration: none; color: var(--nav-text); opacity: .65; white-space: nowrap; align-self: center; }
+.nav-kumori:hover { opacity: 1; color: var(--color-primary); }
+.nav-tabs { display: none; gap: 6px; flex: 1; }
+.nav-tab { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; text-decoration: none; color: var(--nav-text); font-weight: 600; transition: all var(--tr); font-size: 13px; }
+.nav-tab:hover { background: var(--bg-secondary); color: var(--color-primary); }
+.nav-tab.active { background: var(--gradient-primary); color: #ffffff; }
+.tab-icon { font-size: 16px; }
+.tab-label { white-space: nowrap; }
+.nav-icon-img { width: 22px; height: 22px; object-fit: contain; border-radius: 4px; transition: transform var(--tr); }
+
+/* NAV USER AREA (shards + avatar grouped together) */
+.nav-user-area { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+/* NAV SHARDS (always visible, clickable) */
+.nav-shards {
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+    background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.1) 0%, rgba(var(--color-sepolia-rgb),0.1) 100%);
+    border-radius: 20px; text-decoration: none; transition: all var(--tr);
+}
+.nav-shards:hover { background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.2) 0%, rgba(var(--color-sepolia-rgb),0.2) 100%); }
+.shard-icon { width: 18px; height: 18px; object-fit: contain; }
+.shard-count { font-size: 13px; font-weight: 700; color: var(--primary); }
+
+/* NAV SV (Science Value - always visible, clickable) */
+.nav-sv {
+    display: flex; align-items: center; gap: 5px; padding: 5px 8px;
+    background: linear-gradient(135deg, rgba(var(--color-aria-rgb),0.1) 0%, rgba(var(--color-aria-rgb),0.15) 100%);
+    border-radius: 16px; text-decoration: none; transition: all var(--tr);
+}
+.nav-sv:hover { background: linear-gradient(135deg, rgba(var(--color-aria-rgb),0.2) 0%, rgba(var(--color-aria-rgb),0.25) 100%); }
+.sv-icon { width: 16px; height: 16px; object-fit: contain; }
+.sv-count { font-size: 12px; font-weight: 600; color: var(--color-aria); font-family: var(--font-mono); }
+
+/* USER DROPDOWN */
+.nav-user { position: relative; }
+.user-toggle { background: none; border: none; cursor: pointer; padding: 4px; border-radius: var(--radius-full); transition: all var(--tr); display: flex; align-items: center; justify-content: center; }
+.user-toggle:hover { background: var(--bg-secondary); }
+.user-avatar { width: 32px; height: 32px; border-radius: var(--radius-full); border: 2px solid var(--border-default); }
+.user-avatar-lg { width: 48px; height: 48px; border-radius: var(--radius-full); border: 2px solid var(--primary); }
+.user-icon { font-size: 24px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+.user-menu { position: absolute; top: calc(100% + 8px); right: 0; background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); min-width: 260px; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all var(--tr); z-index: 2002; }
+.user-menu.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.user-header { padding: 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-default); }
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-email { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* MENU STATS DASHBOARD */
+.menu-stats { padding: 12px 16px; }
+.menu-stat-row { display: flex; gap: 12px; margin-bottom: 10px; }
+.menu-stat-row:last-child { margin-bottom: 0; }
+.menu-stat {
+    flex: 1; background: var(--bg-secondary); border-radius: 8px; padding: 10px 12px; text-align: center;
+}
+.menu-stat-link { text-decoration: none; transition: all var(--tr); }
+.menu-stat-link:hover { background: var(--bg-tertiary); transform: translateY(-1px); }
+.menu-stat-value { font-size: 18px; font-weight: 700; color: var(--color-primary); line-height: 1.2; }
+.menu-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.menu-commander {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.1) 0%, rgba(var(--color-sepolia-rgb),0.1) 100%);
+    border-radius: 8px; margin-top: 10px; text-decoration: none; transition: all var(--tr);
+}
+.menu-commander:hover { background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.2) 0%, rgba(var(--color-sepolia-rgb),0.2) 100%); }
+.commander-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+.commander-name { font-size: 13px; font-weight: 600; color: var(--color-primary); }
+
+/* Commander name edit styles */
+.menu-commander-wrapper { margin-top: 10px; }
+.menu-commander-display {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.1) 0%, rgba(var(--color-sepolia-rgb),0.1) 100%);
+    border-radius: 8px; transition: all var(--tr);
+}
+.menu-commander-display:hover { background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.2) 0%, rgba(var(--color-sepolia-rgb),0.2) 100%); }
+.commander-edit-btn {
+    background: none; border: none; cursor: pointer; font-size: 12px; padding: 4px;
+    opacity: 0.5; transition: opacity var(--tr); line-height: 1;
+}
+.commander-edit-btn:hover { opacity: 1; }
+.menu-commander-edit {
+    padding: 10px 12px; background: linear-gradient(135deg, rgba(var(--color-mars-rgb),0.15) 0%, rgba(var(--color-sepolia-rgb),0.15) 100%);
+    border-radius: 8px;
+}
+.menu-commander-edit input {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border-default);
+    border-radius: 6px; font-size: 13px; font-family: inherit; background: var(--bg-primary);
+    color: var(--text-primary); margin-bottom: 8px;
+}
+.menu-commander-edit input:focus { outline: none; border-color: var(--color-primary); }
+.commander-edit-actions { display: flex; gap: 8px; }
+.commander-edit-actions button {
+    flex: 1; padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px;
+    font-weight: 600; cursor: pointer; transition: all var(--tr);
+}
+.btn-save { background: var(--color-primary); color: #fff; }
+.btn-save:hover { background: var(--color-primary-dark, #5a6fd6); }
+.btn-cancel { background: var(--bg-tertiary); color: var(--text-secondary); }
+.btn-cancel:hover { background: var(--bg-secondary); }
+
+.menu-divider { height: 1px; background: var(--border-default); margin: 8px 0; }
+.menu-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: var(--text-primary); text-decoration: none; font-size: 14px; font-weight: 500; transition: all var(--tr); }
+.menu-item:hover { background: var(--bg-secondary); }
+.menu-item span { font-size: 16px; width: 20px; text-align: center; }
+.menu-danger { color: var(--color-danger); }
+.menu-danger:hover { background: var(--bg-danger-light); }
+.menu-signal { color: var(--color-sepolia); }
+.menu-signal:hover { background: rgba(100, 100, 255, 0.1); }
+.signal-count { margin-left: auto; font-size: 12px; opacity: 0.7; font-weight: 600; }
+
+/* BOTTOM NAV - works on iOS Safari + Chrome + Android */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-default);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0;
+    padding-bottom: var(--sai-bottom);
+    z-index: 1000;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 8px;
+    text-decoration: none;
+    color: var(--nav-text);
+    transition: all var(--tr);
+    border-radius: 10px;
+    min-width: 0;
+    flex: 1 1 0;
+    min-height: 60px;
+    justify-content: center;
+}
+.nav-item:active { transform: scale(0.95); }
+.nav-icon { font-size: 20px; line-height: 1; transition: transform var(--tr); }
+.nav-label { font-size: 10px; font-weight: 600; line-height: 1; }
+.nav-item.active { color: var(--color-primary); background: var(--bg-primary-light); }
+.nav-item.active .nav-icon { transform: scale(1.15); }
+.nav-item .nav-icon-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; transition: transform var(--tr); opacity: 0.7; }
+.nav-item.active .nav-icon-img { transform: scale(1.1); opacity: 1; }
+
+/* TYPOGRAPHY */
+h1 { margin-bottom: 20px; font-size: 2em; color: var(--text-primary); text-align: center; }
+h3 { font-size: 1.3em; color: var(--text-primary); margin-bottom: 15px; }
+h4 { font-size: 1.1em; color: var(--text-secondary); margin-bottom: 12px; font-weight: 600; }
+
+/* BUTTONS */
+.btn { display: inline-block; padding: 12px 24px; border: none; border-radius: var(--radius-lg); font-size: 14px; font-weight: 600; font-family: inherit; text-align: center; text-decoration: none; cursor: pointer; transition: all var(--tr); width: 100%; box-shadow: var(--shadow-sm); background: var(--primary-gradient); color: #ffffff; }
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.btn:active:not(:disabled) { transform: translateY(0); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-default); }
+.btn-green { background: var(--success-gradient); }
+.btn-red { background: var(--danger-gradient); }
+.btn-orange { background: var(--warning-gradient); }
+.btn-purple { background: var(--purple-gradient); }
+.btn-large { padding: 16px 32px; font-size: 16px; border-radius: var(--radius-xl); }
+.btn-small { padding: 8px 16px; font-size: 12px; border-radius: var(--radius-md); }
+.btn-shop { width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 600; border-radius: 10px; }
+.button-row { display: flex; gap: 10px; flex-direction: column; margin: 10px 0; }
+
+/* CARDS */
+.card, .dashboard-card, .profile-card { background: var(--bg-card); border-radius: var(--radius-xl); padding: 25px; margin-bottom: 20px; box-shadow: var(--shadow-sm); transition: background 0.3s ease; }
+
+/* Card Background Images */
+.card-bg-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.4; z-index: 0; }
+.card-bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, var(--overlay-white-80) 100%); z-index: 1; }
+[data-theme="dark"] .card-bg-overlay { background: linear-gradient(180deg, rgba(28,25,23,0.6) 0%, rgba(28,25,23,0.85) 100%); }
+
+/* Card Text Classes (dark mode compatible) */
+.card-title { color: var(--text-primary); }
+.card-subtitle { color: var(--text-secondary); }
+.card-label { color: var(--text-tertiary); font-size: 13px; }
+.card-value { color: var(--text-primary); font-weight: 600; font-size: 13px; }
+.card-stats-box { background: var(--bg-secondary); }
+
+/* FORMS */
+.edit-textarea, .depot-textarea { width: 100%; padding: 12px; border: 2px solid var(--border-default); border-radius: var(--radius-md); font-size: 14px; margin-bottom: 12px; font-family: inherit; resize: vertical; min-height: 70px; transition: border-color var(--tr); background: var(--bg-input); color: var(--text-primary); }
+.edit-textarea:focus, .depot-textarea:focus { outline: none; border-color: var(--color-sepolia); }
+
+/* TOAST - Unified with ARIA chat styling */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
+.toast { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px 20px; box-shadow: var(--shadow-lg), 0 0 20px rgba(168, 85, 247, 0.1); display: flex; align-items: flex-start; gap: 12px; animation: slideIn 0.3s ease; border-left: 4px solid var(--color-aria); }
+.toast.success { border-left-color: var(--color-aria); }
+.toast.error { border-left-color: var(--red-400); }
+.toast.warning { border-left-color: var(--amber-500); }
+.toast.celebration { border-left-color: var(--amber-400); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(251, 191, 36, 0.1) 100%); box-shadow: var(--shadow-lg), 0 0 30px rgba(251, 191, 36, 0.2); animation: slideIn 0.3s ease, celebration-glow 2s ease-in-out infinite; }
+@keyframes celebration-glow { 0%, 100% { box-shadow: var(--shadow-lg), 0 0 20px rgba(251, 191, 36, 0.15); } 50% { box-shadow: var(--shadow-lg), 0 0 40px rgba(251, 191, 36, 0.3); } }
+.toast-icon { flex-shrink: 0; }
+.toast-icon.aria-orb { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 12px rgba(168, 85, 247, 0.5); animation: toast-orb-pulse 2s ease-in-out infinite; border: 2px solid rgba(168, 85, 247, 0.4); }
+.toast-icon.aria-orb img { width: 100%; height: 100%; object-fit: cover; }
+.toast-content { flex: 1; min-width: 0; }
+.toast-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--color-aria); }
+.toast-message { font-size: 13px; color: var(--text-primary); line-height: 1.4; white-space: pre-line; }
+/* Reload link inside the "Update available" toast. Underlined + bold so the
+   affordance is shape-based, not colour-based (colourblind safety). */
+.toast-reload-link { color: var(--text-primary); font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; cursor: pointer; }
+.toast-reload-link:hover { color: var(--color-aria); }
+.toast-close { background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all var(--tr); flex-shrink: 0; }
+.toast-close:hover { background: var(--bg-secondary); color: var(--text-secondary); }
+.toast.removing { animation: slideOut 0.3s ease; }
+@keyframes toast-orb-pulse { 0%, 100% { box-shadow: 0 0 8px rgba(168, 85, 247, 0.4); } 50% { box-shadow: 0 0 16px rgba(168, 85, 247, 0.6); } }
+
+/* PROCESSING OVERLAY */
+.processing-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.processing-overlay.show { display: flex; }
+.processing-content { background: var(--white); border-radius: var(--radius-xl); padding: 30px 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 90%; }
+.spinner { width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: var(--radius-full); animation: spin 1s linear infinite; margin: 0 auto 15px; }
+.processing-timer { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 8px; letter-spacing: 0.5px; opacity: 0.7; }
+
+/* STATS */
+.stats-container { background: rgba(var(--color-mars-rgb),0.1); border-radius: 10px; padding: 18px; margin: 15px 0; }
+.stat-row { display: flex; align-items: center; margin-bottom: 14px; font-size: 13px; }
+.stat-label { min-width: 90px; font-weight: 600; font-size: 13px; }
+.stat-bar { flex: 1; height: 20px; background: var(--gray-200); border-radius: 10px; margin: 0 8px; }
+.stat-fill { height: 100%; background: var(--gradient-mars); border-radius: 10px; transition: width 0.8s ease; }
+.stat-value { min-width: 30px; font-weight: bold; text-align: right; font-size: 13px; }
+.stat-total { margin-top: 10px; font-size: 14px; color: var(--gray-500); }
+
+/* RARITY */
+.rarity-badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; box-shadow: var(--shadow-sm); }
+.rarity-legendary { background: var(--gradient-mars); color: #ffffff; animation: legendaryGlow 2s ease-in-out infinite; }
+.rarity-rare { background: var(--gradient-primary); color: #ffffff; }
+.rarity-uncommon { background: var(--gradient-success); color: #ffffff; }
+.rarity-common { background: linear-gradient(135deg, var(--neutral-500) 0%, var(--neutral-600) 100%); color: #ffffff; }
+
+/* Rarity text colors for inline use */
+.rarity-text-legendary { color: var(--color-rarity-legendary); }
+.rarity-text-rare { color: var(--color-rarity-rare); }
+.rarity-text-uncommon { color: var(--color-rarity-uncommon); }
+.rarity-text-common { color: var(--color-rarity-common); }
+
+
+
+/* TABS (in-page) */
+.tabs { display: flex; gap: 0; margin-bottom: 20px; border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-tertiary); padding: 4px; }
+.tab { flex: 1; padding: 14px 18px; border: none; border-radius: 10px; background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.tab:hover:not(.active) { background: var(--bg-secondary); }
+.tab.active { background: var(--bg-card); color: var(--color-primary); box-shadow: var(--shadow-sm); }
+.tab-content { display: none; animation: fadeIn 0.3s ease-in; contain: layout style paint; }
+.tab-content.active { display: block; }
+.main-tab-content { contain: layout style paint; }
+
+/* STORY PANEL */
+.story-panel { background: var(--bg-secondary); padding: 24px; border-radius: var(--radius-lg); margin-bottom: 20px; }
+.story-text { font-size: 16px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 15px; }
+
+/* DISCOVERIES */
+.discovery-card-full { background: var(--bg-card); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); transition: all var(--tr); display: flex; flex-direction: column; border: 2px solid transparent; }
+.discovery-card-full:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.discovery-card-full.rarity-legendary { border-color: var(--color-rarity-legendary); }
+.discovery-card-full.rarity-rare { border-color: var(--color-primary); }
+.discovery-card-full.rarity-uncommon { border-color: var(--color-success); }
+.discovery-card-compact { background: var(--overlay-white-10); border-radius: var(--radius-md); padding: 12px; display: flex; gap: 12px; align-items: center; transition: all 0.3s; animation: discoveryUnlock 0.5s ease; }
+.discovery-card-compact:hover { background: rgba(255,255,255,0.18); transform: translateX(4px); }
+.discovery-image-small { width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover; background: rgba(0,0,0,0.2); flex-shrink: 0; }
+.discovery-info { flex: 1; min-width: 0; }
+.discovery-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.discovery-details { font-size: 12px; opacity: 0.8; }
+.discovery-value { text-align: right; flex-shrink: 0; }
+.discovery-value-number { font-size: 18px; font-weight: 700; color: var(--success); }
+
+/* EXPEDITION DISCOVERY ITEMS - for JS-generated HTML
+   These appear INSIDE the orange expedition banner, so they need:
+   - Light background (stands out against orange)
+   - FORCED dark text (not theme-dependent, since bg is always light) */
+.exp-discovery-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; background: var(--neutral-100); border-radius: 6px;
+    margin-top: 8px; cursor: pointer; transition: transform 0.15s, background 0.15s;
+}
+.exp-discovery-item:hover { background: var(--neutral-50); transform: translateX(4px); }
+/* FORCE dark text regardless of theme - these are on a light background */
+.exp-discovery-name { font-weight: 600; font-size: 13px; color: var(--neutral-900); }
+.exp-discovery-meta { font-size: 11px; color: var(--neutral-600); }
+.exp-discovery-status { font-size: 11px; color: var(--success-700); font-weight: 600; }
+.exp-discovery-more { text-align: center; font-size: 11px; color: var(--overlay-white-80); margin-top: 8px; }
+.exp-discovery-empty { text-align: center; color: var(--overlay-white-70); padding: 20px; }
+
+/* Rarity colors for discovery meta - must work on light background */
+.exp-discovery-item .rarity-text-common { color: var(--neutral-500); }
+.exp-discovery-item .rarity-text-uncommon { color: var(--success-700); }
+.exp-discovery-item .rarity-text-rare { color: var(--primary-700); }
+.exp-discovery-item .rarity-text-legendary { color: var(--mars-700); }
+
+/* MAP POPUP STYLES - for Leaflet popups */
+.map-popup { font-size: 14px; max-width: 250px; }
+.map-popup-title { font-weight: 700; margin-bottom: 8px; }
+.map-popup-title.base { color: var(--color-marker-base-border); }
+.map-popup-title.visited { color: var(--color-marker-visited); }
+.map-popup-title.unexplored { color: var(--color-marker-unexplored); }
+.map-popup-coords { font-size: 12px; color: var(--text-muted); }
+.map-popup-status { font-weight: 600; margin-bottom: 8px; }
+.map-popup-status.visited { color: var(--color-marker-visited); }
+.map-popup-status.unexplored { color: var(--color-marker-unexplored); }
+.map-popup-details { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.map-popup-history { background: var(--bg-sepolia-light); padding: 8px; border-radius: 6px; margin-bottom: 8px; }
+.map-popup-history-label { font-size: 11px; color: var(--color-sepolia); font-weight: 600; }
+.map-popup-history-content { font-size: 12px; color: var(--color-sepolia); }
+.map-popup-btn { width: 100%; padding: 8px 12px; margin-top: 8px; background: var(--gradient-mars); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.map-popup-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.map-popup-btn.disabled, .map-popup-btn:disabled { background: var(--neutral-400); cursor: not-allowed; opacity: 0.7; }
+
+
+/* DESTINATION MARKER - pulsing target for active expeditions */
+.destination-marker-container { background: none !important; border: none !important; }
+.destination-marker-active {
+    width: 28px; height: 28px;
+    background: radial-gradient(circle, var(--mars-500) 0%, rgba(236, 116, 39, 0.5) 50%, transparent 70%);
+    border: 3px dashed rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 20px var(--mars-500), inset 0 0 10px var(--overlay-white-30);
+    animation: destinationPulse 2s ease-in-out infinite;
+}
+.destination-marker-arrived {
+    width: 28px; height: 28px;
+    background: radial-gradient(circle, var(--emerald-500) 0%, rgba(34, 197, 94, 0.5) 50%, transparent 70%);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 0 16px var(--emerald-500), inset 0 0 10px var(--overlay-white-30);
+    animation: arrivedPulse 1s ease-in-out infinite;
+}
+@keyframes destinationPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--mars-500), inset 0 0 10px var(--overlay-white-30); opacity: 1; }
+    50% { transform: scale(1.2); box-shadow: 0 0 35px var(--mars-500), inset 0 0 15px var(--overlay-white-50); opacity: 0.85; }
+}
+@keyframes arrivedPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 16px var(--emerald-500); }
+    50% { transform: scale(1.1); box-shadow: 0 0 25px var(--emerald-500); }
+}
+
+/* Destination popup styles */
+.destination-popup { min-width: 180px; }
+.destination-progress-bar { height: 6px; background: rgba(236, 116, 39, 0.2); border-radius: 3px; overflow: hidden; }
+.destination-progress-fill { height: 100%; background: var(--gradient-mars); transition: width 0.5s ease; }
+.map-popup-status.en-route { color: var(--color-mars); font-weight: 600; }
+.map-popup-status.arrived { color: var(--color-success); font-weight: 600; }
+
+/* COMMANDER */
+.commander-display { background: var(--bg-card); border-radius: var(--radius-xl); padding: 25px; margin-bottom: 20px; }
+.commander-image-container { text-align: center; margin-bottom: 25px; }
+.commander-image { max-width: 100%; max-height: 400px; border-radius: var(--radius-lg); cursor: pointer; object-fit: contain; }
+.commander-card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 10px; box-shadow: var(--shadow-sm); transition: all var(--tr); border: 2px solid transparent; display: flex; flex-direction: column; height: 100%; position: relative; }
+.commander-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.commander-card.active-commander { border-color: var(--color-success); box-shadow: 0 4px 16px rgba(var(--color-success-rgb),0.4); }
+.commander-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.video-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 10000; cursor: pointer; animation: fadeIn 0.2s ease; }
+.video-modal video { max-width: 90%; max-height: 90%; border-radius: var(--radius-lg); box-shadow: 0 8px 32px var(--overlay-black-50); }
+
+/* LEGACY UTILITIES - kept for backwards compatibility, see utility classes at end of file */
+.hidden { display: none !important; }
+
+/* ANIMATIONS */
+@keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes legendaryGlow { 0%, 100% { box-shadow: 0 0 12px rgba(var(--color-mars-rgb), 0.6); } 50% { box-shadow: 0 0 20px rgba(var(--color-mars-rgb), 0.9); } }
+@keyframes discoveryUnlock { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* LOADING SPINNER - for JS-generated loading states */
+.loading-spinner { border: 4px solid var(--border-default); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; }
+
+/* RESPONSIVE - DESKTOP */
+@media (min-width: 768px) {
+    .main-content { padding: 90px 30px 30px; }
+    .top-nav { padding: 12px 30px; gap: 30px; }
+    .nav-tabs { display: flex; }
+    .bottom-nav { display: none; }
+    h1 { font-size: 3em; }
+    .button-row { flex-direction: row; }
+    .button-row .btn { width: auto; flex: 1; }
+    .depot-grid { grid-template-columns: repeat(2, 1fr); }
+    .expedition-actions { flex-direction: row; }
+}
+
+/* RESPONSIVE - MOBILE */
+@media (max-width: 768px) {
+    .top-nav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; }
+    .nav-brand { grid-column: 1; }
+    .nav-kumori { display: none; }   /* phones: the bottom nav owns the chrome */
+    .nav-tabs { display: none; }
+    .login-btn-desktop { display: inline-flex; font-size: 11px; padding: 4px 8px; } /* Show on mobile next to theme toggle */
+    .nav-user { grid-column: 3; justify-self: end; }
+    .user-menu { position: fixed; top: 60px; right: 10px; min-width: 280px; max-width: calc(100vw - 20px); }
+    .main-content { padding: 70px 15px calc(var(--bottom-nav-height) + var(--sai-bottom) + 30px); }
+    h1 { font-size: 1.8em; }
+    .card, .dashboard-card, .profile-card { padding: 16px; }
+    .toast-container { top: 10px; right: 10px; left: 10px; max-width: none; }
+    .expedition-header { flex-direction: column; gap: 10px; align-items: stretch; }
+    .expedition-metrics { grid-template-columns: 1fr; }
+    .expedition-actions { flex-direction: column; }
+    #mars-map { height: 350px; }
+    .commanders-grid { grid-template-columns: 1fr; }
+    .discovery-grid { grid-template-columns: 1fr; }
+    .discovery-card-compact { flex-direction: column; text-align: center; padding: 10px; }
+    .discovery-image-small { width: 50px; height: 50px; margin: 0 auto 10px; }
+    .discovery-info { text-align: center; margin-bottom: 10px; }
+    .discovery-value { text-align: center; margin-bottom: 8px; }
+    .claim-button { width: 100%; margin-top: 8px; }
+}
+
+@media (max-width: 375px) { h1 { font-size: 1.5em; } #mars-map { height: 300px; } }
+

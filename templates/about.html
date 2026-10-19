@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}About - Pilgrims{% endblock %}
+
+{% block aria_page_context %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'about';
+        chat.dataset.pageContext = 'User is on the About page, reading about why Pilgrims was created. They may be curious about the game philosophy, the creators, or want to know more about how the game works.';
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<h1>About Pilgrims</h1>
+
+<div class="dashboard-card card-dark mb-20">
+    <div class="p-20">
+        <div class="section-label mb-16">Why This Exists</div>
+        <p class="text-lg mb-16 opacity-90" style="line-height: 1.9;">
+            Honestly? Frustration.
+        </p>
+        <p class="mb-16 opacity-90" style="font-size: 15px; line-height: 1.9;">
+            Sitting around one night, listing games we'd loved—XCOM, Civilization, Factorio, BattleTech. Hundreds of hours in each. But the same problem kept coming up: we're adults now. Jobs. Kids. The games we grew up with demanded hours we don't have. And the new "mobile games" feel like they're designed by casino psychologists.
+        </p>
+        <p class="mb-0 opacity-90" style="font-size: 15px; line-height: 1.9;">
+            Everything wants your attention. Everything punishes you for having a life. Miss a day? Your streak is broken. Gone for a week? Your clan kicked you. Your crops died. Your base got raided.
+        </p>
+    </div>
+</div>
+
+<div class="dashboard-card mb-20">
+    <div class="section-label text-sepolia mb-12" style="letter-spacing: 1px;">The TV Show You Never Have to Watch</div>
+    <p class="text-primary mb-16" style="font-size: 15px; line-height: 1.8;">
+        What if a game worked more like a TV show? Episodes happen whether you're watching or not. Miss a few? The story continues. Binge when you want. Skip months if you want. Nobody guilt-trips you for having other things going on.
+    </p>
+    <p class="text-primary mb-16" style="font-size: 15px; line-height: 1.8;">
+        Your Mars colony runs itself. An AI—think AUTO from WALL-E, but actually helpful, not nefarious—keeps things going. You can dive deep and optimize everything, or you can get a "here's what happened" email once a month. Both are fine. Neither is wrong.
+    </p>
+</div>
+
+<div class="dashboard-card mb-20" style="background: rgba(var(--color-success-rgb), 0.08); border: 1px solid rgba(var(--color-success-rgb), 0.2);">
+    <div class="section-label text-success mb-12" style="letter-spacing: 1px;">For the Screen-Time Argument</div>
+    <p class="text-primary mb-16" style="font-size: 15px; line-height: 1.8;">
+        If you have kids, you know the screen fights. "Five more minutes." "I can't stop now." Apps are engineered to be sticky. That's the business model.
+    </p>
+    <p class="text-primary mb-0" style="font-size: 15px; line-height: 1.8;">
+        We wanted the opposite. Progress without presence. A game that doesn't demand your eyes. Check in on your colony like you'd check in on a friend—when you feel like it, because you're curious, not because you're afraid something bad will happen if you don't.
+    </p>
+</div>
+
+<div class="dashboard-card mb-20">
+    <div class="section-label mb-12" style="letter-spacing: 1px;">Real Data, Because Why Not</div>
+    <p class="text-primary mb-16" style="font-size: 15px; line-height: 1.8;">
+        The locations are real. Olympus Mons, Valles Marineris, Jezero Crater—coordinates from NASA's databases. Decades of orbital surveys. When your captain lands somewhere on Mars, that place actually exists.
+    </p>
+    <p class="text-primary mb-0" style="font-size: 15px; line-height: 1.8;">
+        It doesn't add anything to the gameplay, really. It just felt right.
+    </p>
+</div>
+
+<div class="dashboard-card card-dark mb-20">
+    <div class="p-20">
+        <div class="section-label text-sepolia mb-16">We're Not Selling Anything</div>
+        <p class="mb-16 opacity-90" style="font-size: 15px; line-height: 1.9;">
+            No ads. No premium currency. No loot boxes. No "limited time offers." The Sepolia shards you collect are tracked permanently using some nerdy tech we won't bore you with, but there's no credit card field anywhere.
+        </p>
+        <p class="mb-0 opacity-90" style="font-size: 15px; line-height: 1.9;">
+            This isn't a startup. There's no investor deck. It's just a game two people wanted to play that didn't exist, so we made it.
+        </p>
+    </div>
+</div>
+
+<div class="dashboard-card text-center p-32">
+    <div class="section-label text-muted mb-16" style="letter-spacing: 1px;">The Bottom Line</div>
+    <p class="text-xl text-primary font-medium mb-0" style="line-height: 1.7;">
+        Your colony will be here. Mars isn't going anywhere.<br>
+        <span class="text-sepolia">Play or don't. Your pace. Your pilgrimage.</span>
+    </p>
+</div>
+
+{% endblock %}

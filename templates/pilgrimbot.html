@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}PilgrimBot{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/pilgrimbot.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+    .bottom-nav { display: none !important; }
+    .aria-orb { display: none !important; }
+    .mars-container { padding-bottom: 0 !important; }
+    .main-content { padding: 0 !important; max-width: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pilgrimbot-layout">
+    <!-- Sidebar: past chats -->
+    <div class="pb-sidebar" id="pbSidebar">
+        <div class="pb-sidebar-header">
+            <h3>PilgrimBot</h3>
+            <button class="pb-new-chat-btn" id="pbNewChat">+ New Chat</button>
+        </div>
+        <div class="pb-chat-list" id="pbChatList">
+            {% for chat in chats %}
+            <div class="pb-chat-item" data-chat-id="{{ chat.chat_id }}">
+                <button class="pb-chat-hide" title="Hide conversation">&times;</button>
+                <div class="pb-chat-title">{{ chat.title }}</div>
+                <div class="pb-chat-meta">{{ chat.message_count }} messages</div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="pb-role-picker">
+            <label>My role:</label>
+            <select id="pbRoleSelect">
+                <option value="captain"{% if pb_role == 'captain' %} selected{% endif %}>Captain (player)</option>
+                <option value="qa"{% if pb_role == 'qa' %} selected{% endif %}>QA Tester</option>
+                <option value="dev"{% if pb_role == 'dev' %} selected{% endif %}>Developer</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Main chat area -->
+    <div class="pb-main">
+        <div class="pb-bug-bar" id="pbBugBar" style="display:none;"></div>
+        <div class="pb-messages" id="pbMessages">
+            <div class="pb-welcome" id="pbWelcome">
+                <h2>Ask me anything about how Pilgrims works</h2>
+                <p>I read the game's source code and explain things in plain English. No coding knowledge needed.</p>
+                <div class="pb-examples">
+                    <button class="pb-example" data-q="Why does the Mining Drone come in after the Base Total?">Why does Mining Drone come after Base Total?</button>
+                    <button class="pb-example" data-q="How is the Effective Rate for shard generation calculated?">How is Effective Rate calculated?</button>
+                    <button class="pb-example" data-q="What does ARIA know about my colony?">What does ARIA know about my colony?</button>
+                    <button class="pb-example" data-q="How do expedition speeds work with different vehicles?">How do expedition speeds work?</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="pb-input-area">
+            <div class="pb-input-wrap">
+                <textarea id="pbInput" placeholder="Ask about game mechanics, formulas, how things work..." rows="1"></textarea>
+                <button id="pbSend" class="pb-send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.PB_USER_NAME = {{ (user.name.split()[0] | tojson) if user and user.name else '"Captain"' }};
+    window.PB_ROLE = {{ (pb_role or 'captain') | tojson }};
+    {% if bug_context %}window.PB_BUG_CONTEXT = {{ bug_context | tojson }};{% endif %}
+    {% if bug_id %}window.PB_BUG_ID = {{ bug_id }};{% endif %}
+    {% if bug_name %}window.PB_BUG_NAME = {{ bug_name | tojson }};{% endif %}
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/pilgrimbot.js?v={{ static_v }}" defer></script>
+{% endblock %}

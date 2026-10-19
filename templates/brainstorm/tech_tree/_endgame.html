@@ -1,0 +1,156 @@
+    <!-- Expedition Speed Problem -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title">🚨 Expedition Speed Problem (CRITICAL)</div>
+
+        <div class="quote-box">
+            "My Hesperia expedition has 639 hours remaining... that's 26+ days!"
+            <div class="attribution">— Current state of distant expeditions</div>
+        </div>
+
+        <p><strong>The Problem:</strong> Current expeditions can take 600+ hours for distant locations. While realistic for Mars distances, this may frustrate players who want to see progress.</p>
+
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">💡</span>
+                Solution Ideas
+            </div>
+
+            <div style="display: grid; gap: 12px;">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">A) Scientist Research</div>
+                    <div class="tech-effect">Tech tree unlocks like "Shard-Infused Propulsion: -20% travel time"</div>
+                </div>
+
+                <div class="tech-node tier-1">
+                    <div class="tech-name">B) Captain Stats</div>
+                    <div class="tech-effect">Logistics/Navigation stat affects expedition speed (+1% per point)</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">C) Shard Acceleration</div>
+                    <div class="tech-effect">Spend 10,000 shards to boost active expedition by -10% remaining time</div>
+                    <div class="tech-req">Limit: Max 3 boosts per expedition (creates meaningful choice)</div>
+                </div>
+
+                <div class="tech-node tier-1">
+                    <div class="tech-name">D) Vehicle Upgrades</div>
+                    <div class="tech-effect">Make existing Rover/Drone level speed bonuses more impactful</div>
+                </div>
+
+                <div class="tech-node tier-3">
+                    <div class="tech-name">E) Lore Angle</div>
+                    <div class="tech-effect">"The crystals hum at frequencies that resonate with Martian terrain..."</div>
+                    <div class="tech-req">Shards contain ancient propulsion knowledge. Scientists study them to unlock faster travel.</div>
+                </div>
+            </div>
+        </div>
+
+        <p><strong>Current math:</strong> 1 km ≈ 0.5 hours. 1,500 km = 750 hours (31 days).</p>
+        <p><strong>Target:</strong> With full upgrades, reduce to ~0.3 hours/km. Max expedition ~7-10 days instead of 26+.</p>
+    </div>
+
+    <!-- Scientist Quotes -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title">💬 Scientist Quotes - Untapped Potential</div>
+
+        <div class="quote-box">
+            "We see these everywhere. Standard extraction procedure—307 shards, nothing special."
+            <div class="attribution">— Current HARDCODED quote for ALL common/uncommon items</div>
+        </div>
+
+        <p><strong>The Problem:</strong> Scientist specialty is completely wasted. A Geologist says the same thing about minerals as a Biologist does. Every scientist has the same generic quote.</p>
+
+        <div class="tech-branch">
+            <div class="branch-header">
+                <span class="branch-icon">🔬</span>
+                Make Quotes Dynamic
+            </div>
+
+            <div style="display: grid; gap: 12px;">
+                <div class="tech-node tier-1">
+                    <div class="tech-name">A) Specialty-Based Quotes</div>
+                    <div class="tech-effect">Geologist: "Fascinating crystalline structure!" vs Biologist: "No organic compounds detected."</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">B) Tech Tree Unlocks</div>
+                    <div class="tech-effect">As scientists research items, they gain deeper knowledge and better quotes</div>
+                </div>
+
+                <div class="tech-node tier-2">
+                    <div class="tech-name">C) Matching Bonus</div>
+                    <div class="tech-effect">Scientist analyzing matching item type gives bonus SP or extra shards</div>
+                </div>
+
+                <div class="tech-node tier-3">
+                    <div class="tech-name">D) Progressive Learning</div>
+                    <div class="tech-effect">1st time: "Interesting specimen." 10th time: "Based on our research, I can extract 15% more efficiently now."</div>
+                </div>
+            </div>
+        </div>
+
+        <p><strong>MVP:</strong> Just vary quotes by scientist specialty. Later: unlock better quotes/bonuses via tech tree.</p>
+        <p><strong>Connects to:</strong> Tech tree research, extraction bonuses, personalized gameplay experience.</p>
+    </div>
+
+    <!-- Questions for Luke -->
+    <div class="section"
+        style="background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), rgba(var(--color-primary-rgb), 0.1));">
+        <div class="section-title">Questions for Luke</div>
+
+        <ol>
+            <li><strong>Does the overall direction feel right?</strong> Science points from extraction, spent on tech
+                research?</li>
+            <li><strong>Tech tree scale?</strong> ~24 techs across 4 branches - too many? Too few?</li>
+            <li><strong>Item requirements?</strong> "30 geometric shapes" style requirements - good or annoying?</li>
+            <li><strong>Scientist swapping?</strong> Which option (Transmutation, Shard Echo, Recruitment, Evolution)?
+            </li>
+            <li><strong>Research times?</strong> 24 hours to 1 week - too long? Too short?</li>
+            <li><strong>Anything missing?</strong> What else should the tech tree unlock?</li>
+            <li><strong>Expedition speed?</strong> Current max is 26+ days. What's the sweet spot? 7 days? 14 days?</li>
+            <li><strong>Scientist quotes?</strong> Should they vary by specialty? Worth the effort for immersion?</li>
+        </ol>
+    </div>
+
+    <!-- Links -->
+    <div class="link-box">
+        <p style="margin: 0 0 8px 0;">📋 <strong>Add feedback to the bug tracker:</strong></p>
+        <a href="{{ bug_tracker_url }}" target="_blank">
+            Open Pilgrims Bug Tracker (Google Sheet)
+        </a>
+    </div>
+
+    <!-- Chat Widget for Brainstorming -->
+    <div class="chat-widget" id="brainstorm-chat">
+        <div class="chat-header">
+            <div class="chat-header-icon">🧠</div>
+            <div class="chat-header-text">
+                <h3>Brainstorm with PilgrimBot</h3>
+                <p>Ask questions about this proposal or explore ideas together</p>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-avatar">🧠</div>
+                <div class="chat-bubble">
+                    Hey! I'm here to help brainstorm the Tech Tree system. I have full context on everything discussed
+                    above. Ask me anything - like "What if we had 6 branches instead of 4?" or "How would this affect
+                    new players?" or "What's the MVP version of this?"
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-suggestions">
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What's the simplest MVP?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">How does this affect new players?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What about balancing costs?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">Alternative to item requirements?</span>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask a question or share an idea..." rows="1"
+                onkeydown="handleKeyDown(event)"></textarea>
+            <button class="chat-send" id="chat-send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>

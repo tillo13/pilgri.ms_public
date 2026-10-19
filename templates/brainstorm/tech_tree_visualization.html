@@ -1,0 +1,673 @@
+{% extends "base.html" %}
+{% block title %}Progression Trees - Pilgrims{% endblock %}
+
+{% block extra_js %}
+<script>window.BRAINSTORM_PAGE_KEY = 'progression';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+<style>
+/* Tree visualization styles */
+.tree-container { overflow-x: auto; padding: 20px 0; }
+.tree-row { display: flex; align-items: center; gap: 4px; margin-bottom: 12px; flex-wrap: nowrap; min-width: max-content; }
+.tree-label { min-width: 120px; font-weight: 600; font-size: 13px; color: var(--text-primary); flex-shrink: 0; }
+.tree-node {
+    background: var(--bg-card);
+    border: 2px solid rgba(168, 85, 247, 0.3);
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-width: 80px;
+    text-align: center;
+    font-size: 11px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.tree-node:hover { border-color: var(--color-sepolia); transform: translateY(-2px); }
+.tree-node .node-level { font-weight: 700; color: var(--color-sepolia); font-size: 12px; }
+.tree-node .node-effect { color: var(--text-secondary); margin-top: 2px; }
+.tree-node .node-cost { color: var(--text-muted); font-size: 10px; margin-top: 2px; }
+.tree-arrow { color: var(--text-muted); font-size: 14px; flex-shrink: 0; }
+.tree-node.completed { background: rgba(168, 85, 247, 0.15); border-color: var(--color-sepolia); }
+.tree-node.locked { opacity: 0.4; }
+
+/* Infrastructure tree with prerequisites */
+.infra-tree { position: relative; }
+.infra-row { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+.infra-tier { min-width: 60px; font-weight: 700; color: var(--text-muted); font-size: 12px; padding-top: 10px; }
+.infra-nodes { display: flex; gap: 12px; flex-wrap: wrap; }
+.infra-node {
+    background: var(--bg-card);
+    border: 2px solid rgba(168, 85, 247, 0.2);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-width: 140px;
+    max-width: 180px;
+}
+.infra-node:hover { border-color: var(--color-sepolia); }
+.infra-node .node-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.infra-node .node-prereq { font-size: 10px; color: var(--color-sepolia); margin-bottom: 6px; }
+.infra-node .node-effect { font-size: 11px; color: var(--text-secondary); }
+.infra-node .node-cost { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+/* Depot grid */
+.depot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.depot-path {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+}
+.depot-path-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.depot-path-name { font-weight: 700; font-size: 15px; }
+.depot-path-total { font-size: 11px; color: var(--text-muted); }
+.depot-levels { display: flex; flex-wrap: wrap; gap: 4px; }
+.depot-level {
+    width: 28px; height: 28px;
+    background: rgba(168, 85, 247, 0.1);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600;
+    color: var(--color-sepolia);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.depot-level:hover { background: rgba(168, 85, 247, 0.2); transform: scale(1.1); }
+.depot-effect-summary { margin-top: 12px; font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+.effect-highlight { color: var(--color-sepolia); font-weight: 600; }
+
+/* Summary boxes */
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+.summary-card { background: var(--bg-card); border-radius: 10px; padding: 16px; text-align: center; }
+.summary-card .big-num { font-size: 28px; font-weight: 700; color: var(--color-sepolia); }
+.summary-card .label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- Header -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge" style="background: var(--color-sepolia);">Implemented</span>
+        <h1 style="margin: 16px 0 8px 0;">Progression Tree Visualization</h1>
+        <p style="color: var(--text-secondary);">Lab Tech Tree + Depot Upgrades + Infrastructure</p>
+        <p style="color: var(--text-muted); font-size: 13px;">February 2026 — All systems use 1.12x pricing, 14-day build cap</p>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="section">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="big-num">40</div>
+                <div class="label">Lab Tech Levels<br>(4 branches × 10)</div>
+            </div>
+            <div class="summary-card">
+                <div class="big-num">110</div>
+                <div class="label">Depot Upgrade Levels<br>(11 paths × 10)</div>
+            </div>
+            <div class="summary-card">
+                <div class="big-num">130</div>
+                <div class="label">Infrastructure Levels<br>(13 buildings × 10)</div>
+            </div>
+            <div class="summary-card">
+                <div class="big-num">280</div>
+                <div class="label">Total Progression<br>Levels</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- LAB TECH TREE -->
+    <!-- ============================================================ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">Lab Tech Tree (4 Branches × 10 Levels)</div>
+        <p>Research costs <strong>Scientific Value (SV)</strong>. Each branch has cumulative bonuses. Scientist specialty gives 25% faster + 20% cheaper for matching branch.</p>
+
+        <div class="tree-container">
+            <!-- Exploration Branch -->
+            <div class="tree-row">
+                <div class="tree-label">🔭 Exploration</div>
+                <div class="tree-node"><div class="node-level">Lv1</div><div class="node-effect">+5% speed</div><div class="node-cost">4,000 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv2</div><div class="node-effect">+8% speed</div><div class="node-cost">4,480 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv3</div><div class="node-effect">+10% speed</div><div class="node-cost">5,018 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv4</div><div class="node-effect">+13% speed</div><div class="node-cost">5,620 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv5</div><div class="node-effect">+15% speed</div><div class="node-cost">6,294 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv6</div><div class="node-effect">+18% speed</div><div class="node-cost">7,049 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv7</div><div class="node-effect">+20% speed</div><div class="node-cost">7,895 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv8</div><div class="node-effect">+23% speed</div><div class="node-cost">8,842 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv9</div><div class="node-effect">+25% speed</div><div class="node-cost">9,903 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node" style="border-color: gold;"><div class="node-level">Lv10</div><div class="node-effect">+30% speed</div><div class="node-cost">11,092 SV</div></div>
+            </div>
+            <p style="margin: 0 0 16px 120px; font-size: 11px; color: var(--text-muted);">Also: +3%→+30% discovery, 25%→100% dust immunity, +1%→+5% legendary chance. Total: ~70,193 SV</p>
+
+            <!-- Vehicles Branch -->
+            <div class="tree-row">
+                <div class="tree-label">🚗 Vehicles</div>
+                <div class="tree-node"><div class="node-level">Lv1</div><div class="node-effect">+5% speed</div><div class="node-cost">4,000 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv2</div><div class="node-effect">+8% speed</div><div class="node-cost">4,480 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv3</div><div class="node-effect">+10% speed</div><div class="node-cost">5,018 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv4</div><div class="node-effect">+13% speed</div><div class="node-cost">5,620 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv5</div><div class="node-effect">+15% speed</div><div class="node-cost">6,294 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv6</div><div class="node-effect">+18% speed</div><div class="node-cost">7,049 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv7</div><div class="node-effect">+20% speed</div><div class="node-cost">7,895 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv8</div><div class="node-effect">+23% speed</div><div class="node-cost">8,842 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv9</div><div class="node-effect">+27% speed</div><div class="node-cost">9,903 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node" style="border-color: gold;"><div class="node-level">Lv10</div><div class="node-effect">+30% speed</div><div class="node-cost">11,092 SV</div></div>
+            </div>
+            <p style="margin: 0 0 16px 120px; font-size: 11px; color: var(--text-muted);">Also: +3%→+20% cargo, 0.98x→0.90x fuel cost. Total: ~70,193 SV</p>
+
+            <!-- Power Branch -->
+            <div class="tree-row">
+                <div class="tree-label">⚡ Shard Gen</div>
+                <div class="tree-node"><div class="node-level">Lv1</div><div class="node-effect">+5% passive</div><div class="node-cost">4,000 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv2</div><div class="node-effect">+10% passive</div><div class="node-cost">4,480 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv3</div><div class="node-effect">+15% passive</div><div class="node-cost">5,018 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv4</div><div class="node-effect">+20% passive</div><div class="node-cost">5,620 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv5</div><div class="node-effect">+25% passive</div><div class="node-cost">6,294 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv6</div><div class="node-effect">+30% passive</div><div class="node-cost">7,049 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv7</div><div class="node-effect">+35% passive</div><div class="node-cost">7,895 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv8</div><div class="node-effect">+40% passive</div><div class="node-cost">8,842 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv9</div><div class="node-effect">+45% passive</div><div class="node-cost">9,903 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node" style="border-color: gold;"><div class="node-level">Lv10</div><div class="node-effect">+50% passive</div><div class="node-cost">11,092 SV</div></div>
+            </div>
+            <p style="margin: 0 0 16px 120px; font-size: 11px; color: var(--text-muted);">Also: +5%→+25% night gen, +2%→+10% all gen mult, +3→+15 base/hr. Total: ~70,193 SV</p>
+
+            <!-- Extraction Branch -->
+            <div class="tree-row">
+                <div class="tree-label">💎 Extraction</div>
+                <div class="tree-node"><div class="node-level">Lv1</div><div class="node-effect">+5% value</div><div class="node-cost">4,000 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv2</div><div class="node-effect">+10% value</div><div class="node-cost">4,480 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv3</div><div class="node-effect">+13% value</div><div class="node-cost">5,018 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv4</div><div class="node-effect">+17% value</div><div class="node-cost">5,620 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv5</div><div class="node-effect">+20% value</div><div class="node-cost">6,294 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv6</div><div class="node-effect">+25% value</div><div class="node-cost">7,049 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv7</div><div class="node-effect">+28% value</div><div class="node-cost">7,895 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv8</div><div class="node-effect">+32% value</div><div class="node-cost">8,842 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node"><div class="node-level">Lv9</div><div class="node-effect">+36% value</div><div class="node-cost">9,903 SV</div></div>
+                <span class="tree-arrow">→</span>
+                <div class="tree-node" style="border-color: gold;"><div class="node-level">Lv10</div><div class="node-effect">+40% value</div><div class="node-cost">11,092 SV</div></div>
+            </div>
+            <p style="margin: 0 0 0 120px; font-size: 11px; color: var(--text-muted);">Also: +3%→+20% bio value, +2%→+20% extraction bonus, -3%→-25% xenolab cost. Total: ~70,193 SV</p>
+        </div>
+
+        <div class="summary-box" style="margin-top: 16px;">
+            <strong>Total Lab Investment:</strong> ~280,772 SV to max all 4 branches
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- INFRASTRUCTURE PREREQUISITE TREE -->
+    <!-- ============================================================ -->
+    <div class="section" style="border-left: 4px solid #f59e0b;">
+        <div class="section-title" style="color: #f59e0b;">Infrastructure Prerequisite Tree (13 Buildings)</div>
+        <p>Buildings unlock based on prerequisites. Each building has 10 upgrade levels. Costs in <strong>Sepolia shards</strong>.</p>
+
+        <div class="infra-tree">
+            <!-- Tier 1: Starters -->
+            <div class="infra-row">
+                <div class="infra-tier">Tier 1<br>Starter</div>
+                <div class="infra-nodes">
+                    <div class="infra-node">
+                        <div class="node-name">🔆 Solar Array</div>
+                        <div class="node-prereq">No prereq (starter)</div>
+                        <div class="node-effect">Generation: 10→65/hr</div>
+                        <div class="node-cost">0 → 1,238 shards</div>
+                    </div>
+                    <div class="infra-node">
+                        <div class="node-name">🔬 Research Station</div>
+                        <div class="node-prereq">No prereq (starter)</div>
+                        <div class="node-effect">SV: 2→10.4/hr</div>
+                        <div class="node-cost">0 → 1,238 shards</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tier 2: Requires Solar Lv2 -->
+            <div class="infra-row">
+                <div class="infra-tier">Tier 2<br>Solar Lv2</div>
+                <div class="infra-nodes">
+                    <div class="infra-node">
+                        <div class="node-name">🔋 Battery Storage</div>
+                        <div class="node-prereq">← Solar Array Lv2</div>
+                        <div class="node-effect">Night gen: 25%→68%</div>
+                        <div class="node-cost">500 → 1,386 shards</div>
+                    </div>
+                    <div class="infra-node">
+                        <div class="node-name">💧 Water Extractor</div>
+                        <div class="node-prereq">← Solar Array Lv2</div>
+                        <div class="node-effect">Extraction: +5%→+32%</div>
+                        <div class="node-cost">500 → 1,386 shards</div>
+                    </div>
+                    <div class="infra-node">
+                        <div class="node-name">🏠 Habitat Module</div>
+                        <div class="node-prereq">← Solar Array Lv2</div>
+                        <div class="node-effect">Build queue: 3→4 at Lv5</div>
+                        <div class="node-cost">1,000 → 2,773 shards</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tier 3: Multiple prereqs -->
+            <div class="infra-row">
+                <div class="infra-tier">Tier 3<br>Mixed</div>
+                <div class="infra-nodes">
+                    <div class="infra-node">
+                        <div class="node-name">⚙️ Refinery</div>
+                        <div class="node-prereq">← Water Lv3 + Solar Lv3</div>
+                        <div class="node-effect">Processing: +10%→+55%</div>
+                        <div class="node-cost">8,000 → 22,184 shards</div>
+                    </div>
+                    <div class="infra-node">
+                        <div class="node-name">🌱 Greenhouse</div>
+                        <div class="node-prereq">← Water Lv3 + Habitat Lv2</div>
+                        <div class="node-effect">Life support: +5%→+32%</div>
+                        <div class="node-cost">3,000 → 8,319 shards</div>
+                    </div>
+                    <div class="infra-node">
+                        <div class="node-name">🧬 Xenobiology Lab</div>
+                        <div class="node-prereq">← Habitat Lv3 + Research Lv2</div>
+                        <div class="node-effect">Bio value: +10%→+55%</div>
+                        <div class="node-cost">2,000 → 5,546 shards</div>
+                    </div>
+                    <div class="infra-node">
+                        <div class="node-name">📡 Comms Array</div>
+                        <div class="node-prereq">← Solar Lv3 + Battery Lv2</div>
+                        <div class="node-effect">Expedition: +3%→+20%</div>
+                        <div class="node-cost">5,000 → 13,865 shards</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tier 4-7: Endgame chain -->
+            <div class="infra-row">
+                <div class="infra-tier">Tier 4-7<br>Endgame</div>
+                <div class="infra-nodes" style="flex-direction: column; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="infra-node" style="border-color: #f59e0b;">
+                            <div class="node-name">🔥 Regolith Forge</div>
+                            <div class="node-prereq">← Refinery Lv7</div>
+                            <div class="node-effect">Gen: 50→257/hr + 3 SV/hr</div>
+                            <div class="node-cost">15,000 → 41,595 shards</div>
+                        </div>
+                        <span style="color: var(--text-muted);">→</span>
+                        <div class="infra-node" style="border-color: #a855f7;">
+                            <div class="node-name">💜 Resonance Chamber</div>
+                            <div class="node-prereq">← Forge Lv5</div>
+                            <div class="node-effect">Gen: 75→386/hr + 5 SV/hr</div>
+                            <div class="node-cost">50,000 → 138,649 shards</div>
+                        </div>
+                        <span style="color: var(--text-muted);">→</span>
+                        <div class="infra-node" style="border-color: #ef4444;">
+                            <div class="node-name">🌋 Thermal Vent Tap</div>
+                            <div class="node-prereq">← Resonance Lv5</div>
+                            <div class="node-effect">Gen: 100→515/hr + 8 SV/hr</div>
+                            <div class="node-cost">150,000 → 415,949 shards</div>
+                        </div>
+                        <span style="color: var(--text-muted);">→</span>
+                        <div class="infra-node" style="border-color: gold;">
+                            <div class="node-name">🗿 Monolith Antenna</div>
+                            <div class="node-prereq">← Thermal Lv5</div>
+                            <div class="node-effect">Gen: 125→643/hr + 12 SV/hr</div>
+                            <div class="node-cost">500,000 → 1.4M shards</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-box" style="margin-top: 16px;">
+            <strong>Max Infrastructure Income:</strong> ~1,801 shards/hr + 28 SV/hr (all 13 buildings at Lv10)
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- DEPOT UPGRADES -->
+    <!-- ============================================================ -->
+    <div class="section" style="border-left: 4px solid #22c55e;">
+        <div class="section-title" style="color: #22c55e;">Depot Upgrades (11 Paths × 10 Levels)</div>
+        <p>Equipment upgrades cost <strong>Sepolia shards</strong>. Each path is independent (no prerequisites between paths). Levels 2+ have build times (1-14 days).</p>
+
+        <div class="depot-grid">
+            <!-- Rover -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">🚗 Rover</div>
+                    <div class="depot-path-total">~7,536 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level" title="Scout Rover (free)">1</div>
+                    <div class="depot-level" title="Explorer (500)">2</div>
+                    <div class="depot-level" title="Expedition (560)">3</div>
+                    <div class="depot-level" title="Terrain Crawler (627)">4</div>
+                    <div class="depot-level" title="Regolith Runner (703)">5</div>
+                    <div class="depot-level" title="Basalt Hauler (787)">6</div>
+                    <div class="depot-level" title="Stone Serpent (881)">7</div>
+                    <div class="depot-level" title="Dust Devil (987)">8</div>
+                    <div class="depot-level" title="Mars Leviathan (1,105)">9</div>
+                    <div class="depot-level" title="Titan Transport (1,386)">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Cargo: <span class="effect-highlight">10→24</span> (+140%) ·
+                    Speed: <span class="effect-highlight">3→10</span> (+233%) ·
+                    Fuel: <span class="effect-highlight">1.0x→0.75x</span> (-25%)
+                </div>
+            </div>
+
+            <!-- Drone -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">🛸 Drone</div>
+                    <div class="depot-path-total">~87,744 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level" title="Drone Mk I (5,000)">1</div>
+                    <div class="depot-level" title="Mk II (5,600)">2</div>
+                    <div class="depot-level" title="Mk III (6,272)">3</div>
+                    <div class="depot-level" title="Mk IV (7,025)">4</div>
+                    <div class="depot-level" title="Mk V (7,868)">5</div>
+                    <div class="depot-level" title="Mk VI (8,812)">6</div>
+                    <div class="depot-level" title="Mk VII (9,869)">7</div>
+                    <div class="depot-level" title="Mk VIII (11,053)">8</div>
+                    <div class="depot-level" title="Mk IX (12,380)">9</div>
+                    <div class="depot-level" title="Mk X (13,865)">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Fast aerial scout. Cargo: <span class="effect-highlight">4→10</span> ·
+                    Speed: <span class="effect-highlight">4→9</span> ·
+                    Discovery penalty improves: <span class="effect-highlight">-20%→+10%</span>
+                </div>
+            </div>
+
+            <!-- Buggy -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">🏎️ Buggy</div>
+                    <div class="depot-path-total">~87,744 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Long-range explorer. Range: <span class="effect-highlight">1,500→4,500km</span> ·
+                    Fuel: <span class="effect-highlight">0.90x→0.68x</span> ·
+                    Discovery: <span class="effect-highlight">0%→+10%</span>
+                </div>
+            </div>
+
+            <!-- Scanner -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">📡 Scanner</div>
+                    <div class="depot-path-total">~4,433 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Discovery: <span class="effect-highlight">+10%→+55%</span> ·
+                    Rare: <span class="effect-highlight">0%→+25%</span> ·
+                    Legendary: <span class="effect-highlight">0%→+5%</span>
+                </div>
+            </div>
+
+            <!-- Life Support -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">💨 Life Support</div>
+                    <div class="depot-path-total">~10,532 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Expedition cost: <span class="effect-highlight">0.90x→0.50x</span> (-50% at max)
+                </div>
+            </div>
+
+            <!-- Cargo -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">📦 Cargo</div>
+                    <div class="depot-path-total">~13,162 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Slots: <span class="effect-highlight">+2→+12</span> ·
+                    Bio value: <span class="effect-highlight">1.0x→1.30x</span>
+                </div>
+            </div>
+
+            <!-- Generator -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">⚡ Generator</div>
+                    <div class="depot-path-total">~17,545 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Passive income: <span class="effect-highlight">1.10x→1.70x</span> (+70% at max)
+                </div>
+            </div>
+
+            <!-- Research -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">🔬 Research</div>
+                    <div class="depot-path-total">~26,319 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Discovery value: <span class="effect-highlight">1.10x→1.70x</span> (+70% at max)
+                </div>
+            </div>
+
+            <!-- Suit -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">👔 Suit</div>
+                    <div class="depot-path-total">~14,039 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Captain stats: Exp <span class="effect-highlight">+5→+30</span> ·
+                    Lead/Strat <span class="effect-highlight">+3→+25</span> ·
+                    Log <span class="effect-highlight">+5→+30</span>
+                </div>
+            </div>
+
+            <!-- Automation -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">🤖 Automation</div>
+                    <div class="depot-path-total">~43,873 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Base income: <span class="effect-highlight">+3→+30/hr</span> ·
+                    Dust immunity at Lv3+
+                </div>
+            </div>
+
+            <!-- Bunker -->
+            <div class="depot-path">
+                <div class="depot-path-header">
+                    <div class="depot-path-name">🏰 Bunker</div>
+                    <div class="depot-path-total">~43,873 shards total</div>
+                </div>
+                <div class="depot-levels">
+                    <div class="depot-level">1</div><div class="depot-level">2</div><div class="depot-level">3</div>
+                    <div class="depot-level">4</div><div class="depot-level">5</div><div class="depot-level">6</div>
+                    <div class="depot-level">7</div><div class="depot-level">8</div><div class="depot-level">9</div>
+                    <div class="depot-level">10</div>
+                </div>
+                <div class="depot-effect-summary">
+                    Discovery storage: <span class="effect-highlight">50→1,000</span> capacity
+                </div>
+            </div>
+        </div>
+
+        <div class="summary-box" style="margin-top: 16px;">
+            <strong>Total Depot Investment:</strong> ~358,000 Sepolia shards to max all 11 paths
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- EFFECT STACKING SUMMARY -->
+    <!-- ============================================================ -->
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;">How Effects Stack</div>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Effect Type</th><th>Sources</th><th>Stacking Rule</th><th>Max Combined</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Expedition Speed</strong></td>
+                    <td>Tech (exploration, vehicles) + Rover level</td>
+                    <td>Multiplicative (max of each)</td>
+                    <td>+30% + +30% + 10.0x base = very fast</td>
+                </tr>
+                <tr>
+                    <td><strong>Discovery Chance</strong></td>
+                    <td>Tech (exploration) + Scanner + Comms Array</td>
+                    <td>Additive (sum)</td>
+                    <td>+30% + +55% + +20% = +105%</td>
+                </tr>
+                <tr>
+                    <td><strong>Passive Income</strong></td>
+                    <td>Infrastructure + Tech (power) + Generator</td>
+                    <td>Base + multipliers</td>
+                    <td>~1,800/hr × 1.5 × 1.7 = ~4,590/hr</td>
+                </tr>
+                <tr>
+                    <td><strong>Discovery Value</strong></td>
+                    <td>Tech (extraction) + Research + Xenolab</td>
+                    <td>Multiplicative</td>
+                    <td>1.4 × 1.7 × 1.55 = ~3.7x value</td>
+                </tr>
+                <tr>
+                    <td><strong>Fuel Cost</strong></td>
+                    <td>Tech (vehicles) + Rover + Life Support</td>
+                    <td>Min (lowest wins)</td>
+                    <td>0.90 × 0.75 × 0.50 = 0.34x cost</td>
+                </tr>
+                <tr>
+                    <td><strong>Captain Stats</strong></td>
+                    <td>EVA Suit (depot)</td>
+                    <td>Additive (sum)</td>
+                    <td>Exp/Log +30, Lead/Strat +25, Cha +20</td>
+                </tr>
+                <tr>
+                    <td><strong>Discovery Storage</strong></td>
+                    <td>Storage Bunker (depot)</td>
+                    <td>Direct value (replaces default)</td>
+                    <td>Default 25, max 1,000 at Lv10</td>
+                </tr>
+                <tr>
+                    <td><strong>Build Queue</strong></td>
+                    <td>Habitat Module (infra)</td>
+                    <td>Threshold (+1 at Lv5)</td>
+                    <td>Default 3, +1 at Lv5 = 4 max</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Quick Reference -->
+    <div class="section" style="background: var(--bg-card);">
+        <div class="section-title">Quick Reference</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; font-size: 13px;">
+            <div>
+                <strong>Pricing Formula:</strong><br>
+                <code>Cost(n) = BaseCost × 1.12^(n-1)</code>
+            </div>
+            <div>
+                <strong>Build Time Cap:</strong><br>
+                14 days maximum (Clash of Clans standard)
+            </div>
+            <div>
+                <strong>Currencies:</strong><br>
+                Sepolia shards (depot/infra) · SV (tech tree)
+            </div>
+            <div>
+                <strong>Config Files:</strong><br>
+                config_upgrades.py · config_tech.py · config_infrastructure.py
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

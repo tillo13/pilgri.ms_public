@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% block title %}Robot Crew Member Brainstorm — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>window.BRAINSTORM_PAGE_KEY = 'robot-crew';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-draft">Brainstorm</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Robot Crew Member</h1>
+        <p style="color: var(--text-secondary); margin: 0;">4th Crew Member — Built by the Scientist from Legendary Discoveries</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">April 2026 — Bug #1147 (P1) + #1230 (Buildable Robot)</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 1: THE PITCH -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">The Pitch — Why a 4th Crew Member?</div>
+
+        <p>Right now, every colony has 3 crew: <strong>Captain</strong> (the player), <strong>Scientist</strong> (chosen at game start), and <strong>ARIA</strong> (the AI companion). The Robot is the 4th — and unlike the others, you <em>build</em> it.</p>
+
+        <div class="summary-box">
+            <strong>Core fantasy:</strong> Your scientist takes legendary expedition discoveries — Crystal Sentinel, Quantum Crystal, Quantum Obelisk — and over weeks, constructs a robot companion from Martian materials. Think Bo from Star Wars building a droid from junk. This is the first time the scientist's Engineering stat actually matters.
+        </div>
+
+        <div class="question-box">
+            <strong>Key questions for Luke:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Does the robot feel like a natural progression from the current 3-crew system, or does it need more narrative setup?</li>
+                <li>Should every captain eventually get a robot, or should it feel rare/achievement-based?</li>
+                <li>What's the robot's personality? Is it silent/mechanical, or does it develop character like ARIA?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 2: COMPONENT REQUIREMENTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title" style="color: var(--color-danger);">Component Requirements — What You Need</div>
+
+        <p>The robot requires <strong>legendary discoveries</strong> as core components and <strong>rare discoveries</strong> as raw materials. This gives legendaries a PURPOSE beyond collection value.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Discovery Required</th>
+                        <th>Rarity</th>
+                        <th>Robot Function</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Brain / AI Core</td>
+                        <td>Crystal Sentinel</td>
+                        <td>Legendary</td>
+                        <td>Intelligence, decision-making</td>
+                    </tr>
+                    <tr>
+                        <td>Power Source</td>
+                        <td>Quantum Crystal</td>
+                        <td>Legendary</td>
+                        <td>Energy generation, endurance</td>
+                    </tr>
+                    <tr>
+                        <td>Chassis / Body</td>
+                        <td>Quantum Obelisk</td>
+                        <td>Legendary</td>
+                        <td>Physical structure, durability</td>
+                    </tr>
+                    <tr>
+                        <td>Raw Materials (various)</td>
+                        <td>Curiosity Gyroscope, Opportunity Processor, etc.</td>
+                        <td>Rare</td>
+                        <td>Wiring, joints, sensors, plating</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Open questions:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>How many rares needed? 3? 5? 10? More = longer grind but more satisfying payoff</li>
+                <li>Can you use ANY rare, or specific ones for specific parts?</li>
+                <li>What if you've already "sharded" (sold) your legendaries? Can you re-find them, or are you locked out?</li>
+                <li>Should there be a Shard cost on top of the discovery requirements?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 3: BUILD PROCESS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Build Process — Multi-Phase Construction</div>
+
+        <p>Building the robot is a <strong>multi-phase project</strong>, not a one-click purchase. It takes weeks, like real construction in the Depot. The scientist works on it between expeditions.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box" style="border-color: var(--text-muted);">
+                    <strong>Phase 1: Gather</strong>
+                    <br>Collect required legendaries + rares from expeditions
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-primary);">
+                    <strong>Phase 2: Chassis</strong>
+                    <br>Scientist assembles physical frame
+                    <br>~3-7 days
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-sepolia);">
+                    <strong>Phase 3: Circuits</strong>
+                    <br>Internal wiring + sensors
+                    <br>~3-7 days
+                </div>
+            </div>
+            <div class="flow-row" style="margin-top: 12px;">
+                <div class="flow-box" style="border-color: var(--color-mars);">
+                    <strong>Phase 4: Core</strong>
+                    <br>Install AI core + power
+                    <br>~3-7 days
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-success);">
+                    <strong>Phase 5: Activation</strong>
+                    <br>Robot comes online
+                    <br>Cinematic moment
+                </div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-box" style="border-color: var(--color-success);">
+                    <strong>Crew Page</strong>
+                    <br>4th crew member appears
+                    <br>Has own stats + abilities
+                </div>
+            </div>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Scientist Engineering Stat — Finally Matters</h4>
+
+        <div class="summary-box">
+            <strong>Engineering (ENG) directly controls build speed.</strong>
+            <br>High-ENG scientists (Dr. Tom @ 48, Dr. Don @ 42) build significantly faster. Low-ENG scientists take much longer.
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Build Duration by Engineering Stat</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">ENG 48 (Dr. Tom)</span><span class="mockup-value">~2 weeks total</span></div>
+                <div class="mockup-row"><span class="mockup-label">ENG 35 (mid-range)</span><span class="mockup-value">~3-4 weeks total</span></div>
+                <div class="mockup-row"><span class="mockup-label">ENG 20 (low)</span><span class="mockup-value">~6-8 weeks total</span></div>
+                <div class="mockup-row"><span class="mockup-label">ENG 6 (Dr. Anna)</span><span class="mockup-value">~2+ months</span></div>
+            </div>
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-top: 20px;">Other Scientist Stats During Build</h4>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stat</th>
+                        <th>Effect on Robot Build</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Engineering</td>
+                        <td>Build speed — the primary lever</td>
+                    </tr>
+                    <tr>
+                        <td>Analysis</td>
+                        <td>Less material waste — fewer rares needed to complete</td>
+                    </tr>
+                    <tr>
+                        <td>Geology</td>
+                        <td>Identifies best components from inventory — quality bonus</td>
+                    </tr>
+                    <tr>
+                        <td>Navigation</td>
+                        <td>Robot's efficiency once built — better at autonomous tasks</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Open questions:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Can the scientist do other things while building? Or is robot construction exclusive (no expeditions while building)?</li>
+                <li>Should build phases be visible on the Colony page like Depot construction?</li>
+                <li>Can you speed up construction with Shards? (Luke flagged "way to speed up Depot build times" as P1)</li>
+                <li>What happens if you cancel mid-build? Lose materials? Partial refund?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 4: WHAT THE ROBOT DOES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">What the Robot Does — Capabilities</div>
+
+        <div class="summary-box">
+            The robot fills two critical gaps: <strong>autonomous trail building</strong> (Bug #1113) and <strong>ARIA Autopilot colony management</strong> (Bug #1145). It's the in-lore reason your colony runs while you're AFK.
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Capability</th>
+                        <th>Description</th>
+                        <th>Related Bug</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Autonomous Trail Building</strong></td>
+                        <td>Robot builds trails while you're away. Speed based on robot level + Navigation stat from scientist who built it.</td>
+                        <td>#1113</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Colony Management (AFK)</strong></td>
+                        <td>Seeds ARIA Autopilot. In-lore reason colony keeps running when captain is offline.</td>
+                        <td>#1145</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Expedition Support</strong></td>
+                        <td>Can the robot go on expeditions? As a 4th crew member or as a solo autonomous scout?</td>
+                        <td>TBD</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Depot Assistance</strong></td>
+                        <td>Could speed up Depot build times (addresses Luke's P1 "Way to speed up Depot build times")</td>
+                        <td>#1265</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Key design questions:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Does the robot have its own stats? If so, what determines them — the components used, the scientist who built it, or fixed values?</li>
+                <li>Can the robot be upgraded/leveled after construction?</li>
+                <li>Does the robot appear in the Crew page tab alongside Captain, Scientist, and ARIA?</li>
+                <li>Can the robot be damaged/destroyed? Does it need maintenance?</li>
+                <li>Robot personality — silent tool, or does it develop character? ARIA already fills the "AI companion" role</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 5: ROBOT + EXISTING SYSTEMS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Integration with Existing Systems</div>
+
+        <p>The robot touches almost every game system. This section maps out where it connects.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>System</th>
+                        <th>How Robot Integrates</th>
+                        <th>Complexity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Crew Page</td>
+                        <td>New 4th tab or card. Stats display, build progress, abilities.</td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Colony Page</td>
+                        <td>Build progress visible (like Depot construction). Robot activity status.</td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Expeditions</td>
+                        <td>Robot as crew member? Solo scout missions? Trail building integration?</td>
+                        <td>High</td>
+                    </tr>
+                    <tr>
+                        <td>Discoveries</td>
+                        <td>Legendaries consumed as components. Rares used as materials. New purpose for items.</td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Depot</td>
+                        <td>Robot could speed up build times. New upgrade path for robot itself?</td>
+                        <td>Medium</td>
+                    </tr>
+                    <tr>
+                        <td>Trail System</td>
+                        <td>Autonomous trail building — the big win. Addresses 108-year trail problem.</td>
+                        <td>High</td>
+                    </tr>
+                    <tr>
+                        <td>ARIA</td>
+                        <td>ARIA's relationship to the robot? Does ARIA help guide construction? Does she talk to the robot?</td>
+                        <td>Low (narrative)</td>
+                    </tr>
+                    <tr>
+                        <td>Signal Detection</td>
+                        <td>Could robot enhance Signal detection range? (Luke wants more levers for Signal finding)</td>
+                        <td>Low</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Scope question:</strong> The robot touches everything. What's the MVP? Suggestion: build process + trail building first, add expedition/depot integration later.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 6: WORLD 2 CONNECTION -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">World 2 Connection — Martian Crew Member?</div>
+
+        <p>Luke's Signal Phase 2 feedback included a vision for World 2: after finding all 14 Earth signals, 14 new Martian heritage signals unlock — and one reward could be a <strong>new Martian crew member</strong>.</p>
+
+        <div class="question-box">
+            <strong>Design fork:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Option A:</strong> The Robot IS the 4th crew member (built from discoveries). Martian crew member is a 5th, unlocked much later via Signal World 2.</li>
+                <li><strong>Option B:</strong> The Robot is the 4th. There is no 5th. The "Martian crew member" was the Robot all along — it was built from Martian materials.</li>
+                <li><strong>Option C:</strong> Robot is a tool/companion (not a full crew member). Martian discovery from World 2 is the real 4th crew member.</li>
+            </ul>
+            This affects the entire crew system architecture. Needs a decision before implementation.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 7: ACTIVATION CINEMATIC -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">The Activation Moment — Cinematic</div>
+
+        <p>After weeks of construction, the robot activates. This should be a <strong>major narrative moment</strong> — on par with the Signal claiming cinematic or ARIA bond reveal.</p>
+
+        <div class="summary-box">
+            <strong>Luke values game polish</strong> — character select grids, cinematic reveals, side-by-side comparisons. The activation should feel earned and epic, not just a toast notification.
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Activation Sequence (Concept)</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">1. Final build countdown</span><span class="mockup-value">Timer completes on Colony page</span></div>
+                <div class="mockup-row"><span class="mockup-label">2. ARIA announcement</span><span class="mockup-value">"Captain... it's waking up."</span></div>
+                <div class="mockup-row"><span class="mockup-label">3. Full-screen cinematic</span><span class="mockup-value">Robot powers on, eyes glow, first movement</span></div>
+                <div class="mockup-row"><span class="mockup-label">4. Naming ceremony</span><span class="mockup-value">Captain names the robot (permanent, engraved)</span></div>
+                <div class="mockup-row"><span class="mockup-label">5. Crew page updated</span><span class="mockup-value">4th crew member appears with stats card</span></div>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <strong>Does the captain name the robot?</strong> This would be the first time a captain names something permanent. It could show up in activity logs, trail building credits, etc.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 8: IMPLEMENTATION PRIORITY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Implementation Priority</div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item</th>
+                        <th>Depends On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Component requirements design</strong> — which discoveries, how many</td>
+                        <td>Luke's input on this brainstorm</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>Build process + UI</strong> — multi-phase construction on Colony page</td>
+                        <td>#1 confirmed</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><strong>ENG stat integration</strong> — build speed formula</td>
+                        <td>Scientist Stats brainstorm (#1108)</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><strong>Activation cinematic</strong></td>
+                        <td>#2 complete</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><strong>Crew page integration</strong> — 4th member card + stats</td>
+                        <td>#4 complete</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><strong>Trail building automation</strong> — the first real capability</td>
+                        <td>#5 complete + Trail system</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><strong>Expedition/Depot integration</strong> — later capabilities</td>
+                        <td>Everything above</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>Related bugs:</strong> #1147 (this bug), #1230 (Buildable Robot), #1113 (Automatic Trail Builder), #1145 (ARIA Autopilot), #1108 (Scientist Stats), #1265 (Speed up Depot builds)</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PILGRIMBOT BRAINSTORM LINK -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), var(--bg-secondary)); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#x1F9E0;</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">Brainstorm with PilgrimBot</h3>
+        <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 13px;">
+            Full PilgrimBot — streaming, markdown, code context, bug creation, endgame registry
+        </p>
+        <a href="/pilgrimbot?brainstorm=robot-crew" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; background: var(--color-sepolia); color: white;">
+            Open PilgrimBot — Robot Crew Member
+        </a>
+    </div>
+
+</div>
+{% endblock %}

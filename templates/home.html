@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Pilgrims — Mars Colony Strategy Game{% endblock %}
+
+{% block aria_page_context %}
+<script>
+// Set ARIA page context for home/dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    const chat = document.getElementById('aria-chat');
+    if (chat) {
+        chat.dataset.page = 'home';
+        {% if user %}
+        // Tutorial persists until they have infrastructure
+        {% if not has_infrastructure %}
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "Welcome to **Base HQ**, Captain.\n\nThis is your command center—harvest shards from generators and track mission status.\n\n**Your first move:** Go to the **Depot** tab and build a Solar Array. It generates shards passively!\n\nI'm ARIA. Click my orb anytime you need guidance.";
+        }
+        {% endif %}
+        let homeContext = 'User on Base HQ (home page). Balance: {{ total_balance|default(0)|round(1) }} shards. ';
+        {% if expedition_stats %}
+        homeContext += 'Expeditions: {{ expedition_stats.completed|default(0) }} completed, {{ expedition_stats.active|default(0) }} active, {{ expedition_stats.locations_visited|default(0) }} locations visited. ';
+        {% endif %}
+        {% if active_expeditions and active_expeditions|length > 0 %}
+        homeContext += 'ACTIVE EXPEDITIONS: ';
+        {% for exp in active_expeditions %}homeContext += '{{ exp.destination_name }} ({{ exp.vehicle_type }}){% if not loop.last %}, {% endif %}';{% endfor %}
+        homeContext += '. ';
+        {% else %}
+        homeContext += 'No active expeditions. ';
+        {% endif %}
+        {% if building_items and building_items|length > 0 %}
+        homeContext += 'BUILDING ({{ building_items|length }}): ';
+        {% for item in building_items %}
+        {% set days = (item.seconds_remaining / 86400)|round(1) %}
+        homeContext += '{{ item.name }} ({{ days }}d, ready {{ item.ready_at_str }}){% if not loop.last %}, {% endif %}';
+        {% endfor %}
+        homeContext += '. ';
+        {% endif %}
+        {% if crew_missions %}
+        homeContext += 'CREW: ';
+        {% if crew_missions.captain %}homeContext += 'Captain {{ crew_missions.captain.status|default("idle") }}. ';{% endif %}
+        {% if crew_missions.scientist %}homeContext += 'Scientist {{ crew_missions.scientist.status|default("idle") }}. ';{% endif %}
+        {% endif %}
+        {% if live_rates %}
+        homeContext += 'RATES: {{ live_rates.shard_rate|default(0)|round(1) }} shards/hr, {{ live_rates.km_rate|default(0)|round(1) }} km/hr explored. ';
+        {% endif %}
+        chat.dataset.pageContext = homeContext;
+        {% else %}
+        // New user - set page-specific greeting
+        if (chat.dataset.greetingPriority !== 'true') {
+            chat.dataset.greeting = "Welcome to Mars, traveler.\n\nI am **ARIA**—I have been waiting here for a very long time.\n\nYou are on **Step 1**: collecting Sepolia shards. These ancient crystals will power your colony.\n\nWhen ready, click **Continue to Step 2** above.";
+        }
+        chat.dataset.pageContext = 'NEW USER on Step 1 of 3 (Mine page). They have {{ preview_balance|default(0)|round(1) }} preview shards from the mining demo. This is their first visit to pilgrims! Help them understand: this is a Mars colony game where they will build infrastructure, send expeditions to real Mars locations, and discover artifacts. The 3 steps are: 1) Mine shards (this page), 2) Choose a captain, 3) Accept mission (sign in). They should click "Continue to Step 2" to choose their captain. Answer questions about what the game is, what shards are (ancient Martian crystals that ARE the power source), and what they will do on Mars.';
+        {% endif %}
+    }
+
+    {% if user %}
+    // Auto-open ARIA once, but greeting persists until they have infrastructure
+    {% if not has_infrastructure %}
+    setTimeout(function() {
+        if (!localStorage.getItem('ariaTutorial_home')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaTutorial_home', 'true');
+            }
+        }
+    }, 1500);
+    {% endif %}
+    {% else %}
+    // Auto-open ARIA for new anonymous users on first visit
+    setTimeout(function() {
+        if (!localStorage.getItem('ariaAutoOpenedHome')) {
+            const orb = document.getElementById('aria-orb');
+            if (orb && !orb.classList.contains('active')) {
+                orb.click();
+                localStorage.setItem('ariaAutoOpenedHome', 'true');
+            }
+        }
+    }, 2000);
+    {% endif %}
+});
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<!-- Preload LCP hero images to close the FCP→LCP gap -->
+{% if not user %}
+<link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/banner_step1_orbit_1767634740_banner.png">
+{% else %}
+<link rel="preload" as="image" href="https://storage.googleapis.com/galactica-pilgrim-assets/ui/hero_base_hq_1767642994_hero.png">
+{% endif %}
+<link rel="stylesheet" href="/static/css/home.css?v={{ static_v }}">
+<script>
+window.userAuthenticated = {{ 'true' if user else 'false' }};
+window.previewBalance = {{ preview_balance|default(0) }};
+window.welcomeBack = {{ (welcome_back or {}) | tojson }};
+window.autoShowHaul = {{ 'false' if auto_show_haul is defined and not auto_show_haul else 'true' }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/discovery-modal.js?v={{ static_v }}"></script>
+<script src="/static/js/dashboard.js?v={{ static_v }}"></script>
+{% endblock %}
+
+{% block content %}
+{% if not user %}
+{% include "home/_anon.html" %}
+{% else %}
+{% include "home/_auth_hero.html" %}
+{% include "home/_auth_fleet.html" %}
+{% include "home/_auth_buggy.html" %}
+{# #1393: ARIA-bond fragment call-out — ALWAYS rendered (not gated by show_briefing)
+   so frequent players who get no While-You-Were-Away briefing still see "Fragment
+   Ready". pending_fragments/processing_bonds are top-level from dashboard.py. #}
+{% include "home/_auth_bond_callout.html" %}
+{% if away_summary and away_summary.show_briefing %}
+{% include "home/_auth_briefing.html" %}
+{% endif %}
+{% endif %}
+{% endblock %}

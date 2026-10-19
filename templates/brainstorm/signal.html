@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Signal System — Endgame Design — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_PAGE_KEY = 'signal';
+</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    {% include "brainstorm/signal/_intro.html" %}
+    {% include "brainstorm/signal/_current_state.html" %}
+    {% include "brainstorm/signal/_discovery_mechanics.html" %}
+    {% include "brainstorm/signal/_implemented.html" %}
+    {% include "brainstorm/signal/_redesign.html" %}
+    {% include "brainstorm/signal/_endgame.html" %}
+
+</div>
+{% endblock %}

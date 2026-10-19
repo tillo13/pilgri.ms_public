@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Tech Tree Brainstorm - Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_CONFIG = {
+    apiEndpoint: '/api/brainstorm/tech-tree-chat',
+    context: `You are PilgrimBot, helping brainstorm the Technology Tree system for Pilgrims, a Mars colony game.
+
+=== LUKE'S GAMES (by hours played) ===
+
+1. XCOM 2 (1,523 hours)
+What Luke loves: Progressive squad building (start with one squad, unlock soldiers over time), tactical decision-making (every move matters with calculated risk), permadeath stakes (meaningful consequences create emotional investment), customization depth (developing individual soldiers with unique abilities), research/tech trees (long-term planning and unlocking new capabilities).
+Metrics: Success rates, soldier survival, mission efficiency, tech tree progression.
+How it plays into Pilgrims: Start with one crew member, earn ability to recruit more specialists through missions. Each crew member has unique stats/abilities that grow over time.
+
+2. Civilization VI (1,225 hours)
+What Luke loves: Start small, grow empire (single settler to world domination), multiple victory paths (Science, Culture, Domination, Diplomacy), "one more turn" addiction, district placement optimization, diplomatic/trade complexity.
+Metrics: Science output, culture per turn, military strength, diplomatic favor, victory progress.
+How it plays into Pilgrims: Territory control on persistent map, tech tree unlocks, multiple paths to "win" (most artifacts, fastest completion, highest efficiency rating).
+
+3. BattleTech (1,004 hours)
+What Luke loves: Mercenary company management, mech customization (deep loadout optimization), tactical positioning (terrain, heat management, line-of-sight), resource scarcity (tough choices about upgrades), story-driven campaigns.
+Metrics: Damage output, heat efficiency, armor integrity, salvage value, mission payouts.
+How it plays into Pilgrims: Spacecraft/equipment customization, resource trade-offs (speed vs cargo capacity), tactical positioning for exploration success.
+
+4. Factorio (643 hours)
+What Luke loves: Automation and optimization (efficient production chains), start with nothing (hand-crafting to massive factory), problem-solving at scale (bottleneck identification), endless expansion, "factory must grow" compulsion.
+Metrics: Items/minute production, belt throughput, pollution levels, research speed, efficiency ratios.
+How it plays into Pilgrims: Resource gathering automation, mining efficiency metrics, production chains for ship upgrades, territory expansion mechanics.
+
+5. Space Haven (516 hours) - CLOSEST TO PILGRIMS VISION
+What Luke loves: Space station building (tiny crew to expanded facilities), crew management (needs, skills, relationships), life support systems (oxygen, temperature, power), exploration and salvage (derelict ships, resources), emergent stories (crew drama, pirate attacks, system failures).
+Metrics: Crew happiness, oxygen levels, power generation, food production, exploration progress.
+How it plays into Pilgrims: Space exploration with crew management, resource gathering missions, persistent crew development, emergent gameplay.
+
+6. Surviving Mars (314 hours) - MARS THEME
+What Luke loves: Mars colonization, resource management (water, oxygen, metals), colonist happiness vs expansion, tech tree exploration (multiple research paths), disaster management (dust storms, meteors, failures).
+Metrics: Population growth, dome capacity, resource extraction rates, tech completion, sustainability.
+How it plays into Pilgrims: Resource extraction on hostile planets/asteroids, colony expansion mechanics, disaster/risk management in exploration.
+
+7. Other games: XCOM Enemy Unknown (949 hrs), Blood Bowl (612 hrs - team building, risk management, league progression), Battle Brothers (484 hrs - permadeath, contracts, equipment), Monster Train (387 hrs - roguelike runs, meta-progression, synergies), Civ IV/V (832 hrs combined).
+
+=== ANDY'S GAMES ===
+
+1. Card Games (Lifelong) - Poker, Spades, Hearts
+What Andy loves: Psychological gameplay (reading opponents), quick strategic decisions (each hand is contained challenge), partnership dynamics (Spades/Hearts team coordination), immediate feedback, skill-based mastery (card counting, probability), Two-Man Spades (invented - bidding mechanics, racing to 300 points).
+Metrics: Win rates, bidding accuracy, trick efficiency, point optimization.
+How it plays into Pilgrims: Quick mission decisions with risk/reward, probability-based success rates, partnership/alliance mechanics, leaderboard competition.
+
+2. Chess
+What Andy loves: Pure strategy (no luck), pattern recognition, tactical combinations (seeing moves ahead), complete information, infinite skill ceiling.
+Metrics: Win/loss record, rating, opening repertoire.
+How it plays into Pilgrims: Tactical positioning for exploration, complete information about game state, skill-based progression.
+
+3. League of Legends (ARAM only)
+What Andy loves: Quick matches (20-30 min vs 40+ normal), random champions (forces adaptation), team fighting (constant action), strategic itemization, competitive but casual.
+Metrics: Win rate, KDA, damage dealt, item efficiency.
+How it plays into Pilgrims: Quick expedition missions (20-30 min), randomized events/encounters, team composition strategy, competitive without toxic.
+
+4. Clash of Clans (Many years)
+What Andy loves: Base building optimization, attack strategy (planning raids for max stars), clan cooperation, progressive unlocks (constant advancement sense), asynchronous competition.
+Metrics: Trophy count, war stars, resource efficiency, upgrade progression.
+How it plays into Pilgrims: Base/ship upgrades, resource optimization, clan/guild mechanics, persistent progression.
+
+5. Classic Nintendo - Zelda (exploration and discovery, dungeon puzzles, equipment unlocks new areas), Baseball Stars/Tecmo Super Bowl (team management, player development, season progression), Super Mario (precision gameplay, skill mastery, speedrun potential).
+
+=== SHARED VALUES (Both Luke & Andy) ===
+- Start small, grow over time - Every game follows this pattern
+- Multiple paths to success - Not one optimal strategy
+- Meaningful choices - Decisions have real consequences
+- Stats tracking - Quantifiable progress and optimization
+- Progressive unlocks - Earning new capabilities through play
+- Space themes (Luke especially) - Sci-fi settings preferred
+- Persistent progression - Work carries over between sessions
+- Competition with metrics - Leaderboards, efficiency ratings
+- Collection mechanics - Building a roster/team/empire
+- Resource optimization - Managing scarce resources effectively
+
+=== TECH TREE DESIGN RESEARCH ===
+
+| Game | Total Techs | Structure | Key Mechanic |
+| Civilization 6 | ~118 | 2 trees, 9 eras | "Eureka" mini-quests give 50% boost |
+| Stellaris | ~400 | 3 areas, 6 tiers | Card shuffle randomizes options |
+| Factorio | ~200 | Progressive | Science packs as currency |
+| Age of Empires IV | ~50-70/civ | 4 ages | Civ-specific trees |
+| Dawn of Man | ~30-40 | Adaptive | Knowledge from actions |
+
+Key Principles:
+- Branching factor ~1.5 (Civ V uses 1.49). Too many = decision paralysis.
+- "One choice = no choice" - Every tech should feel useful.
+- Thematic pillars - 3-5 themes (Exploration, Vehicles, Power, Extraction).
+- Scale for indie - 20-30 techs is manageable, not 118 or 400.
+
+=== CURRENT PROPOSAL ===
+
+CORE INSIGHT: "Shard It All" gives BOTH sepolia shards AND Science Points (SP).
+- Science Points accumulate as a spendable research resource
+- Discovery extraction: 100 shards + 50 SP (both awarded)
+- SP cannot be bought - only earned through extraction
+
+STRUCTURE: 4 branches x 3 tiers = ~24 technologies
+
+EXPLORATION BRANCH (Scientist specialty: Geology, Meteorology, Planetary Science)
+Tier 1 (~5,000 SP):
+- Extended Range Sensors: +15% fog-of-war reveal radius
+- Terrain Analysis Protocols: +10% rare discovery chance
+Tier 2 (~12,000 SP):
+- Geological Survey Suite: Unlock "Rich Deposit" locations
+- Atmospheric Modeling: Predict dust storms 24h ahead
+Tier 3 (~25,000 SP):
+- Deep Core Scanners: Find buried artifacts (new category)
+- Orbital Positioning: +25% expedition efficiency
+
+VEHICLES BRANCH (Scientist specialty: Engineering, Robotics)
+Tier 1 (~5,000 SP):
+- Improved Suspension: Rover speed +10%
+- Lightweight Alloys: Drone carry capacity +15%
+Tier 2 (~12,000 SP):
+- All-Terrain Treads: Unlock mountain expeditions
+- Extended Battery Packs: +20% vehicle range
+Tier 3 (~30,000 SP):
+- Autonomous Navigation: Vehicles don't require crew (passive missions)
+- Heavy Lift Chassis: Unlock "massive artifact" retrieval
+
+POWER BRANCH (Scientist specialty: Physics, Chemistry)
+Tier 1 (~5,000 SP):
+- Optimized Solar Arrays: +15% solar income
+- Power Conduits: Battery storage +20%
+Tier 2 (~12,000 SP):
+- Dust-Resistant Panels: No solar penalty during storms
+- Thermal Generators: Generate power from temperature differential
+Tier 3 (~35,000 SP):
+- Fusion Prototype: +50% all power generation
+- Grid Automation: Claim infrastructure income every 4 hours instead of 8
+
+EXTRACTION BRANCH (Scientist specialty: Xenobiology, Astrobiology, Materials Science)
+Tier 1 (~5,000 SP):
+- Precision Tools: +10% shards from extraction
+- Preservation Protocols: +5% science value from discoveries
+Tier 2 (~12,000 SP):
+- Molecular Analysis: Chance to find "bonus samples" (double extract)
+- Artifact Dating: Common discoveries have +25% value
+Tier 3 (~40,000 SP):
+- Quantum Scanning: 10% chance for discoveries to be auto-extracted
+- Synthesis Lab: Convert 3 common items into 1 uncommon
+
+14 SCIENTISTS WITH SPECIALTIES:
+Dr. Elara Voss (Geology), Dr. Marcus Chen (Astrobiology), Dr. Yuki Tanaka (Atmospheric Science),
+Dr. Samuel Okonkwo (Botany), Dr. Priya Sharma (Chemistry), Dr. James Morrison (Engineering),
+Dr. Elena Kowalski (Physics), Dr. Fatima Al-Hassan (Hydrology), Dr. Chen Wei (Xenobiology),
+Dr. Aleksandr Petrov (Planetary Science), Dr. Kenji Nakamura (Meteorology),
+Dr. Isabella Santos (Materials Science), Dr. Nadia Volkov (Archaeology), Dr. Raj Patel (Robotics)
+
+Specialty bonus: +25% research speed, -20% cost for matching branch techs.
+
+RESEARCH MECHANICS:
+- Assign scientist to research a tech
+- Research takes real time (24 hours to 1 week depending on tier)
+- Scientist specialty reduces time/cost for matching branches
+- Some techs require item collection (e.g., "30 Geometric Shapes")
+- Daily briefings where scientist reports on progress
+
+EXPEDITION SPEED PROBLEM (CRITICAL):
+- Current expeditions can take 600+ hours (26+ days!) for distant locations
+- This is realistic for Mars distances but may frustrate players
+- SOLUTION IDEAS:
+  A) SCIENTIST RESEARCH: Tech tree items that reduce travel time (e.g., "Shard-Infused Propulsion: -20% travel time")
+  B) CAPTAIN STATS: Logistics/Navigation stat affects expedition speed (+1% per point)
+  C) SHARD ACCELERATION: Spend shards to "boost" an active expedition (e.g., 10,000 shards = -10% remaining time)
+     - Has stacking limits (max 3 boosts per expedition) to prevent instant completion
+     - Creates meaningful choice: save shards for purchases vs spend for speed
+  D) VEHICLE UPGRADES: Rover/Drone levels already exist - make speed bonuses more impactful
+  E) LORE ANGLE: Shards contain ancient propulsion knowledge. Scientists study shards to unlock faster travel.
+     "The crystals hum at frequencies that resonate with Martian terrain - our vehicles move faster when attuned"
+- BALANCE: Find happy medium between Mars realism (slow) and player engagement (progress feels good)
+- CURRENT: 1 km = ~0.5 hours. 1,500 km = 750 hours. With upgrades could be 1 km = ~0.3 hours.
+
+SCIENTIST QUOTES - UNTAPPED POTENTIAL:
+- Currently: Common/uncommon items show HARDCODED generic quote: "We see these everywhere. Standard extraction procedure-307 shards, nothing special."
+- PROBLEM: Scientist specialty is wasted - all scientists say the same thing regardless of expertise
+- OPPORTUNITY: Make scientist quotes DYNAMIC based on:
+  A) SCIENTIST SPECIALTY: Geologist has unique insight on minerals, Biologist on organic matter, etc.
+  B) TECH TREE UNLOCKS: As scientists research items, they gain deeper knowledge and better quotes
+  C) ITEM TYPE MATCHING: Scientist studying a matching item type gives bonus SP or unique analysis
+  D) PROGRESSIVE LEARNING: First time seeing an item = generic quote. 10th time = "Ah, another Valley Quartz. Based on our research, I can extract 15% more efficiently now."
+- THIS CONNECTS TO: Tech tree research (scientists learn from items), extraction bonuses, personalized gameplay
+- MVP: Just vary quotes by scientist specialty. Later: unlock better quotes/bonuses via tech tree.
+
+OPEN QUESTIONS FOR DISCUSSION:
+1. How to swap scientists? Options: Transmutation (spend shards), Shard Echo (find fragments in expeditions), Recruitment (hire from expedition encounters), Specialty Evolution (gradual shift)
+2. Is ~24 techs the right scale? (Research says 20-30 is ideal for indie)
+3. Are item requirements (like "30 Geometric Shapes") fun or annoying?
+4. Are research times (24h to 1 week) appropriate?
+5. Should tech tree be linear or allow skipping tiers?
+6. How prominent should the Research tab be in the UI?
+7. What's the ideal expedition time range? (Currently up to 26 days, could reduce to max 7 days with full upgrades?)
+8. Should scientist quotes vary by specialty? (Currently hardcoded generic for common/uncommon)
+
+Keep responses concise and practical. This is a small indie game - avoid over-engineering.`
+};
+</script>
+<script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
+<script>window.BRAINSTORM_PAGE_KEY = 'tech-tree';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="brainstorm-container">
+
+    {% include 'brainstorm/tech_tree/_intro.html' %}
+    {% include 'brainstorm/tech_tree/_research.html' %}
+    {% include 'brainstorm/tech_tree/_tech_tree.html' %}
+    {% include 'brainstorm/tech_tree/_specialties.html' %}
+    {% include 'brainstorm/tech_tree/_systems.html' %}
+    {% include 'brainstorm/tech_tree/_endgame.html' %}
+
+</div>
+
+{% endblock %}

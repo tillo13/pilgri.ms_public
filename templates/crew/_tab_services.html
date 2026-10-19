@@ -1,0 +1,125 @@
+<!-- Captain Services: Shard Infusion, Modify Appearance, Video Briefing -->
+
+<div class="grid gap-16" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); align-items: start;">
+
+    <!-- Shard Infusion (Stat Boost) -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/reroll_stats_1767506212.png"
+                 alt="Shard Infusion" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Shard Infusion</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            Channel Sepolia energy to boost your captain's stats. Each stat has a chance to gain +1. Stats can only go <strong>up</strong>, never down.
+        </p>
+        <p class="text-xs opacity-50" style="text-align: center; margin-bottom: 16px;">
+            Higher stats have lower chance of improvement. Cost doubles each infusion.
+        </p>
+        <div style="flex-grow: 1;"></div>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">
+                {{ '{:,}'.format(pricing.reroll_cost|int) }}
+            </span>
+            <span class="text-sm opacity-70"> shards</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="purchaseShardInfusion()">
+            <img src="{{ icons.shard_gem }}" alt="" class="inline-icon-sm"> Infuse Stats
+        </button>
+        {% if pricing.reroll_count > 0 %}
+        <div class="text-xs opacity-50 mt-8" style="text-align: center;">{{ pricing.reroll_count }} infusion{{ 's' if pricing.reroll_count != 1 else '' }} performed</div>
+        {% endif %}
+    </div>
+
+    <!-- Modify Appearance -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/modify_commander_1767506225.png"
+                 alt="Modify Appearance" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Modify Appearance</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 12px;">
+            AI-powered appearance changes. Describe what you want and your captain's look will be updated. View results on the <strong>Captain</strong> tab.
+        </p>
+        <textarea id="modifyPrompt" rows="2" placeholder="e.g. Add a scar over the left eye..."
+                  style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; resize: vertical; margin-bottom: 12px;"></textarea>
+        <div style="flex-grow: 1;"></div>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">
+                {{ '{:,}'.format(pricing.modify_cost|int) }}
+            </span>
+            <span class="text-sm opacity-70"> shards</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="purchaseModifyAppearance()">
+            <img src="{{ icons.edit_pencil }}" alt="" class="inline-icon-sm"> Modify Captain
+        </button>
+    </div>
+
+    <!-- Rename Captain -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="{{ icons.edit_pencil }}"
+                 alt="Rename" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; padding: 16px; background: var(--bg-tertiary);" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Rename Captain</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            Change your captain's callsign. This is how other captains see you in bonds, expeditions, and the Signal.
+        </p>
+        <p class="text-xs opacity-50" style="text-align: center; margin-bottom: 16px;">
+            Current name: <strong>{{ commander.commander_name or 'Captain' }}</strong>
+        </p>
+        <div style="flex-grow: 1;"></div>
+        <input type="text" id="captainNameInputServices" value="{{ commander.commander_name if commander and commander.commander_name else '' }}" maxlength="30" placeholder="New captain name"
+               style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-default); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; text-align: center; margin-bottom: 12px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-success);">Free</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="saveCaptainNameFromServices()">
+            <img src="{{ icons.edit_pencil }}" alt="" class="inline-icon-sm"> Update Name
+        </button>
+    </div>
+
+    {% if media_video_on %}
+    <!-- Video Briefing -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/shop_items/video_briefing_1767506239.png"
+                 alt="Video Briefing" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover;" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Mission Briefing Video</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            Generate an animated mission briefing video starring your captain. View results on the <strong>Captain</strong> tab.
+        </p>
+        <p class="text-xs opacity-50" style="text-align: center; margin-bottom: 16px;">
+            Takes about 60 seconds to create.
+        </p>
+        <div style="flex-grow: 1;"></div>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px; font-weight: 700; color: var(--color-warning);">90</span>
+            <span class="text-sm opacity-70"> shards</span>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="purchaseVideoBriefing()">
+            <img src="{{ icons.video_film }}" alt="" class="inline-icon-sm"> Generate Video
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Preferences: Expedition Haul Popup -->
+    <div class="dashboard-card p-20" style="display: flex; flex-direction: column; min-height: 340px;">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <img src="{{ icons.gear_settings }}"
+                 alt="Preferences" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; padding: 16px; background: var(--bg-tertiary);" loading="lazy">
+        </div>
+        <h3 style="font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 8px;">Expedition Haul Popup</h3>
+        <p class="text-sm opacity-70" style="text-align: center; margin-bottom: 8px;">
+            When an expedition returns, the haul summary ("Rover returned!") can pop up automatically on your dashboard. Turn this off to review hauls only when you choose.
+        </p>
+        <div style="flex-grow: 1;"></div>
+        <label for="haulPopupToggle" style="display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; margin-bottom: 12px; font-size: 14px; font-weight: 600;">
+            <input type="checkbox" id="haulPopupToggle" {{ 'checked' if auto_show_haul_popup else '' }}
+                   onchange="setHaulPopupPref(this.checked)"
+                   style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--color-success);">
+            <span>Show automatically</span>
+        </label>
+    </div>
+
+</div>

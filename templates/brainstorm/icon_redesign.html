@@ -1,0 +1,899 @@
+{% extends "base.html" %}
+{% block title %}Colony Redesign — Brainstorm{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.BRAINSTORM_CONFIG = {
+    apiEndpoint: '/api/brainstorm/icon-redesign-chat',
+    context: `You are PilgrimBot, helping brainstorm the Colony Redesign for Pilgrims — covering infrastructure rebalance, mid-game buildings, Mars-material aesthetics, and 10-level upgrade paths.
+
+=== CORE CONTEXT ===
+
+Pilgrims is a Mars colony game where players build structures, send expeditions, and discover artifacts on real NASA-mapped Mars locations. All items are built from MARTIAN MATERIALS — rock, clay, basalt, compressed regolith — with subtle blue-purple Sepolia crystal accents. NO metal, NO glass, NO Earth technology in the visual design.
+
+=== THE THREE PROBLEMS (Combined Feb 2026) ===
+
+1. IMAGES LOOK LIKE EARTH: January 2026 images had metal, glass, NASA aesthetics. Everything must be redesigned with Mars-only materials.
+2. MID-GAME IS EMPTY: Tier 3 caps at 8,000 shards. Old Tier 4 started at 50,000,000. That's a 6,250x gap with nothing to build. Players finish Tier 3 and have no progression.
+3. LATE-GAME IS PLACEHOLDER: Nuclear plant, launch pad, fusion reactor, space elevator — all have unreachable prices and Earth-tech concepts. Proposed for removal and redesign. Only 1 player (Luke) ever built one (nuclear, paid 20K shards). The other three have zero builds.
+
+=== REAL PLAYER DATA (Feb 2026) ===
+
+- 13 total users, 9 have buildings
+- Richest player balance: ~106,000 shards
+- All 9 active players have solar array + battery storage
+- 2-3 players have Tier 3 buildings (2K-8K cost range)
+- 0 players ever built launch pad, fusion reactor, or space elevator
+- The economy is healthy through Tier 3 but has NOTHING beyond it
+
+=== INDUSTRY PRICING RESEARCH (Feb 2026 Deep Dive) ===
+
+CLASH OF CLANS: TH costs go 1K → 20M over 17 levels. Multiplier DECREASES at higher tiers (early 2-4x, late 1.1-1.2x). Build times cap at 14-15 days. Supercell cut upper costs in Dec 2023 to prevent churn. Total to max: ~8.6B gold, ~3.5 years. KEY: Income scales alongside costs (better troops = better raids).
+
+CIVILIZATION 6: Uses POLYNOMIAL scaling, not exponential. Districts: 60 → 600 across tech tree (~15% per tech). Settlers: +20 linear per city. Production scales at same rate as costs.
+
+AGE OF EMPIRES 2: Every upgrade evaluated by PAYOFF TIME. Bow Saw (wood upgrade) pays for itself in ~4 minutes. Rule: if a purchase never pays for itself, players skip it. Our equivalent: 3-7 day payoff per purchase.
+
+IDLE GAMES: Cost = BaseCost × Multiplier^Level. Sweet spot: 1.07-1.15. Cookie Clicker: 1.15, Clicker Heroes: 1.07. CRITICAL: costs grow exponentially, income grows polynomially. Flat income + exponential costs = unplayable wall.
+
+=== THE 5 RULES (Resolution) ===
+1. Use 1.12x multiplier for within-item upgrades (not 2-3x). Industry range: 1.07-1.15.
+2. Build time cap: 14 days max. Clash caps at 14-15 days.
+3. Each new building tier MUST unlock new income sources. Flat income + exponential costs = death.
+4. Payoff time rule: every purchase pays for itself in 3-7 days of passive income.
+5. Fix 3 broken shop items before adding new content.
+
+=== CURRENT ECONOMY REAL NUMBERS ===
+Passive income: Solar ~7-10/hr, + Battery = ~10-15/hr, + Refinery = ~35-50/hr, + Mining Drone = ~45-60/hr.
+Expedition income: Short ~400-450, Medium ~1,100-1,300, Long ~2,200-2,500 per trip.
+Tier 3 player effective rate: ~60-100/hr with active play.
+Hard cap: 168hr accumulation limit = ~5,000-7,000 shards/week AFK max.
+
+=== PROPOSED TIER STRUCTURE (If Late-Game Items Are Replaced) ===
+
+Tier 3 (existing): 2K-8K shards, 20hrs-3 days
+Tier 4 (NEW, needs design): 15K-30K shards, 5-7 days
+Tier 5 (NEW, needs design): 50K-100K shards, 7-10 days
+Tier 6 (NEW, needs design): 150K-300K shards, 10-14 days
+Tier 7 (ENDGAME, needs design): 500K-1M shards, 14 days
+
+Building concepts to explore: Regolith Forge, Crystal Resonance Chamber, Seismic Survey Station, Underground Thermal Vent Tap, Dust Storm Shelter, Sepolia Crystallization Lab, Deep Bore Observatory, Monolith Antenna.
+
+=== LORE FIT: EARTH TO MARS TRANSITION ===
+
+Level 1 items arrived FROM Earth on the colony ship. As players upgrade, each level becomes MORE Mars-like. By level 10, everything is pure Martian construction.
+Tier 1-2: Stamped metal panels, polymer housings, Earth-origin tech with red dust
+Tier 3-4: Earth frame + Mars regolith reinforcement, first Sepolia crystal wiring
+Tier 5-6: Compressed regolith walls, basalt supports, clay-fired components
+Tier 7-8: Carved volcanic rock, crystal-laced structure, geological textures
+Tier 9-10: Grown from terrain, heavy Sepolia crystal integration, almost alive
+
+=== CURRENT ITEMS ===
+
+Infrastructure (13 buildings total, 4 proposed for removal): solar_array, battery_storage, water_extractor, habitat_module, research_station, xenobiology_lab, greenhouse, comms_array, refinery, nuclear_plant*, launch_pad*, fusion_reactor*, space_elevator* (*proposed for removal/redesign)
+Shop items (33): 4 rovers, 3 scanners, 2 cargo, 4 power upgrades, 2 research, 2 life support, 3 gear suits, 3 drones/automation
+Upgrade system: rover (4 levels), drone (3), buggy (2), scanner (3), life_support (2), bunker (5) — all need expansion to 10
+
+=== SHOP ITEM AUDIT (Feb 2026) ===
+
+Code audit found 5 shop items that should be removed:
+BROKEN (effect not implemented in code): Scout Drone Swarm (5K, claims +10% discovery but code never reads it — duplicates Surface Scanner), Enhanced Life Support (600, life_support_cost_mult never used in expedition pricing), Closed-Loop Biosphere (4K, same broken effect).
+EARTH-TECH VIOLATIONS: Nuclear RTG (15K, replace with Crystal Resonance Amplifier), Compact Fusion Reactor (100K, replace with Thermal Vent Condenser). Both work mechanically but violate Mars-material rules.
+ALSO: Advanced Research Center requires fusion_reactor as prerequisite — needs update when fusion is replaced.
+
+=== ON-DEMAND IMAGE GENERATION ===
+
+Upgrade images are NOT pre-generated. When a player upgrades, their previous level image is passed to Flux Kontext with a prompt to add more Martian materials. Each upgrade is a surprise reveal. Each player's items are slightly unique due to Kontext variation.
+
+=== YOUR ROLE ===
+
+Help the team think through: what new buildings fill the mid-game gap (Tier 4-7), pricing curves using the 1.07-1.15 multiplier formula, what gameplay value each building/upgrade adds, which items get 10 levels vs fewer, whether to merge shop + upgrade systems, and the visual progression from Earth-tech to pure Mars materials.`
+};
+</script>
+<script src="/static/js/brainstorm-chat.js?v={{ static_v }}" defer></script>
+<script>window.BRAINSTORM_PAGE_KEY = 'icon-redesign';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="brainstorm-container">
+
+    <!-- Header -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-review">Draft for Review</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Colony Redesign: Infrastructure, Pricing & Mars Materials</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Brainstorm Document — February 2026</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">Rebalance the economy. Fill the mid-game gap. Build everything from Mars. Every upgrade a reveal.</p>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SUGGESTED SOLUTION (Feb 2026) — Read this first                 -->
+    <!-- ================================================================= -->
+    <div class="section" style="border-left: 4px solid var(--color-success); background: linear-gradient(135deg, rgba(var(--color-success-rgb),0.08), transparent);">
+        <span class="status-badge" style="background: var(--color-success); color: #000;">Suggested Solution</span>
+        <div class="section-title" style="color: var(--color-success); margin-top: 12px;">The Fix: 5 Rules That Align Us With Industry Standards</div>
+
+        <p>We researched Clash of Clans, Civilization, Age of Empires, Cookie Clicker, AdVenture Capitalist, and Clicker Heroes. Our Tier 1-3 economy is <strong>healthy and follows industry patterns</strong>. But the proposed 10-level upgrade numbers, build times, and income model have critical problems. Here's the fix:</p>
+
+        <div class="mockup-box" style="border-color: rgba(var(--color-success-rgb),0.4);">
+            <div class="mockup-header" style="background: linear-gradient(90deg, rgba(var(--color-success-rgb),0.2), transparent);">The 5 Rules</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label" style="min-width: 200px;"><strong>1. Upgrade multiplier</strong></span><span class="mockup-value">Use <strong>1.12x per level</strong> for within-item upgrades (not 2-3x). Industry range: 1.07-1.15.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="min-width: 200px;"><strong>2. Build time cap</strong></span><span class="mockup-value"><strong>14 days max</strong>. Clash caps at 14-15 days. Beyond that, players disengage.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="min-width: 200px;"><strong>3. Income scales with costs</strong></span><span class="mockup-value">Each new building tier <strong>must unlock new income</strong>. Costs are exponential but income is currently flat &mdash; no game survives this.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="min-width: 200px;"><strong>4. Payoff time rule</strong></span><span class="mockup-value">Every purchase should pay for itself in <strong>3-7 days</strong> of passive income at that tier.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="min-width: 200px;"><strong>5. Fix broken items first</strong></span><span class="mockup-value">3 shop items take shards for zero effect. Fix these <strong>before</strong> adding new content.</span></div>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">Corrected Upgrade Pricing (1.12x multiplier, Rover example)</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Level</th><th>Cost (1.12x)</th><th>Cumulative</th><th>Build Time</th><th>Payoff at Tier Income</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>500</td><td>500</td><td>Instant</td><td>&lt; 1 day</td></tr>
+                <tr><td>2</td><td>560</td><td>1,060</td><td>2 hrs</td><td>&lt; 1 day</td></tr>
+                <tr><td>3</td><td>627</td><td>1,687</td><td>6 hrs</td><td>~1 day</td></tr>
+                <tr><td>4</td><td>703</td><td>2,390</td><td>12 hrs</td><td>~1 day</td></tr>
+                <tr><td>5</td><td>787</td><td>3,177</td><td>1 day</td><td>~2 days</td></tr>
+                <tr><td>6</td><td>881</td><td>4,058</td><td>2 days</td><td>~2 days</td></tr>
+                <tr><td>7</td><td>987</td><td>5,045</td><td>3 days</td><td>~3 days</td></tr>
+                <tr><td>8</td><td>1,105</td><td>6,150</td><td>5 days</td><td>~4 days</td></tr>
+                <tr><td>9</td><td>1,238</td><td>7,388</td><td>7 days</td><td>~5 days</td></tr>
+                <tr><td>10</td><td>1,386</td><td>8,774</td><td>10 days</td><td>~6 days</td></tr>
+            </tbody>
+        </table>
+        <p style="color: var(--text-muted); font-size: 13px;">Total Lv1-10: <strong>8,774 shards</strong>. A Tier 3 player earning ~50/hr passively can max this in ~7 days. Compare to old proposal: Rover Lv2 at 100K = 92+ days of passive farming.</p>
+
+        <h4 style="margin: 16px 0 8px;">Income Scaling Plan (The Missing Piece)</h4>
+        <p>Every established game scales income alongside costs. Our income is currently <strong>flat at ~30-50/hr</strong> regardless of progression. New tiers must fix this:</p>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Tier</th><th>New Income Source</th><th>Passive Rate</th><th>Max Building Cost</th><th>Payoff</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1-2</td><td>Solar Array (10/hr base)</td><td>10-15/hr</td><td>1,000</td><td>~3 days</td></tr>
+                <tr><td>3</td><td>Refinery (+25/hr)</td><td>35-50/hr</td><td>8,000</td><td>~7 days</td></tr>
+                <tr style="background: rgba(var(--color-success-rgb),0.08);"><td>4</td><td>Regolith Forge (boosts extraction)</td><td>80-120/hr</td><td>30,000</td><td>~11 days</td></tr>
+                <tr style="background: rgba(var(--color-success-rgb),0.08);"><td>5</td><td>Crystal Resonance (multiplies all)</td><td>200-300/hr</td><td>100,000</td><td>~14 days</td></tr>
+                <tr style="background: rgba(168,85,247,0.08);"><td>6</td><td>Thermal Vent (new generation)</td><td>500-800/hr</td><td>300,000</td><td>~16 days</td></tr>
+                <tr style="background: rgba(168,85,247,0.08);"><td>7</td><td>Monolith (endgame multiplier)</td><td>1,500-2,500/hr</td><td>1,000,000</td><td>~17 days</td></tr>
+            </tbody>
+        </table>
+        <p style="color: var(--text-muted); font-size: 13px;">Formula: Max cost at Tier N = Income/hr &times; 24 &times; target payoff days. Payoff stretches slightly at higher tiers (Clash does this too &mdash; the multiplier <em>decreases</em> as costs rise).</p>
+
+        <h4 style="margin: 16px 0 8px;">What's Right vs. What to Fix</h4>
+        <div class="mockup-box">
+            <div class="mockup-header" style="background: linear-gradient(90deg, rgba(var(--color-success-rgb),0.2), transparent);">Already Correct</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Tier 1-3 building prices</span><span class="mockup-value" style="color: var(--color-success);">Free &rarr; 10 &rarr; 500 &rarr; 8K follows ~1.5-2x pattern</span></div>
+                <div class="mockup-row"><span class="mockup-label">Shop compound multipliers</span><span class="mockup-value" style="color: var(--color-success);">1.1x stacking (1.0 &rarr; 1.1 &rarr; 1.21 &rarr; 1.33 &rarr; 1.46) matches industry</span></div>
+                <div class="mockup-row"><span class="mockup-label">Tier 4-7 building costs</span><span class="mockup-value" style="color: var(--color-success);">15K-1M range is reasonable IF income scales alongside</span></div>
+                <div class="mockup-row"><span class="mockup-label">Build times Tier 1-3</span><span class="mockup-value" style="color: var(--color-success);">1 min &rarr; 1 hr &rarr; 3 days is well-paced</span></div>
+            </div>
+        </div>
+        <div class="mockup-box" style="border-color: rgba(239,68,68,0.3);">
+            <div class="mockup-header" style="background: linear-gradient(90deg, rgba(239,68,68,0.2), transparent);">Must Fix</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">10-level upgrade costs</span><span class="mockup-value" style="color: #ef4444;">Old proposal used 2-3x jumps (Rover Lv2 = 100K). Use 1.12x instead.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">Build times Lv5+</span><span class="mockup-value" style="color: #ef4444;">Old proposal: 45 days to 4 months. Cap at 14 days.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">Income scaling</span><span class="mockup-value" style="color: #ef4444;">Income is flat ~30-50/hr. Costs go to millions. No game survives this.</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">3 broken shop items</span><span class="mockup-value" style="color: #ef4444;">Players paying shards for zero mechanical effect right now.</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- The Problem -->
+    <div class="section" style="border-left: 4px solid #ef4444;">
+        <div class="section-title" style="color: #ef4444;">The Problem: Everything Looks Like Earth</div>
+
+        <div class="quote-box">
+            "All the stuff for my first iteration of the images had metal, colors, wild designs... but this is Mars! We have no glass or metal. We need to redesign ALL the depot and colony items to look more rock, red, things you find on Mars — that's the building materials we have."
+            <div class="attribution">— Andy, February 2026</div>
+        </div>
+
+        <p>The January 2026 image batch was generated with sci-fi/NASA aesthetics: stamped grey metal, glass domes, glowing blue accents, white polymer panels. None of this exists on Mars. Colonists build from what they find: <strong>rock, regolith, clay, basalt, and Sepolia crystals</strong>.</p>
+
+        <div class="summary-box" style="background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05)); border-color: rgba(239,68,68,0.3);">
+            <strong>Items That Need Redesign:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>9 infrastructure buildings</strong> — solar array, battery, water extractor, habitat, labs, greenhouse, comms, refinery, research station</li>
+                <li><strong>33 shop items</strong> — rovers, scanners, cargo bays, power upgrades, suits, drones</li>
+                <li><strong>~15 upgrade tier images</strong> — progressive vehicle/storage images</li>
+                <li><strong>3-5 NEW mid-game buildings</strong> — proposed to fill the Tier 4-7 gap (replacing current placeholders)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- The Mid-Game Gap: Real Data -->
+    <div class="section" style="border-left: 4px solid #f59e0b;">
+        <div class="section-title" style="color: #f59e0b;">The Mid-Game Gap: Real Player Data (Feb 2026)</div>
+
+        <p>We pulled actual player data to understand the economy. The numbers tell a clear story: <strong>there's a massive gap between Tier 3 and Tier 4 with nothing to build.</strong></p>
+
+        <h4 style="margin: 16px 0 8px;">What Players Have Actually Built</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Building</th><th>Tier</th><th>Cost</th><th>Players Built</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Solar Array</td><td>1</td><td>Free</td><td>9 of 9</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Battery Storage</td><td>2</td><td>10</td><td>9 of 9</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Water Extractor</td><td>2</td><td>500</td><td>2</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Research Station</td><td>2</td><td>500</td><td>3</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Habitat Module</td><td>2</td><td>1,000</td><td>2</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Xenobiology Lab</td><td>3</td><td>2,000</td><td>2</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Greenhouse</td><td>3</td><td>3,000</td><td>2</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Comms Array</td><td>3</td><td>5,000</td><td>2</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr><td>Refinery</td><td>3</td><td>8,000</td><td>2</td><td style="color: var(--color-success);">Healthy</td></tr>
+                <tr style="background: rgba(245,158,11,0.1);"><td>Nuclear Plant</td><td>4</td><td>20,000 (was 50M)</td><td>1 (Luke)</td><td style="color: #f59e0b;">Proposed for removal</td></tr>
+                <tr style="background: rgba(245,158,11,0.1);"><td>Launch Pad</td><td>4</td><td>100,000,000</td><td>0</td><td style="color: #f59e0b;">Proposed for removal</td></tr>
+                <tr style="background: rgba(245,158,11,0.1);"><td>Fusion Reactor</td><td>5</td><td>500,000,000</td><td>0</td><td style="color: #f59e0b;">Proposed for removal</td></tr>
+                <tr style="background: rgba(245,158,11,0.1);"><td>Space Elevator</td><td>5</td><td>1,000,000,000</td><td>0</td><td style="color: #f59e0b;">Proposed for removal</td></tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin: 16px 0 8px;">Top Player Shard Balances</h4>
+        <p>The richest player has <strong>~106,000 shards</strong>. The old Tier 4 started at 50,000,000. Nobody was ever getting there.</p>
+
+        <div class="mockup-box" style="border-color: rgba(239,68,68,0.3);">
+            <div class="mockup-header" style="background: linear-gradient(90deg, rgba(239,68,68,0.2), transparent);">The Pricing Cliff</div>
+            <div class="mockup-content" style="font-family: monospace; font-size: 13px;">
+                <div class="mockup-row"><span class="mockup-label">Tier 3 max (Refinery)</span><span class="mockup-value">8,000 shards</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">GAP: 6,250x jump</span><span class="mockup-value" style="color: #ef4444;">Nothing to build here</span></div>
+                <div class="mockup-row"><span class="mockup-label">Old Tier 4 (Nuclear)</span><span class="mockup-value">50,000,000 shards</span></div>
+            </div>
+        </div>
+
+        <p>Players finish all Tier 3 buildings at ~8,000 shards and then have <strong>nothing to work toward</strong>. The mid-game is empty. We need 3-5 new buildings in the <strong>15,000 to 200,000 shard range</strong>.</p>
+    </div>
+
+    <!-- Proposal: Replace Tier 4-5 -->
+    <div class="section" style="border-left: 4px solid #f59e0b;">
+        <div class="section-title" style="color: #f59e0b;">Proposal: Remove &amp; Redesign Tier 4-5</div>
+
+        <p>These four late-game buildings are <strong>proposed for removal</strong> and replacement with Mars-native designs:</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Item</th><th>Reason for Proposed Removal</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Nuclear Fission Reactor</td><td>No uranium enrichment on Mars. Pure Earth tech. Violates Mars-material aesthetic. Luke's build (20K shards) would be refunded.</td></tr>
+                <tr><td>Rocket Launch Complex</td><td>Placeholder. 0 players built it. Price unreachable (100M). Concept needs lore rethink.</td></tr>
+                <tr><td>Fusion Shard Reactor</td><td>Placeholder. 0 players built it. 500M price is fantasy. "Fusion" implies Earth engineering.</td></tr>
+                <tr><td>Orbital Space Elevator</td><td>Placeholder. 0 players built it. 1B price is impossible. Concept doesn't fit early colony.</td></tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box" style="background: linear-gradient(135deg, rgba(245,158,11,0.1), transparent); border-color: rgba(245,158,11,0.3);">
+            <strong>Proposed replacement:</strong> New buildings designed from the ground up with Mars-material aesthetics, realistic pricing curves, and actual gameplay value. They would use Martian materials (regolith, basalt, Sepolia crystals) and fit the colony self-sufficiency narrative. See "New Building Concepts" below.
+        </div>
+    </div>
+
+    <!-- Industry Pricing Research (Deep Dive) -->
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;">Industry Deep Dive: How Clash, Civ, AoE &amp; Idle Games Scale</div>
+
+        <p>We researched five proven models. The universal lesson: <strong>costs grow exponentially, income grows alongside them, and the multiplier per level decreases at higher tiers.</strong></p>
+
+        <h4 style="margin: 16px 0 8px;">Clash of Clans &mdash; The Gold Standard for Mobile Strategy</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Level</th><th>Cost (Gold)</th><th>Build Time</th><th>Multiplier</th><th>Key Mechanic</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>TH2</td><td>1,000</td><td>10 sec</td><td>&mdash;</td><td>Tutorial</td></tr>
+                <tr><td>TH5</td><td>150,000</td><td>12 hrs</td><td>~2-4x</td><td>Unlocks better troops = more raid income</td></tr>
+                <tr><td>TH8</td><td>2,000,000</td><td>2 days</td><td>~1.3-1.6x</td><td>Army costs scale but so does loot</td></tr>
+                <tr><td>TH12</td><td>7,000,000</td><td>6 days</td><td>~1.3x</td><td>Siege machines unlock massive raid payouts</td></tr>
+                <tr><td>TH16</td><td>18,000,000</td><td>14 days</td><td>~1.2x</td><td>Multiplier flattens deliberately</td></tr>
+                <tr><td>TH17</td><td>20,000,000</td><td>15 days</td><td>1.1x</td><td>Total to max: ~8.6B gold, ~3.5 years</td></tr>
+            </tbody>
+        </table>
+        <p><strong>Key insights:</strong> (1) Multiplier <em>decreases</em> at higher tiers &mdash; early is 2-4x, late is 1.1-1.2x. (2) Build times cap at 14-15 days. (3) Supercell actively <em>cut</em> upper-tier costs in Dec 2023 to prevent churn. (4) <strong>Income scales up</strong> as you upgrade &mdash; better troops = better raids = cost-to-earnings ratio stays roughly constant. Costs are hand-tuned per level, not a single formula.</p>
+
+        <h4 style="margin: 16px 0 8px;">Civilization 6 &mdash; Polynomial, Not Exponential</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Mechanic</th><th>Scaling Model</th><th>Key Insight</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>District costs</td><td>60 &rarr; 600 across tech tree (~10x total). Each tech adds ~15% of base cost.</td><td>Costs grow with progress, not number of districts</td></tr>
+                <tr><td>Settlers</td><td>80, 100, 120, 140, 160... (linear +20 per city)</td><td>Linear, not exponential &mdash; keeps expansion viable</td></tr>
+                <tr><td>Production (income)</td><td>Scales via city/district improvements at roughly same rate as costs</td><td>Income-cost parity maintained throughout</td></tr>
+            </tbody>
+        </table>
+        <p><strong>Key insight:</strong> Civ uses <strong>polynomial</strong> cost scaling, not exponential. This keeps everything reachable. Old Civ games used corruption/happiness to limit expansion; Civ 6 uses cost scaling instead. The lesson: you don't need exponential costs to create challenge.</p>
+
+        <h4 style="margin: 16px 0 8px;">Age of Empires 2 &mdash; The Payoff Time Rule</h4>
+        <p>AoE2's economy is built around <strong>return on investment</strong>. Each economic upgrade costs X resources but increases gathering speed. The benchmark: an upgrade should pay for itself within <strong>3-5 minutes</strong> of gameplay. Examples:</p>
+        <ul>
+            <li><strong>Bow Saw</strong> (wood upgrade): Costs 150F/100G. With 15 lumberjacks, pays off in ~4 minutes.</li>
+            <li><strong>Horse Collar</strong> (farming): Costs 75F/75W. Pays off in ~3 minutes per farm.</li>
+        </ul>
+        <p><strong>Key insight:</strong> Don't just set prices by "feel" &mdash; calculate the <strong>payoff time</strong>. If a purchase never pays for itself, players learn to skip it. Our equivalent: every building/upgrade should pay for itself in <strong>3-7 days of passive income</strong> at that tier.</p>
+
+        <h4 style="margin: 16px 0 8px;">Idle Games &mdash; The Universal Formula</h4>
+        <div class="mockup-box">
+            <div class="mockup-header">The Math (from Kongregate's idle game research)</div>
+            <div class="mockup-content" style="font-family: monospace; font-size: 14px; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+                Cost = BaseCost &times; Multiplier<sup>Level</sup>
+                <br>Income = BaseIncome &times; Owned &times; Multipliers
+                <br><br>
+                Multiplier sweet spot: <strong>1.07 to 1.15</strong>
+                <br>
+                Cookie Clicker: 1.15 &nbsp;|&nbsp; Clicker Heroes: 1.07 &nbsp;|&nbsp; AdVenture Capitalist: 1.07-1.15
+                <br><br>
+                Critical rule: <strong>Costs grow exponentially, income grows polynomially.</strong>
+                <br>Costs MUST eventually outpace income &mdash; this creates natural slowdown.
+                <br>But income must also grow &mdash; flat income + exponential costs = unplayable wall.
+            </div>
+        </div>
+        <p><strong>Worked example</strong> (AdVenture Capitalist): Lemonade Stand base cost = 4, growth rate = 1.07. At 10 owned, next costs 7.87. At 50 owned, next costs 117. Production is 1.67/sec &times; owned. The gap widens but never hits a wall because each purchase still adds meaningful income. <strong>Prestige mechanics</strong> reset the curve when it flattens.</p>
+
+        <h4 style="margin: 16px 0 8px;">The Universal Pattern Across All Games</h4>
+        <div class="summary-box" style="background: linear-gradient(135deg, rgba(6,182,212,0.1), transparent); border-color: rgba(6,182,212,0.3);">
+            <strong>Every successful economy shares these traits:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Building-to-building jumps:</strong> 2-3x max between tiers (not 6,250x)</li>
+                <li><strong>Within-building upgrades:</strong> 1.07-1.15x per level</li>
+                <li><strong>Build times:</strong> Cap at 7-14 days</li>
+                <li><strong>Income scales with costs:</strong> New tiers unlock new income so the cost/earnings ratio stays roughly constant</li>
+                <li><strong>Multiplier decreases at endgame:</strong> Early 2-4x, mid 1.3x, late 1.1-1.2x</li>
+                <li><strong>Payoff time is calculable:</strong> Every purchase earns itself back within a reasonable window</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Current Economy Audit -->
+    <div class="section" style="border-left: 4px solid #a855f7;">
+        <div class="section-title" style="color: #a855f7;">Current Economy Audit: Real Income Numbers (Feb 2026)</div>
+
+        <p>Before designing new tiers, we need to know exactly what players earn now. Here's the real math from our codebase:</p>
+
+        <h4 style="margin: 16px 0 8px;">Passive Income Sources (Current)</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Source</th><th>Rate</th><th>Conditions</th><th>Unlock Cost</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Solar Array</td><td>~7/hr avg (10 base &times; cos(latitude), day only)</td><td>Day/night cycle, latitude-dependent</td><td>Free</td></tr>
+                <tr><td>Battery Storage</td><td>+50% of solar at night</td><td>With battery: ~5.25/hr avg at 45&deg; lat</td><td>10 shards</td></tr>
+                <tr><td>Refinery</td><td>+25/hr constant</td><td>24/7, no day/night dependency</td><td>8,000 shards</td></tr>
+                <tr><td>Mining Drone</td><td>+10/hr flat</td><td>24/7</td><td>20,000 shards</td></tr>
+                <tr><td>Solar Upgrades (shop)</td><td>&times;1.1 to &times;1.46 multiplier</td><td>Stacks on solar generation</td><td>1K-100K shards</td></tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin: 16px 0 8px;">Expedition Income (Active Play)</h4>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Expedition Type</th><th>Cost</th><th>Base Reward</th><th>With Stats (avg captain)</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Short (50km, basic terrain)</td><td>~125 shards</td><td>250</td><td>400-450 shards</td></tr>
+                <tr><td>Medium (150km, mixed terrain)</td><td>~375 shards</td><td>750</td><td>1,100-1,300 shards</td></tr>
+                <tr><td>Long (300km, mountains)</td><td>~750 shards</td><td>1,500</td><td>2,200-2,500 shards</td></tr>
+            </tbody>
+        </table>
+        <p style="font-size: 13px; color: var(--text-muted);">Formula: Base Reward = Fuel Cost &times; 2. Then multiplied by exploration bonus (0-67%), leadership bonus (0-30%), charisma bonus (0-40%), and luck variance (&plusmn;50%).</p>
+
+        <h4 style="margin: 16px 0 8px;">Total Income by Player Profile</h4>
+        <div class="mockup-box">
+            <div class="mockup-header">Realistic Hourly Earnings</div>
+            <div class="mockup-content" style="font-family: monospace; font-size: 13px;">
+                <div class="mockup-row"><span class="mockup-label">New player (solar only)</span><span class="mockup-value">~7-10 shards/hr</span></div>
+                <div class="mockup-row"><span class="mockup-label">Tier 2 player (solar + battery)</span><span class="mockup-value">~10-15 shards/hr</span></div>
+                <div class="mockup-row"><span class="mockup-label">Tier 3 player (+ refinery)</span><span class="mockup-value">~35-50 shards/hr passive</span></div>
+                <div class="mockup-row"><span class="mockup-label">Tier 3 + active expeditions</span><span class="mockup-value">~60-100 shards/hr effective</span></div>
+                <div class="mockup-row" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;"><span class="mockup-label" style="color: #ef4444;">Hard cap: 168hr accumulation</span><span class="mockup-value" style="color: #ef4444;">Max AFK: ~5,000-7,000/week</span></div>
+            </div>
+        </div>
+
+        <div class="summary-box" style="background: linear-gradient(135deg, rgba(168,85,247,0.1), transparent); border-color: rgba(168,85,247,0.3);">
+            <strong>The core problem visualized:</strong> A Tier 3 player earns ~50/hr. The old Tier 4 costs 50,000,000 shards. That's <strong>1,000,000 hours</strong> or <strong>114 years</strong> of passive farming. Even the corrected Tier 7 endgame (1M shards) at 50/hr = 20,000 hours = 2.3 years. <strong>This is why income MUST scale with tier.</strong> At 1,500/hr (Tier 7 income), 1M costs = 28 days. That's Clash of Clans territory.
+        </div>
+    </div>
+
+    <!-- New Building Concepts -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">New Building Concepts: Filling the Mid-Game</div>
+
+        <p>These would replace the current Tier 4-5 placeholders. All must be buildable from <strong>Martian materials only</strong> and provide real gameplay value. Pricing follows the 2-3x tier jump pattern established by Tiers 1-3.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Tier</th><th>Cost Range</th><th>Build Time</th><th>Concepts (Need Design)</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>3</strong> (existing)</td><td>2K - 8K</td><td>20hrs - 3 days</td><td>Xeno Lab, Greenhouse, Comms, Refinery</td></tr>
+                <tr style="background: rgba(var(--color-success-rgb),0.08);"><td><strong>4</strong> (NEW)</td><td>15K - 30K</td><td>5 - 7 days</td><td>???</td></tr>
+                <tr style="background: rgba(var(--color-success-rgb),0.08);"><td><strong>5</strong> (NEW)</td><td>50K - 100K</td><td>7 - 10 days</td><td>???</td></tr>
+                <tr style="background: rgba(168,85,247,0.08);"><td><strong>6</strong> (NEW)</td><td>150K - 300K</td><td>10 - 14 days</td><td>???</td></tr>
+                <tr style="background: rgba(168,85,247,0.08);"><td><strong>7</strong> (ENDGAME)</td><td>500K - 1M</td><td>14 days</td><td>???</td></tr>
+            </tbody>
+        </table>
+
+        <div class="question-box" style="background: rgba(var(--color-success-rgb),0.08); border: 1px solid rgba(var(--color-success-rgb),0.2); border-radius: 8px; padding: 16px; margin: 12px 0;">
+            <strong>Brainstorm needed:</strong> What buildings fit these tiers? Some ideas to explore:
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Regolith Forge</strong> — Processes raw Mars rock into building materials. Reduces build times for other structures.</li>
+                <li><strong>Crystal Resonance Chamber</strong> — Amplifies Sepolia crystal output. Boosts all shard generation.</li>
+                <li><strong>Seismic Survey Station</strong> — Reveals hidden landmarks. Increases discovery chance on expeditions.</li>
+                <li><strong>Underground Thermal Vent Tap</strong> — Geothermal power from Mars's core. Generates shards without solar dependency.</li>
+                <li><strong>Dust Storm Shelter</strong> — Protects all buildings from dust events. Colony-wide buff.</li>
+                <li><strong>Sepolia Crystallization Lab</strong> — Converts raw discoveries into shards. Alternative income path.</li>
+                <li><strong>Deep Bore Observatory</strong> — Scans subsurface Mars. Unlocks rare/legendary discovery pools.</li>
+                <li><strong>Monolith Antenna</strong> — Endgame comms upgrade. Boosts ARIA capabilities, unlocks new Signal features.</li>
+            </ul>
+            <p style="margin: 8px 0 0 0; color: var(--text-muted); font-size: 13px;">All concepts must be buildable from rock, regolith, basalt, clay, and Sepolia crystals. No Earth tech.</p>
+        </div>
+    </div>
+
+    <!-- The Lore Fit -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">The Lore: Earth to Mars Transition</div>
+
+        <p>Here's how it fits the story: the <strong>basic versions of everything came from Earth</strong> on the colony ship. Level 1 items look slightly Earth-like — stamped metal, polymer panels, recognizable tech. But as colonists upgrade, they learn to build from <strong>local Martian materials</strong>. By level 10, everything is pure Mars construction.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">Lv 1-2<br><small>Earth Imports</small><br><span style="font-size: 11px; color: #888;">Metal panels, polymer, dust-covered Earth tech</span></div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box">Lv 3-4<br><small>Hybrid</small><br><span style="font-size: 11px; color: #888;">Earth frame + regolith patches, first crystal wiring</span></div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box highlight">Lv 5-6<br><small>Mostly Mars</small><br><span style="font-size: 11px; color: #888;">Compressed regolith, basalt, clay-fired parts</span></div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box">Lv 7-8<br><small>Full Mars</small><br><span style="font-size: 11px; color: #888;">Carved volcanic rock, crystal-laced, geological</span></div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box success">Lv 9-10<br><small>Ancient Mars</small><br><span style="font-size: 11px; color: #888;">Grown from terrain, Sepolia crystal core, alive</span></div>
+            </div>
+        </div>
+
+        <p>This tells the story of a colony becoming <strong>self-sufficient</strong>. Early game you're surviving with Earth leftovers. Late game you've mastered Martian engineering. The visual progression IS the narrative.</p>
+    </div>
+
+    <!-- Mars Material Palette -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Mars Material Palette</div>
+
+        <p>Every image must use ONLY these materials (per CLAUDE.md and the Flux prompt standard):</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Allowed Materials</div>
+            <div class="mockup-content">
+                <div class="mockup-row">
+                    <span class="mockup-label">Primary Structure</span>
+                    <span class="mockup-value">Compressed Martian regolith (reddish-brown)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Support / Frame</span>
+                    <span class="mockup-value">Carved basalt (dark grey-brown volcanic rock)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Panels / Walls</span>
+                    <span class="mockup-value">Clay-fired bricks (terracotta, orange-red)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Wiring / Power</span>
+                    <span class="mockup-value highlight">Sepolia crystal veins (blue-purple glow in crevices)</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Wheels / Moving Parts</span>
+                    <span class="mockup-value">Compressed Martian stone, irregular shapes</span>
+                </div>
+                <div class="mockup-row">
+                    <span class="mockup-label">Windows / Openings</span>
+                    <span class="mockup-value">Translucent crystal slabs (NOT glass)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mockup-box" style="border-color: rgba(239,68,68,0.3);">
+            <div class="mockup-header" style="background: linear-gradient(90deg, rgba(239,68,68,0.2), transparent);">BANNED Materials</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">Metal</span><span class="mockup-value" style="color: #ef4444;">No steel, aluminum, chrome, or polished metal surfaces</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">Glass</span><span class="mockup-value" style="color: #ef4444;">No transparent glass panels or domes</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">Plastic / Polymer</span><span class="mockup-value" style="color: #ef4444;">No smooth plastic housings</span></div>
+                <div class="mockup-row"><span class="mockup-label" style="color: #ef4444;">Earth Colors</span><span class="mockup-value" style="color: #ef4444;">No NASA-white, grey, silver, or neon blue</span></div>
+            </div>
+        </div>
+
+        <p><strong>Exception for Lv 1-2:</strong> Earth-import items CAN have traces of metal/polymer since they literally came from Earth. But they should look <em>dusty, worn, and weathered</em> — not shiny and new. Mars is eating them.</p>
+    </div>
+
+    <!-- Flux Prompt Standard -->
+    <div class="section" style="border-left: 4px solid #a855f7;">
+        <div class="section-title" style="color: #a855f7;">Image Generation Standard</div>
+
+        <p>All items use the mandatory Flux prompt pattern from CLAUDE.md:</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Base Prompt Template</div>
+            <div class="mockup-content" style="font-family: monospace; font-size: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 4px; white-space: pre-wrap;">"Cartoon video game item with bold outlines and stylized proportions: [ITEM DESCRIPTION built from Martian rock, compressed regolith, and clay with subtle blue-purple Sepolia crystal accents in crevices], isolated on red Martian terrain, vibrant colors with reds and oranges reflecting Mars atmosphere, video game asset style"</div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Kontext Upgrade Prompt (Progressive)</div>
+            <div class="mockup-content" style="font-family: monospace; font-size: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 4px; white-space: pre-wrap;">"Upgrade this item: make it larger and more advanced. Add more Martian red rock textures. Add more Sepolia crystal accents glowing in crevices. Replace any remaining Earth materials (metal, plastic, glass) with carved Martian stone and compressed regolith. Make it look more powerful. Keep the exact same cartoon art style with bold black outlines."</div>
+        </div>
+    </div>
+
+    <!-- 10-Level Framework -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">10-Level Upgrade Framework</div>
+
+        <div class="quote-box">
+            "Each item should be upgradeable and give more value of some sort or help another aspect of the colony, so upgrades aren't just for looks either."
+            <div class="attribution">— Andy, February 2026</div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px; color: #ef4444;"><s>Original Proposed Pricing Curves</s> &mdash; SUPERSEDED (see corrected table below)</h4>
+        <div style="opacity: 0.5; pointer-events: none;">
+        <p style="color: #ef4444;"><strong>Problem:</strong> These used 2-3x jumps per level. Industry standard is 1.07-1.15x. Rover Lv2 at 100K = 92+ days of passive farming for ONE upgrade. Build times of 45 days to 4 months exceed Clash's 14-day cap by 3-9x.</p>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Level</th><th>Rover</th><th>Scanner</th><th>Solar</th><th>Bunker</th><th>Life Support</th><th>Build Time</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>1</strong></td><td>Free</td><td>Free</td><td>Free</td><td>2,500</td><td>600</td><td>Instant</td></tr>
+                <tr><td><strong>2</strong></td><td>100K</td><td>1,500</td><td>1,000</td><td>7,500</td><td>4,000</td><td>5-7 days</td></tr>
+                <tr><td><strong>5</strong></td><td>1.5M</td><td>75K</td><td>50K</td><td>100K</td><td>100K</td><td>45 days</td></tr>
+                <tr><td><strong>10</strong></td><td>50M</td><td>2.5M</td><td>2M</td><td>3M</td><td>3M</td><td>4 months</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h4 style="margin: 16px 0 8px; color: var(--color-success);">Corrected Pricing Curves (1.12x multiplier, 14-day build cap)</h4>
+        <p>Using <code>Cost = BaseCost &times; 1.12<sup>Level</sup></code>. Each item uses its current Lv1 price as the base. Build times scale from instant to 14 days max.</p>
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Level</th><th>Rover (base 500)</th><th>Scanner (base 300)</th><th>Solar (base 1,000)</th><th>Bunker (base 2,500)</th><th>Life Support (base 600)</th><th>Build Time</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>1</strong></td><td>500</td><td>300</td><td>1,000</td><td>2,500</td><td>600</td><td>Instant</td></tr>
+                <tr><td><strong>2</strong></td><td>560</td><td>336</td><td>1,120</td><td>2,800</td><td>672</td><td>2 hrs</td></tr>
+                <tr><td><strong>3</strong></td><td>627</td><td>376</td><td>1,254</td><td>3,136</td><td>753</td><td>6 hrs</td></tr>
+                <tr><td><strong>4</strong></td><td>703</td><td>421</td><td>1,405</td><td>3,513</td><td>843</td><td>12 hrs</td></tr>
+                <tr><td><strong>5</strong></td><td>787</td><td>472</td><td>1,573</td><td>3,934</td><td>944</td><td>1 day</td></tr>
+                <tr style="background: rgba(var(--color-sepolia-rgb),0.1);"><td><strong>6</strong></td><td>881</td><td>528</td><td>1,762</td><td>4,406</td><td>1,058</td><td>2 days</td></tr>
+                <tr style="background: rgba(var(--color-sepolia-rgb),0.1);"><td><strong>7</strong></td><td>987</td><td>592</td><td>1,973</td><td>4,935</td><td>1,185</td><td>3 days</td></tr>
+                <tr style="background: rgba(var(--color-sepolia-rgb),0.1);"><td><strong>8</strong></td><td>1,105</td><td>663</td><td>2,210</td><td>5,527</td><td>1,327</td><td>5 days</td></tr>
+                <tr style="background: rgba(168,85,247,0.1);"><td><strong>9</strong></td><td>1,238</td><td>742</td><td>2,476</td><td>6,190</td><td>1,486</td><td>7 days</td></tr>
+                <tr style="background: rgba(168,85,247,0.1);"><td><strong>10</strong></td><td>1,386</td><td>831</td><td>2,773</td><td>6,933</td><td>1,664</td><td>10 days</td></tr>
+            </tbody>
+        </table>
+        <p style="color: var(--text-muted); font-size: 13px;"><strong>Totals (Lv1-10):</strong> Rover: 8,774 | Scanner: 5,261 | Solar: 17,546 | Bunker: 43,874 | Life Support: 10,532. A Tier 3 player at ~50/hr can max the rover in ~7 days, scanner in ~4 days. Challenging but achievable &mdash; exactly where idle game math says it should be.</p>
+
+        <h4 style="margin: 16px 0 8px;">What Each Level Adds (Example: Rover)</h4>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Level</th><th>Name</th><th>Speed</th><th>Cargo</th><th>Range</th><th>Special</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Scout Rover</td><td>6 km/h</td><td>10</td><td>300 km</td><td>—</td></tr>
+                <tr><td>2</td><td>Explorer Rover</td><td>10 km/h</td><td>14</td><td>500 km</td><td>—</td></tr>
+                <tr><td>3</td><td>Expedition Crawler</td><td>14 km/h</td><td>18</td><td>800 km</td><td>-15% fuel</td></tr>
+                <tr><td>4</td><td>Titan Transport</td><td>20 km/h</td><td>24</td><td>1,200 km</td><td>-25% fuel</td></tr>
+                <tr><td>5</td><td>Regolith Runner</td><td>26 km/h</td><td>30</td><td>1,800 km</td><td>-30% fuel, +5% discovery</td></tr>
+                <tr><td>6</td><td>Basalt Hauler</td><td>32 km/h</td><td>36</td><td>2,500 km</td><td>-35% fuel, +10% discovery</td></tr>
+                <tr><td>7</td><td>Crystal Cruiser</td><td>38 km/h</td><td>42</td><td>3,500 km</td><td>-40% fuel, +15% discovery</td></tr>
+                <tr><td>8</td><td>Stone Serpent</td><td>44 km/h</td><td>48</td><td>5,000 km</td><td>-45% fuel, +20% discovery, +5% rare</td></tr>
+                <tr><td>9</td><td>Dust Devil</td><td>50 km/h</td><td>54</td><td>7,000 km</td><td>-50% fuel, +25% discovery, +10% rare</td></tr>
+                <tr><td>10</td><td>Mars Leviathan</td><td>60 km/h</td><td>64</td><td>10,000 km</td><td>-50% fuel, +30% discovery, +15% rare, +3% legendary</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- On-Demand Generation: The Reveal -->
+    <div class="section" style="border-left: 4px solid #f59e0b;">
+        <div class="section-title" style="color: #f59e0b;">On-Demand Image Generation: The Reveal</div>
+
+        <div class="quote-box">
+            "Perhaps the next upgrade icon doesn't happen till a person ACTUALLY makes it or requests it, to make it more of a big reveal and something fun to get people to upgrade their items."
+            <div class="attribution">— Andy, February 2026</div>
+        </div>
+
+        <p>Instead of pre-generating all 10 levels for every item, we generate each upgrade image <strong>on demand</strong> when the player actually upgrades. This creates a moment of surprise and delight.</p>
+
+        <div class="flow-container">
+            <div class="flow-row">
+                <div class="flow-box">Player clicks<br>"Upgrade to Lv 5"</div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box">Shards deducted<br>Build timer starts</div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box highlight">Flux Kontext runs<br>Lv4 image + prompt</div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box">Image saved<br>to GCS</div>
+                <span class="flow-arrow">&#8594;</span>
+                <div class="flow-box success">Build complete<br>New image revealed!</div>
+            </div>
+        </div>
+
+        <h4 style="margin: 16px 0 8px;">How It Works</h4>
+        <ul>
+            <li><strong>Input</strong>: Previous level's image URL (already in GCS)</li>
+            <li><strong>Prompt</strong>: "Upgrade this item: add more Martian red rock, more Sepolia crystal accents, make it bigger and more powerful. Replace any remaining Earth materials with carved stone and regolith. Keep the same cartoon style."</li>
+            <li><strong>Output</strong>: New image stored at <code>upgrades/{category}_{item}_lv{N}_{user_id}_{timestamp}.png</code></li>
+            <li><strong>Timing</strong>: Generation happens during the build timer (player doesn't wait extra)</li>
+            <li><strong>Fallback</strong>: If Flux fails, show a "Constructing..." shimmer placeholder, retry in background</li>
+            <li><strong>Unique per player</strong>: Your Lv7 rover looks slightly different from mine — because Kontext is non-deterministic</li>
+        </ul>
+
+        <div class="summary-box">
+            <strong>Why This Is Better Than Pre-Generated:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Every upgrade is a <strong>surprise reveal</strong> — you don't know what it looks like until you earn it</li>
+                <li>No spoilers — can't preview Lv10 items before getting there</li>
+                <li>Each player's items are <strong>slightly unique</strong> (Kontext variation)</li>
+                <li>Zero upfront image generation cost — only pay when players actually upgrade</li>
+                <li>Natural progression — each image builds on the previous one visually</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Placeholder Items: Superseded -->
+    <div class="section" style="border-left: 4px solid #64748b; opacity: 0.7;">
+        <div class="section-title"><s>Placeholder Items: Price & Design Fix</s> &mdash; See Updated Proposal Above</div>
+
+        <p><strong>Update (Feb 2026):</strong> Rather than just repricing these four items, we're now proposing to <strong>remove and replace them entirely</strong> with Mars-native designs. Nuclear plant has 1 build (Luke, 20K shards — would be refunded). The other three have zero builds. All four use Earth-tech concepts that don't fit the Mars-material direction. See "Proposal: Remove &amp; Redesign Tier 4-5" above for details.</p>
+    </div>
+
+    <!-- Shop Item Audit: Stay or Go -->
+    <div class="section" style="border-left: 4px solid #ef4444;">
+        <div class="section-title" style="color: #ef4444;">Shop Item Audit: What Stays, What Goes (Feb 2026)</div>
+
+        <p>Code audit of every shop item in SHOP_CATALOG. Checked whether each item's claimed effects are actually wired into gameplay code. <strong>5 items should be removed</strong> &mdash; 3 are broken (players pay shards for zero effect), 2 violate Mars-material rules.</p>
+
+        <h4 style="margin: 16px 0 8px; color: #ef4444;">REMOVE: Broken Items (Effect Not Implemented)</h4>
+        <p>These items take player shards but provide <strong>zero mechanical benefit</strong>. The effects are defined in config.py but never queried by gameplay code.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Item</th><th>Cost</th><th>Claimed Effect</th><th>Reality</th><th>Recommendation</th></tr>
+            </thead>
+            <tbody>
+                <tr style="background: rgba(239,68,68,0.1);">
+                    <td>Scout Drone Swarm</td><td>5,000</td>
+                    <td>+10% discovery chance</td>
+                    <td style="color: #ef4444;"><strong>FAKE.</strong> Discovery code only reads bonuses from scanners. Drone's <code>discovery_chance_bonus</code> is never queried. Identical effect to Surface Scanner (300 shards) but costs 16x more.</td>
+                    <td>Remove entirely. Redundant with scanners.</td>
+                </tr>
+                <tr style="background: rgba(239,68,68,0.1);">
+                    <td>Enhanced Life Support</td><td>600</td>
+                    <td>-10% expedition life support costs</td>
+                    <td style="color: #ef4444;"><strong>FAKE.</strong> <code>life_support_cost_mult</code> is stored in effects dict but no code path ever uses it in expedition cost calculations.</td>
+                    <td>Either wire into expedition pricing or remove.</td>
+                </tr>
+                <tr style="background: rgba(239,68,68,0.1);">
+                    <td>Closed-Loop Biosphere</td><td>4,000</td>
+                    <td>-19% life support costs</td>
+                    <td style="color: #ef4444;"><strong>FAKE.</strong> Same as above. Upgrade of a broken item &mdash; also broken.</td>
+                    <td>Either wire into expedition pricing or remove.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4 style="margin: 16px 0 8px; color: #f59e0b;">REMOVE: Earth-Tech Violations</h4>
+        <p>These items work mechanically but use Earth technology concepts that violate the Mars-material aesthetic. Effects are good &mdash; just need Mars-native replacements.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Item</th><th>Cost</th><th>Problem</th><th>Suggested Replacement</th></tr>
+            </thead>
+            <tbody>
+                <tr style="background: rgba(245,158,11,0.1);">
+                    <td>Nuclear RTG</td><td>15,000</td>
+                    <td>"Nuclear" and "Radioisotope" are Earth engineering. No uranium enrichment on Mars.</td>
+                    <td><strong>Crystal Resonance Amplifier</strong> &mdash; Sepolia crystals amplify shard collection. Same +33% passive income effect, Mars-native concept.</td>
+                </tr>
+                <tr style="background: rgba(245,158,11,0.1);">
+                    <td>Compact Fusion Reactor</td><td>100,000</td>
+                    <td>"Fusion" implies Earth physics. Doesn't fit colony building from rock and crystals.</td>
+                    <td><strong>Thermal Vent Condenser</strong> &mdash; Taps geothermal heat from Mars's interior. Same +46% passive income effect, Mars-native concept.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box" style="background: linear-gradient(135deg, rgba(245,158,11,0.1), transparent); border-color: rgba(245,158,11,0.3);">
+            <strong>Note:</strong> Advanced Research Center (25,000 shards) currently requires <code>fusion_reactor</code> as a prerequisite. When the fusion reactor is renamed/replaced, update this dependency to point to the replacement item.
+        </div>
+
+        <h4 style="margin: 16px 0 8px; color: var(--color-success);">KEEP: Working Items (Merge into Upgrade System)</h4>
+        <p>These items have real mechanical effects. The brainstorm proposes merging tiered items (rovers, scanners) into a single Lv1-10 upgrade path.</p>
+
+        <table class="comparison-table">
+            <thead>
+                <tr><th>Category</th><th>Items</th><th>Effects Work?</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Rovers (4)</strong></td>
+                    <td>Scout, Explorer, Crawler, Titan</td>
+                    <td style="color: var(--color-success);">Yes &mdash; speed, cargo, fuel all wired in</td>
+                    <td>Merge into Rover Lv1-4, expand to Lv10</td>
+                </tr>
+                <tr>
+                    <td><strong>Scanners (3)</strong></td>
+                    <td>Surface, Deep Core, Quantum</td>
+                    <td style="color: var(--color-success);">Yes &mdash; discovery/rare/legendary chances all wired in</td>
+                    <td>Merge into Scanner Lv1-3, expand to Lv10</td>
+                </tr>
+                <tr>
+                    <td><strong>Cargo (2)</strong></td>
+                    <td>Cargo Bay, Cryo Storage</td>
+                    <td style="color: var(--color-success);">Yes &mdash; cargo slots + bio value multiplier</td>
+                    <td>Keep as-is, possibly add upgrade levels later</td>
+                </tr>
+                <tr>
+                    <td><strong>Power (2 of 4)</strong></td>
+                    <td>High-Efficiency Panels, Concentrated Solar</td>
+                    <td style="color: var(--color-success);">Yes &mdash; passive income multipliers</td>
+                    <td>Keep, merge into Solar upgrade path</td>
+                </tr>
+                <tr>
+                    <td><strong>Research (2)</strong></td>
+                    <td>Mobile Lab, Advanced Center</td>
+                    <td style="color: var(--color-success);">Yes &mdash; discovery value multipliers</td>
+                    <td>Keep, fix Advanced Center prerequisite</td>
+                </tr>
+                <tr>
+                    <td><strong>Gear (3)</strong></td>
+                    <td>Explorer EVA, Command Exosuit, Hauler Frame</td>
+                    <td style="color: var(--color-success);">Yes &mdash; stat bonuses applied to captain</td>
+                    <td>Keep, could become Lv1 of suit upgrade paths</td>
+                </tr>
+                <tr>
+                    <td><strong>Automation (2 of 3)</strong></td>
+                    <td>Mining Automation, Maintenance Drone</td>
+                    <td style="color: var(--color-success);">Yes &mdash; +10/hr flat income, dust immunity</td>
+                    <td>Keep as-is</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="summary-box">
+            <strong>Priority:</strong> Fix the 3 broken items first &mdash; players are currently spending shards for nothing. The 2 Earth-tech items work fine mechanically and just need renaming/re-imaging during the Mars-material redesign pass.
+        </div>
+    </div>
+
+    <!-- Infrastructure Upgrades -->
+    <div class="section" style="border-left: 4px solid #06b6d4;">
+        <div class="section-title" style="color: #06b6d4;">Open Question: Infrastructure Upgrade Paths</div>
+
+        <p>Currently infrastructure buildings are <strong>one-time purchases</strong> (buy solar array, done). Should they also have 10 upgrade levels?</p>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Option A: 10-Level Infrastructure</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Solar Array Lv1</span><span class="mockup-value">10 shards/hr generation</span></div>
+                <div class="mockup-row"><span class="mockup-label">Solar Array Lv5</span><span class="mockup-value">50 shards/hr + dust storm resistance</span></div>
+                <div class="mockup-row"><span class="mockup-label">Solar Array Lv10</span><span class="mockup-value">200 shards/hr + night generation + powers nearby buildings</span></div>
+            </div>
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Option B: Separate Buildings per Tier (Current)</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Solar Array</span><span class="mockup-value">Free — basic generation</span></div>
+                <div class="mockup-row"><span class="mockup-label">Battery Storage</span><span class="mockup-value">10 shards — night generation</span></div>
+                <div class="mockup-row"><span class="mockup-label">Refinery</span><span class="mockup-value">8,000 shards — additional generation</span></div>
+                <div class="mockup-row"><span class="mockup-label">Nuclear Plant</span><span class="mockup-value">500K shards — massive generation</span></div>
+            </div>
+        </div>
+
+        <p><strong>Recommendation:</strong> Hybrid approach — keep separate buildings as distinct items, but let each building ALSO have upgrade levels (Lv1-5 or Lv1-10). Solar Array Lv1 is basic. Solar Array Lv5 is a crystal-laced power station carved into rock.</p>
+    </div>
+
+    <!-- Catalog Merge Question -->
+    <div class="section" style="border-left: 4px solid #64748b;">
+        <div class="section-title">Open Question: Merge Shop + Upgrade Systems?</div>
+
+        <p>Currently there are TWO systems for similar items:</p>
+        <ul>
+            <li><strong>SHOP_CATALOG</strong> — 4 separate rover items (basic, enhanced, advanced, elite) bought individually</li>
+            <li><strong>UPGRADE_CATALOG</strong> — Rover with 4 levels, upgraded in-place</li>
+        </ul>
+        <p>These overlap. Should we merge into ONE system where rover is just "Rover Lv1-10" with upgrade-in-place? The shop becomes the upgrade UI.</p>
+
+        <div class="summary-box">
+            <strong>Benefits of merging:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>One system to maintain, not two</li>
+                <li>Clear progression path (Lv1 &#8594; Lv10) instead of confusing "basic vs enhanced vs advanced vs elite"</li>
+                <li>On-demand image generation works naturally (upgrade from Lv N to N+1)</li>
+                <li>Players understand "upgrade" better than "buy a whole new rover"</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Open Questions -->
+    <div class="section" style="border-left: 4px solid #f59e0b;">
+        <div class="section-title" style="color: #f59e0b;">Open Questions for Team</div>
+
+        <div class="question-box" style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; padding: 16px; margin: 12px 0;">
+            <ol style="margin: 0; padding-left: 20px;">
+                <li style="margin: 8px 0;"><strong>What new buildings fill Tier 4-7?</strong> We have 4 empty slots to fill with Mars-material buildings. Which concepts? (See brainstorm list above)</li>
+                <li style="margin: 8px 0;"><strong>How many items get 10 levels?</strong> Everything, or some cap at 5? (Do suits need 10 levels?)</li>
+                <li style="margin: 8px 0;"><strong>Merge shop + upgrade systems?</strong> One upgrade path per item, or keep separate purchases?</li>
+                <li style="margin: 8px 0;"><strong>Infrastructure upgrades:</strong> Separate buildings per tier, or upgrade levels within each building? (Hybrid recommended)</li>
+                <li style="margin: 8px 0;"><strong>Upgrade gates:</strong> Should some upgrades require other items first? (e.g., Rover Lv6 requires Refinery?)</li>
+                <li style="margin: 8px 0;"><strong>Pricing multiplier:</strong> 1.07x (slower curve, more accessible) or 1.15x (steeper, more grindy) for within-building upgrades?</li>
+                <li style="margin: 8px 0;"><strong>Build time cap:</strong> 14 days max (Clash of Clans model) or allow longer for endgame prestige items?</li>
+                <li style="margin: 8px 0;"><strong>Kontext cost:</strong> What's the API cost per Flux generation? Budget per user per upgrade?</li>
+                <li style="margin: 8px 0;"><strong>Unique images per player</strong> vs. shared? Unique is cooler but costs more storage + generation.</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-success-rgb),0.1), transparent); border-color: rgba(var(--color-success-rgb),0.3);">
+        <div class="section-title" style="color: var(--color-success);">Next Steps</div>
+        <ol style="text-align: left; max-width: 500px; margin: 16px auto;">
+            <li style="margin: 8px 0;">Team reviews this brainstorm, answers open questions</li>
+            <li style="margin: 8px 0;">Finalize which items get 10 levels and pricing curves</li>
+            <li style="margin: 8px 0;">Generate Lv1 Mars-material images for ALL items (base set)</li>
+            <li style="margin: 8px 0;">Build the on-demand Kontext upgrade pipeline</li>
+            <li style="margin: 8px 0;">Update config.py with new levels, prices, and stats</li>
+            <li style="margin: 8px 0;">Ship it and watch players discover their unique upgrades</li>
+        </ol>
+    </div>
+
+    <!-- Research Sources -->
+    <div class="section" style="border-left: 4px solid #64748b; opacity: 0.8;">
+        <div class="section-title">Research Sources</div>
+        <ul style="font-size: 13px; color: var(--text-muted);">
+            <li><a href="https://blog.kongregate.com/the-math-of-idle-games-part-i/" target="_blank" style="color: var(--color-sepolia);">Kongregate: The Math of Idle Games, Part I</a> &mdash; Cost/income formulas, multiplier ranges</li>
+            <li><a href="https://gameanalytics.com/blog/idle-game-mathematics/" target="_blank" style="color: var(--color-sepolia);">GameAnalytics: Idle Game Mathematics</a> &mdash; Exponential vs polynomial growth</li>
+            <li><a href="https://www.gamedeveloper.com/production/i-designed-economies-for-150m-games-here-s-my-ultimate-handbook" target="_blank" style="color: var(--color-sepolia);">Gamedeveloper: Economy Design for $150M Games</a> &mdash; Professional economy handbook</li>
+            <li><a href="https://supercell.com/en/games/clashofclans/blog/news/cost-and-time-reductions-december-2023/" target="_blank" style="color: var(--color-sepolia);">Supercell: Clash Cost Reductions (Dec 2023)</a> &mdash; Why they cut upper-tier costs</li>
+            <li><a href="https://forums.civfanatics.com/threads/formula-thread.600534/" target="_blank" style="color: var(--color-sepolia);">CivFanatics: Civ 6 Formula Thread</a> &mdash; District cost scaling mechanics</li>
+            <li><a href="https://ageofempires.historich.net/guide-to-aoe2-economic-upgrades" target="_blank" style="color: var(--color-sepolia);">AoE2 Economic Upgrades Guide</a> &mdash; Payoff time methodology</li>
+            <li><a href="https://ericguan.substack.com/p/idle-game-design-principles" target="_blank" style="color: var(--color-sepolia);">Eric Guan: Idle Game Design Principles</a> &mdash; Prestige mechanics, growth theory</li>
+        </ul>
+    </div>
+
+    <!-- Chat Widget for Brainstorming -->
+    <div class="chat-widget" id="brainstorm-chat">
+        <div class="chat-header">
+            <div class="chat-header-icon">🧠</div>
+            <div class="chat-header-text">
+                <h3>Brainstorm with PilgrimBot</h3>
+                <p>Ask questions about this proposal or explore ideas together</p>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-message assistant">
+                <div class="chat-avatar">🧠</div>
+                <div class="chat-bubble">
+                    Hey! I'm here to help brainstorm the Mars-material redesign and 10-level upgrade system. I have full context on everything above. Ask me anything — like "What should a Lv10 solar array look like?", "How do we balance pricing for new players?", or "What gameplay bonuses should scanner upgrades give?"
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-suggestions">
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What buildings fill the mid-game gap?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">Design the Tier 4-7 pricing curve</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">What should Lv10 items look like?</span>
+            <span class="chat-suggestion" onclick="sendSuggestion(this)">Should we merge shop + upgrades?</span>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask a question or share an idea..." rows="1"
+                onkeydown="handleKeyDown(event)"></textarea>
+            <button class="chat-send" id="chat-send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

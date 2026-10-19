@@ -1,0 +1,303 @@
+/* Lore Page Styles */
+
+/* Hero star pattern background */
+.hero-stars {
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="10" cy="20" r="0.5" fill="white" opacity="0.3"/><circle cx="30" cy="50" r="0.3" fill="white" opacity="0.2"/><circle cx="70" cy="15" r="0.4" fill="white" opacity="0.25"/><circle cx="85" cy="60" r="0.3" fill="white" opacity="0.2"/><circle cx="50" cy="80" r="0.5" fill="white" opacity="0.3"/></svg>');
+    background-size: 200px;
+}
+
+/* Lore page specific h4 styling */
+.lore-h4 {
+    margin: 16px 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Lore list styling */
+.lore-list {
+    margin: 12px 0 16px 0;
+    padding-left: 20px;
+    line-height: 1.8;
+}
+
+/* Border color utilities for lore-rarity */
+.border-muted { border-color: var(--text-muted); }
+.border-success { border-color: var(--color-success); }
+.border-sepolia { border-color: var(--color-sepolia); }
+.border-mars { border-color: var(--color-mars); }
+
+/* 4-column grid variant */
+.lore-grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* Primary link color */
+.text-primary-link {
+    color: var(--color-primary);
+}
+
+.lore-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.lore-summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    cursor: pointer;
+    background: var(--bg-tertiary);
+    transition: background 0.2s;
+    list-style: none;
+}
+
+.lore-summary::-webkit-details-marker {
+    display: none;
+}
+
+.lore-summary::after {
+    content: "▸";
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+}
+
+details[open] .lore-summary::after {
+    transform: rotate(90deg);
+}
+
+.lore-summary:hover {
+    background: var(--bg-primary);
+}
+
+.lore-icon {
+    font-size: 20px;
+}
+
+.lore-icon-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.lore-highlight-icon-img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.lore-stat-icon-img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.lore-building-icon-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+}
+
+.lore-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lore-content {
+    padding: 20px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.lore-content p {
+    margin: 0 0 12px 0;
+}
+
+.lore-content p:last-child {
+    margin-bottom: 0;
+}
+
+.lore-content strong {
+    color: var(--text-primary);
+}
+
+.lore-highlight {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(var(--color-mars-rgb), 0.1) 0%, rgba(var(--color-sepolia-rgb), 0.1) 100%);
+    border: 1px solid rgba(var(--color-mars-rgb), 0.2);
+    border-radius: var(--radius-md);
+    margin: 16px 0;
+}
+
+.lore-highlight-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.lore-highlight-text {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.lore-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.lore-fact {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.lore-fact-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+
+.lore-fact-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lore-stats-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.lore-stat {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.lore-stat-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.lore-stat strong {
+    display: block;
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.lore-stat span {
+    font-size: 12px;
+    color: var(--text-secondary);
+    opacity: 0.85;
+}
+
+.lore-rarity {
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 2px solid;
+    text-align: center;
+    background: var(--bg-tertiary);
+}
+
+.lore-buildings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.lore-building {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.lore-building-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.lore-building-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lore-building-info strong {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.lore-building-info span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.lore-faq {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lore-faq:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.lore-faq h4 {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.lore-faq p {
+    margin: 0;
+    font-size: 13px;
+}
+
+@media (max-width: 480px) {
+    .lore-summary {
+        padding: 14px 16px;
+    }
+
+    .lore-content {
+        padding: 16px;
+    }
+
+    .lore-title {
+        font-size: 14px;
+    }
+
+    .lore-grid,
+    .lore-grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

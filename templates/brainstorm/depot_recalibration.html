@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+{% block title %}Depot Recalibration Brainstorm — Pilgrims{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/brainstorm.css?v={{ static_v }}">
+{% endblock %}
+
+{% block extra_js %}
+<script>window.BRAINSTORM_PAGE_KEY = 'depot-recalibration';</script>
+<script src="/static/js/brainstorm-comments.js?v={{ static_v }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="brainstorm-container">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));">
+        <span class="status-badge status-draft">Brainstorm</span>
+        <h1 style="margin: 16px 0 8px 0; color: var(--text-primary);">Depot Recalibration</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Building Upgrades Need to Matter More — New Systems, New Purpose</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">April 2026 — Bug #1270 (P1) + Bug #1271 (Rebalance Costs, P1)</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 1: THE PROBLEM -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-danger);">
+        <div class="section-title" style="color: var(--color-danger);">The Problem — Depot Needs Recalibration</div>
+
+        <p>From Bug #1270 (Luke): "Depot needs to be recalibrated to incorporate past few months of game features."</p>
+
+        <div class="summary-box">
+            <strong>The Depot was designed before</strong> Signal detection, trail building, Robot construction, and stat progression existed. Buildings need new purposes tied to these systems. Right now, many upgrades feel like "number go up" without clear impact on gameplay.
+        </div>
+
+        <p>Luke's specific callouts for what buildings should contribute to:</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Building Should Contribute To</th>
+                        <th>Current State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>SV generation</td>
+                        <td>Some buildings do this already</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Trail building speed</td>
+                        <td>Not connected at all</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Faster building times (meta-upgrade)</td>
+                        <td>Nothing speeds up Depot builds</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Crew member stats</td>
+                        <td>EVA Suit has bonuses but they're not applied (Bug #502)</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>Signal detection</td>
+                        <td>Not connected at all</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 2: CURRENT UPGRADE CATEGORIES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Current Upgrade Categories — What Exists</div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Sub-Upgrades</th>
+                        <th>Levels</th>
+                        <th>Current Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Vehicles</strong></td>
+                        <td>Rover, Drone, Buggy</td>
+                        <td>1-10 each</td>
+                        <td>Expedition range + speed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Equipment</strong></td>
+                        <td>Scanner, Life Support, Cargo</td>
+                        <td>1-10 each</td>
+                        <td>Discovery rate, expedition survival, carry capacity</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Power</strong></td>
+                        <td>Generator</td>
+                        <td>1-10</td>
+                        <td>Colony power / Shard generation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Research</strong></td>
+                        <td>Research (Lab)</td>
+                        <td>1-10</td>
+                        <td>Unlocks tech tree research</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Gear</strong></td>
+                        <td>EVA Suit</td>
+                        <td>1-10</td>
+                        <td>Stat bonuses (defined but not applied)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Automation</strong></td>
+                        <td>Automation Drones</td>
+                        <td>1-10</td>
+                        <td>Mixed: maintenance (L1-3) + mining (L4-10)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Storage</strong></td>
+                        <td>Bunker</td>
+                        <td>1-10</td>
+                        <td>Storage capacity</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-box">
+            <strong>Related bug:</strong> #1149 — Split Automation Drones into separate Maintenance Drone and Mining Drone upgrade paths. Currently one upgrade mashes together two unrelated things.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 3: NEW BUILDING PURPOSES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-sepolia);">
+        <div class="section-title" style="color: var(--color-sepolia);">New Building Purposes — What Should Change</div>
+
+        <p>Each building category should connect to the new game systems. This is the core of the recalibration.</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Building</th>
+                        <th>Current Purpose</th>
+                        <th>New Additional Purposes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Scanner</strong></td>
+                        <td>Discovery rate</td>
+                        <td><strong>Signal detection range bonus</strong> — higher level = wider detection radius. This is the primary Signal lever from buildings.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Generator</strong></td>
+                        <td>Shard generation</td>
+                        <td><strong>Powers robot operation</strong> — robot effectiveness limited by generator level. Also powers Signal decryption speed.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Lab / Research</strong></td>
+                        <td>Unlocks tech</td>
+                        <td><strong>ARIA progression trigger</strong> — Lab L3+ triggers ARIA Signal hints. Analysis speed for Signal fragments.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Automation</strong></td>
+                        <td>Maintenance + mining</td>
+                        <td><strong>Trail building speed bonus</strong> — drones help clear terrain. Robot construction speed assist.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>EVA Suit</strong></td>
+                        <td>Stat bonuses (not applied)</td>
+                        <td><strong>Actually apply stat bonuses.</strong> Connect to captain stat effects once those are defined.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Rover / Vehicles</strong></td>
+                        <td>Expedition range + speed</td>
+                        <td><strong>Closest-approach detection benefits</strong> — faster vehicles cover more ground, more chances to pass near signals.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bunker</strong></td>
+                        <td>Storage</td>
+                        <td><strong>Discovery storage for robot components</strong> — need space to store legendaries/rares while collecting for robot build.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Key questions:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Do we ADD effects to existing levels, or redesign the level progression?</li>
+                <li>Should new effects unlock at specific levels (e.g., Scanner gets Signal detection at L3+)?</li>
+                <li>Does this change the value proposition of early vs late upgrades?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 4: BUILD TIMES & SPEED -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-mars);">
+        <div class="section-title" style="color: var(--color-mars);">Build Times & Speed — The #1 Pain Point</div>
+
+        <p>Bug #1265 (P1, Awaiting QA): "Is there currently any way to speed up buildings? If not, there should DEF be some way."</p>
+
+        <div class="summary-box">
+            <strong>Currently there is NO way to speed up Depot build times.</strong> Once you start a build, you wait. No acceleration, no rush, no crew assignment, no Shard spend. This makes late-game upgrades (weeks to months) feel punishing.
+        </div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Speed-Up Method</th>
+                        <th>How It Works</th>
+                        <th>Pros</th>
+                        <th>Cons</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Shard Rush</strong></td>
+                        <td>Spend Shards to reduce remaining time by X%</td>
+                        <td>Shard sink, player agency</td>
+                        <td>Pay-to-win feel if too powerful</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Crew Assignment</strong></td>
+                        <td>Assign scientist/robot to help build (faster with higher ENG stat)</td>
+                        <td>Ties into stats system, meaningful choice</td>
+                        <td>Crew unavailable for other tasks</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Automation Drone Bonus</strong></td>
+                        <td>Higher drone level = faster builds passively</td>
+                        <td>Makes Automation upgrades more valuable</td>
+                        <td>Passive, no player decision</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Captain Logistics Stat</strong></td>
+                        <td>Higher Logistics = faster builds across the board</td>
+                        <td>Stat matters, compounds over time</td>
+                        <td>Passive, no per-build decision</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Combo: All of the above</strong></td>
+                        <td>Stack passive bonuses + optional rush</td>
+                        <td>Multiple levers, rich gameplay</td>
+                        <td>Complexity, balance needed</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Which approach does Luke prefer?</strong> Crew Assignment feels most aligned with his "stats matter" philosophy. Shard Rush adds player agency but risks "mobile game" feel. Automation Drone is the simplest to implement.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 5: COST REBALANCING -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Cost Rebalancing — Bug #1271</div>
+
+        <p>From Bug #1271 (Luke, P1): "The cost of upgrades seem like they need a rebalance."</p>
+
+        <div class="summary-box">
+            If buildings now do MORE (Signal detection, trail speed, robot support), their costs need to reflect the expanded value. Some may need to cost more (they're more powerful now), some may need to cost less (they were overpriced for what they did).
+        </div>
+
+        <div class="question-box">
+            <strong>Questions for Luke:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li>Which specific upgrades feel too expensive for what they do?</li>
+                <li>Which feel too cheap (you'd buy them instantly)?</li>
+                <li>Should the curve be steeper (cheap early, very expensive late) or flatter?</li>
+                <li>Do new effects justify keeping current prices, or should prices change WITH the new effects?</li>
+                <li>Mars Realism: early tiers affordable (thousands), mid expensive (100k+), late massive (500k+) — does this still feel right?</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 6: MAINTENANCE DRONE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--text-muted);">
+        <div class="section-title">Maintenance Drone — Multiple Related Bugs</div>
+
+        <p>Three bugs orbit the Maintenance Drone:</p>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Bug</th>
+                        <th>Issue</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#1266</td>
+                        <td>Maintenance Drone doesn't do anything</td>
+                        <td>Awaiting QA</td>
+                    </tr>
+                    <tr>
+                        <td>#1267</td>
+                        <td>Maintenance Drone not in Depot or Upgradable</td>
+                        <td>ReOpen</td>
+                    </tr>
+                    <tr>
+                        <td>#1149</td>
+                        <td>Split Automation into Maintenance Drone + Mining Drone paths</td>
+                        <td>Backlog</td>
+                    </tr>
+                    <tr>
+                        <td>#1161</td>
+                        <td>Need Feature ideas for Drone</td>
+                        <td>Backlog</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="question-box">
+            <strong>Design decision needed:</strong>
+            <ul style="margin: 8px 0 0 0;">
+                <li><strong>Option A:</strong> Split Automation into Maintenance + Mining. Two separate upgrade paths in Depot.</li>
+                <li><strong>Option B:</strong> Keep Automation as-is. Maintenance Drone is a separate new building category.</li>
+                <li><strong>Option C:</strong> Drone becomes the Robot's tool. Robot controls drones, upgrading the robot upgrades drone capability.</li>
+            </ul>
+            Option C ties nicely into the Robot Crew Member brainstorm — the robot manages your fleet of drones.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 7: UPGRADE DISPLAY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Upgrade Display — Show What Buildings Do</div>
+
+        <p>Related bugs: #1268 (Standardize multiplier format), #1269 (What does "unlocks research" mean?), #1274 (Depot cards showing placeholder icons)</p>
+
+        <div class="summary-box">
+            <strong>Every building modal must show all effects.</strong> CLAUDE.md says: "Every item modal MUST have at least 6 data points, ideally 10-15+." If buildings now affect Signal detection, trail speed, and crew stats, those effects must be visible in the upgrade card/modal.
+        </div>
+
+        <div class="mockup-box">
+            <div class="mockup-header">Proposed Upgrade Card (Scanner L3 → L4)</div>
+            <div class="mockup-content">
+                <div class="mockup-row"><span class="mockup-label">Discovery Rate</span><span class="mockup-value">1.8x → 2.1x (+17%)</span></div>
+                <div class="mockup-row"><span class="mockup-label">Signal Detection</span><span class="mockup-value">+8km radius → +12km radius</span></div>
+                <div class="mockup-row"><span class="mockup-label">Build Time</span><span class="mockup-value">14 days</span></div>
+                <div class="mockup-row"><span class="mockup-label">Cost</span><span class="mockup-value">45,000 Shards</span></div>
+                <div class="mockup-row"><span class="mockup-label">Requires</span><span class="mockup-value">Generator L2+</span></div>
+                <div class="mockup-row"><span class="mockup-label">Unlocks</span><span class="mockup-value">ARIA Signal hint tier 2</span></div>
+            </div>
+        </div>
+
+        <div class="question-box">
+            <strong>All bonuses should use multiplier format</strong> (per Bug #1268). "1.9x" not "+90%". Consistent across all upgrade displays.
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 8: CROSS-REFERENCES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-primary);">
+        <div class="section-title" style="color: var(--color-primary);">Cross-References — How Depot Connects to Everything</div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Brainstorm Page</th>
+                        <th>How Depot Connects</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><a href="/brainstorm/signal-phase-2" style="color: var(--color-sepolia);">Signal Phase 2</a></td>
+                        <td>Scanner affects detection radius. Lab triggers ARIA hints. Building upgrades are confirmed detection levers.</td>
+                    </tr>
+                    <tr>
+                        <td><a href="/brainstorm/captain-stats" style="color: var(--color-sepolia);">Captain & Scientist Stats</a></td>
+                        <td>EVA Suit stat bonuses. Logistics stat affects build speed. Engineering stat for robot/building construction.</td>
+                    </tr>
+                    <tr>
+                        <td><a href="/brainstorm/robot-crew" style="color: var(--color-sepolia);">Robot Crew Member</a></td>
+                        <td>Robot could speed up Depot builds. Drones become robot-managed. Generator powers robot.</td>
+                    </tr>
+                    <tr>
+                        <td><a href="/brainstorm/trail-network" style="color: var(--color-sepolia);">Trail Network</a></td>
+                        <td>Automation Drones could speed up trail clearing. Building bonuses to trail speed.</td>
+                    </tr>
+                    <tr>
+                        <td><a href="/brainstorm/sv-economy" style="color: var(--color-sepolia);">SV Economy</a></td>
+                        <td>Building costs need to scale with SV income. More buildings generating SV.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 9: IMPLEMENTATION PRIORITY -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="border-left: 4px solid var(--color-success);">
+        <div class="section-title" style="color: var(--color-success);">Implementation Priority</div>
+
+        <div class="comparison-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Item</th>
+                        <th>Depends On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Confirm new building purposes</strong> — Luke reviews Section 3</td>
+                        <td>This brainstorm</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>Add build speed-up mechanism</strong> — address P1 pain point</td>
+                        <td>#1 confirmed</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><strong>Scanner → Signal detection</strong> — connect to Signal Phase 2</td>
+                        <td>Captain Stats brainstorm</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><strong>Resolve Maintenance Drone split</strong></td>
+                        <td>Robot Crew brainstorm</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><strong>Cost rebalancing pass</strong></td>
+                        <td>All new effects defined</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><strong>Upgrade display overhaul</strong> — show all effects in cards/modals</td>
+                        <td>Effects implemented</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><strong>Fix placeholder icons</strong> (Bug #1274)</td>
+                        <td>Can do anytime</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p><strong>Related bugs:</strong> #1270 (Recalibrate), #1271 (Rebalance Costs), #1265 (Speed up builds), #1149 (Split Automation), #1161 (Drone features), #1266 (Drone non-functional), #1267 (Drone not in Depot), #1268 (Multiplier format), #1269 (Unlocks research), #1274 (Placeholder icons)</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- PILGRIMBOT BRAINSTORM LINK -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="section" style="text-align: center; background: linear-gradient(135deg, rgba(var(--color-sepolia-rgb), 0.1), var(--bg-secondary)); border: 1px solid rgba(var(--color-sepolia-rgb), 0.3);">
+        <div style="font-size: 28px; margin-bottom: 8px;">&#x1F9E0;</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--text-primary);">Brainstorm with PilgrimBot</h3>
+        <p style="color: var(--text-secondary); margin: 0 0 16px 0; font-size: 13px;">
+            Full PilgrimBot — streaming, markdown, code context, bug creation, endgame registry
+        </p>
+        <a href="/pilgrimbot?brainstorm=depot-recalibration" class="btn btn-primary" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px; background: var(--color-sepolia); color: white;">
+            Open PilgrimBot — Depot Recalibration
+        </a>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{# #1393: ARIA-bond fragment call-out, rendered on the home page ALWAYS (not gated by
+   show_briefing), so frequent players who skip the While-You-Were-Away briefing still
+   get a proactive, persistent prompt when a bond fragment is ready to submit. Label +
+   icon carry the meaning (never colour alone — colourblind rule). pending_fragments /
+   processing_bonds are top-level from dashboard.py::get_dashboard_page_data. #}
+{% if pending_fragments and pending_fragments|length > 0 %}
+<div class="briefing-actions" style="max-width: 1100px; margin: 12px auto 0; padding: 0 16px;">
+    <div class="briefing-section-label">ARIA Bond &mdash; Action Needed</div>
+    {% for frag in pending_fragments %}
+    <a href="/signal" class="briefing-action-card">
+        <img src="{{ icons.aria_avatar }}" alt="" class="inline-icon-md">
+        <div class="briefing-action-text">
+            <strong>Fragment Ready{% if frag.landmark %} &mdash; {{ frag.landmark }}{% endif %}</strong>
+            <span>A new ARIA bond is waiting &mdash; submit your fragment on the Signal page to complete it</span>
+        </div>
+        <span class="briefing-action-go">Go</span>
+    </a>
+    {% endfor %}
+</div>
+{% elif processing_bonds and processing_bonds|length > 0 %}
+<div class="briefing-actions" style="max-width: 1100px; margin: 12px auto 0; padding: 0 16px;">
+    <div class="briefing-section-label">ARIA Bond &mdash; Forming</div>
+    {% for b in processing_bonds %}
+    <a href="/signal" class="briefing-action-card">
+        <img src="{{ icons.signal_transmission }}" alt="" class="inline-icon-md">
+        <div class="briefing-action-text">
+            <strong>Bond forming{% if b.landmark %} &mdash; {{ b.landmark }}{% endif %}</strong>
+            <span>ARIA is weaving the connection &mdash; check back shortly</span>
+        </div>
+        <span class="briefing-action-go">View</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}

@@ -1,0 +1,117 @@
+<!-- ANONYMOUS USER: Step 1 - The First Pilgrimage -->
+
+<!-- Step Navigation at top - Mars palette -->
+<div class="flex justify-center gap-8 mb-16">
+    <div class="step-indicator step-active shadow">
+        <div class="step-number">1</div>
+        <span class="step-label text-xs">Mine</span>
+    </div>
+    <a href="/crew" class="no-underline">
+        <div class="step-indicator step-inactive">
+            <div class="step-number">2</div>
+            <span class="step-label text-xs">Captain</span>
+        </div>
+    </a>
+    <div class="step-indicator step-inactive">
+        <div class="step-number">3</div>
+        <span class="step-label text-xs">Accept</span>
+    </div>
+</div>
+
+<!-- TOP CTA - Mars warm bronze action button -->
+<div style="background: var(--gradient-success); margin: 0 -20px 16px -20px; padding: 16px 20px; text-align: center; box-shadow: 0 4px 20px rgba(181,112,64,0.3);">
+    <a href="/crew" style="color: white; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 12px;">
+        <span style="font-size: 18px; font-weight: 700;">Continue to Step 2</span>
+        <span style="font-size: 24px;">→</span>
+    </a>
+</div>
+
+<!-- Hero Section with Background Image -->
+<div class="hero-section relative rounded-lg overflow-hidden flex flex-col justify-center" style="margin: 0 -20px 20px -20px; padding: 40px 20px 30px 20px; min-height: 160px;">
+    <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/banner_step1_orbit_1767634740_banner.png" alt="Approaching Mars" fetchpriority="high" class="absolute inset-0 w-full h-full opacity-50 z-0" style="object-fit: cover;">
+    <div class="hero-overlay"></div>
+    <div class="relative z-2 text-center">
+        <div class="hero-subtitle text-sm uppercase tracking-wider mb-6 text-white opacity-80">Year 2157 • Earth Orbit</div>
+        <h1 class="hero-title text-white m-0 text-3xl" style="text-shadow: 0 3px 20px rgba(0,0,0,0.7);">Mars Colony Strategy Game — The First Pilgrimage</h1>
+    </div>
+</div>
+
+<!-- The Journey Science - Mars dark card -->
+<div class="dashboard-card card-dark mb-20">
+    <div class="p-16">
+        <div class="section-label"><img src="{{ icons.rocket_launch }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> 7 Months • 225 Million Kilometers</div>
+        <p class="text-md leading-relaxed m-0 mb-12 opacity-90">
+            In 2020, NASA's Perseverance took 7 months to reach Mars. Now, 137 years later, better shielding and recycled life support make human travel possible—but radiation still limits each ship to <strong class="text-mars">two people</strong>.
+        </p>
+        <p class="text-sm leading-normal m-0 opacity-80" style="border-left: 3px solid var(--color-mars); padding-left: 12px;">
+            <em>Probes found something in the soil. Crystals older than humanity. Energy that shouldn't exist. You're being sent to find out why.</em>
+        </p>
+    </div>
+</div>
+
+<!-- The Cache - Sepolia dusty mauve -->
+<div class="dashboard-card bg-sepolia text-white text-center relative overflow-hidden">
+    <div class="absolute rounded-full" style="top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1);"></div>
+    <div class="text-sm opacity-80 uppercase tracking-wide mb-8">Ancient Cache Retrieved</div>
+    <div class="text-6xl font-bold mb-4" style="text-shadow: 0 2px 10px rgba(0,0,0,0.2);">{{ "%.1f"|format(preview_balance) }}</div>
+    <div class="text-lg opacity-90">Sepolia Shards</div>
+    <div class="text-xs opacity-70 mt-8">Energy signature: Unknown origin • Age: Pre-human</div>
+</div>
+
+<!-- Your Crew Preview -->
+<div class="dashboard-card bg-card border">
+    <div class="section-label">The Crew You'll Shape</div>
+    <div class="grid grid-2 gap-16">
+        <div class="text-center p-16 bg-secondary rounded-lg">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/crew_icon_1767579874_nav.png" alt="Captain" loading="lazy" style="width: 48px; height: 48px; margin-bottom: 8px; filter: drop-shadow(0 2px 8px rgba(181,112,64,0.3));">
+            <div class="text-base font-semibold text-primary">Captain</div>
+            <div class="text-xs text-secondary mt-4">Leads the mission</div>
+            <div class="text-xs text-success mt-8">Customize appearance & stats</div>
+        </div>
+        <div class="text-center p-16 bg-secondary rounded-lg">
+            <img src="https://storage.googleapis.com/galactica-pilgrim-assets/ui/inventory_icon_1767579900_nav.png" alt="Scientist" loading="lazy" style="width: 48px; height: 48px; margin-bottom: 8px; filter: drop-shadow(0 2px 8px rgba(166,117,103,0.3));">
+            <div class="text-base font-semibold text-primary">Scientist</div>
+            <div class="text-xs text-secondary mt-4">Analyzes discoveries</div>
+            <div class="text-xs text-sepolia mt-8">Unique specialist joins you</div>
+        </div>
+    </div>
+    <p class="text-sm text-secondary text-center mt-12 m-0">
+        Two people. Seven months asleep. Your journey begins now.
+    </p>
+</div>
+
+<!-- The Mystery - Mars dark card -->
+<div class="dashboard-card card-dark">
+    <div class="p-12">
+        <div class="section-label"><img src="{{ icons.warning_alert }}" alt="" style="width: 16px; height: 16px; vertical-align: middle;"> The Signal</div>
+        <p class="text-md leading-relaxed mb-0 opacity-90">
+            During descent, the onboard sensors detected something strange. Crystalline formations scattered across the surface, each one pulsing with the same frequency: <strong class="text-success">"Signal detected."</strong> Your scientist is already analyzing the readings. <em class="text-sepolia">Something is waiting to be found.</em>
+        </p>
+    </div>
+</div>
+
+<!-- Primary CTA - Mars warm bronze -->
+<div class="text-center mt-20">
+    <a href="/crew" class="btn btn-large bg-success text-white font-bold shadow-lg" style="padding: 18px 40px; font-size: 18px;">Continue to Step 2 →</a>
+    <div class="text-sm text-muted mt-8">Next: Choose your captain</div>
+</div>
+
+<!-- ARIA Help Hint - Points to the orb -->
+<div id="ariaHint" class="aria-hint" style="position: fixed; bottom: 100px; right: 20px; background: rgba(26,26,46,0.95); border: 2px solid var(--color-aria); border-radius: 12px; padding: 12px 16px; max-width: 200px; z-index: 1000; animation: ariaHintBounce 2s ease-in-out infinite; box-shadow: 0 4px 20px rgba(var(--color-aria-rgb),0.4);">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <div style="width: 32px; height: 32px; background: var(--gradient-aria); border-radius: 50%; flex-shrink: 0;"></div>
+        <div style="font-size: 13px; font-weight: 600; color: white;">Need help?</div>
+    </div>
+    <p style="font-size: 12px; color: rgba(255,255,255,0.85); margin: 0 0 8px 0; line-height: 1.4;">I'm <strong style="color: var(--color-aria-light);">A.R.I.A.</strong>, your AI guide. Click the glowing orb anytime!</p>
+    <div style="text-align: center;">
+        <span style="font-size: 20px; animation: arrowBounce 1s ease-in-out infinite;">↓</span>
+    </div>
+    <button onclick="dismissAriaHint()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 16px; padding: 0; line-height: 1;">&times;</button>
+</div>
+
+
+<div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+    <p class="text-light-tertiary" style="font-size: 13px; margin-bottom: 12px;">Already established a colony?</p>
+    <a href="/login" class="btn" style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 24px;">Return to Mars</a>
+</div>
+

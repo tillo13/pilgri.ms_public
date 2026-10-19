@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% block title %}Admin · Kumori ARIA Journal · Debug Console{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/admin-kumori-journal-stream.css?v={{ static_v }}">
+{% endblock %}
+{% block content %}
+<div class="kj-container">
+  <h2 class="kj-title">ARIA Photo Journal — Kumori free-stack debug console</h2>
+  <p class="kj-sub">
+    Replaces paid Replicate <code>nano_banana_pro</code> with the free
+    <strong>kumori.ai</strong> pipeline. Every prompt, response, and endpoint
+    is shown below so you can validate before cutover. Bug&nbsp;#1457.
+  </p>
+
+  <!-- Today's free-tier usage — pulled from kumori_api_usage so we see how
+       close we are to the daily caps BEFORE generating another image. -->
+  <div class="kj-card" id="kj-usage-card">
+    <div class="kj-row">
+      <span class="kj-label">Today's free-tier usage</span>
+      <button id="kj-usage-refresh" class="btn btn-secondary" style="font-size:11px; padding:4px 10px;">↻ refresh</button>
+    </div>
+    <div id="kj-usage-bars" class="kj-usage-bars"></div>
+    <details class="kj-nested" style="margin-top:8px;">
+      <summary>Per-row breakdown (provider × model × feature × app_name)</summary>
+      <pre id="kj-usage-rows"></pre>
+    </details>
+  </div>
+
+  <div class="kj-card">
+    <div class="kj-row">
+      <label class="kj-label">Captain</label>
+      <select id="kj-captain" class="kj-input"><option>Loading captains…</option></select>
+    </div>
+    <div class="kj-row">
+      <label class="kj-label">Force ≥ refs</label>
+      <select id="kj-force-n" class="kj-input">
+        <option value="0" selected>0 — let the roll happen naturally (0–4)</option>
+        <option value="1">1 — at least one reference</option>
+        <option value="2">2 — at least two</option>
+        <option value="3">3 — at least three</option>
+        <option value="4">4 — exactly four (Klein hard cap)</option>
+      </select>
+    </div>
+    <div class="kj-row">
+      <label class="kj-label">Image size</label>
+      <select id="kj-preset" class="kj-input">
+        <option value="aria_journal" selected>aria_journal · 1024×768 (4:3, ~1.9s, matches /aria-album)</option>
+        <option value="square_hero">square_hero · 1024×1024 (1:1, ~1.8s)</option>
+        <option value="captain_portrait">captain_portrait · 768×1024 (3:4, ~1.6s)</option>
+        <option value="phone_splash">phone_splash · 720×1280 (9:16, ~1.8s)</option>
+        <option value="wide_cinematic">wide_cinematic · 2048×1024 (2:1, ~3.5s)</option>
+        <option value="premium_share">premium_share · 2048×2048 (4 MP MAX, ~7s, top quality)</option>
+        <option value="thumbnail">thumbnail · 512×384 (~1.3s, quick draft)</option>
+        <option value="__custom__">custom W×H (multiples of 16, ≤4 MP)</option>
+      </select>
+    </div>
+    <div class="kj-row" id="kj-custom-size-row" style="display:none">
+      <label class="kj-label">Custom W × H</label>
+      <input type="number" id="kj-custom-w" class="kj-input" placeholder="width" min="128" max="2048" step="16" value="1024" style="max-width:120px">
+      <span style="opacity:0.5">×</span>
+      <input type="number" id="kj-custom-h" class="kj-input" placeholder="height" min="128" max="2048" step="16" value="1024" style="max-width:120px">
+      <span class="kj-mini">snaps DOWN to multiple of 16</span>
+    </div>
+    <div class="kj-row kj-row-actions">
+      <button id="kj-generate" class="btn btn-primary">▶ Generate (trace every step)</button>
+      <button id="kj-save" class="btn btn-secondary" disabled>💾 Save to ARIA Album</button>
+      <span id="kj-status" class="kj-status"></span>
+    </div>
+  </div>
+
+  <div class="kj-card">
+    <h3 class="kj-section-h">Daily-snapshot cron — production path</h3>
+    <p class="kj-mini" style="margin:0 0 10px 0; opacity:0.7">
+      Fires <code>utilities/aria/photos/orchestrator.py</code> exactly as the 06:00 PT cron runs it.
+      Each captain's snapshot is rendered via the kumori cascade (HF Qwen 2511 → Kontext-Dev → Qwen Fast → CF Klein → CF Klein 2) and saved to <code>/aria-album</code>.
+    </p>
+    <div class="kj-row kj-row-actions">
+      <button id="kj-cron-one" class="btn btn-primary">▶ Fire for selected captain</button>
+      <button id="kj-cron-all" class="btn btn-secondary">▶ Fire for ALL active captains</button>
+      <span id="kj-cron-status" class="kj-status"></span>
+    </div>
+    <pre id="kj-cron-result" style="display:none; max-height:400px; overflow:auto; background:#0f1419; color:#e6e6e6; padding:12px; border-radius:6px; font-size:11px; margin-top:10px;"></pre>
+  </div>
+
+  <div id="kj-result" class="kj-result" style="display:none">
+    <!-- LEFT: rendered image + caption + the EXACT prompt Klein got -->
+    <div class="kj-preview">
+      <h3 class="kj-section-h">Rendered output</h3>
+      <img id="kj-img" alt="generated">
+      <div class="kj-caption-wrap">
+        <div class="kj-caption-label">ARIA caption</div>
+        <div class="kj-caption" id="kj-caption"></div>
+      </div>
+      <div id="kj-used-size" class="kj-mini"></div>
+
+      <!-- Always-visible: the exact prompt Klein rendered from. Pinned here
+           because iterating across dozens of size/N/mood/composition combos
+           needs the prompt always in view, not buried in collapsibles. -->
+      <div class="kj-pinned-prompt">
+        <div class="kj-pinned-head">
+          <span class="kj-pinned-label">Klein prompt (verbatim, what produced THIS image)</span>
+          <button id="kj-copy-prompt" class="btn btn-secondary kj-copy-btn">📋 copy</button>
+        </div>
+        <pre id="kj-image-prompt-pinned"></pre>
+      </div>
+
+      <!-- Always-visible: the full user payload that asked the LLM to write
+           the Klein prompt above. Lets you spot when mood/composition/N flowed
+           through vs got lost. -->
+      <details class="kj-pinned-llm-input" open>
+        <summary>LLM user payload (what we asked the LLM to write)</summary>
+        <pre id="kj-llm-user-pinned"></pre>
+      </details>
+    </div>
+
+    <!-- RIGHT: full pipeline trace, collapsible per stage -->
+    <div class="kj-trace">
+
+      <details class="kj-stage" open>
+        <summary>Stage 1 — Pool build (CODE only · no API)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-key">Method:</div>
+          <div class="kj-val"><code>utilities.aria_journal.build_recent_pool(user_id)</code></div>
+          <div class="kj-key">Pool totals:</div>
+          <pre id="kj-pool"></pre>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 2 — Random pick (mood + composition hints)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-key">Method:</div>
+          <div class="kj-val"><code>utilities.aria_journal.random_pick(pool)</code></div>
+          <div class="kj-key">Roll result:</div>
+          <pre id="kj-pick"></pre>
+          <div class="kj-key">Chosen references (in image-index order):</div>
+          <div id="kj-chosen-refs" class="kj-refs-grid"></div>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 3 — LLM synthesis (one HTTP call)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-key">Endpoint:</div>
+          <div class="kj-val"><code id="kj-llm-endpoint"></code></div>
+          <div class="kj-key">Backend used (winner):</div>
+          <div class="kj-val"><code id="kj-llm-backend"></code></div>
+          <details class="kj-nested">
+            <summary>LLM system prompt (full)</summary>
+            <pre id="kj-llm-system"></pre>
+          </details>
+          <details class="kj-nested">
+            <summary>LLM user payload (full)</summary>
+            <pre id="kj-llm-user"></pre>
+          </details>
+          <details class="kj-nested">
+            <summary>Per-attempt log (every backend tried, in order)</summary>
+            <pre id="kj-llm-attempts"></pre>
+          </details>
+          <div class="kj-key">Synthesized image_prompt (passed verbatim to Klein):</div>
+          <pre id="kj-image-prompt"></pre>
+          <div class="kj-key">Synthesized aria_caption:</div>
+          <pre id="kj-caption-raw"></pre>
+          <div class="kj-key">Post-process notes:</div>
+          <pre id="kj-postproc"></pre>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 4 — Klein image render (one HTTP call)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-key">Endpoint:</div>
+          <div class="kj-val"><code id="kj-klein-endpoint"></code></div>
+          <div class="kj-key">Payload shape:</div>
+          <pre id="kj-klein-payload"></pre>
+          <div class="kj-key">Provider / timing:</div>
+          <pre id="kj-render-meta"></pre>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 5 — Vision LLM describes the RENDERED image (ground truth)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Reads the pixels Klein actually produced. The final caption uses this to skip naming items Klein silently dropped (e.g., the scientist ref that didn't render).</div>
+          <div class="kj-key">Endpoint:</div>
+          <div class="kj-val"><code id="kj-verify-vision-endpoint"></code></div>
+          <div class="kj-key">Backend used:</div>
+          <div class="kj-val"><code id="kj-verify-vision-backend"></code> · <span id="kj-verify-vision-ms" class="kj-mini"></span></div>
+          <details class="kj-nested">
+            <summary>Vision prompt (what we asked the vision LLM to do)</summary>
+            <pre id="kj-verify-vision-prompt"></pre>
+          </details>
+          <div class="kj-key">Vision LLM description of rendered image:</div>
+          <pre id="kj-verify-vision-description"></pre>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 6 — Final caption LLM rewrite (reconciles picks vs vision)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Strongest LLM (Hermes-405B chain) rewrites the caption using picks + what vision actually saw, so the final caption never names something that didn't render.</div>
+          <div class="kj-key">Endpoint:</div>
+          <div class="kj-val"><code id="kj-verify-caption-endpoint"></code></div>
+          <div class="kj-key">Backend used (winner):</div>
+          <div class="kj-val"><code id="kj-verify-caption-backend"></code> · <span id="kj-verify-caption-ms" class="kj-mini"></span></div>
+          <details class="kj-nested">
+            <summary>Final-caption system prompt (full)</summary>
+            <pre id="kj-verify-caption-system"></pre>
+          </details>
+          <details class="kj-nested">
+            <summary>Final-caption user payload (picks + vision read)</summary>
+            <pre id="kj-verify-caption-user"></pre>
+          </details>
+          <details class="kj-nested">
+            <summary>Per-attempt log (every backend tried, in order)</summary>
+            <pre id="kj-verify-caption-attempts"></pre>
+          </details>
+          <div class="kj-key">Raw LLM response (before JSON parse):</div>
+          <pre id="kj-verify-caption-raw"></pre>
+          <div class="kj-key">Final aria_caption (this is what gets saved):</div>
+          <pre id="kj-verify-final-caption"></pre>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 7 — Pipeline stage log (per-step millisecond timing)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Every stage's wall-clock time. Find the slow step here.</div>
+          <div id="kj-pipeline-bars" class="kj-pipeline-bars"></div>
+          <details class="kj-nested">
+            <summary>Raw JSON (full stage log)</summary>
+            <pre id="kj-pipeline-log"></pre>
+          </details>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 8 — Galactica → Kumori HTTP calls (every byte sent + received)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Each HTTP call galactica's kumori_api_client made to kumori.ai. Base64 image fields are size-redacted so logs stay readable.</div>
+          <div id="kj-http-galactica" class="kj-http-list"></div>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 9 — Kumori → LLM-provider HTTP calls (Groq / Mistral / GitHub Models / …)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Every outbound HTTP call kumori made to upstream free-tier LLM providers (covers the synthesis call AND the final-caption rewrite call). Captured via requests.api.request monkey-patch inside the kumori service for this debug request.</div>
+          <details class="kj-nested">
+            <summary>Synthesis LLM raw response text (before JSON parse — what the LLM actually returned)</summary>
+            <pre id="kj-llm-raw-response"></pre>
+          </details>
+          <div class="kj-key">Synthesis LLM upstream calls:</div>
+          <div id="kj-http-llm-upstream" class="kj-http-list"></div>
+          <div class="kj-key" style="margin-top:12px;">Final-caption LLM upstream calls:</div>
+          <div id="kj-http-verify-caption-upstream" class="kj-http-list"></div>
+        </div>
+      </details>
+
+      <details class="kj-stage" open>
+        <summary>Stage 10 — Kumori → Cloudflare HTTP calls (the Klein render itself)</summary>
+        <div class="kj-stage-body">
+          <div class="kj-mini">Every outbound HTTP call kumori made to Cloudflare Workers AI (flux-2-klein-4b endpoint) for this render.</div>
+          <div id="kj-http-klein-upstream" class="kj-http-list"></div>
+        </div>
+      </details>
+
+      <details class="kj-stage">
+        <summary>Stage 11 — Raw API response (everything above as one JSON blob)</summary>
+        <pre id="kj-raw"></pre>
+      </details>
+
+    </div>
+  </div>
+</div>
+<script src="/static/js/admin-kumori-journal-stream.js?v={{ static_v }}" defer></script>
+{% endblock %}
