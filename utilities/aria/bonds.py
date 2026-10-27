@@ -120,12 +120,31 @@ ARIA_WAITING_MESSAGE = (
 )
 
 
+# A bond is a first-contact moment both captains are there for (Luke, #1046). Captains with no meaningful
+# activity in this many days are not paired: 2026-10-26 three bonds had sat 'pending' for months, created by
+# automation for captains last active 2026-06-03, waiting on fragments that never came (kumori #565).
+BOND_ACTIVE_DAYS = 30
+
+
+def active_bond_captains(user_ids) -> set:
+    """The subset of user_ids with meaningful activity within BOND_ACTIVE_DAYS."""
+    ids = list(user_ids)
+    if not ids:
+        return set()
+    with db_cursor() as cur:
+        cur.execute("""
+            SELECT id FROM pilgrim.users
+            WHERE id = ANY(%s) AND last_meaningful_activity_at > NOW() - make_interval(days => %s)
+        """, (ids, BOND_ACTIVE_DAYS))
+        return {r['id'] for r in cur.fetchall()}
+
+
 def check_for_aria_bond(user_id: int, landmark_name: str) -> dict | None:
     """
     Check if another player has visited this landmark.
     If so, create a bond with ONE shared transaction.
 
-    Called after expedition completes.
+    Called after expedition completes. Both captains must be active (BOND_ACTIVE_DAYS).
     Returns bond info dict if bond created, None otherwise.
     """
     with db_cursor() as cur:
@@ -141,11 +160,16 @@ def check_for_aria_bond(user_id: int, landmark_name: str) -> dict | None:
 
     if not other_visitors:
         return None
+    active = active_bond_captains([user_id] + [v['user_id'] for v in other_visitors])
+    if user_id not in active:
+        return None
 
     # Process bonds with each other visitor (usually just one matters - first unbonded pair)
     bond_info = None
     for visitor in other_visitors:
         other_id = visitor['user_id']
+        if other_id not in active:
+            continue
         result = _create_bond(user_id, other_id, landmark_name)
         if result and not bond_info:
             bond_info = result  # Return first bond created
@@ -823,10 +847,11 @@ def send_bond_notification_email(bond_id: int, user_id_1: int, user_id_2: int,
     )
 
 
-def retry_stuck_bonds(max_age_minutes: int = 1440, max_retries: int = 3) -> dict:
+def retry_stuck_bonds(max_age_minutes: int = 10080, max_retries: int = 3) -> dict:
     """
     Safety net: find pending bonds with no tx_hash and retry them.
-    Called by /api/cron/retry_bonds every 10 minutes.
+    Called by /api/cron/retry_bonds once a day; looks back 7 days (was every 10 min over 24 h until 2026-10-26,
+    when it had retried one bond, #4, since it was added 2026-03-26; kumori #565).
 
     Returns dict with counts of retried/skipped/failed bonds.
     """
